@@ -6,6 +6,8 @@
 이 저장소의 목표는 “자동매매 완제품”을 바로 운영하는 것이 아닙니다.
 수강생이 자신의 매매 전략을 **코딩 에이전트에게 설명하고**, 에이전트가 코드를 고치고 실행·검증하는 과정을 몸으로 익히는 것입니다.
 
+![lecture-prism 학습 지도](docs/assets/readme/hero-learning-map.png)
+
 ## 이런 수강생을 위한 저장소입니다
 
 - 자신의 매매 전략은 있지만 API 연동 경험을 쌓고 싶은 비전공자
@@ -30,6 +32,8 @@
 
 처음부터 패키지 설치·OAuth·Git을 한꺼번에 해결하려고 하지 마세요.
 가장 먼저 확인할 것은 **API 키 없이 기본 파이프라인이 한 번 도는지**입니다.
+
+![처음 5분 루트](docs/assets/readme/five-minute-start.png)
 
 아래 프롬프트를 코딩 에이전트에게 그대로 입력하세요.
 
@@ -63,9 +67,7 @@
 
 ## 2. 프로젝트를 한 장으로 보기
 
-![lecture-prism 친절한 개요](docs/assets/lecture-prism-infographic.png)
-
-![전체 파이프라인](docs/assets/overall-pipeline.svg)
+![lecture-prism 파이프라인 지도](docs/assets/readme/pipeline-map.png)
 
 lecture-prism은 **네 개의 파이프라인 단계와 하나의 확인 화면**으로 움직입니다.
 
@@ -80,6 +82,8 @@ lecture-prism은 **네 개의 파이프라인 단계와 하나의 확인 화면*
 ---
 
 ## 3. 파일별 역할
+
+![파일별 역할 지도](docs/assets/readme/module-guide.png)
 
 | 파일 | 쉬운 설명 | 수강생이 주로 바꾸는 곳 |
 |---|---|---|
@@ -115,6 +119,8 @@ lecture-prism 전체 파이프라인을 API 키 없이 데모 모드로 실행�
 
 원본 PRISM-INSIGHT처럼 이 리포지토리에도 **ChatGPT OAuth 프록시 기본형**이 들어 있습니다.
 그래서 수강생이 프록시 코드를 처음부터 만들 필요는 없습니다. 기본 데모가 성공한 뒤, 실제 LLM 응답을 보고 싶을 때만 아래 프롬프트를 사용하세요.
+
+![API 키와 선택 연동 안전 지도](docs/assets/readme/optional-integrations-safety.png)
 
 ```text
 lecture-prism에 포함된 ChatGPT OAuth 프록시로 실제 LLM 분석을 연결해줘.
@@ -188,7 +194,7 @@ MY_STRATEGY.md를 읽고 내 전략을 lecture-prism에 반영해줘.
 실거래는 절대 하지 마.
 ```
 
-![수강생 실습 흐름](docs/assets/student-workflow.svg)
+![Strategy Harness Lite 흐름](docs/assets/readme/strategy-harness-lite.png)
 
 처음부터 전부 바꾸려고 하지 마세요. 아래 네 트랙 중 **하나만** 골라도 성공입니다.
 
@@ -219,6 +225,8 @@ MY_STRATEGY.md를 읽고 내 전략을 lecture-prism에 반영해줘.
 ---
 
 ## 7. Git 제출도 명령어 대신 프롬프트로
+
+![제출 전 보안 체크](docs/assets/readme/submission-security.png)
 
 GitHub 제출은 **선택**입니다. 수업 중 성공 기준은 먼저 “내 전략이 데모 모드에서 실행되는 것”입니다. 제출이 막히면 화면 공유나 결과 캡처로 대체해도 됩니다.
 

@@ -1,14 +1,22 @@
 # lecture-prism 아키텍처 그림 모음
 
-이 문서는 코드를 처음 보는 수강생이 “어느 파일이 어떤 역할을 하는지” 먼저 잡을 수 있도록 만든 그림 설명입니다.
+이 문서는 코드를 처음 보는 수강생이 “어느 파일이 어떤 역할을 하는지” 먼저 잡을 수 있도록 만든 그림 설명입니다. 모든 그림은 README와 동일하게 한글 설명이 이미지 안에 정확히 들어간 PNG 인포그래픽으로 구성했습니다. SVG/Mermaid 다이어그램을 읽지 않아도 흐름을 이해할 수 있게 하는 것이 목적입니다.
 
-## 1. 전체 파이프라인
+## 1. 전체 학습 지도
 
-![lecture-prism 친절한 개요](assets/lecture-prism-infographic.png)
+![lecture-prism 학습 지도](assets/readme/hero-learning-map.png)
 
-![전체 파이프라인](assets/overall-pipeline.svg)
+lecture-prism은 “내 전략을 말한다 → 코딩 에이전트가 실행·수정한다 → 데모 모드로 검증한다 → 대시보드로 확인한다”는 흐름을 연습하는 저장소입니다.
 
-전체 흐름은 아래처럼 이해하면 됩니다.
+## 2. 처음 5분 루트
+
+![처음 5분 루트](assets/readme/five-minute-start.png)
+
+처음에는 설치·OAuth·Git을 한꺼번에 해결하지 않습니다. 가장 먼저 확인할 것은 **API 키 없이 기본 데모가 실행되는지**입니다.
+
+## 3. 작은 PRISM 파이프라인
+
+![lecture-prism 파이프라인 지도](assets/readme/pipeline-map.png)
 
 | 단계 | 파일 | 쉬운 비유 | 결과 |
 |---|---|---|---|
@@ -18,43 +26,39 @@
 | 4 | `feedback.py` | 매매일지를 쓰고 교훈을 뽑는 회고 담당 | 다음 판단에 쓸 교훈 |
 | 5 | `dashboard.py` | 결과를 눈으로 보는 화면 | 웹 대시보드 |
 
-## 2. 분석 에이전트 파이프라인
-
-![분석 에이전트](assets/analysis-agents.svg)
-
-`analysis.py`는 한 번에 “AI 하나에게 다 물어보는” 구조가 아닙니다.
-
-1. 기술적 분석 에이전트가 차트·거래량 관점으로 요약합니다.
-2. 뉴스 분석 에이전트가 호재·악재 관점으로 요약합니다.
-3. 투자전략 에이전트가 앞의 두 결과를 합쳐 `BUY`, `HOLD`, `PASS` 중 하나를 고릅니다.
-
 LLM 연결이 없으면 mock 응답으로 동작합니다. 그래서 수업 초반에는 API 키가 없어도 전체 흐름을 먼저 볼 수 있습니다.
 
-실제 LLM을 연결할 때는 원본 PRISM-INSIGHT와 같은 방향으로 `cores/chatgpt_proxy`의 내장 OAuth 프록시를 사용합니다. 수강생은 프록시를 새로 구현하지 않고, 코딩 에이전트에게 “내장 프록시로 로그인·실행·검증해줘”라고 지시하면 됩니다.
+## 4. 파일별 역할 지도
 
-## 3. 피드백 루프
+![파일별 역할 지도](assets/readme/module-guide.png)
 
-![피드백 루프](assets/feedback-loop.svg)
-
-자동매매에서 중요한 것은 “한 번 맞히기”가 아니라 “다음 판단이 조금 더 나아지게 만들기”입니다.
-
-- `feedback.py`는 매매 결과를 보고 교훈을 만듭니다.
-- `db.py`는 그 교훈을 `prism.db`에 저장합니다.
-- `dashboard.py`는 교훈을 화면에 보여줍니다.
-- 수강생은 그 교훈을 보고 다음 전략·프롬프트를 고칩니다.
-
-## 4. 수강생 실습 흐름
-
-![수강생 실습 흐름](assets/student-workflow.svg)
-
-처음에는 전체 시스템을 다 이해하려 하지 말고, 아래 중 하나만 바꾸면 됩니다.
+처음부터 전체 코드를 다 읽을 필요는 없습니다.
 
 - 진입 조건을 바꾸고 싶다 → `screening.py`
 - AI가 보는 관점을 바꾸고 싶다 → `analysis.py`
 - 언제 팔지 바꾸고 싶다 → `trading.py`의 `_decide_exit`
 - 얼마나 보수적으로 운용할지 바꾸고 싶다 → `trading.py`의 리스크 상수
+- 결과를 보고 싶다 → `dashboard.py`
 
-## 5. PRISM 본 시스템과의 관계
+## 5. API 키와 선택 연동
+
+![API 키와 선택 연동 안전 지도](assets/readme/optional-integrations-safety.png)
+
+강의 기본 실습에는 필수 API 키가 없습니다. 실제 LLM은 내장 ChatGPT OAuth 프록시 또는 OpenAI API 키로 선택 연결하고, KIS API는 심화 실습에서만 다룹니다. `trading.py`는 실거래 요청을 기본 차단합니다.
+
+## 6. Strategy Harness Lite
+
+![Strategy Harness Lite 흐름](assets/readme/strategy-harness-lite.png)
+
+수강생이 전략을 두루뭉술하게 말해도, 코딩 에이전트가 진입·분석·청산·리스크 중 어디를 바꿀지 정리하고 가장 안전한 한 파일부터 수정·검증하도록 돕습니다.
+
+## 7. 제출 전 보안 체크
+
+![제출 전 보안 체크](assets/readme/submission-security.png)
+
+GitHub에 올려야 하는 것은 학습 코드와 문서입니다. 실제 API 키, OAuth 토큰, KIS 설정, DB 파일, 로그 파일은 로컬에만 남겨야 합니다.
+
+## 8. PRISM 본 시스템과의 관계
 
 lecture-prism은 PRISM 본 시스템의 축소판입니다.
 
