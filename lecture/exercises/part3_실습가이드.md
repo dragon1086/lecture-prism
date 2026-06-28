@@ -110,6 +110,8 @@ VOLUME_SURGE_RATIO를 5.0에서 3.0으로 바꾸고 다시 실행해줘.
 
 **목표**: 기술적 분석 → 뉴스 분석 → 투자전략 순차 실행 이해
 
+> 왜 1콜에 통째로 안 맡기고 에이전트를 나누는지는 [`docs/why-multi-agent.md`](../../docs/why-multi-agent.md) 참고.
+
 ### 코딩 에이전트에 입력
 
 ```text
