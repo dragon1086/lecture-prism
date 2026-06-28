@@ -1,0 +1,377 @@
+"""Chat Completions <-> Responses API bidirectional translator.
+
+Pure functions with no I/O or state. Fully unit-testable.
+"""
+
+from __future__ import annotations
+
+import json
+import time
+from typing import Any
+
+
+# Models not supported on Codex endpoint -> best available replacement
+_MODEL_MAP: dict[str, str] = {
+    "gpt-4o": "gpt-5.4-mini",
+    "gpt-4o-mini": "gpt-5.4-mini",
+    "gpt-4o-2024-08-06": "gpt-5.4-mini",
+    "gpt-4-turbo": "gpt-5.4-mini",
+    "gpt-4": "gpt-5.4-mini",
+    "gpt-3.5-turbo": "gpt-5.4-mini",
+    "o4-mini": "gpt-5.4-mini",
+    "o3-mini": "gpt-5.4-mini",
+    # nano-tier models are rejected by the Codex/ChatGPT-account endpoint
+    # ("model is not supported when using Codex with a ChatGPT account").
+    # Map them to the lightest Codex-compatible model so OAuth-mode callers
+    # (telegram_translator, dashboards, weekly intelligence) keep working.
+    # API-key mode bypasses this proxy, so it uses the real nano model.
+    "gpt-5.4-nano": "gpt-5.4-mini",   # current nano default (2026-03)
+    "gpt-5-nano": "gpt-5.4-mini",     # back-compat (older nano, still live)
+}
+
+
+def _map_model(model: str) -> str:
+    """Map unsupported model names to Codex-compatible equivalents."""
+    return _MODEL_MAP.get(model, model)
+
+
+def prepare_responses_passthrough(body: dict) -> dict:
+    """Prepare a Responses API request for passthrough to the Codex backend.
+
+    The openai-agents Runner already produces a Responses-shaped body (with
+    ``input``, ``instructions``, ``tools`` flat, ``text.format``, etc.), so
+    this function must NOT re-translate the payload.  It only:
+
+    - Maps the model name via ``_map_model`` (e.g. gpt-4o -> gpt-5.4-mini).
+    - Forces ``store=False`` and ``stream=True`` (mandatory for Codex backend).
+    - Injects a default ``instructions`` value when the caller omitted it
+      (Codex requires the field to be present and non-empty).
+
+    All other Responses API fields (``input``, ``tools``, ``tool_choice``,
+    ``text``, ``reasoning``, ``max_output_tokens``, ``temperature``,
+    ``top_p``) are left untouched.
+
+    Does not mutate the caller's dict.
+    """
+    out = dict(body)
+    out["model"] = _map_model(body.get("model", "gpt-5.4-mini"))
+    out["store"] = False   # MANDATORY: store:true returns 400
+    out["stream"] = True   # MANDATORY: always stream upstream
+    if not out.get("instructions"):
+        out["instructions"] = "You are a helpful assistant."
+    # Codex backend requires `input` to be a LIST of items; the openai SDK may
+    # send a bare string for simple text input -> normalize to a user message.
+    inp = out.get("input")
+    if isinstance(inp, str):
+        out["input"] = [{"role": "user", "content": inp}]
+    # The Codex backend rejects several Responses parameters the openai-agents
+    # Runner adds by default (observed: "Unsupported parameter: max_output_tokens").
+    # Strip them so subscription requests succeed.
+    #
+    # previous_response_id: rejected by the Codex/ChatGPT-account endpoint
+    # ("Unsupported parameter: previous_response_id"), which broke multi-turn
+    # tool-calling agents (e.g. the gpt-5.5 trading-scenario / buy decision ->
+    # 400 -> default_scenario -> No Entry). It is also non-functional here:
+    # store=False is forced above, so there is no server-side response to
+    # reference. The full conversation is already carried in `input` (mcp_agent
+    # sends the entire message history every turn), so dropping it is lossless.
+    for unsupported in ("max_output_tokens", "include", "previous_response_id"):
+        out.pop(unsupported, None)
+    # Drop empty tool list (Codex dislikes an empty `tools: []`).
+    if out.get("tools") == []:
+        out.pop("tools", None)
+    return out
+
+
+def translate_request(body: dict) -> dict:
+    """Translate Chat Completions request to Responses API format.
+
+    Key mappings:
+    - messages -> input (with role translations)
+    - max_tokens -> max_output_tokens
+    - tools[].function.* -> tools[].* (flattened)
+    - response_format -> text.format
+    """
+    translated: dict[str, Any] = {
+        "model": _map_model(body.get("model", "gpt-4o")),
+    }
+
+    # Messages -> Input (with role mapping)
+    # Extract system messages as instructions (required by Codex endpoint)
+    messages = body.get("messages") or []
+    system_parts = [m.get("content") or "" for m in messages if m.get("role") == "system"]
+    non_system = [m for m in messages if m.get("role") != "system"]
+    translated["instructions"] = "\n\n".join(system_parts) if system_parts else "You are a helpful assistant."
+    translated["input"] = _translate_messages_to_input(non_system)
+
+    # Parameter passthrough
+    for key in ("temperature", "top_p", "stop", "seed"):
+        if key in body:
+            translated[key] = body[key]
+
+    # reasoning_effort -> Responses API {"reasoning": {"effort": "..."}}
+    # "none" means disable reasoning (omit the field entirely)
+    reasoning_effort = body.get("reasoning_effort")
+    if reasoning_effort and reasoning_effort != "none":
+        translated["reasoning"] = {"effort": reasoning_effort}
+
+    # max_tokens -> max_output_tokens
+    if "max_tokens" in body:
+        translated["max_output_tokens"] = body["max_tokens"]
+
+    # Tools (flatten nested function structure)
+    if body.get("tools"):
+        translated["tools"] = _translate_tools_request(body["tools"])
+
+    if "tool_choice" in body:
+        translated["tool_choice"] = body["tool_choice"]
+
+    # response_format -> text.format
+    # Chat Completions: {"type":"json_schema","json_schema":{"name":"...","schema":{...}}}
+    # Responses API:    {"type":"json_schema","name":"...","schema":{...}}
+    if "response_format" in body:
+        rf = body["response_format"]
+        if isinstance(rf, dict):
+            fmt = dict(rf)
+            # Flatten nested json_schema to top level
+            if fmt.get("type") == "json_schema" and "json_schema" in fmt:
+                inner = fmt.pop("json_schema")
+                fmt.update(inner)
+            translated["text"] = {"format": fmt}
+
+    # ChatGPT backend requirements (discovered from open-source analysis)
+    translated["store"] = False  # MANDATORY: store:true returns 400
+    translated["stream"] = True  # MANDATORY: always stream upstream
+
+    return translated
+
+
+def _translate_messages_to_input(messages: list[dict]) -> list[dict]:
+    """Translate Chat Completions messages to Responses API input format."""
+    result = []
+    for msg in messages:
+        role = msg.get("role", "user")
+        content = msg.get("content")
+
+        # Tool result messages
+        if role == "tool":
+            result.append({
+                "type": "function_call_output",
+                "call_id": msg.get("tool_call_id", ""),
+                "output": content if isinstance(content, str) else json.dumps(content),
+            })
+            continue
+
+        # Assistant messages with tool_calls
+        if role == "assistant" and msg.get("tool_calls"):
+            # Add the assistant's text content if any
+            if content:
+                result.append({"role": "assistant", "content": content})
+            # Add each tool call as a separate function_call item
+            for tc in (msg.get("tool_calls") or []):
+                func = tc.get("function", {})
+                result.append({
+                    "type": "function_call",
+                    "name": func.get("name", ""),
+                    "call_id": tc.get("id", ""),
+                    "arguments": func.get("arguments", "{}"),
+                })
+            continue
+
+        translated_msg: dict[str, Any] = {"role": role}
+        if content is not None:
+            translated_msg["content"] = content
+
+        result.append(translated_msg)
+
+    return result
+
+
+def _translate_tools_request(tools: list[dict]) -> list[dict]:
+    """Flatten Chat Completions tool definitions to Responses API format.
+
+    Chat Completions: {"type": "function", "function": {"name": ..., "description": ..., "parameters": ...}}
+    Responses API:    {"type": "function", "name": ..., "description": ..., "parameters": ...}
+    """
+    result = []
+    for tool in tools:
+        if tool.get("type") == "function":
+            func = tool.get("function", {})
+            flat_tool: dict[str, Any] = {
+                "type": "function",
+                "name": func.get("name", ""),
+            }
+            if "description" in func:
+                flat_tool["description"] = func["description"]
+            if "parameters" in func:
+                flat_tool["parameters"] = func["parameters"]
+            if "strict" in func:
+                flat_tool["strict"] = func["strict"]
+            result.append(flat_tool)
+        else:
+            result.append(tool)
+    return result
+
+
+def translate_response(response_body: dict, model: str) -> dict:
+    """Translate Responses API response to Chat Completions format.
+
+    Key mappings:
+    - output[].content[].text -> choices[].message.content
+    - output[].type==function_call -> choices[].message.tool_calls[]
+    - usage fields mapped
+    """
+    resp_id = response_body.get("id", "resp_unknown")
+    output = response_body.get("output", [])
+
+    message: dict[str, Any] = {"role": "assistant"}
+    tool_calls = []
+    text_parts = []
+    finish_reason = "stop"
+
+    for item in output:
+        item_type = item.get("type", "")
+
+        if item_type == "message":
+            # Extract text from content array
+            for content in item.get("content", []):
+                if content.get("type") == "output_text":
+                    text_parts.append(content.get("text", ""))
+
+        elif item_type == "function_call":
+            tool_calls.append({
+                "id": item.get("call_id", ""),
+                "type": "function",
+                "function": {
+                    "name": item.get("name", ""),
+                    "arguments": item.get("arguments", "{}"),
+                },
+            })
+            finish_reason = "tool_calls"
+
+    if text_parts:
+        message["content"] = "\n".join(text_parts)
+    else:
+        message["content"] = None
+
+    if tool_calls:
+        message["tool_calls"] = tool_calls
+
+    # Map usage
+    usage_in = response_body.get("usage", {})
+    usage_out = {
+        "prompt_tokens": usage_in.get("input_tokens", 0),
+        "completion_tokens": usage_in.get("output_tokens", 0),
+        "total_tokens": usage_in.get("total_tokens", 0),
+    }
+
+    return {
+        "id": f"chatcmpl-{resp_id}",
+        "object": "chat.completion",
+        "created": int(time.time()),
+        "model": model,
+        "choices": [
+            {
+                "index": 0,
+                "message": message,
+                "finish_reason": finish_reason,
+            }
+        ],
+        "usage": usage_out,
+    }
+
+
+def translate_error(error_body: dict, status_code: int) -> tuple[dict, int]:
+    """Translate Responses API error to Chat Completions error format."""
+    error = error_body.get("error", {})
+    if isinstance(error, str):
+        error = {"message": error}
+
+    return {
+        "error": {
+            "message": error.get("message", "Unknown error"),
+            "type": error.get("type", "api_error"),
+            "code": error.get("code", str(status_code)),
+        }
+    }, status_code
+
+
+def collect_sse_to_response(sse_text: str) -> dict:
+    """Parse SSE stream text and extract the final Responses API object.
+
+    The ChatGPT Codex SSE stream sends output items via separate events
+    (response.output_item.done) and the final response.completed event may
+    arrive with an empty output array. We collect output items from the
+    .done events and merge them into the final response.
+    """
+    lines = sse_text.split("\n")
+    current_event = ""
+    data_lines: list[str] = []
+    completed_data: dict | None = None
+    failed_data: dict | None = None
+    output_items: list[dict] = []
+    text_chunks: list[str] = []
+
+    def _process(event: str, raw: str) -> None:
+        nonlocal completed_data, failed_data
+        try:
+            parsed = json.loads(raw)
+        except json.JSONDecodeError:
+            return
+        if event == "response.completed":
+            completed_data = parsed
+        elif event == "response.failed":
+            failed_data = parsed
+        elif event == "response.output_text.delta":
+            delta = parsed.get("delta", "")
+            if delta:
+                text_chunks.append(delta)
+        elif event == "response.output_item.done":
+            item = parsed.get("item")
+            if isinstance(item, dict):
+                output_items.append(item)
+
+    for line in lines:
+        if line.startswith("event: "):
+            if data_lines and current_event:
+                _process(current_event, "\n".join(data_lines))
+            current_event = line[7:].strip()
+            data_lines = []
+        elif line.startswith("data: "):
+            data_lines.append(line[6:])
+        elif line == "" and data_lines and current_event:
+            _process(current_event, "\n".join(data_lines))
+            data_lines = []
+
+    # Process any remaining data
+    if data_lines and current_event:
+        _process(current_event, "\n".join(data_lines))
+
+    def _ensure_output(response_obj: dict) -> dict:
+        """Fill in output array from collected items/deltas if completed event lacks it."""
+        if response_obj.get("output"):
+            return response_obj
+        if output_items:
+            response_obj["output"] = output_items
+        elif text_chunks:
+            response_obj["output"] = [
+                {
+                    "type": "message",
+                    "role": "assistant",
+                    "content": [{"type": "output_text", "text": "".join(text_chunks)}],
+                }
+            ]
+        return response_obj
+
+    if completed_data:
+        return _ensure_output(completed_data.get("response", completed_data))
+
+    if failed_data:
+        return failed_data.get("response", failed_data)
+
+    # No completed event — synthesize from collected items/deltas
+    if output_items or text_chunks:
+        synthesized: dict = {"id": "resp_reconstructed", "usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}}
+        return _ensure_output(synthesized)
+
+    raise ValueError("No response.completed or response.failed event found in SSE stream")

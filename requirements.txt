@@ -1,0 +1,16 @@
+# lecture-prism 의존성
+#
+# 기본 파이프라인(main.py)은 표준 라이브러리만으로 동작합니다 (mock 모드).
+# 아래는 "실제 연동"을 켤 때 필요한 선택적 패키지입니다.
+
+# 대시보드 (dashboard.py) — 필수에 가까움
+fastapi>=0.110
+uvicorn>=0.29
+
+# 실제 LLM 분석 (analysis.py, OPENAI_BASE_URL/OPENAI_API_KEY 설정 시)
+# ChatGPT OAuth 프록시를 통하면 API 키 없이도 사용 가능
+openai>=1.40
+aiohttp>=3.9
+
+# 실데이터 스크리닝 (screening.py --real)
+pykrx>=1.0.45

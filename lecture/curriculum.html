@@ -1,0 +1,1224 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 네이티브 자동매매 시스템 구축 — 강의 커리큘럼</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --color-bg: #F8FAFC;
+    --color-fg: #1E293B;
+    --color-primary: #475569;
+    --color-accent: #2563EB;
+    --color-border: #E2E8F0;
+    --color-muted: #94A3B8;
+    --color-sidebar-bg: #0F172A;
+    --color-sidebar-text: #CBD5E1;
+    --color-sidebar-active: #F1F5F9;
+    --color-card: #FFFFFF;
+
+    --module-screening: #3B82F6;
+    --module-analysis: #7C3AED;
+    --module-trading: #059669;
+    --module-feedback: #D97706;
+    --module-qna: #6B7280;
+
+    --tag-lecture: #DBEAFE;
+    --tag-lecture-text: #1D4ED8;
+    --tag-demo: #FCE7F3;
+    --tag-demo-text: #BE185D;
+    --tag-practice: #D1FAE5;
+    --tag-practice-text: #065F46;
+    --tag-qna: #F1F5F9;
+    --tag-qna-text: #475569;
+
+    --sidebar-w: 240px;
+    --header-h: 64px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans KR', system-ui, sans-serif;
+    background: var(--color-bg);
+    color: var(--color-fg);
+    line-height: 1.6;
+    font-size: 15px;
+  }
+
+  /* ── Header ── */
+  .header {
+    position: fixed; top: 0; left: 0; right: 0;
+    height: var(--header-h);
+    background: var(--color-sidebar-bg);
+    display: flex; align-items: center; padding: 0 24px;
+    z-index: 100; border-bottom: 1px solid #1E293B;
+  }
+  .header-badge {
+    background: var(--color-accent);
+    color: white; font-size: 11px; font-weight: 700;
+    padding: 3px 10px; border-radius: 20px; margin-right: 14px;
+    letter-spacing: 0.5px; text-transform: uppercase;
+  }
+  .header-title {
+    color: white; font-size: 16px; font-weight: 700; letter-spacing: -0.3px;
+  }
+  .header-meta {
+    margin-left: auto; display: flex; gap: 20px; align-items: center;
+  }
+  .header-chip {
+    color: var(--color-sidebar-text); font-size: 12px;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .header-chip svg { width: 14px; height: 14px; opacity: 0.7; }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    position: fixed; top: var(--header-h); left: 0; bottom: 0;
+    width: var(--sidebar-w);
+    background: var(--color-sidebar-bg);
+    overflow-y: auto; padding: 20px 0;
+    border-right: 1px solid #1E293B;
+  }
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
+
+  .sidebar-section { margin-bottom: 24px; }
+  .sidebar-label {
+    color: #475569; font-size: 10px; font-weight: 700;
+    letter-spacing: 1.5px; text-transform: uppercase;
+    padding: 0 20px; margin-bottom: 6px;
+  }
+  .sidebar-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 20px; color: var(--color-sidebar-text);
+    font-size: 13px; cursor: pointer; text-decoration: none;
+    transition: background 0.15s, color 0.15s;
+    border-left: 2px solid transparent;
+  }
+  .sidebar-item:hover { background: #1E293B; color: white; }
+  .sidebar-item.active {
+    background: #1E293B; color: white;
+    border-left-color: var(--color-accent);
+  }
+  .sidebar-item .dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  }
+  .sidebar-divider { border: none; border-top: 1px solid #1E293B; margin: 8px 0; }
+
+  /* ── Main ── */
+  .main {
+    margin-left: var(--sidebar-w);
+    margin-top: var(--header-h);
+    padding: 40px 48px;
+    max-width: 960px;
+  }
+
+  /* ── Section ── */
+  .section { margin-bottom: 56px; scroll-margin-top: 80px; }
+  .section-header {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 24px; padding-bottom: 16px;
+    border-bottom: 2px solid var(--color-border);
+  }
+  .section-icon {
+    width: 40px; height: 40px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+  }
+  .section-title { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+  .section-subtitle { font-size: 13px; color: var(--color-muted); margin-top: 2px; }
+
+  /* ── Overview Cards ── */
+  .overview-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+    margin-bottom: 32px;
+  }
+  .overview-card {
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: 12px; padding: 20px;
+  }
+  .overview-card-label { font-size: 11px; color: var(--color-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
+  .overview-card-value { font-size: 20px; font-weight: 700; color: var(--color-fg); }
+  .overview-card-sub { font-size: 12px; color: var(--color-muted); margin-top: 2px; }
+
+  /* ── Part Header ── */
+  .part-header {
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: 12px; padding: 24px 28px;
+    margin-bottom: 20px;
+    display: flex; align-items: flex-start; gap: 20px;
+  }
+  .part-number {
+    font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+    padding: 4px 12px; border-radius: 20px; flex-shrink: 0; margin-top: 3px;
+  }
+  .part-info { flex: 1; }
+  .part-title { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+  .part-desc { font-size: 13px; color: var(--color-muted); line-height: 1.5; }
+  .part-meta { display: flex; gap: 16px; margin-top: 10px; }
+  .part-meta-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--color-primary); }
+
+  /* ── Chapter Cards ── */
+  .chapter-list { display: flex; flex-direction: column; gap: 12px; }
+  .chapter {
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    overflow: hidden;
+    transition: box-shadow 0.15s;
+  }
+  .chapter:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+  .chapter-top {
+    display: flex; align-items: stretch;
+  }
+  .chapter-accent-bar { width: 4px; flex-shrink: 0; }
+  .chapter-main { flex: 1; padding: 16px 20px; }
+  .chapter-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .chapter-num { font-size: 11px; font-weight: 700; color: var(--color-muted); }
+  .chapter-title { font-size: 15px; font-weight: 600; flex: 1; }
+  .time-chip {
+    display: flex; align-items: center; gap: 4px;
+    background: var(--color-bg); border: 1px solid var(--color-border);
+    border-radius: 20px; padding: 3px 10px;
+    font-size: 11px; font-weight: 600; color: var(--color-primary); flex-shrink: 0;
+  }
+  .chapter-desc { font-size: 13px; color: #475569; line-height: 1.55; }
+  .chapter-tags { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+  .tag {
+    font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px;
+  }
+  .tag-lecture { background: var(--tag-lecture); color: var(--tag-lecture-text); }
+  .tag-demo { background: var(--tag-demo); color: var(--tag-demo-text); }
+  .tag-practice { background: var(--tag-practice); color: var(--tag-practice-text); }
+  .tag-qna { background: var(--tag-qna); color: var(--tag-qna-text); }
+
+  .chapter-bullets {
+    margin-top: 12px; padding-top: 12px;
+    border-top: 1px solid var(--color-border);
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .bullet {
+    font-size: 12.5px; color: #475569;
+    display: flex; align-items: flex-start; gap: 8px; line-height: 1.5;
+  }
+  .bullet::before {
+    content: '→'; color: var(--color-accent);
+    font-size: 11px; margin-top: 2px; flex-shrink: 0;
+  }
+
+  /* ── Time Bar ── */
+  .time-bar-wrap { padding: 16px 20px 0; }
+  .time-bar-label { font-size: 10px; color: var(--color-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
+  .time-bar { display: flex; height: 20px; border-radius: 4px; overflow: hidden; gap: 2px; margin-bottom: 16px; }
+  .time-bar-seg {
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700; color: white; min-width: 30px;
+    border-radius: 3px;
+  }
+
+  /* ── Q&A Block ── */
+  .qna-block {
+    background: #F8FAFC; border: 1px dashed #CBD5E1;
+    border-radius: 10px; padding: 16px 20px;
+    display: flex; align-items: center; gap: 14px; margin-top: 12px;
+  }
+  .qna-icon {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: var(--module-qna); color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; flex-shrink: 0;
+  }
+  .qna-title { font-size: 14px; font-weight: 600; }
+  .qna-desc { font-size: 12px; color: var(--color-muted); margin-top: 2px; }
+
+  /* ── Table ── */
+  .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .data-table th {
+    background: var(--color-bg); font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.8px; color: var(--color-muted);
+    padding: 10px 14px; text-align: left; border-bottom: 2px solid var(--color-border);
+  }
+  .data-table td {
+    padding: 12px 14px; border-bottom: 1px solid var(--color-border);
+    vertical-align: top;
+  }
+  .data-table tr:last-child td { border-bottom: none; }
+  .data-table tr:hover td { background: #F8FAFC; }
+  .table-wrap {
+    background: var(--color-card); border: 1px solid var(--color-border);
+    border-radius: 12px; overflow: hidden; margin-bottom: 24px;
+  }
+
+  /* ── Pattern Grid ── */
+  .pattern-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;
+    margin-bottom: 24px;
+  }
+  .pattern-card {
+    background: var(--color-card); border: 1px solid var(--color-border);
+    border-radius: 10px; padding: 18px;
+  }
+  .pattern-name { font-size: 14px; font-weight: 700; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+  .pattern-badge {
+    font-size: 10px; font-weight: 700; padding: 2px 7px;
+    border-radius: 4px; background: #EDE9FE; color: #5B21B6;
+  }
+  .pattern-badge.used { background: #D1FAE5; color: #065F46; }
+  .pattern-desc { font-size: 12.5px; color: #475569; line-height: 1.55; }
+  .pattern-prism { font-size: 12px; color: var(--color-accent); margin-top: 6px; font-weight: 500; }
+
+  /* ── Arch ── */
+  .arch-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;
+  }
+  .arch-module {
+    background: var(--color-card); border: 1px solid var(--color-border);
+    border-radius: 10px; padding: 18px;
+    border-top: 3px solid transparent;
+  }
+  .arch-module-name { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+  .arch-module-file { font-size: 11px; font-family: 'Courier New', monospace; color: var(--color-muted); background: var(--color-bg); padding: 2px 6px; border-radius: 4px; }
+  .arch-module-desc { font-size: 12.5px; color: #475569; margin-top: 8px; line-height: 1.5; }
+
+  /* ── Mod dir colors ── */
+  .mod-screening { border-top-color: var(--module-screening); }
+  .mod-analysis { border-top-color: var(--module-analysis); }
+  .mod-trading { border-top-color: var(--module-trading); }
+  .mod-feedback { border-top-color: var(--module-feedback); }
+
+  /* ── Community ── */
+  .community-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+  }
+  .community-card {
+    background: var(--color-card); border: 1px solid var(--color-border);
+    border-radius: 10px; padding: 18px; text-align: center;
+  }
+  .community-icon { font-size: 28px; margin-bottom: 8px; }
+  .community-title { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+  .community-desc { font-size: 12px; color: var(--color-muted); line-height: 1.5; }
+
+  /* ── Option Track ── */
+  .track-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
+    margin-top: 12px;
+  }
+  .track-card {
+    background: var(--color-bg); border: 1px solid var(--color-border);
+    border-radius: 8px; padding: 14px 16px;
+  }
+  .track-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .track-label { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; }
+  .track-title { font-size: 13px; font-weight: 600; }
+  .track-diff { font-size: 11px; color: var(--color-muted); }
+  .track-desc { font-size: 12px; color: #475569; }
+
+  .stars { color: #F59E0B; font-size: 11px; }
+
+  /* ── Claude Code 명령 표시 ── */
+  .cc-cmd {
+    display: flex; align-items: flex-start; gap: 10px;
+    background: #0F172A; border-radius: 8px; padding: 10px 14px;
+    margin: 4px 0; font-size: 12.5px;
+  }
+  .cc-bubble {
+    background: #2563EB; color: white;
+    font-size: 10px; font-weight: 700; padding: 2px 7px;
+    border-radius: 4px; flex-shrink: 0; margin-top: 1px;
+    letter-spacing: 0.3px;
+  }
+  .cc-text { color: #E2E8F0; font-style: italic; flex: 1; line-height: 1.5; }
+  .cc-result { color: #6EE7B7; font-size: 11.5px; margin-top: 4px; }
+
+  /* ── Callout ── */
+  .callout {
+    background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px;
+    padding: 14px 18px; margin-bottom: 16px;
+    display: flex; gap: 12px; align-items: flex-start;
+  }
+  .callout-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+  .callout-text { font-size: 13px; color: #1E3A5F; line-height: 1.6; }
+  .callout-text strong { font-weight: 700; }
+
+  .callout.amber {
+    background: #FFFBEB; border-color: #FDE68A;
+  }
+  .callout.amber .callout-text { color: #92400E; }
+
+  /* ── Footer ── */
+  .footer {
+    margin-top: 60px; padding: 24px 0;
+    border-top: 1px solid var(--color-border);
+    text-align: center; font-size: 12px; color: var(--color-muted);
+  }
+
+  /* Print */
+  @media print {
+    .sidebar, .header { display: none; }
+    .main { margin: 0; padding: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header class="header">
+  <span class="header-badge">FastCampus</span>
+  <span class="header-title">AI 네이티브 자동매매 시스템 구축 (실습 중심)</span>
+  <div class="header-meta">
+    <div class="header-chip">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      개강 2026-08-22 (토)
+    </div>
+    <div class="header-chip">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      주 1회(토) · 회당 2시간 · 회차 수 협의 중
+    </div>
+    <div class="header-chip">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      역삼 스튜디오 · 오프라인
+    </div>
+  </div>
+</header>
+
+<!-- ── Sidebar ── -->
+<nav class="sidebar">
+  <div class="sidebar-section">
+    <div class="sidebar-label">강의 개요</div>
+    <a class="sidebar-item active" href="#overview">
+      <span class="dot" style="background:#2563EB"></span> 전체 구조
+    </a>
+    <a class="sidebar-item" href="#philosophy">
+      <span class="dot" style="background:#7C3AED"></span> 핵심 철학
+    </a>
+  </div>
+  <hr class="sidebar-divider">
+  <div class="sidebar-section">
+    <div class="sidebar-label">파트 1–2 (계정훈)</div>
+    <a class="sidebar-item" href="#part1">
+      <span class="dot" style="background:#64748B"></span> 파트1: 환경구축
+    </a>
+    <a class="sidebar-item" href="#part2">
+      <span class="dot" style="background:#64748B"></span> 파트2: 파이프라인 입문
+    </a>
+  </div>
+  <hr class="sidebar-divider">
+  <div class="sidebar-section">
+    <div class="sidebar-label">파트 3–4 (상록)</div>
+    <a class="sidebar-item" href="#part3">
+      <span class="dot" style="background:#3B82F6"></span> 파트3: 시스템 패턴
+    </a>
+    <a class="sidebar-item" href="#part4">
+      <span class="dot" style="background:#059669"></span> 파트4: 본인 이론 구현
+    </a>
+  </div>
+  <hr class="sidebar-divider">
+  <div class="sidebar-section">
+    <div class="sidebar-label">참고 자료</div>
+    <a class="sidebar-item" href="#opensource">
+      <span class="dot" style="background:#F59E0B"></span> 오픈소스 지형도
+    </a>
+    <a class="sidebar-item" href="#patterns">
+      <span class="dot" style="background:#EC4899"></span> Anthropic 에이전트 패턴
+    </a>
+    <a class="sidebar-item" href="#architecture">
+      <span class="dot" style="background:#10B981"></span> lecture-prism 설계
+    </a>
+    <a class="sidebar-item" href="#community">
+      <span class="dot" style="background:#8B5CF6"></span> 강의 이후 커뮤니티
+    </a>
+  </div>
+</nav>
+
+<!-- ── Main ── -->
+<main class="main">
+
+  <!-- SECTION: Overview -->
+  <section class="section" id="overview">
+    <div class="section-header">
+      <div class="section-icon" style="background:#EFF6FF;">📋</div>
+      <div>
+        <div class="section-title">전체 강의 구조</div>
+        <div class="section-subtitle">4파트 · 2인 강사 체제 · 각 파트 2시간 (콘텐츠 90분 + Q&A 30분)</div>
+      </div>
+    </div>
+
+    <div class="overview-grid">
+      <div class="overview-card">
+        <div class="overview-card-label">수강 대상</div>
+        <div class="overview-card-value">전략은 있지만 API 연동이 처음인 비전공자</div>
+        <div class="overview-card-sub">바이브코딩은 해봤으나 실전 적용을 배우고 싶은 입문자</div>
+      </div>
+      <div class="overview-card">
+        <div class="overview-card-label">실적 (PRISM-INSIGHT)</div>
+        <div class="overview-card-value">KR +42% · US +17%</div>
+        <div class="overview-card-sub">현금 70% 보수적 운용 · 2026.6 기준 (강의일 갱신)</div>
+      </div>
+      <div class="overview-card">
+        <div class="overview-card-label">오픈소스</div>
+        <div class="overview-card-value">GitHub ⭐ 650 · 텔레그램 820명</div>
+        <div class="overview-card-sub">2026.6 기준 · ChatGPT OAuth로 API 키 없이 실행</div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>파트</th><th>제목</th><th>강사</th><th>시간</th><th>핵심 내용</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>파트 1</strong></td>
+            <td>AI 자동매매 시작 &amp; 환경구축</td>
+            <td>계정훈</td>
+            <td>2시간</td>
+            <td>Claude Code / Codex 설치, 개발 환경, 자연어로 코드 만들기 첫 경험</td>
+          </tr>
+          <tr>
+            <td><strong>파트 2</strong></td>
+            <td>AI 에이전트 파이프라인 구축</td>
+            <td>계정훈</td>
+            <td>2시간</td>
+            <td>증권사 API 연동 실습 (토스증권 / 업비트), 간단한 에이전트 파이프라인 구성</td>
+          </tr>
+          <tr style="background:#EFF6FF;">
+            <td><strong>파트 3</strong></td>
+            <td>에이전트 협업 구조 구현 실습</td>
+            <td><strong>상록 ★</strong></td>
+            <td>2시간</td>
+            <td>한국투자증권 API &amp; ChatGPT 연동 · 분석·매매·요약·전략 에이전트 협업 구조를 라이브 데모로 이해</td>
+          </tr>
+          <tr style="background:#F0FDF4;">
+            <td><strong>파트 4</strong></td>
+            <td>본인만의 자동매매 시스템으로 발전</td>
+            <td><strong>상록 ★</strong></td>
+            <td>2시간</td>
+            <td>본인 로직을 담은 자동매매 시스템 구현 · 실전 프롬프트 공식 체득</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- SECTION: Philosophy -->
+  <section class="section" id="philosophy">
+    <div class="section-header">
+      <div class="section-icon" style="background:#F5F3FF;">🧠</div>
+      <div>
+        <div class="section-title">핵심 철학</div>
+        <div class="section-subtitle">이 강의가 기존 퀀트 강의와 다른 이유</div>
+      </div>
+    </div>
+
+    <div class="pattern-grid">
+      <div class="pattern-card">
+        <div class="pattern-name">코드 직접 작성 ❌</div>
+        <div class="pattern-desc">Claude Code / Codex에게 자연어로 지시해서 만드는 방식. 수강생은 <strong>무엇을 만들지</strong>를 판단하고, <strong>어떻게 만들지</strong>는 AI에게 위임.</div>
+      </div>
+      <div class="pattern-card">
+        <div class="pattern-name">역할 배분 프레임워크</div>
+        <div class="pattern-desc">투자 프로세스에서 <strong>사람 판단 / 알고리즘 / LLM</strong>을 어디에 배치할지가 핵심. 이 구분이 시스템 설계의 출발점.</div>
+      </div>
+      <div class="pattern-card">
+        <div class="pattern-name">자율에이전트 맡기지 않는다</div>
+        <div class="pattern-desc">매매 실행을 에이전트에 완전히 위임하지 않음. <strong>사람이 개선 방향을 판단</strong>하고 시스템이 실행하는 구조 강조.</div>
+      </div>
+      <div class="pattern-card">
+        <div class="pattern-name">AI-Native 전략의 우위</div>
+        <div class="pattern-desc">알고리즘 전략은 공개 즉시 파훼. AI-Native는 확률론적 의사결정이라 <strong>완전 복제 불가</strong> → 오픈소스로 공유 가능한 유일한 전략.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION: Part 1 & 2 -->
+  <section class="section" id="part1">
+    <div class="section-header">
+      <div class="section-icon" style="background:#F1F5F9;">🛠</div>
+      <div>
+        <div class="section-title">파트 1 · 2 — 계정훈 담당</div>
+        <div class="section-subtitle">환경구축 + 파이프라인 입문 (파트3 전제조건)</div>
+      </div>
+    </div>
+    <div class="part-header" id="part2">
+      <span class="part-number" style="background:#F1F5F9;color:#475569;">PART 1–2</span>
+      <div class="part-info">
+        <div class="part-title">AI 에이전트 입문 & 증권사 API 연동</div>
+        <div class="part-desc">파트3 수강 전제 조건: Claude Code로 API 호출 수준은 할 수 있는 상태.<br>
+        수강생이 파트3에 올 때 <strong>환경 설정 완료 + 기본 에이전트 경험</strong>이 있어야 함.</div>
+        <div class="part-meta">
+          <div class="part-meta-item">✅ Claude Code 설치 및 사용법</div>
+          <div class="part-meta-item">✅ 증권사 API 연동 (토스/업비트)</div>
+          <div class="part-meta-item">✅ 간단한 에이전트 하나 만들어보기</div>
+        </div>
+      </div>
+    </div>
+    <div class="callout amber">
+      <span class="callout-icon">⚠️</span>
+      <div class="callout-text">파트3 시작 전 수강생 상태 확인 필요: <strong>API 키 설정 완료 여부</strong>, <strong>Python 환경 동작 여부</strong>, <strong>lecture-prism 클론 완료 여부</strong>. 파트3 첫 10분을 사전 체크에 쓸 수 있도록 여유 두기.</div>
+    </div>
+  </section>
+
+  <!-- SECTION: Part 3 -->
+  <section class="section" id="part3">
+    <div class="section-header">
+      <div class="section-icon" style="background:#EFF6FF;">⚙️</div>
+      <div>
+        <div class="section-title">파트 3 — ChatGPT OAuth + KIS API + 에이전트 파이프라인</div>
+        <div class="section-subtitle">90분 콘텐츠 + Q&A 30분 · 5챕터</div>
+      </div>
+    </div>
+
+    <div class="part-header">
+      <span class="part-number" style="background:#DBEAFE;color:#1D4ED8;">PART 3</span>
+      <div class="part-info">
+        <div class="part-title">API 키 없이 ChatGPT 쓰는 법 + KIS 연동 — AI 에이전트 매매 파이프라인 소개 (라이브 데모)</div>
+        <div class="part-desc">
+          <strong>FastCampus 목표:</strong> 한국투자증권 API와 ChatGPT 연동으로 기초 환경을 잡고,
+          분석·매매·요약·전략 등 에이전트 협업 구조가 어떻게 맞물리는지 라이브 데모로 이해 (본인 이론 구현은 파트4).<br><br>
+          <strong>첫 5분 임팩트:</strong> ChatGPT Plus 구독($20/월)으로 OpenAI API 키 없이 <strong>최신 GPT-5.5</strong>를 쓰는 OAuth 꿀팁 라이브 시연.
+          → KIS API로 실시간 가격 조회 → AI 에이전트 투자 판단 → 시뮬레이션 매매 전 사이클을 Claude Code와 함께 데모 실행.<br><br>
+          <strong>KIS API 실습 범위:</strong> 강사는 실계좌로 전 사이클 시연. 수강생은 <code>dry_run=True</code> 시뮬레이션 모드로 실습
+          (Part 1/2에서 KIS API 설정 완료 또는 다른 증권사 API 경험 가정). 계좌 없는 수강생은 모의투자 토큰으로 조회까지 실습.
+        </div>
+        <div class="part-meta">
+          <div class="part-meta-item">📍 역삼 스튜디오</div>
+          <div class="part-meta-item">🕐 2시간 (콘텐츠 90분 + Q&A 30분)</div>
+          <div class="part-meta-item">🗓 3회차 · 9/5(토)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Time Bar Part 3 -->
+    <div class="time-bar-wrap">
+      <div class="time-bar-label">시간 배분 (총 120분)</div>
+      <div class="time-bar">
+        <div class="time-bar-seg" style="background:#4338CA;flex:20">CH1<br>20m</div>
+        <div class="time-bar-seg" style="background:#3B82F6;flex:15">CH2<br>15m</div>
+        <div class="time-bar-seg" style="background:#7C3AED;flex:20">CH3<br>20m</div>
+        <div class="time-bar-seg" style="background:#059669;flex:20">CH4<br>20m</div>
+        <div class="time-bar-seg" style="background:#D97706;flex:15">CH5<br>15m</div>
+        <div class="time-bar-seg" style="background:#6B7280;flex:30">Q&A<br>30m</div>
+      </div>
+    </div>
+
+    <div class="chapter-list">
+
+      <!-- CH1 -->
+      <div class="chapter">
+        <div class="chapter-top">
+          <div class="chapter-accent-bar" style="background:#4338CA;"></div>
+          <div class="chapter-main">
+            <div class="chapter-header">
+              <span class="chapter-num">CH 01</span>
+              <span class="chapter-title">오프닝 임팩트: API 키 없이 최신 GPT-5.5 연동 + 오픈소스 사례로 배우는 AI-Native 전략</span>
+              <span class="time-chip">⏱ 20분</span>
+            </div>
+            <div class="chapter-desc">
+              "ChatGPT Plus 구독($20/월)으로 API 키 없이 <strong>최신 GPT-5.5</strong>를 파이썬에서 직접 쓰는 법" — 첫 5분에 OAuth 꿀팁 라이브 시연으로 임팩트를 주고, 그 위에 AI-Native 매매 전략이 왜 필요한지 설득. "알고리즘은 공개하면 파훼되지만 LLM 판단은 복제 불가능하다." <span style="color:#64748B;font-size:13px;">(PRISM 실제 구성: 보고서 생성 <code>gpt-5.4-mini</code>, 매매 판단 <code>gpt-5.5</code> — 모두 API 키 없이 구독만으로)</span>
+            </div>
+            <div class="chapter-tags">
+              <span class="tag tag-demo">Claude Code 데모</span>
+              <span class="tag tag-lecture">강의</span>
+            </div>
+            <div class="chapter-bullets">
+              <!-- OAuth 오프닝 임팩트 (첫 5분) -->
+              <div class="cc-cmd"><span class="cc-bubble">Claude Code</span><div><span class="cc-text">"lecture-prism에 이미 들어있는 cores/chatgpt_proxy 기본형을 사용해서 ChatGPT Plus OAuth 로그인, localhost:18741 health check, analysis.py 실LLM 실행 검증까지 해줘. 프록시는 새로 만들지 말고 원본 PRISM 축소판 구조를 설명해줘."</span><div class="cc-result">→ 내장 OAuth 프록시 사용 → openai SDK에서 base_url만 바꿔 GPT-5.5 즉시 연동</div></div></div>
+              <div class="cc-cmd"><span class="cc-bubble">Claude Code</span><div><span class="cc-text">"이 프록시 서버 실행하고 KIS API로 삼성전자 현재가 조회한 다음, GPT-5.5에게 '지금 살 만해?' 물어봐줘."</span><div class="cc-result">→ 가격조회 + LLM 판단 + 매수 시뮬레이션 전 사이클 30초 안에 완성</div></div></div>
+              <!-- AI-Native 프레임 -->
+              <div class="bullet">알고리즘의 딜레마: 공개 → 파훼 → 공유 문화 없음. LLM은 확률론적 판단 → 복제 불가 → 오픈소스로 공유 가능</div>
+              <div class="bullet">Anthropic 6패턴 중 PRISM이 실제 쓰는 3개: Prompt Chaining(본 시스템 분석 6에이전트 순차) · Orchestrator-Workers · Evaluator-Optimizer <span style="color:#94A3B8;">(lecture-prism은 이 중 Prompt Chaining을 3에이전트로 경량 구현)</span></div>
+              <div class="bullet">오픈소스 지형도: Freqtrade → Qlib → TradingAgents → PRISM(실운용 820명 커뮤니티)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CH2 -->
+      <div class="chapter">
+        <div class="chapter-top">
+          <div class="chapter-accent-bar" style="background:#3B82F6;"></div>
+          <div class="chapter-main">
+            <div class="chapter-header">
+              <span class="chapter-num">CH 02</span>
+              <span class="chapter-title">모듈 1: 스크리닝 — 알고리즘의 영역</span>
+              <span class="time-chip">⏱ 15분</span>
+            </div>
+            <div class="chapter-desc">
+              lecture-prism의 <code>screening.py</code>를 코딩 에이전트에게 실행 요청. "코스피+코스닥 약 2,700개 종목에서 어떻게 3개가 남는가"를 로그로 직접 보여주고, Claude Code로 조건 하나를 실시간으로 바꿔봄. (<code>--real</code> 플래그로 pykrx 실데이터, 기본은 데모값)
+            </div>
+            <div class="chapter-tags">
+              <span class="tag tag-demo">Claude Code 데모</span>
+              <span class="tag tag-lecture">조건 비교</span>
+            </div>
+            <div class="chapter-bullets">
+              <div class="cc-cmd"><span class="cc-bubble">Claude Code</span><div><span class="cc-text">"Claude, lecture-prism 스크리닝 모듈 실행해봐. 오늘 어떤 종목이 선정됐는지 보고 싶어"</span><div class="cc-result">→ 스크리닝 로그 출력: 조건1 체크 → 조건2 체크 → 최종 ['005930', '000660', '035420'] 선정</div></div></div>
+              <div class="bullet">탈락 종목 로그 해설: 왜 탈락했나 — "이건 LLM에 맡기면 안 되는 이유" (속도 + 일관성)</div>
+              <div class="cc-cmd"><span class="cc-bubble">Claude Code</span><div><span class="cc-text">"VOLUME_SURGE_RATIO를 5배에서 3배로 바꿔서 다시 실행해봐. 선정 종목이 어떻게 달라지는지 비교해줘"</span><div class="cc-result">→ 조건 수정 후 재실행: 선정 종목 변화 비교 출력</div></div></div>
+              <div class="bullet">핵심 메시지: "규칙이 명확하고 대량 처리 = 알고리즘, 맥락·뉘앙스 판단 = LLM"</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CH3 -->
+      <div class="chapter">
+        <div class="chapter-top">
+          <div class="chapter-accent-bar" style="background:#7C3AED;"></div>
+          <div class="chapter-main">
+            <div class="chapter-header">
+              <span class="chapter-num">CH 03</span>
+              <span class="chapter-title">모듈 2: 분석 파이프라인 — LLM 에이전트의 영역</span>
+              <span class="time-chip">⏱ 20분</span>
+            </div>
+            <div class="chapter-desc">
+              코딩 에이전트에게 <code>analysis.py</code> 실행 요청 → 기술적 분석 에이전트 + 뉴스 에이전트 + 투자전략 에이전트 순서로 리포트 생성. "왜 1개 에이전트보다 분리된 여러 에이전트가 나은가"를 결과로 증명.
+            </div>
+            <div class="chapter-tags">
+              <span class="tag tag-demo">Claude Code 데모</span>
+              <span class="tag tag-lecture">에이전트 비교</span>
+            </div>
+            <div class="chapter-bullets">
+              <div class="cc-cmd"><span class="cc-bubble">Claude Code</span><div><span class="cc-text">"005930 삼성전자 분석 파이프라인 실행해봐. 에이전트별로 어떤 결과가 나오는지 보고 싶어"</span><div class="cc-result">→ 기술적 분석 에이전트 → 뉴스 에이전트 → 투자전략 에이전트 순차 출력</div></div></div>
+              <div class="bullet">1개 에이전트 vs 3개 분리: 같은 질문에 다른 결과 — 생략·편향 차이 화면으로 비교 (Prompt Chaining)</div>
+              <div class="bullet">개념 소개: PRISM 본 시스템은 여기에 <strong>Evaluator-Optimizer</strong>(Summary 생성 → Quality Evaluator 채점 → EXCELLENT까지 루프)를 더해 요약 품질을 보장 — 파트4 트랙B 확장 아이디어로 제시</div>
+              <div class="cc-cmd"><span class="cc-bubble">Claude Code</span><div><span class="cc-text">"기술적 분석 에이전트 프롬프트를 더 보수적으로 수정하고 다시 실행해봐. 결과 어떻게 달라지는지 비교해줘"</span><div class="cc-result">→ CH1에서 띄운 OAuth 프록시 연결 시: 프롬프트 수정 → 실제 LLM이 다시 판단 → 매수 점수 변동 확인 (미연결 시 mock 고정값)</div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CH4 -->
+      <div class="chapter">
+        <div class="chapter-top">
+          <div class="chapter-accent-bar" style="background:#059669;"></div>
+          <div class="chapter-main">
+            <div class="chapter-header">
+              <span class="chapter-num">CH 04</span>
+              <span class="chapter-title">모듈 3: 실제 매매 실행 — 의사결정의 세계</span>
+              <span class="time-chip">⏱ 20분</span>
+            </div>
+            <div class="chapter-desc">
+              KIS API 구조를 살펴보되 기본은 시뮬레이션 실행. 포지션 사이징, 주문 유형 선택, 미체결 처리 등 "매수 버튼 하나 누르기 전에 얼마나 많은 판단이 들어가는가"를 보여줌.
+            </div>
+            <div class="chapter-tags">
+              <span class="tag tag-demo">Claude Code 데모</span>
+              <span class="tag tag-lecture">의사결정 구조</span>
+            </div>
+            <div class="chapter-bullets">
+              <div class="cc-cmd"><span class="cc-bubble">Claude Code</span><div><span class="cc-text">"trading.py 시뮬레이션 매수 실행해봐. 삼성전자 현재 포지션 사이징 어떻게 계산되는지 보고 싶어"</span><div class="cc-result">→ 슬랏 구조 / 현금 70% 기준 / 1종목 배분금액 / 수량 계산 과정 출력</div></div></div>
+              <div class="bullet">포지션 사이징: 슬랏 10개 구조, 현금 비중 70%, 한 종목에 얼마까지</div>
+              <div class="bullet">주문 유형: 시장가 vs 지정가 선택 로직 — KIS API 연동 구조 설명</div>
+              <div class="bullet">미체결 처리: 재주문 기준, 포기 기준 (참고: PRISM 본 시스템은 US 시장 예약주문(MOO)도 지원 — lecture-prism은 KR 시뮬레이션에 집중)</div>
+              <div class="cc-cmd"><span class="cc-bubble">Claude Code</span><div><span class="cc-text">"trading.py의 매수 결정 로직(_decide_position)과 손절 트리거 구조를 코드에서 설명해줘. 그리고 PRISM 본 시스템은 매수/매도를 왜 다른 에이전트로 나눴을지도 알려줘"</span><div class="cc-result">→ 포지션 사이징·점수 임계값·손절(-5%/-7%) 코드 해설 + 매수/매도 분리 이유(타이밍·판단기준 차이) 개념 설명</div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CH5 -->
+      <div class="chapter">
+        <div class="chapter-top">
+          <div class="chapter-accent-bar" style="background:#D97706;"></div>
+          <div class="chapter-main">
+            <div class="chapter-header">
+              <span class="chapter-num">CH 05</span>
+              <span class="chapter-title">모듈 4: 피드백 & 메모리 — AI가 인간 투자자를 닮아가는 법</span>
+              <span class="time-chip">⏱ 15분</span>
+            </div>
+            <div class="chapter-desc">
+              매매일지의 단기/중기/장기 메모리 구조와 자기개선 루프. "인간 투자자가 매매일지 쓰는 이유와 완전히 같다"는 관점으로 설명. 판단 오류 vs 실행 오류 구분법도 포함.
+            </div>
+            <div class="chapter-tags">
+              <span class="tag tag-lecture">개념 강의</span>
+              <span class="tag tag-demo">Claude Code 데모</span>
+            </div>
+            <div class="chapter-bullets">
+              <div class="bullet">단기 메모리(당일): 오늘 매매 패턴 / 중기(주간): 섹터·트렌드 / 장기(월간): 시장 체제 판단</div>
+              <div class="bullet">교훈 추출 → 다음 매매 프롬프트에 자동 반영하는 자기개선 루프</div>
+              <div class="bullet">시뮬레이터 vs 실거래 병행: 판단 오류(에이전트 문제) vs 실행 오류(API 문제) 분리</div>
+              <div class="cc-cmd"><span class="cc-bubble">Claude Code</span><div><span class="cc-text">"로컬 대시보드 실행해줘. 오늘 시뮬레이션 매매 내역이랑 의사결정 이유 보고 싶어"</span><div class="cc-result">→ dashboard.py 실행 → localhost:8080 → 매매현황·의사결정 내역·교훈 리스트 확인</div></div></div>
+              <div class="bullet">파트4 사전과제 안내: "본인의 매매 이론을 3줄로 정리해오기 (진입/청산/리스크)"</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Q&A -->
+      <div class="qna-block">
+        <div class="qna-icon">💬</div>
+        <div>
+          <div class="qna-title">Q&A — 30분</div>
+          <div class="qna-desc">실행 결과에 대한 질문 · lecture-prism 클론 후 환경 문제 해결 · ChatGPT OAuth 설정 도움 · 텔레그램 토론방 안내</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION: Part 4 -->
+  <section class="section" id="part4">
+    <div class="section-header">
+      <div class="section-icon" style="background:#F0FDF4;">🛠</div>
+      <div>
+        <div class="section-title">파트 4 — 본인 이론 AI 에이전트로 구현</div>
+        <div class="section-subtitle">90분 콘텐츠 + Q&A 30분 · 5챕터</div>
+      </div>
+    </div>
+
+    <div class="part-header">
+      <span class="part-number" style="background:#D1FAE5;color:#065F46;">PART 4</span>
+      <div class="part-info">
+        <div class="part-title">본인만의 로직을 담은 자동매매 시스템으로 발전하기</div>
+        <div class="part-desc">
+          <strong>FastCampus 목표:</strong> 본인만의 로직을 담은 자동매매 시스템으로 발전하기.<br>
+          사전과제: 본인의 매매 이론 3줄 (진입 조건 / 청산 조건 / 리스크 관리) 준비해오기.<br>
+          강의 목표: "1개 모듈 교체 or 추가"를 Claude Code와 함께 완성하고 집에 가기.
+        </div>
+        <div class="part-meta">
+          <div class="part-meta-item">📌 사전과제 필수</div>
+          <div class="part-meta-item">🕐 2시간 (콘텐츠 90분 + Q&A 30분)</div>
+          <div class="part-meta-item">📍 역삼 스튜디오 · 🗓 4회차 · 9/12(토)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Time Bar Part 4 -->
+    <div class="time-bar-wrap">
+      <div class="time-bar-label">시간 배분 (총 120분)</div>
+      <div class="time-bar">
+        <div class="time-bar-seg" style="background:#059669;flex:10">CH1<br>10m</div>
+        <div class="time-bar-seg" style="background:#4338CA;flex:15">CH2<br>15m</div>
+        <div class="time-bar-seg" style="background:#2563EB;flex:35">CH3<br>35m</div>
+        <div class="time-bar-seg" style="background:#7C3AED;flex:15">CH4<br>15m</div>
+        <div class="time-bar-seg" style="background:#D97706;flex:15">CH5<br>15m</div>
+        <div class="time-bar-seg" style="background:#6B7280;flex:30">Q&A<br>30m</div>
+      </div>
+    </div>
+
+    <div class="chapter-list">
+
+      <!-- CH1 -->
+      <div class="chapter">
+        <div class="chapter-top">
+          <div class="chapter-accent-bar" style="background:#059669;"></div>
+          <div class="chapter-main">
+            <div class="chapter-header">
+              <span class="chapter-num">CH 01</span>
+              <span class="chapter-title">기존 시스템 수정 템플릿 소개</span>
+              <span class="time-chip">⏱ 10분</span>
+            </div>
+            <div class="chapter-desc">
+              오늘 끝나면 <strong>'내 이론이 들어간 매매 시스템'을 들고 집에 갑니다.</strong> 사전과제로 가져온 이론 3줄을 2-3명 즉석 공유하고, "처음부터 다 만들 필요 없이, 수정 템플릿 1개만 골라 바꾸면 오늘은 성공"이라는 부담 제로의 목표를 세팅.
+            </div>
+            <div class="chapter-tags">
+              <span class="tag tag-lecture">오프닝</span>
+            </div>
+            <div class="callout" style="margin-bottom:16px;">
+              <span class="callout-icon">🎯</span>
+              <div class="callout-text"><strong>사전과제 3줄이 그대로 트랙이 됩니다:</strong> 진입 조건 → 트랙 A·B / 청산 조건 → 트랙 C / 리스크 관리 → 트랙 D. 준비해온 이론 중 <strong>하나만</strong> 골라 구현하면 오늘은 성공.</div>
+            </div>
+            <div class="track-grid">
+              <div class="track-card">
+                <div class="track-header">
+                  <span class="track-label" style="background:#DBEAFE;color:#1D4ED8;">A</span>
+                  <span class="track-title">진입 ① 종목 선정 — screening.py</span>
+                  <span class="track-diff stars">★☆☆</span>
+                </div>
+                <div class="track-desc">"어떤 종목을 살까" — 거래량·이평선·시총·RSI 등 진입 조건을 본인 이론으로 교체</div>
+              </div>
+              <div class="track-card">
+                <div class="track-header">
+                  <span class="track-label" style="background:#EDE9FE;color:#5B21B6;">B</span>
+                  <span class="track-title">진입 ② 분석 프롬프트 — analysis.py</span>
+                  <span class="track-diff stars">★☆☆</span>
+                </div>
+                <div class="track-desc">"살 만한가" — 윌리엄 오닐 → 피터 린치·그레이엄 등 본인 판단 기준으로 에이전트 프롬프트 교체</div>
+              </div>
+              <div class="track-card">
+                <div class="track-header">
+                  <span class="track-label" style="background:#D1FAE5;color:#065F46;">C</span>
+                  <span class="track-title">청산 조건 — trading.py</span>
+                  <span class="track-diff stars">★★☆</span>
+                </div>
+                <div class="track-desc">"언제 팔까" — 목표가·트레일링 스탑·손절을 <code>_decide_exit</code>에 본인 청산 이론으로</div>
+              </div>
+              <div class="track-card">
+                <div class="track-header">
+                  <span class="track-label" style="background:#FEF3C7;color:#92400E;">D</span>
+                  <span class="track-title">리스크 관리 — trading.py</span>
+                  <span class="track-diff stars">★☆☆</span>
+                </div>
+                <div class="track-desc">"얼마나·몇 개나" — 슬랏 수·섹터 집중·현금 비중·손절폭 상수를 본인 원칙으로</div>
+              </div>
+            </div>
+            <div class="chapter-bullets" style="margin-top:12px;">
+              <div class="bullet">심화(선택): 데이터 소스 추가(공시·센티먼트) 또는 <code>blank_pipeline.py</code>로 처음부터 4함수 직접 구현</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CH2 -->
+      <div class="chapter">
+        <div class="chapter-top">
+          <div class="chapter-accent-bar" style="background:#4338CA;"></div>
+          <div class="chapter-main">
+            <div class="chapter-header">
+              <span class="chapter-num">CH 02</span>
+              <span class="chapter-title">실전 프롬프트 공식 — 강사 라이브 시범</span>
+              <span class="time-chip">⏱ 15분</span>
+            </div>
+            <div class="chapter-desc">
+              강사가 <strong>준비한 시스템을 눈앞에서 즉석 수정</strong>합니다. "아, 이렇게 말 걸면 AI가 코드를 고쳐주는구나"를 체감 — 시스템을 성장시키는 프롬프트 공식 3개와, 같은 요청도 결과가 갈리는 Bad vs Good을 나란히 비교.
+            </div>
+            <div class="chapter-tags">
+              <span class="tag tag-demo">강사 시범</span>
+              <span class="tag tag-lecture">프롬프트 공식</span>
+            </div>
+            <div class="chapter-bullets">
+              <div class="cc-cmd"><span class="cc-bubble">Claude Code</span><div><span class="cc-text">"현재 screening.py는 거래량 5배 기준이야. RSI 30 이하 + 거래량 3배 조합으로 바꿔줘. 함수 시그니처는 유지해줘."</span><div class="cc-result">→ VOLUME_SURGE_RATIO 수정 + RSI 조건 추가 코드 생성</div></div></div>
+              <div class="cc-cmd"><span class="cc-bubble">Claude Code</span><div><span class="cc-text">"이 에러가 났어: KeyError 'score' at trading.py:72. 원인 설명하고 고쳐줘."</span><div class="cc-result">→ 스택트레이스 분석 + 원인 설명 + 수정 코드 제안</div></div></div>
+              <div class="cc-cmd"><span class="cc-bubble">Claude Code</span><div><span class="cc-text">"이 analysis.py 로직이 내 이론을 정확히 반영하는지 확인해줘. 내 이론: RSI 과매도 반등 + 거래량 동반 + 뉴스 촉매 3개 동시 충족 시 매수"</span><div class="cc-result">→ 코드와 이론 갭 분석 + 누락 조건 지적 + 보완 방향 제시</div></div></div>
+              <div class="bullet"><strong>Bad vs Good:</strong> "코드 좀 고쳐줘" (❌) → "현재 [상태] + [원하는 결과] + [유지할 제약]" (✅)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CH3 -->
+      <div class="chapter">
+        <div class="chapter-top">
+          <div class="chapter-accent-bar" style="background:#2563EB;"></div>
+          <div class="chapter-main">
+            <div class="chapter-header">
+              <span class="chapter-num">CH 03</span>
+              <span class="chapter-title">수강생 실습 — 본인 이론 구현</span>
+              <span class="time-chip">⏱ 35분</span>
+            </div>
+            <div class="chapter-desc">
+              이제 직접 차례. 고른 트랙으로 내 이론을 코드에 심고, 막히면 강사가 순회하며 "프롬프트가 문제인지, 코드가 문제인지"를 짚어줌. <strong>35분 뒤엔 어제까지 남의 것이던 시스템이 내 로직으로 돌아갑니다.</strong>
+            </div>
+            <div class="chapter-tags">
+              <span class="tag tag-practice">실습</span>
+              <span class="tag tag-practice">순회 코칭</span>
+            </div>
+            <div class="chapter-bullets">
+              <div class="bullet">트랙 A·B (진입): <code>screening.py</code> 조건 / <code>analysis.py</code> 프롬프트 교체</div>
+              <div class="bullet">트랙 C·D (청산·리스크): <code>trading.py</code>의 <code>_decide_exit</code> 로직 / 포트폴리오 상수(슬랏·현금·손절) 교체</div>
+              <div class="bullet">막히는 수강생: "프롬프트를 어떻게 바꿔야 하는가"를 코칭 (정답 주지 말고 방향만)</div>
+              <div class="cc-cmd"><span class="cc-bubble">Claude Code</span><div><span class="cc-text">"main.py 전체 파이프라인 실행해봐. 내가 수정한 screening 로직이 제대로 통합되는지 확인하고 싶어"</span><div class="cc-result">→ 스크리닝 → 분석 → 매매 → 피드백 전 사이클 실행 + 내 로직 반영 여부 출력</div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CH4 -->
+      <div class="chapter">
+        <div class="chapter-top">
+          <div class="chapter-accent-bar" style="background:#7C3AED;"></div>
+          <div class="chapter-main">
+            <div class="chapter-header">
+              <span class="chapter-num">CH 04</span>
+              <span class="chapter-title">결과 공유 &amp; 토론</span>
+              <span class="time-chip">⏱ 15분</span>
+            </div>
+            <div class="chapter-desc">
+              용기 낸 2-3명이 화면을 공유합니다. "내 이론 한 줄 → 뭘 바꿨나 → 방금 돌아간 결과." <strong>남이 어떻게 풀었는지 보는 15분이 내 다음 아이디어가 됩니다.</strong>
+            </div>
+            <div class="chapter-tags">
+              <span class="tag tag-practice">발표</span>
+              <span class="tag tag-lecture">토론</span>
+            </div>
+            <div class="chapter-bullets">
+              <div class="bullet">발표 포맷: "내 이론 1줄 → 뭘 바꿨나 → 실행 결과 화면" (원하면 코딩 에이전트에게 “내 이름 브랜치로 보안 점검 후 제출해줘”라고 요청)</div>
+              <div class="bullet">토론 질문: "이 로직이 실제로 의미 있으려면 어떻게 검증해야 할까?"</div>
+              <div class="bullet">강사 코멘트: 각 이론의 장단점, 포워드 테스트(데모 운용)로 검증하는 방향 제안</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CH5 -->
+      <div class="chapter">
+        <div class="chapter-top">
+          <div class="chapter-accent-bar" style="background:#D97706;"></div>
+          <div class="chapter-main">
+            <div class="chapter-header">
+              <span class="chapter-num">CH 05</span>
+              <span class="chapter-title">마무리 — 시스템을 발전시켜나가는 팁</span>
+              <span class="time-chip">⏱ 15분</span>
+            </div>
+            <div class="chapter-desc">
+              <strong>강의장을 나간 뒤가 진짜 시작.</strong> 거창한 로드맵 대신, 강사가 PRISM을 운영하며 <strong>실제로 순서대로 풀어온 고민들</strong>을 그대로 보여줍니다. 처음부터 13개 에이전트가 아니었고 — 부딪힌 문제를 하나씩 해결하다 보니 지금이 됐습니다. "이렇게 한 단계씩 키우면 되는구나"를 가져가는 게 목표.
+            </div>
+            <div class="chapter-tags">
+              <span class="tag tag-lecture">마무리</span>
+            </div>
+            <div class="chapter-bullets">
+              <div class="bullet"><strong>제가 PRISM을 키워온 순서 (고민 → 해결):</strong></div>
+              <div class="bullet">① 한 LLM에 다 시켰더니 누락·편향 → 기술·뉴스·재무·전략을 <strong>전문 에이전트로 분리</strong></div>
+              <div class="bullet">② 매수보다 "언제 파는가"가 더 어려움 → <strong>매도 판단을 규칙에서 AI 기반으로</strong> 전환</div>
+              <div class="bullet">③ 손절이 당일 노이즈에 자꾸 걸림 → 진입 트리거(급등·거래량)별 <strong>손절폭 차등 + 트레일링</strong>으로 수익 보호</div>
+              <div class="bullet">④ 종목은 좋아도 시장이 무너지면 끝 → 시장 국면·주도 섹터를 보는 <strong>Macro Intelligence 추가</strong></div>
+              <div class="bullet">⑤ 같은 실수를 반복함 → <strong>매매일지 피드백 루프</strong>: 교훈을 다음 매매 프롬프트에 자동 주입</div>
+              <div class="bullet">⑥ API 비용 부담 → <strong>ChatGPT 구독(OAuth)으로 전환</strong>해 운영비 절감 (파트3 CH1에서 배운 그것)</div>
+              <div class="bullet"><strong>검증은 포워드 테스트:</strong> LLM은 비결정적·look-ahead·비용 때문에 백테스트가 부적합 → 데모 모드로 오늘부터 모의 운용하며 7/14/30일 성과를 쌓고, 충분히 검증되면 소액 실거래 → 슬랏 확대</div>
+              <div class="bullet"><strong>끝까지 자율에이전트에 다 맡기지 않는다:</strong> 포워드 성과 3개월 검증 + 손절 로직 확실할 때만 비중 확대. 사람이 개선 방향을 잡고 시스템이 실행</div>
+              <div class="bullet">커뮤니티 연결: GitHub PR 기여 / 텔레그램 토론방 / 개인 연락처</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Q&A -->
+      <div class="qna-block">
+        <div class="qna-icon">💬</div>
+        <div>
+          <div class="qna-title">Q&A — 30분</div>
+          <div class="qna-desc">실습 중 미해결 문제 · 실거래 전환 시 주의사항 · 카카오 사내 시스템과 연동 가능한지 등 자유 질문</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION: Open Source -->
+  <section class="section" id="opensource">
+    <div class="section-header">
+      <div class="section-icon" style="background:#FFFBEB;">📊</div>
+      <div>
+        <div class="section-title">오픈소스 매매 시스템 지형도</div>
+        <div class="section-subtitle">파트3 CH1 슬라이드 자료</div>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr><th>분류</th><th>프로젝트</th><th>Stars</th><th>특징</th><th>PRISM과 차이</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="tag tag-qna">알고리즘</span></td>
+            <td><strong>Backtrader</strong></td>
+            <td>22K</td>
+            <td>백테스팅 끝판왕, 규칙 기반 전략</td>
+            <td>공개 즉시 파훼, 실거래 연동 복잡</td>
+          </tr>
+          <tr>
+            <td><span class="tag tag-qna">알고리즘</span></td>
+            <td><strong>Freqtrade</strong></td>
+            <td>~35K</td>
+            <td>암호화폐 봇, 규칙 기반</td>
+            <td>전략 파일 공유 문화 없음</td>
+          </tr>
+          <tr>
+            <td><span class="tag tag-lecture">ML/예측</span></td>
+            <td><strong>Qlib (MS)</strong></td>
+            <td>39K</td>
+            <td>AI 퀀트 플랫폼, 시계열 예측</td>
+            <td>예측 모델, 에이전트 의사결정 없음</td>
+          </tr>
+          <tr>
+            <td><span class="tag tag-lecture">ML/예측</span></td>
+            <td><strong>FinRL</strong></td>
+            <td>~10K</td>
+            <td>강화학습 기반 트레이딩</td>
+            <td>학습 필요, 실거래 불안정</td>
+          </tr>
+          <tr>
+            <td><span class="tag tag-demo">LLM 에이전트</span></td>
+            <td><strong>TradingAgents</strong></td>
+            <td>신규</td>
+            <td>불/베어 연구원 토론 패턴, 팀 구조</td>
+            <td>연구용, 실거래 없음, 메모리 없음</td>
+          </tr>
+          <tr style="background:#F0FDF4;">
+            <td><span class="tag tag-practice">LLM 에이전트</span></td>
+            <td><strong>PRISM-INSIGHT ★</strong></td>
+            <td>650</td>
+            <td>실운용, KIS API, 단기/중기/장기 메모리</td>
+            <td>— (이게 오늘 강의 주인공)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- SECTION: Patterns -->
+  <section class="section" id="patterns">
+    <div class="section-header">
+      <div class="section-icon" style="background:#FCE7F3;">🔮</div>
+      <div>
+        <div class="section-title">Anthropic 에이전트 6패턴</div>
+        <div class="section-subtitle">파트3 CH1 슬라이드 자료 · <a href="https://anthropic.com/research/building-effective-agents" style="color:#2563EB;text-decoration:none;">Building effective agents</a></div>
+      </div>
+    </div>
+    <div class="pattern-grid">
+      <div class="pattern-card">
+        <div class="pattern-name">
+          Prompt Chaining
+          <span class="pattern-badge used">PRISM 사용</span>
+        </div>
+        <div class="pattern-desc">단계별 순차 처리. 각 LLM 호출이 이전 출력을 받아 처리. 중간 검증 포함.</div>
+        <div class="pattern-prism">→ 분석 에이전트 6개 순차 실행</div>
+      </div>
+      <div class="pattern-card">
+        <div class="pattern-name">
+          Routing
+          <span class="pattern-badge" style="background:#F1F5F9;color:#64748B;">코드 분기</span>
+        </div>
+        <div class="pattern-desc">입력 분류 후 전문 모듈로 분기. 다양한 케이스에 각각 최적화된 처리.</div>
+        <div class="pattern-prism">→ PRISM에선 코드 레벨 if/else (KR/US 분기). LLM이 분류 판단하진 않음.</div>
+      </div>
+      <div class="pattern-card">
+        <div class="pattern-name">
+          Parallelization
+          <span class="pattern-badge" style="background:#F1F5F9;color:#64748B;">데이터 레이어</span>
+        </div>
+        <div class="pattern-desc">독립 작업 동시 실행 or 같은 작업 N회 실행 후 투표 집계.</div>
+        <div class="pattern-prism">→ PRISM에선 데이터 프리패치 시 asyncio. 에이전트 간 병렬 실행은 아님.</div>
+      </div>
+      <div class="pattern-card">
+        <div class="pattern-name">
+          Orchestrator-Workers
+          <span class="pattern-badge used">PRISM 사용</span>
+        </div>
+        <div class="pattern-desc">중앙 에이전트가 동적으로 하위 에이전트에 위임하고 결과를 통합.</div>
+        <div class="pattern-prism">→ Orchestrator → 투자전략 에이전트 → 6개 분석 에이전트</div>
+      </div>
+      <div class="pattern-card">
+        <div class="pattern-name">
+          Evaluator-Optimizer
+          <span class="pattern-badge used">PRISM 사용</span>
+        </div>
+        <div class="pattern-desc">생성 에이전트 + 평가 에이전트 반복 루프. 품질 기준 도달까지 반복.</div>
+        <div class="pattern-prism">→ Summary Optimizer + Quality Evaluator (EXCELLENT까지 루프)</div>
+      </div>
+      <div class="pattern-card">
+        <div class="pattern-name">
+          Autonomous Agents
+          <span class="pattern-badge" style="background:#FEF9C3;color:#713F12;">외부 도구</span>
+        </div>
+        <div class="pattern-desc">도구 사용하며 스스로 계획·실행. 초기 지시만 받고 이후 자율 동작.</div>
+        <div class="pattern-prism">→ PRISM 파이프라인 자체가 아닌 Claude Code로 PRISM을 유지보수하는 개발 패턴.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION: Architecture -->
+  <section class="section" id="architecture">
+    <div class="section-header">
+      <div class="section-icon" style="background:#F0FDF4;">🏗</div>
+      <div>
+        <div class="section-title">lecture-prism 아키텍처</div>
+        <div class="section-subtitle">강의용 경량 버전 — 전체 사이클 포함, 가독성 최우선 설계</div>
+      </div>
+    </div>
+
+    <div class="callout">
+      <span class="callout-icon">💡</span>
+      <div class="callout-text">
+        <strong>설계 원칙:</strong> 각 모듈은 독립 실행 가능. 모든 의사결정이 <code>prism.db</code>(SQLite)에 기록되어 대시보드(<code>localhost:8080</code>)로 표시. <strong>API 키 없이도 즉시 동작</strong>(데모 모드) → 실제 LLM은 내장 ChatGPT OAuth 프록시(키 불필요) 또는 API 키로 연동. KIS API는 선택이며 기본 강의 모드에서는 주문 차단. — 강의 중 코딩 에이전트에게 실행·검증을 맡겨 동작 확인.
+      </div>
+    </div>
+
+    <div class="arch-grid">
+      <div class="arch-module mod-screening">
+        <div class="arch-module-name">🔵 screening.py</div>
+        <div class="arch-module-file">모듈 1: 종목 선정</div>
+        <div class="arch-module-desc">퀀트 필터링으로 전종목 → 3종목. 거래량·모멘텀·시가총액 조건. 알고리즘 영역. 파트4 트랙A의 교체 대상.</div>
+      </div>
+      <div class="arch-module mod-analysis">
+        <div class="arch-module-name">🟣 analysis.py</div>
+        <div class="arch-module-file">모듈 2: LLM 분석 파이프라인</div>
+        <div class="arch-module-desc">기술적 분석 → 뉴스 분석 → 투자전략 에이전트 순차 실행 (Prompt Chaining 패턴). 강의용 3-에이전트 경량판. 파트4 트랙B의 교체 대상.</div>
+      </div>
+      <div class="arch-module mod-trading">
+        <div class="arch-module-name">🟢 trading.py</div>
+        <div class="arch-module-file">모듈 3: KIS API 실매매</div>
+        <div class="arch-module-desc">포지션 사이징, 주문 유형 선택, 미체결 처리, 손절 트리거. 매수/매도 에이전트 분리. 시뮬레이션 모드 기본.</div>
+      </div>
+      <div class="arch-module mod-feedback">
+        <div class="arch-module-name">🟡 feedback.py</div>
+        <div class="arch-module-file">모듈 4: 피드백 & 메모리</div>
+        <div class="arch-module-desc">단기/중기/장기 매매일지. 교훈 추출 → 다음 프롬프트 반영. 판단 오류 vs 실행 오류 분리 분석.</div>
+      </div>
+      <div class="arch-module" style="border-top-color:#2563EB;">
+        <div class="arch-module-name">🔷 dashboard.py <span style="font-size:11px;background:#DBEAFE;color:#1E40AF;padding:2px 6px;border-radius:4px;margin-left:6px;">CH5 실행·확장</span></div>
+        <div class="arch-module-file">로컬 웹 대시보드</div>
+        <div class="arch-module-desc">FastAPI + SQLite. 파이프라인이 <code>prism.db</code>에 쓴 매매현황·의사결정·교훈을 읽어 표시. 30초 자동 갱신, <code>localhost:8080</code> 접속. — 파트3 CH5에서 실행하고 Claude Code로 항목 추가·확장.</div>
+      </div>
+      <div class="arch-module" style="border-top-color:#475569;">
+        <div class="arch-module-name">⬛ blank_pipeline.py</div>
+        <div class="arch-module-file">파트4 실습용 뼈대</div>
+        <div class="arch-module-desc">4개 함수 (screen/analyze/trade/feedback) 시그니처만 정의. Claude Code가 채우도록. "1개 함수만 채워도 오늘은 성공."</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION: Community -->
+  <section class="section" id="community">
+    <div class="section-header">
+      <div class="section-icon" style="background:#F5F3FF;">🤝</div>
+      <div>
+        <div class="section-title">강의 이후 커뮤니티 연결</div>
+        <div class="section-subtitle">수강생이 안심하고 계속 발전할 수 있는 채널</div>
+      </div>
+    </div>
+    <div class="community-grid">
+      <div class="community-card">
+        <div class="community-icon">💬</div>
+        <div class="community-title">텔레그램 토론방</div>
+        <div class="community-desc">820명 커뮤니티. 매매 신호 공유, 전략 토론, 실시간 질문. 강의 수강생 전용 채널 별도 운영.</div>
+      </div>
+      <div class="community-card">
+        <div class="community-icon">🐙</div>
+        <div class="community-title">GitHub 기여</div>
+        <div class="community-desc">PRISM-INSIGHT에 PR 기여 가능. 본인 개선 사항을 오픈소스로 공유. 이슈 통한 질문도 환영.</div>
+      </div>
+      <div class="community-card">
+        <div class="community-icon">📱</div>
+        <div class="community-title">개인 연락처</div>
+        <div class="community-desc">심화 질문, 실거래 전환 고민, 사이드 프로젝트 협업 등 개인 채널로 문의 가능.</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="footer">
+    AI 네이티브 자동매매 시스템 구축 · 파트3·4 강의 커리큘럼 · 강사: 문상록 (카카오) · lecture-prism v0.1
+  </div>
+
+</main>
+
+<script>
+  // Sidebar active state on scroll
+  const sections = document.querySelectorAll('.section');
+  const links = document.querySelectorAll('.sidebar-item');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const id = entry.target.id;
+        links.forEach(l => l.classList.remove('active'));
+        const active = document.querySelector(`.sidebar-item[href="#${id}"]`);
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-30% 0px -60% 0px' });
+  sections.forEach(s => observer.observe(s));
+
+  // Smooth scroll
+  links.forEach(link => {
+    link.addEventListener('click', e => {
+      e.preventDefault();
+      const target = document.querySelector(link.getAttribute('href'));
+      if (target) target.scrollIntoView({ behavior: 'smooth' });
+    });
+  });
+</script>
+</body>
+</html>
