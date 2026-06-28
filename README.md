@@ -138,6 +138,8 @@ lecture-prism에 포함된 ChatGPT OAuth 프록시로 실제 LLM 분석을 연�
 
 API 키 준비가 궁금하면 [`docs/api-keys.md`](docs/api-keys.md)를 먼저 보세요. 강의 기본 실습에는 필수 키가 없습니다.
 
+수강생이 KIS가 아니라 키움증권·토스증권·다른 증권사 API를 준비해 왔다면 [`docs/broker-adapters.md`](docs/broker-adapters.md)를 보세요. `trading.py`를 갈아엎지 않고 `.env`의 `LECTURE_BROKER` 값으로 브로커 어댑터를 바꾸는 구조를 제공합니다.
+
 ---
 
 ## 5. 모듈별로 따로 이해하기
@@ -283,6 +285,7 @@ GitHub 제출은 **선택**입니다. 수업 중 성공 기준은 먼저 “내 
 
 - [처음 시작하는 5분 루트](START_HERE.md)
 - [API 키 준비 가이드](docs/api-keys.md)
+- [증권사 브로커 어댑터 확장 가이드](docs/broker-adapters.md)
 - [아키텍처 그림 모음](docs/architecture.md)
 - [명령어를 프롬프트로 바꾼 대응표](docs/agent-prompt-equivalence.md)
 - [Strategy Harness Lite 안내](docs/harness-lite.md)

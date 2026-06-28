@@ -3,6 +3,7 @@
 # ─────────────────────────────────────────────────────────────
 .env
 .env.*
+!.env.example
 *.secrets.yaml
 mcp_agent.secrets.yaml
 

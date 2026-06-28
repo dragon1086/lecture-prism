@@ -1,7 +1,7 @@
 """
 trading.py — 모듈 3: 매매 실행
 
-분석 결과 → 포지션 사이징 → KIS API 주문 → 결과 기록.
+분석 결과 → 포지션 사이징 → 선택 브로커 API 주문 → 결과 기록.
 의사결정 트리: 얼마를 살 것인가 / 어떻게 살 것인가 / 체결 안 되면?
 
 실행:
@@ -9,12 +9,11 @@ trading.py — 모듈 3: 매매 실행
     python trading.py --live       # 실거래 (KIS API 필요)
 """
 
+from __future__ import annotations
+
 import asyncio
-import importlib
 import logging
 import os
-import sys
-from pathlib import Path
 from typing import Optional
 
 log = logging.getLogger(__name__)
@@ -64,7 +63,7 @@ async def run_trading(analyses: list[dict], dry_run: bool = True) -> list[dict]:
             result = _simulate_trade(decision)
             log.info(f"  [{analysis['ticker']}] [시뮬레이션] 체결 완료")
         else:
-            result = await _execute_kis_order(decision)
+            result = await _execute_broker_order(decision)
 
         results.append(result)
 
@@ -169,91 +168,149 @@ def _simulate_trade(decision: dict) -> dict:
     }
 
 
-async def _execute_kis_order(decision: dict) -> dict:
+def _selected_broker_mode(broker_name: str) -> str:
+    """Return the selected live broker mode without importing adapter internals."""
+    from brokers.config import normalize_mode
+
+    broker = broker_name.lower()
+    if broker == "kis":
+        return normalize_mode(os.getenv("LECTURE_KIS_MODE") or os.getenv("KIS_MODE") or os.getenv("LECTURE_BROKER_MODE"))
+    if broker == "kiwoom":
+        return normalize_mode(os.getenv("KIWOOM_MODE") or os.getenv("LECTURE_BROKER_MODE"))
+    if broker == "toss":
+        return normalize_mode(os.getenv("TOSS_SECURITIES_MODE") or os.getenv("LECTURE_BROKER_MODE"))
+    return normalize_mode(os.getenv("LECTURE_BROKER_MODE"))
+
+
+def _live_broker_enabled(broker_name: str) -> bool:
+    """Global safety gate for any real broker API call."""
+    from brokers.config import any_truthy
+
+    broker = broker_name.upper()
+    keys = [
+        "LECTURE_ENABLE_LIVE_BROKER",
+        f"LECTURE_ENABLE_LIVE_{broker}",
+    ]
+    # Backward compatibility with the previous KIS-only bridge.
+    if broker_name.lower() == "kis":
+        keys.append("LECTURE_ENABLE_LIVE_KIS")
+    return any_truthy(keys)
+
+
+def _real_broker_allowed(broker_name: str) -> bool:
+    """Extra safety gate for real-money mode."""
+    from brokers.config import any_truthy
+
+    broker = broker_name.upper()
+    keys = [
+        "LECTURE_ALLOW_REAL_BROKER",
+        f"LECTURE_ALLOW_REAL_{broker}",
+    ]
+    if broker_name.lower() == "kis":
+        keys.append("LECTURE_ALLOW_REAL_KIS")
+    return any_truthy(keys)
+
+
+async def _execute_broker_order(decision: dict, broker_name: str | None = None) -> dict:
     """
-    KIS API 실주문 실행.
+    선택 브로커 API 주문 실행.
 
     강의용 안전장치:
     - 기본값은 절대 주문하지 않고 "live_blocked"를 반환합니다.
-    - 원본 PRISM의 KIS 모듈은 `trading/trading/domestic_stock_trading.py`에
-      그대로 포함되어 있으므로, 강사/심화 실습에서 명시적으로 플래그를 켜면
-      모의투자(demo) 브리지로만 연결합니다.
-    - 실전투자(real)는 별도 이중 플래그가 있어야 하며 초보 실습에서는 쓰지 않습니다.
+    - `.env`에서 LECTURE_BROKER=kis|kiwoom|toss|custom 으로 갈아끼울 수 있습니다.
+    - demo/mock도 명시적 플래그가 있어야 호출됩니다.
+    - real/prod/live는 별도 이중 플래그가 있어야 하며 초보 실습에서는 쓰지 않습니다.
 
     주문 유형 선택 로직:
-    - 장중: 지정가 주문 (current_price 기준)
-    - 장외: 예약주문 (다음 날 시초가)
-    - 미체결 처리: N분 후 재주문 or 포기
+    - lecture-prism의 공통 주문 객체를 브로커별 어댑터가 각 API 필드로 변환합니다.
+    - KIS 기존 브리지는 그대로 wrapping하고, Kiwoom은 공식 REST 필드명으로 변환합니다.
+    - Toss는 공식 공개 증권 주문 API가 확인될 때까지 안전하게 차단됩니다.
     """
-    log.warning("  실거래 요청 감지: 기본 강의 모드에서는 KIS 주문을 차단합니다.")
+    from brokers import BrokerOrder
+    from brokers.factory import get_broker_adapter, selected_broker_name
 
-    if os.getenv("LECTURE_ENABLE_LIVE_KIS") != "1":
+    broker = (broker_name or selected_broker_name(default="kis")).strip().lower()
+    mode = _selected_broker_mode(broker)
+    log.warning("  실거래 요청 감지: 기본 강의 모드에서는 브로커 주문을 차단합니다. broker=%s mode=%s", broker, mode)
+
+    if not _live_broker_enabled(broker):
         return {
             **decision,
             "executed": False,
             "executed_price": None,
             "mode": "live_blocked",
             "pnl": None,
-            "message": "KIS 주문 차단: LECTURE_ENABLE_LIVE_KIS=1 없이는 주문하지 않습니다.",
+            "broker": broker,
+            "message": (
+                f"{broker} 주문 차단: LECTURE_ENABLE_LIVE_BROKER=1 "
+                f"또는 LECTURE_ENABLE_LIVE_{broker.upper()}=1 없이는 주문하지 않습니다."
+            ),
         }
 
-    kis_mode = os.getenv("LECTURE_KIS_MODE", "demo").strip().lower()
-    if kis_mode == "real" and os.getenv("LECTURE_ALLOW_REAL_KIS") != "1":
+    if mode == "real" and not _real_broker_allowed(broker):
         return {
             **decision,
             "executed": False,
             "executed_price": None,
             "mode": "real_blocked",
             "pnl": None,
-            "message": "실전투자 차단: LECTURE_ALLOW_REAL_KIS=1 없이는 real 모드를 쓰지 않습니다.",
+            "broker": broker,
+            "message": (
+                f"실전투자 차단: LECTURE_ALLOW_REAL_BROKER=1 "
+                f"또는 LECTURE_ALLOW_REAL_{broker.upper()}=1 없이는 real 모드를 쓰지 않습니다."
+            ),
         }
-    if kis_mode not in {"demo", "real"}:
-        kis_mode = "demo"
 
     try:
-        module_dir = Path(__file__).resolve().parent / "trading" / "trading"
-        if str(module_dir) not in sys.path:
-            sys.path.insert(0, str(module_dir))
-        domestic = importlib.import_module("domestic_stock_trading")
-        AsyncTradingContext = domestic.AsyncTradingContext
+        adapter = get_broker_adapter(broker)
     except Exception as e:  # noqa: BLE001 — 강의용 브리지는 실패 사유를 결과로 돌려줌
         return {
             **decision,
             "executed": False,
             "executed_price": None,
-            "mode": "kis_import_failed",
+            "mode": "broker_import_failed",
             "pnl": None,
-            "message": f"KIS 모듈 로드 실패: {e}",
+            "broker": broker,
+            "message": f"{broker} 어댑터 로드 실패: {e}",
         }
 
-    buy_amount = int(decision["quantity"] * decision["price"])
     try:
-        async with AsyncTradingContext(mode=kis_mode, buy_amount=buy_amount) as trader:
-            kis_result = await trader.async_buy_stock(
-                stock_code=decision["ticker"],
-                buy_amount=buy_amount,
-                limit_price=int(decision["price"]),
+        broker_result = await adapter.place_order(
+            BrokerOrder(
+                action=decision["action"],
+                ticker=decision["ticker"],
+                quantity=int(decision["quantity"]),
+                price=int(decision["price"]),
+                reason=decision.get("reason", ""),
             )
+        )
     except Exception as e:  # noqa: BLE001 — 인증/네트워크 실패도 초보자에게 설명 가능해야 함
         return {
             **decision,
             "executed": False,
             "executed_price": None,
-            "mode": f"kis_{kis_mode}_failed",
+            "mode": f"{broker}_{mode}_failed",
             "pnl": None,
-            "message": f"KIS 주문 실패: {e}",
+            "broker": broker,
+            "message": f"{broker} 주문 실패: {e}",
         }
 
     return {
         **decision,
-        "executed": bool(kis_result.get("success")),
-        "executed_price": kis_result.get("current_price") or decision["price"],
-        "mode": f"kis_{kis_mode}",
+        "executed": bool(broker_result.get("success")),
+        "executed_price": broker_result.get("current_price") or decision["price"],
+        "mode": broker_result.get("mode") or f"{broker}_{mode}",
         "pnl": None,
-        "order_no": kis_result.get("order_no"),
-        "message": kis_result.get("message", ""),
-        "kis_result": kis_result,
+        "broker": broker,
+        "order_no": broker_result.get("order_no"),
+        "message": broker_result.get("message", ""),
+        "broker_result": broker_result,
     }
+
+
+async def _execute_kis_order(decision: dict) -> dict:
+    """Backward-compatible KIS entrypoint used by older lecture prompts/tests."""
+    return await _execute_broker_order(decision, broker_name="kis")
 
 
 async def _get_current_portfolio() -> dict:
