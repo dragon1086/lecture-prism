@@ -88,8 +88,8 @@ def save_analysis(analysis: dict) -> None:
                 _now(),
                 analysis.get("ticker", ""),
                 analysis.get("recommendation", "PASS"),
-                int(analysis.get("score", 0) or 0),
-                analysis.get("reason", ""),
+                int(analysis.get("buy_score", analysis.get("score", 0)) or 0),  # 0~10점
+                analysis.get("rationale") or analysis.get("reason", ""),
                 analysis.get("risk", ""),
             ),
         )

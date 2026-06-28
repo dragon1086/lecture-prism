@@ -22,7 +22,7 @@ log = logging.getLogger(__name__)
 MAX_SLOTS = 10              # 최대 보유 종목 수
 MAX_SAME_SECTOR = 3         # 동일 섹터 최대 보유 수
 CASH_RESERVE_RATIO = 0.7    # 현금 비중 (70% 유지)
-BUY_SCORE_THRESHOLD = 4     # 매수 최소 점수 (5점 만점)
+BUY_SCORE_THRESHOLD = 6     # 매수 최소 점수 (10점 만점, analysis.MIN_BUY_SCORE와 동일 기준)
 
 # ── 손절 기준 ─────────────────────────────────────────────────────
 STOP_LOSS = {
@@ -76,8 +76,9 @@ def _decide_position(analysis: dict, portfolio: dict) -> Optional[dict]:
 
     파트4 트랙D에서 수강생이 이 로직을 수정하는 부분.
     """
-    # 점수 기준 필터
-    if analysis["score"] < BUY_SCORE_THRESHOLD:
+    # 매수 점수 필터 (0~10점, analysis가 산출한 buy_score)
+    buy_score = analysis.get("buy_score", analysis.get("score", 0))
+    if buy_score < BUY_SCORE_THRESHOLD:
         return None
 
     # 슬랏 여유 확인
@@ -94,8 +95,8 @@ def _decide_position(analysis: dict, portfolio: dict) -> Optional[dict]:
     remaining_slots = MAX_SLOTS - portfolio["slots_used"]
     per_slot_amount = available_cash / max(remaining_slots, 1)
 
-    # TODO: 실제 현재가 조회 (KIS API)
-    current_price = 70_000  # 예시: 삼성전자 7만원
+    # 현재가: analysis가 제공(종목별 mock 또는 LLM). 실데이터 연동 시 analysis.get_current_price만 교체.
+    current_price = analysis.get("current_price") or 70_000
     quantity = int(per_slot_amount / current_price)
 
     if quantity <= 0:
@@ -106,8 +107,9 @@ def _decide_position(analysis: dict, portfolio: dict) -> Optional[dict]:
         "ticker": analysis["ticker"],
         "quantity": quantity,
         "price": current_price,
-        "reason": analysis["reason"],
-        "stop_loss": STOP_LOSS["default"],
+        "reason": analysis.get("rationale") or analysis.get("reason", ""),
+        "target_price": analysis.get("target_price"),
+        "stop_loss": analysis.get("stop_loss", STOP_LOSS["default"]),
     }
 
 
@@ -343,7 +345,9 @@ if __name__ == "__main__":
         print(f"\n청산 결정: {results}")
     else:
         sample_analyses = [
-            {"ticker": "005930", "recommendation": "BUY", "score": 4, "reason": "테스트", "risk": "없음"},
+            {"ticker": "005930", "recommendation": "BUY", "decision": "진입", "buy_score": 8,
+             "current_price": 71_200, "target_price": 81_200, "stop_loss": 67_600,
+             "rationale": "테스트 진입", "risk": "없음"},
         ]
         results = asyncio.run(run_trading(sample_analyses, dry_run=not args.live))
         print(f"\n체결 결과: {results}")

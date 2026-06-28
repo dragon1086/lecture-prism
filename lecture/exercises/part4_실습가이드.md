@@ -186,13 +186,13 @@ TRAILING_STOP = 0.08    # 고점 대비 -8% 되돌림 시 트레일링 스탑
 MAX_SLOTS = 10            # 최대 보유 종목 수
 MAX_SAME_SECTOR = 3       # 동일 섹터 최대 보유 수
 CASH_RESERVE_RATIO = 0.7  # 현금 70% 유지
-BUY_SCORE_THRESHOLD = 4   # 매수 최소 점수
+BUY_SCORE_THRESHOLD = 6   # 매수 최소 점수 (10점 만점)
 ```
 
 ### Claude Code 프롬프트
 ```
 "trading.py의 리스크 상수를 내 원칙으로 바꿔줘.
-내 원칙: 최대 5종목, 동일 섹터 2개까지, 현금 50% 유지, 매수 점수 3 이상.
+내 원칙: 최대 5종목, 동일 섹터 2개까지, 현금 50% 유지, 매수 점수 5 이상.
 바꾼 뒤 _decide_position이 이 값들을 제대로 쓰는지 확인해줘."
 ```
 

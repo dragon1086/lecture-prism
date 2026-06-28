@@ -95,12 +95,12 @@ def _seed_demo_data(cur: sqlite3.Cursor) -> None:
     cur.executemany(
         "INSERT INTO analysis_decisions (timestamp, ticker, recommendation, score, reason, risk) VALUES (?,?,?,?,?,?)",
         [
-            (ts(0, 1), "005930", "BUY",  5, "20일선 위 거래량 3배 급등. 외국인 5거래일 순매수 유입.", "지수 급락 시 대형주 동반 조정"),
-            (ts(0, 1), "000660", "BUY",  5, "HBM 수요 강세 + 목표주가 상향 리포트 다수.", "메모리 가격 피크아웃 우려"),
-            (ts(0, 1), "042700", "BUY",  4, "후공정 장비 수주 증가. 신고가 돌파 임박.", "전방 capex 둔화 가능성"),
-            (ts(0, 1), "035420", "BUY",  4, "AI 신사업 기대 + 광고 매출 회복 조짐.", "플랫폼 규제 리스크"),
-            (ts(0, 1), "247540", "BUY",  4, "낙폭과대 + 기관 수급 전환. 업황 바닥 신호.", "전기차 수요 둔화 지속 시 변동성"),
-            (ts(0, 1), "005380", "HOLD", 3, "실적은 양호하나 단기 과열 구간. 눌림목 대기.", "환율·금리 변수 상존"),
+            (ts(0, 1), "005930", "BUY",  8, "20일선 위 거래량 3배 급등. 외국인 5거래일 순매수 유입.", "지수 급락 시 대형주 동반 조정"),
+            (ts(0, 1), "000660", "BUY",  9, "HBM 수요 강세 + 목표주가 상향 리포트 다수.", "메모리 가격 피크아웃 우려"),
+            (ts(0, 1), "042700", "BUY",  8, "후공정 장비 수주 증가. 신고가 돌파 임박.", "전방 capex 둔화 가능성"),
+            (ts(0, 1), "035420", "BUY",  7, "AI 신사업 기대 + 광고 매출 회복 조짐.", "플랫폼 규제 리스크"),
+            (ts(0, 1), "247540", "BUY",  7, "낙폭과대 + 기관 수급 전환. 업황 바닥 신호.", "전기차 수요 둔화 지속 시 변동성"),
+            (ts(0, 1), "005380", "HOLD", 5, "실적은 양호하나 단기 과열 구간. 눌림목 대기.", "환율·금리 변수 상존"),
             (ts(0, 1), "105560", "PASS", 3, "밸류 매력 있으나 촉매 부재. 거래량 한산.", "금리 인하 지연 시 모멘텀 약화"),
             (ts(0, 1), "068270", "PASS", 2, "이평선 정배열 붕괴 + 수급 이탈.", "바이오 섹터 투심 악화"),
         ],
@@ -211,10 +211,10 @@ def index():
 
     def score_bar(score: int) -> str:
         score = score or 0
-        pct = int(score / 5 * 100)
-        col = "oklch(0.72 0.17 145)" if score >= 4 else ("oklch(0.80 0.13 85)" if score == 3 else "oklch(0.70 0.20 25)")
+        pct = int(score / 10 * 100)
+        col = "oklch(0.72 0.17 145)" if score >= 6 else ("oklch(0.80 0.13 85)" if score >= 4 else "oklch(0.70 0.20 25)")
         return (f'<div class="scorewrap"><div class="scorebar"><span style="width:{pct}%;background:{col};"></span></div>'
-                f'<span class="scoreval">{score}<small>/5</small></span></div>')
+                f'<span class="scoreval">{score}<small>/10</small></span></div>')
 
     # ── 포트폴리오(보유) 테이블 ──
     total_invested = sum((h["price"] or 0) * (h["quantity"] or 0) for h in holdings)
@@ -283,7 +283,7 @@ def index():
     kpis = [
         ("보유 종목", f"{len(holdings)}", f"/ 10 슬롯 · {slot_pct}% 사용", slot_pct, "oklch(0.65 0.24 264)"),
         ("투자 금액", f"{total_invested:,}", "원 (시뮬레이션)", None, "oklch(0.70 0.15 200)"),
-        ("평균 확신 점수", f"{avg_score:.1f}", "/ 5.0 · AI 분석", int(avg_score / 5 * 100), "oklch(0.72 0.17 145)"),
+        ("평균 매수 점수", f"{avg_score:.1f}", "/ 10.0 · AI 분석", int(avg_score / 10 * 100), "oklch(0.72 0.17 145)"),
         ("분석 종목", f"{len(analyses_u)}", "건 · 6에이전트 파이프라인", None, "oklch(0.78 0.13 60)"),
         ("축적 교훈", f"{len(lessons)}", "건 · 단기/중기/장기", None, "oklch(0.70 0.16 300)"),
     ]

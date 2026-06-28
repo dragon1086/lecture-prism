@@ -64,6 +64,56 @@ def _extract_json(text: str) -> dict:
     return json.loads(match.group(0))
 
 
+# ── 매매 의사결정 기준 (원본 PRISM과 동일 개념) ──────────────────
+# buy_score는 0~10점. 시장 국면별 진입 최소점수(min_score)를 넘어야 '진입'.
+MIN_BUY_SCORE = 6           # 강세장 기준 진입 임계 (약세장이면 상향)
+MARKET_CONDITION = (
+    "상승추세: KOSPI가 20일 이동평균을 상회, 최근 10거래일 약 +5%로 강세장 조건 충족. "
+    "다만 단기 변동성은 확대 구간."
+)
+
+# 종목별 시연용 프로필 (실데이터 연동 전까지 mock 기준값)
+#   price=현재가, ret/loss=기대수익/손실(%) → 목표가·손절가·손익비 자동 계산
+_PROFILES: dict[str, dict] = {
+    "005930": dict(name="삼성전자", price=71200, sector="전기전자/반도체", rec="BUY", buy_score=8, period="중기", ret=14, loss=5,
+                   tech="20일선 회복 후 거래량 평균 3배 동반 상승. 외국인 5거래일 연속 순매수.",
+                   news="HBM·파운드리 수주 기대와 메모리 업황 저점 통과 전망이 우호적."),
+    "000660": dict(name="SK하이닉스", price=178500, sector="전기전자/반도체", rec="BUY", buy_score=9, period="중기", ret=16, loss=6,
+                   tech="정배열 유지하며 52주 신고가 근접. 돌파 시 강한 모멘텀 예상.",
+                   news="HBM3E 공급 확대와 목표주가 상향 리포트가 다수 발간됨."),
+    "035420": dict(name="NAVER", price=215000, sector="서비스/인터넷", rec="BUY", buy_score=7, period="중기", ret=12, loss=6,
+                   tech="박스권 상단 돌파 시도. 거래량이 점증하며 수급 개선 신호.",
+                   news="AI 검색·광고 매출 회복 기대감이 투자심리를 자극."),
+    "042700": dict(name="한미반도체", price=143000, sector="반도체장비", rec="BUY", buy_score=8, period="중기", ret=15, loss=6,
+                   tech="후공정 장비 수주 모멘텀으로 신고가 근접. 눌림목마다 매수세 유입.",
+                   news="HBM 본더 수주 증가와 전방 capex 기대가 긍정적."),
+    "247540": dict(name="에코프로비엠", price=168000, sector="2차전지", rec="BUY", buy_score=7, period="중기", ret=13, loss=7,
+                   tech="낙폭과대 후 기관 순매수 전환. 이평선 수렴 후 반등 시도.",
+                   news="2차전지 업황 바닥 통과 신호가 일부 지표에서 포착."),
+    "005380": dict(name="현대차", price=245000, sector="자동차", rec="HOLD", buy_score=5, period="중기", ret=9, loss=5,
+                   tech="단기 급등 후 과열 구간. 20일선까지 눌림목 형성 가능.",
+                   news="실적은 양호하나 환율·금리 변수로 방향성은 중립."),
+    "035720": dict(name="카카오", price=47850, sector="서비스/인터넷", rec="HOLD", buy_score=5, period="단기", ret=8, loss=5,
+                   tech="20일선 부근에서 등락 반복. 방향성 불명확.",
+                   news="신사업 모멘텀이 약화되며 뚜렷한 촉매가 부재."),
+    "105560": dict(name="KB금융", price=76300, sector="금융", rec="PASS", buy_score=3, period="단기", ret=7, loss=5,
+                   tech="거래량 한산, 모멘텀 부재. 박스권 하단 부근.",
+                   news="밸류 매력은 있으나 단기 촉매가 보이지 않음."),
+    "068270": dict(name="셀트리온", price=187000, sector="바이오", rec="PASS", buy_score=2, period="단기", ret=7, loss=7,
+                   tech="이평선 정배열 붕괴 + 수급 이탈. 추세 훼손.",
+                   news="바이오 섹터 투자심리 악화로 반등 동력 약함."),
+}
+
+
+def get_current_price(ticker: str) -> int:
+    """현재가 조회 (mock). 실데이터 연동 시 이 함수만 KIS/pykrx로 교체하면 됨."""
+    return _PROFILES.get(ticker, {}).get("price", 70_000)
+
+
+def _round_to(value: float, unit: int) -> int:
+    return int(round(value / unit) * unit)
+
+
 # ── 분석 에이전트 설정 (파트4 트랙B에서 수강생이 프롬프트 교체) ────
 TECHNICAL_AGENT_PROMPT = """
 당신은 윌리엄 오닐의 CANSLIM 방법론을 따르는 기술적 분석 전문가입니다.
@@ -80,8 +130,9 @@ NEWS_AGENT_PROMPT = """
 """
 
 STRATEGY_AGENT_PROMPT = """
-당신은 기술적 분석과 뉴스 분석을 종합하여 최종 투자 의견을 제시하는 투자 전략가입니다.
-BUY/HOLD/PASS 중 하나를 선택하고 1~5점 확신 점수를 부여하세요.
+당신은 기술·뉴스 분석을 종합해 최종 투자 의견을 제시하는 투자 전략가입니다.
+윌리엄 오닐식 추세추종 관점에서 목표가는 마일스톤, 손절은 기계적으로 봅니다.
+0~10점 매수 점수(buy_score)와 진입 여부, 목표가/손절가/투자기간을 제시하세요.
 """
 
 
@@ -89,19 +140,12 @@ async def run_analysis(ticker: str) -> dict:
     """
     단일 종목 전체 분석 파이프라인 실행.
 
-    Args:
-        ticker: 종목코드
-
-    Returns:
-        {
-            "ticker": str,
-            "recommendation": "BUY" | "HOLD" | "PASS",
-            "score": int (1~5),
-            "reason": str,
-            "risk": str,
-            "technical_summary": str,
-            "news_summary": str,
-        }
+    Returns (원본 PRISM scenario와 유사한 형태):
+        ticker, recommendation(BUY/HOLD/PASS), decision(진입/보류),
+        buy_score(0~10), min_score, current_price, target_price, stop_loss,
+        risk_reward_ratio, expected_return_pct, expected_loss_pct,
+        investment_period, sector, market_condition, rationale, risk,
+        technical_summary, news_summary
     """
     log.info(f"  [{ticker}] 기술적 분석 에이전트 실행 중...")
     technical = await _run_technical_agent(ticker)
@@ -112,19 +156,49 @@ async def run_analysis(ticker: str) -> dict:
     log.info(f"  [{ticker}] 투자전략 에이전트 통합 중...")
     strategy = await _run_strategy_agent(ticker, technical, news)
 
+    return _build_scenario(ticker, technical, news, strategy)
+
+
+def _build_scenario(ticker: str, technical: dict, news: dict, strategy: dict) -> dict:
+    """전략 에이전트 결과 + 현재가로 목표가/손절/손익비 등 파생 지표 계산."""
+    price = strategy.get("current_price") or get_current_price(ticker)
+    rec = strategy.get("recommendation", "HOLD").upper()
+    buy_score = int(strategy.get("buy_score", 5))
+    ret = float(strategy.get("expected_return_pct", 12))
+    loss = float(strategy.get("expected_loss_pct", 6)) or 6
+    target = strategy.get("target_price") or _round_to(price * (1 + ret / 100), 100)
+    stop = strategy.get("stop_loss") or _round_to(price * (1 - loss / 100), 100)
+    # 손익비는 목표가/손절가로 역산 (LLM이 직접 준 값이 있어도 일관성 위해 재계산)
+    up = max(target - price, 0) / price * 100
+    dn = max(price - stop, 1) / price * 100
+    rr = round(up / dn, 1) if dn else 0.0
+    decision = "진입" if (rec == "BUY" and buy_score >= MIN_BUY_SCORE) else "보류"
+
     return {
         "ticker": ticker,
-        "recommendation": strategy["recommendation"],
-        "score": strategy["score"],
-        "reason": strategy["reason"],
-        "risk": strategy["risk"],
+        "company_name": _PROFILES.get(ticker, {}).get("name", ticker),
+        "recommendation": rec,
+        "decision": decision,
+        "buy_score": buy_score,
+        "min_score": MIN_BUY_SCORE,
+        "current_price": price,
+        "target_price": target,
+        "stop_loss": stop,
+        "risk_reward_ratio": rr,
+        "expected_return_pct": round(up, 1),
+        "expected_loss_pct": round(dn, 1),
+        "investment_period": strategy.get("investment_period", "중기"),
+        "sector": _PROFILES.get(ticker, {}).get("sector", "기타"),
+        "market_condition": MARKET_CONDITION,
+        "rationale": strategy.get("rationale") or strategy.get("reason", ""),
+        "risk": strategy.get("risk", ""),
         "technical_summary": technical["summary"],
         "news_summary": news["summary"],
     }
 
 
 async def _run_technical_agent(ticker: str) -> dict:
-    """기술적 분석 에이전트. LLM 연동 시 실제 호출, 아니면 mock."""
+    """기술적 분석 에이전트. LLM 연동 시 실제 호출, 아니면 종목별 mock."""
     if _llm_enabled():
         try:
             summary = await _llm_complete(
@@ -136,15 +210,13 @@ async def _run_technical_agent(ticker: str) -> dict:
             log.warning(f"  기술 에이전트 LLM 실패 → mock 폴백: {e}")
 
     await asyncio.sleep(0.1)  # 네트워크 호출 시뮬레이션
-    return {
-        "ticker": ticker,
-        "summary": f"[{ticker}] 기술적 분석: 20일선 위 거래량 급등, 매수 신호 감지",
-        "signal": "BULLISH",
-    }
+    prof = _PROFILES.get(ticker)
+    summary = prof["tech"] if prof else f"{ticker}: 20일선 위 거래량 급등, 매수 신호 감지"
+    return {"ticker": ticker, "summary": summary, "signal": "BULLISH"}
 
 
 async def _run_news_agent(ticker: str) -> dict:
-    """뉴스 분석 에이전트. LLM 연동 시 실제 호출, 아니면 mock."""
+    """뉴스 분석 에이전트. LLM 연동 시 실제 호출, 아니면 종목별 mock."""
     if _llm_enabled():
         try:
             summary = await _llm_complete(
@@ -156,44 +228,48 @@ async def _run_news_agent(ticker: str) -> dict:
             log.warning(f"  뉴스 에이전트 LLM 실패 → mock 폴백: {e}")
 
     await asyncio.sleep(0.1)
-    return {
-        "ticker": ticker,
-        "summary": f"[{ticker}] 최근 뉴스: 실적 개선 기대감, 외국인 순매수 유입",
-        "sentiment": "POSITIVE",
-    }
+    prof = _PROFILES.get(ticker)
+    summary = prof["news"] if prof else f"{ticker}: 실적 개선 기대감, 외국인 순매수 유입"
+    return {"ticker": ticker, "summary": summary, "sentiment": "POSITIVE"}
 
 
 async def _run_strategy_agent(ticker: str, technical: dict, news: dict) -> dict:
     """투자전략 에이전트 — 두 분석을 통합하여 최종 의견 생성. LLM 연동 시 실제 호출."""
+    price = get_current_price(ticker)
     if _llm_enabled():
         try:
             user_msg = (
-                f"종목코드: {ticker}\n"
+                f"종목코드: {ticker} / 현재가: {price:,}원\n"
                 f"[기술적 분석]\n{technical['summary']}\n\n"
                 f"[뉴스 분석]\n{news['summary']}\n\n"
                 "위 두 분석을 종합해 최종 투자 의견을 아래 JSON 형식으로만 답해줘:\n"
-                '{"recommendation": "BUY|HOLD|PASS", "score": 1~5 정수, '
-                '"reason": "판단 근거 한 문장", "risk": "주요 리스크 한 문장"}'
+                '{"recommendation":"BUY|HOLD|PASS", "buy_score":0~10 정수, '
+                '"target_price":목표가(원,정수), "stop_loss":손절가(원,정수), '
+                '"expected_return_pct":기대수익률, "expected_loss_pct":기대손실률, '
+                '"investment_period":"단기|중기|장기", '
+                '"rationale":"진입/보류 근거 한 문장", "risk":"주요 리스크 한 문장"}'
             )
             raw = await _llm_complete(STRATEGY_AGENT_PROMPT, user_msg)
             parsed = _extract_json(raw)
-            return {
-                "ticker": ticker,
-                "recommendation": str(parsed.get("recommendation", "HOLD")).upper(),
-                "score": int(parsed.get("score", 3)),
-                "reason": str(parsed.get("reason", "")),
-                "risk": str(parsed.get("risk", "")),
-            }
+            parsed["current_price"] = price
+            parsed.setdefault("recommendation", "HOLD")
+            return parsed
         except Exception as e:
             log.warning(f"  전략 에이전트 LLM 실패 → mock 폴백: {e}")
 
     await asyncio.sleep(0.1)
+    prof = _PROFILES.get(ticker, {})
     return {
         "ticker": ticker,
-        "recommendation": "BUY",
-        "score": 4,
-        "reason": "기술적 신호와 뉴스 모두 긍정적. 분할 매수 권장.",
-        "risk": "시장 급락 시 연동 하락 가능성",
+        "current_price": price,
+        "recommendation": prof.get("rec", "BUY"),
+        "buy_score": prof.get("buy_score", 7),
+        "expected_return_pct": prof.get("ret", 12),
+        "expected_loss_pct": prof.get("loss", 6),
+        "investment_period": prof.get("period", "중기"),
+        "rationale": f"기술·뉴스 종합 결과 {prof.get('rec', 'BUY')} 판단. "
+                     f"{technical['summary'][:24]}… / {news['summary'][:24]}…",
+        "risk": "시장 급락 시 대형주 동반 조정 가능성",
     }
 
 
@@ -202,11 +278,22 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s", datefmt="%H:%M:%S")
 
     ticker = sys.argv[1] if len(sys.argv) > 1 else "005930"
-    result = asyncio.run(run_analysis(ticker))
+    r = asyncio.run(run_analysis(ticker))
 
-    print(f"\n{'='*50}")
-    print(f"종목: {result['ticker']}")
-    print(f"추천: {result['recommendation']} (점수: {result['score']}/5)")
-    print(f"근거: {result['reason']}")
-    print(f"리스크: {result['risk']}")
-    print(f"{'='*50}")
+    # 원본 PRISM 리포트와 유사한 섹션형 출력
+    print(f"\n{'='*56}")
+    print(f"  {r['company_name']}({r['ticker']}) · {r['sector']}")
+    print(f"{'='*56}")
+    print(f"  투자판단   : {r['recommendation']} → {r['decision']}  "
+          f"(매수점수 {r['buy_score']}/10, 진입기준 {r['min_score']})")
+    print(f"  현재가     : {r['current_price']:,}원   투자기간: {r['investment_period']}")
+    print(f"  목표가     : {r['target_price']:,}원 (+{r['expected_return_pct']}%)")
+    print(f"  손절가     : {r['stop_loss']:,}원 (-{r['expected_loss_pct']}%)")
+    print(f"  손익비     : {r['risk_reward_ratio']} : 1")
+    print(f"{'-'*56}")
+    print(f"  [기술적 분석] {r['technical_summary']}")
+    print(f"  [뉴스 분석]   {r['news_summary']}")
+    print(f"  [시장 국면]   {r['market_condition']}")
+    print(f"  [종합 판단]   {r['rationale']}")
+    print(f"  [리스크]      {r['risk']}")
+    print(f"{'='*56}")

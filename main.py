@@ -98,7 +98,8 @@ async def run_pipeline(dry_run: bool = True, target_ticker: Optional[str] = None
             log.info(f"      → {ticker} 분석 중...")
             result = await run_analysis(ticker)
             analyses.append(result)
-            log.info(f"      → {ticker} 완료: 추천={result['recommendation']}, 점수={result['score']}")
+            log.info(f"      → {ticker} 완료: 추천={result['recommendation']}({result['decision']}), "
+                     f"매수점수={result['buy_score']}/10, 목표가={result['target_price']:,}원")
 
         # Step 3: 매매
         log.info("[3/4] 매매 의사결정 시작")

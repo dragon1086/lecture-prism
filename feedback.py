@@ -83,7 +83,7 @@ async def _extract_lesson(result: dict, analysis: dict, error_type: str) -> str:
     """
     ticker = result["ticker"]
     action = result["action"]
-    reason = analysis.get("reason", "근거 미기록")
+    reason = analysis.get("rationale") or analysis.get("reason", "근거 미기록")
 
     if error_type == "EXECUTION_ERROR":
         return f"{ticker} {action}: 체결 실패. 분석 판단보다 주문 실행 경로(가격/타이밍) 점검 필요."
