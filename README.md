@@ -6,7 +6,7 @@
 이 저장소의 목표는 “자동매매 완제품”을 바로 운영하는 것이 아닙니다.
 수강생이 자신의 매매 전략을 **코딩 에이전트에게 설명하고**, 에이전트가 코드를 고치고 실행·검증하는 과정을 몸으로 익히는 것입니다.
 
-![lecture-prism 학습 지도](docs/assets/readme/hero-learning-map.png)
+![강의 학습 지도](docs/assets/readme/hero-learning-map.png)
 
 ## 이런 수강생을 위한 저장소입니다
 
@@ -67,7 +67,7 @@
 
 ## 2. 프로젝트를 한 장으로 보기
 
-![lecture-prism 파이프라인 지도](docs/assets/readme/pipeline-map.png)
+![강의용 투자 파이프라인 지도](docs/assets/readme/pipeline-map.png)
 
 lecture-prism은 **네 개의 파이프라인 단계와 하나의 확인 화면**으로 움직입니다.
 
@@ -78,6 +78,8 @@ lecture-prism은 **네 개의 파이프라인 단계와 하나의 확인 화면*
 5. **dashboard.py** — 저장된 결과를 웹 화면에서 보여줍니다.
 
 더 자세한 그림은 [`docs/architecture.md`](docs/architecture.md)에 모아두었습니다.
+
+![옵션별 전체 아키텍처 지도](docs/assets/readme/runtime-architecture-map.png)
 
 ---
 
@@ -138,6 +140,8 @@ lecture-prism에 포함된 ChatGPT OAuth 프록시로 실제 LLM 분석을 연�
 ```
 
 API 키 준비가 궁금하면 [`docs/api-keys.md`](docs/api-keys.md)를 먼저 보세요. 강의 기본 실습에는 필수 키가 없습니다.
+
+초급자는 기본값인 `LECTURE_PROFILE=mock`으로 충분합니다. 수업 이후 실데이터·리서치·모의투자·실전투자까지 단계적으로 켜고 싶다면 [`docs/runtime-profiles.md`](docs/runtime-profiles.md)를 보세요. 수강생이 주로 만지는 파일은 `.env`와 `trading/trading/config/kis_devlp.yaml` 두 개로 제한됩니다.
 
 수강생이 KIS가 아니라 키움증권·토스증권·다른 증권사 API를 준비해 왔다면 [`docs/broker-adapters.md`](docs/broker-adapters.md)를 보세요. `trading.py`를 갈아엎지 않고 `.env`의 `LECTURE_BROKER` 값으로 브로커 어댑터를 바꾸는 구조를 제공합니다.
 
@@ -209,10 +213,14 @@ dashboard.py를 실행해서 로컬 대시보드를 열 수 있게 도와줘.
 | `LLM_MODEL` | `gpt-5.4-mini` | 분석용 모델 (`LECTURE_LLM_MODEL` 환경변수로 교체) |
 | 판단 결과 | `BUY / HOLD / PASS` + 매수점수 `0~10` (목표가·손절가·손익비·투자기간 포함) | 점수가 매매 게이트로 연결됨 |
 
-**데이터 3계층** (아래로 갈수록 풍부, 없으면 자동 폴백):
-1. **Tier 0** — 표준 라이브러리만: mock 데이터로 6섹션 리치 리포트 (키·설치 불필요)
-2. **Tier 1** — `pip install yfinance`: 가격·거래량·재무·뉴스·지수 **실데이터** (무료·무로그인)
-3. **Tier 2** — `+ ChatGPT OAuth/OpenAI`: 기술·뉴스·전략을 **LLM이 심층 서술**
+**런타임 5단계** (아래로 갈수록 풍부, 없으면 자동 폴백):
+1. **mock** — 표준 라이브러리만: 더미 데이터로 6섹션 리치 리포트 (키·설치 불필요)
+2. **real_data** — yfinance 또는 kospi_kosdaq: 가격·거래량·지수 실데이터
+3. **research** — OpenAI/OAuth + Perplexity/Firecrawl: 뉴스·시장 맥락 보강
+4. **paper** — 증권사 demo 모드: KIS/키움 등 모의투자 API 경로 검증
+5. **live** — 실전투자 모드: 이중 안전 플래그 없이는 주문 차단
+
+설정은 [`docs/runtime-profiles.md`](docs/runtime-profiles.md)에 모아두었습니다. 기본값은 항상 `mock`이라 API 키가 없어도 수업 실습은 바로 진행됩니다.
 
 > 💡 수급(기관/외국인/개인)·재무 상세·지수는 KRX가 로그인을 요구해 pykrx로 못 가져옵니다.
 > 그래서 무료·무로그인 **yfinance**를 쓰고, 수급은 **실거래량 파생 프록시**로 정직하게 대체합니다.
@@ -272,7 +280,7 @@ MY_STRATEGY.md를 읽고 내 전략을 lecture-prism에 반영해줘.
 실거래는 절대 하지 마.
 ```
 
-![Strategy Harness Lite 흐름](docs/assets/readme/strategy-harness-lite.png)
+![전략 하네스 흐름](docs/assets/readme/strategy-harness-lite.png)
 
 처음부터 전부 바꾸려고 하지 마세요. 아래 네 트랙 중 **하나만** 골라도 성공입니다.
 
@@ -360,6 +368,7 @@ GitHub 제출은 **선택**입니다. 수업 중 성공 기준은 먼저 “내 
 ## 10. 더 읽을 문서
 
 - [처음 시작하는 5분 루트](START_HERE.md)
+- [더미/실데이터/리서치/매매 런타임 프로필](docs/runtime-profiles.md)
 - [API 키 준비 가이드](docs/api-keys.md)
 - [증권사 브로커 어댑터 확장 가이드](docs/broker-adapters.md)
 - [아키텍처 그림 모음](docs/architecture.md)

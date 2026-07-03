@@ -176,7 +176,9 @@ def _selected_broker_mode(broker_name: str) -> str:
 
     broker = broker_name.lower()
     if broker == "kis":
-        return normalize_mode(os.getenv("LECTURE_KIS_MODE") or os.getenv("KIS_MODE") or os.getenv("LECTURE_BROKER_MODE"))
+        from brokers.kis import selected_kis_mode
+
+        return selected_kis_mode()
     if broker == "kiwoom":
         return normalize_mode(os.getenv("KIWOOM_MODE") or os.getenv("LECTURE_BROKER_MODE"))
     if broker == "toss":

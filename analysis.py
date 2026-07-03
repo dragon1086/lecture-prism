@@ -46,7 +46,9 @@ _MARKET_CONDITION_FALLBACK = (
 
 def _llm_enabled() -> bool:
     """OAuth 프록시(base_url) 또는 API 키가 설정돼 있으면 실제 LLM 사용."""
-    return bool(os.getenv("OPENAI_BASE_URL") or os.getenv("OPENAI_API_KEY"))
+    from runtime_config import load_runtime_config
+
+    return load_runtime_config().llm_enabled
 
 
 async def _llm_complete(system_prompt: str, user_msg: str) -> str:
@@ -127,7 +129,12 @@ async def run_analysis(ticker: str) -> dict:
     # 데이터 원천 (실데이터 → mock 폴백). 동기 I/O라 스레드에서 실행.
     data = await asyncio.to_thread(data_source.fetch_stock_data, ticker)
     market = await asyncio.to_thread(data_source.fetch_market_index)
-    src = "실데이터(yfinance)" if data["source"] == "yfinance" else "모의 데이터(mock)"
+    if data["source"] == "yfinance":
+        src = "실데이터(yfinance)"
+    elif data["source"] == "kospi_kosdaq":
+        src = "실데이터(kospi_kosdaq_server)"
+    else:
+        src = "모의 데이터(mock)"
     log.info(f"  [{ticker}] 데이터 원천: {src}")
 
     # 1) 기술적 분석 — LLM(맥락) 또는 데이터 템플릿
@@ -164,7 +171,7 @@ async def run_analysis(ticker: str) -> dict:
 # ── 섹션 빌더: 규칙(실데이터 템플릿 / mock) ─────────────────────────────
 def _section_supply(data: dict) -> str:
     """수급(거래 흐름). 실데이터면 거래량 파생 프록시, 아니면 mock 문장."""
-    if data["source"] != "yfinance":
+    if data["source"] not in {"yfinance", "kospi_kosdaq"}:
         return data.get("supply", "")
     s = data.get("supply", {})
     ratio, obv = s.get("up_down_vol_ratio"), s.get("obv", "중립")
@@ -176,7 +183,11 @@ def _section_supply(data: dict) -> str:
     if vol_ratio is not None:
         parts.append(f"당일 거래량은 20일 평균의 {vol_ratio}배")
     parts.append(f"OBV 기준 {obv}")
+    if s.get("investor_flow_available"):
+        parts.append("투자자별 수급 데이터 확보")
     body = ", ".join(parts) + "."
+    if data["source"] == "kospi_kosdaq" and s.get("investor_flow_available"):
+        return body + " (kospi_kosdaq_server 직접 조회)"
     return body + " (※ 기관/외국인/개인 세부 순매수는 KRX 로그인이 필요해 거래량 기반으로 추정)"
 
 
@@ -231,7 +242,7 @@ def _section_market(market: dict | None) -> str:
 # ── 에이전트: 기술 (LLM 또는 데이터 템플릿) ──────────────────────────────
 def _technical_data_text(data: dict) -> str:
     """실데이터 기술 지표를 문장으로."""
-    if data["source"] != "yfinance":
+    if data["source"] not in {"yfinance", "kospi_kosdaq"}:
         return data.get("tech", "")
     bits = []
     ma20 = data.get("ma20")
@@ -272,10 +283,13 @@ async def _run_news_agent(ticker: str, data: dict) -> str:
     """뉴스 분석. 실데이터 헤드라인 → LLM 해석, 아니면 mock/헤드라인 나열."""
     news = data.get("news")
     headlines = news if isinstance(news, list) else []
+    research_context = _optional_research_context(ticker, data)
+    src_txt = "\n".join(f"- {h}" for h in headlines) if headlines else (
+        news if isinstance(news, str) else "관련 뉴스 없음")
+    if research_context:
+        src_txt = f"{src_txt}\n\n{research_context}"
     if _llm_enabled():
         try:
-            src_txt = "\n".join(f"- {h}" for h in headlines) if headlines else (
-                news if isinstance(news, str) else "관련 뉴스 없음")
             summary = await _llm_complete(
                 NEWS_AGENT_PROMPT,
                 f"종목코드 {ticker} 관련 최근 뉴스 헤드라인입니다:\n{src_txt}\n\n"
@@ -285,15 +299,38 @@ async def _run_news_agent(ticker: str, data: dict) -> str:
         except Exception as e:
             log.warning(f"  뉴스 에이전트 LLM 실패 → 데이터/mock 폴백: {e}")
     await asyncio.sleep(0.05)
+    if research_context:
+        return src_txt
     if headlines:
         return "최근 헤드라인: " + " / ".join(headlines[:3])
     return news if isinstance(news, str) else "관련 뉴스 없음"
 
 
+def _optional_research_context(ticker: str, data: dict) -> str:
+    from runtime_config import load_runtime_config
+
+    cfg = load_runtime_config()
+    if cfg.report_mode != "research":
+        return ""
+    if not any(cfg.tool_ready.get(tool) for tool in ("perplexity", "firecrawl")):
+        return ""
+    try:
+        import research_tools
+
+        return research_tools.build_research_context(
+            ticker,
+            data.get("name", ticker),
+            data.get("sector", ""),
+        )
+    except Exception as exc:  # noqa: BLE001
+        log.warning("  선택 리서치 컨텍스트 생성 실패 → 기본 뉴스로 진행: %s", exc)
+        return ""
+
+
 # ── 에이전트: 투자전략 (LLM 통합 또는 규칙 스코어링) ────────────────────
 def _rule_based_score(data: dict) -> dict:
     """실데이터(LLM 없음) 경로용 규칙 기반 매수 점수 0~10."""
-    if data["source"] != "yfinance":
+    if data["source"] not in {"yfinance", "kospi_kosdaq"}:
         # mock: 프로필이 준 판단값 사용
         return {"recommendation": data.get("rec", "BUY"), "buy_score": data.get("buy_score", 7),
                 "expected_return_pct": data.get("ret", 12), "expected_loss_pct": data.get("loss", 6),
@@ -362,6 +399,9 @@ async def _run_strategy_agent(ticker, data, technical, supply, financial,
 def _build_scenario(ticker, data, technical, supply, financial,
                     industry, news, market_condition, strategy) -> dict:
     """전략 결과 + 현재가로 목표가/손절/손익비 등 파생 지표 계산."""
+    from runtime_config import load_runtime_config
+
+    cfg = load_runtime_config()
     price = strategy.get("current_price") or data["current_price"]
     rec = strategy.get("recommendation", "HOLD").upper()
     buy_score = int(strategy.get("buy_score", 5))
@@ -395,6 +435,12 @@ def _build_scenario(ticker, data, technical, supply, financial,
         "rationale": strategy.get("rationale") or strategy.get("reason", ""),
         "risk": strategy.get("risk", ""),
         "data_source": data["source"],
+        "runtime_profile": cfg.profile,
+        "data_mode": cfg.data_mode,
+        "report_mode": cfg.report_mode,
+        "research_tools": list(cfg.research_tools),
+        "research_tool_ready": dict(cfg.tool_ready),
+        "runtime_summary": cfg.summary(),
         # 6섹션 요약
         "technical_summary": technical,
         "supply_summary": supply,
@@ -412,7 +458,12 @@ if __name__ == "__main__":
     r = asyncio.run(run_analysis(ticker))
 
     # 원본 PRISM 리포트와 유사한 6섹션 출력
-    src = "실데이터(yfinance)" if r["data_source"] == "yfinance" else "모의 데이터(mock)"
+    if r["data_source"] == "yfinance":
+        src = "실데이터(yfinance)"
+    elif r["data_source"] == "kospi_kosdaq":
+        src = "실데이터(kospi_kosdaq_server)"
+    else:
+        src = "모의 데이터(mock)"
     print(f"\n{'='*60}")
     print(f"  {r['company_name']}({r['ticker']}) · {r['sector']}   [원천: {src}]")
     print(f"{'='*60}")

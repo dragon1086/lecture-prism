@@ -3,13 +3,13 @@ data_source.py — 실데이터 연동 단일 접점 (무료·무로그인)
 
 analysis.py가 6섹션 분석에 쓰는 원천 데이터를 이 파일 하나로 모읍니다.
 
-3계층 폴백 설계:
-  Tier 0 (표준 라이브러리)      : mock (_PROFILES) — 항상 동작, 키/설치 불필요
-  Tier 1 (pip install yfinance) : yfinance 실데이터 — 가격·거래량·재무·뉴스·지수
-                                  실패/미설치 시 조용히 Tier 0로 폴백
+런타임 폴백 설계:
+  mock        : _PROFILES 더미 데이터 — 항상 동작, 키/설치 불필요
+  yfinance    : 가격·거래량·재무·뉴스·지수 실데이터
+  kospi_kosdaq: 선택 서버 모듈이 있을 때 KRX 계열 가격·수급·지수 조회
 
-원본 PRISM은 KRX 로그인 크롤링 MCP·firecrawl·perplexity(유료)를 썼지만,
-강의용으로는 계정·API 키·로그인이 전혀 필요 없는 조합만 씁니다.
+원본 PRISM은 KRX 로그인 크롤링 MCP·firecrawl·perplexity를 적극적으로 쓰지만,
+강의 기본값은 계정·API 키·로그인이 전혀 필요 없는 mock입니다.
 
   ✅ 가격/거래량/이평/RSI → yfinance history      (기술적 분석)
   ✅ 재무 PER/ROE/성장률  → yfinance info/재무제표  (재무 분석)
@@ -18,12 +18,13 @@ analysis.py가 6섹션 분석에 쓰는 원천 데이터를 이 파일 하나로
   ✅ KOSPI/KOSDAQ 지수    → yfinance ^KS11/^KQ11    (시장 국면)
   ❌ 기관/외국인/개인 수급 → KRX 로그인 필요 → 거래량 파생 프록시로 대체
 
-수강생이 실데이터를 켜려면: pip install yfinance  (그게 전부)
+수강생은 `.env`의 LECTURE_PROFILE/LECTURE_DATA_MODE로 어느 단계까지 쓸지 고릅니다.
 """
 
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timedelta
 
 log = logging.getLogger(__name__)
 
@@ -203,6 +204,95 @@ def _fetch_real(ticker: str) -> dict | None:
     return None
 
 
+def _num(row: dict, *keys: str) -> float | None:
+    for key in keys:
+        value = row.get(key)
+        if isinstance(value, (int, float)):
+            return float(value)
+        if value is not None:
+            try:
+                return float(str(value).replace(",", ""))
+            except ValueError:
+                continue
+    return None
+
+
+def _date_key(item) -> str:
+    return str(item[0])
+
+
+def _fetch_kospi_kosdaq(ticker: str) -> dict | None:
+    """Fetch Korean market data through the optional kospi_kosdaq server module."""
+
+    try:
+        import kospi_kosdaq_stock_server as server  # type: ignore[import-not-found]
+    except ImportError:
+        log.info("  kospi_kosdaq_stock_server 미설치 — 다음 데이터 소스로 폴백")
+        return None
+
+    end_date = datetime.now().strftime("%Y%m%d")
+    start_date = (datetime.now() - timedelta(days=120)).strftime("%Y%m%d")
+    try:
+        raw = server.get_stock_ohlcv(start_date, end_date, ticker)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("  kospi_kosdaq OHLCV 조회 실패(%s): %s", ticker, exc)
+        return None
+    if not isinstance(raw, dict) or not raw or "error" in raw:
+        return None
+
+    rows = []
+    for _, row in sorted(raw.items(), key=_date_key):
+        if not isinstance(row, dict):
+            continue
+        close = _num(row, "Close", "close", "종가")
+        volume = _num(row, "Volume", "volume", "거래량")
+        if close is not None:
+            rows.append((close, volume or 0.0))
+    if len(rows) < 2:
+        return None
+
+    closes = [close for close, _ in rows]
+    volumes = [volume for _, volume in rows]
+    price = closes[-1]
+    ma5, ma20 = _sma(closes, 5), _sma(closes, 20)
+    vol_sma20 = _sma(volumes, 20)
+    vol_ratio = round(volumes[-1] / vol_sma20, 1) if vol_sma20 else None
+    supply = _supply_proxy(closes, volumes)
+
+    latest_flow = {}
+    try:
+        flow = server.get_stock_trading_volume(start_date, end_date, ticker)
+        if isinstance(flow, dict) and flow and "error" not in flow:
+            _, latest = sorted(flow.items(), key=_date_key)[-1]
+            if isinstance(latest, dict):
+                latest_flow = latest
+    except Exception as exc:  # noqa: BLE001
+        log.warning("  kospi_kosdaq 투자자별 수급 조회 실패(%s): %s", ticker, exc)
+
+    if latest_flow:
+        supply["investor_flow_available"] = True
+        supply["latest_investor_flow"] = latest_flow
+    else:
+        supply["investor_flow_available"] = False
+
+    prof = mock_profile(ticker)
+    return {
+        "source": "kospi_kosdaq",
+        "ticker": ticker,
+        "name": prof["name"],
+        "current_price": int(round(price)),
+        "sector": prof["sector"],
+        "industry": prof.get("industry", ""),
+        "ma5": ma5, "ma20": ma20, "rsi": _rsi(closes),
+        "vol_ratio": vol_ratio,
+        "ret_1d": round((closes[-1] / closes[-2] - 1) * 100, 2),
+        "price_vs_ma20": round((price / ma20 - 1) * 100, 1) if ma20 else None,
+        "supply": supply,
+        "finance": prof["finance"],
+        "news": prof["news"],
+    }
+
+
 def _fetch_symbol(yf, ticker: str, symbol: str) -> dict | None:
     t = yf.Ticker(symbol)
 
@@ -322,7 +412,7 @@ def _extract_news(t, limit: int = 5) -> list[str]:
 
 
 # ── 시장 지수 (KOSPI/KOSDAQ) ────────────────────────────────────────────
-def fetch_market_index() -> dict | None:
+def _fetch_market_index_yfinance() -> dict | None:
     """KOSPI(^KS11)/KOSDAQ(^KQ11) 20거래일 수익률. 실패 시 None."""
     try:
         import yfinance as yf
@@ -345,18 +435,56 @@ def fetch_market_index() -> dict | None:
     return out or None
 
 
+def _fetch_market_index_kospi_kosdaq() -> dict | None:
+    """KOSPI/KOSDAQ index data via optional kospi_kosdaq server module."""
+
+    try:
+        import kospi_kosdaq_stock_server as server  # type: ignore[import-not-found]
+    except ImportError:
+        return None
+    end_date = datetime.now().strftime("%Y%m%d")
+    start_date = (datetime.now() - timedelta(days=45)).strftime("%Y%m%d")
+    out = {}
+    for name, ticker in (("KOSPI", "1001"), ("KOSDAQ", "2001")):
+        try:
+            raw = server.get_index_ohlcv(start_date, end_date, ticker)
+        except Exception:  # noqa: BLE001
+            continue
+        if not isinstance(raw, dict) or not raw or "error" in raw:
+            continue
+        closes = []
+        for _, row in sorted(raw.items(), key=_date_key):
+            if isinstance(row, dict):
+                close = _num(row, "Close", "close", "종가")
+                if close is not None:
+                    closes.append(close)
+        if len(closes) >= 2:
+            out[name] = {
+                "last": round(closes[-1], 1),
+                "ret_20d": round((closes[-1] / closes[0] - 1) * 100, 1),
+            }
+    return out or None
+
+
+def fetch_market_index() -> dict | None:
+    """Return market index data according to LECTURE_DATA_MODE."""
+
+    from runtime_config import load_runtime_config
+
+    cfg = load_runtime_config()
+    if cfg.data_mode == "mock":
+        return None
+    if cfg.data_mode == "kospi_kosdaq":
+        return _fetch_market_index_kospi_kosdaq()
+    if cfg.data_mode == "yfinance":
+        return _fetch_market_index_yfinance()
+    if "kospi_kosdaq" in cfg.research_tools and cfg.tool_ready.get("kospi_kosdaq"):
+        return _fetch_market_index_kospi_kosdaq() or _fetch_market_index_yfinance()
+    return _fetch_market_index_yfinance()
+
+
 # ── 공개 단일 접점 ──────────────────────────────────────────────────────
-def fetch_stock_data(ticker: str) -> dict:
-    """
-    종목 원천 데이터 반환 (실데이터 → mock 폴백).
-
-    analysis.py는 이 함수 하나만 호출합니다. 반환 dict의 source 키로
-    실데이터/모의 여부를 구분할 수 있습니다.
-    """
-    real = _fetch_real(ticker)
-    if real:
-        return real
-
+def _fetch_mock(ticker: str) -> dict:
     prof = mock_profile(ticker)
     return {
         "source": "mock",
@@ -373,3 +501,24 @@ def fetch_stock_data(ticker: str) -> dict:
         "rec": prof["rec"], "buy_score": prof["buy_score"],
         "ret": prof["ret"], "loss": prof["loss"], "period": prof["period"],
     }
+
+
+def fetch_stock_data(ticker: str) -> dict:
+    """
+    종목 원천 데이터 반환 (실데이터 → mock 폴백).
+
+    analysis.py는 이 함수 하나만 호출합니다. 반환 dict의 source 키로
+    실데이터/모의 여부를 구분할 수 있습니다.
+    """
+    from runtime_config import load_runtime_config
+
+    cfg = load_runtime_config()
+    if cfg.data_mode == "mock":
+        return _fetch_mock(ticker)
+    if cfg.data_mode == "kospi_kosdaq":
+        return _fetch_kospi_kosdaq(ticker) or _fetch_mock(ticker)
+    if cfg.data_mode == "yfinance":
+        return _fetch_real(ticker) or _fetch_mock(ticker)
+    if "kospi_kosdaq" in cfg.research_tools and cfg.tool_ready.get("kospi_kosdaq"):
+        return _fetch_kospi_kosdaq(ticker) or _fetch_real(ticker) or _fetch_mock(ticker)
+    return _fetch_real(ticker) or _fetch_mock(ticker)

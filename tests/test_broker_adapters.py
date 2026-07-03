@@ -6,6 +6,7 @@ from pathlib import Path
 
 from brokers.base import BrokerOrder
 from brokers.config import load_env_file
+from brokers.kis import selected_kis_mode
 from brokers.kiwoom import KiwoomBrokerAdapter
 from trading import _execute_broker_order
 
@@ -15,6 +16,8 @@ _ENV_KEYS = {
     "LECTURE_BROKER_MODE",
     "LECTURE_ENABLE_LIVE_BROKER",
     "LECTURE_ALLOW_REAL_BROKER",
+    "LECTURE_KIS_MODE",
+    "KIS_MODE",
     "LECTURE_ENABLE_LIVE_KIWOOM",
     "LECTURE_ALLOW_REAL_KIWOOM",
     "KIWOOM_MODE",
@@ -103,6 +106,13 @@ class BrokerAdapterTest(unittest.TestCase):
 
         self.assertFalse(result["success"])
         self.assertEqual(result["mode"], "kiwoom_credentials_missing")
+
+    def test_kis_mode_can_fall_back_to_yaml_default_mode(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path = Path(tmp) / "kis_devlp.yaml"
+            config_path.write_text("default_mode: real\n", encoding="utf-8")
+
+            self.assertEqual(selected_kis_mode(config_path=config_path), "real")
 
     def test_trading_blocks_live_broker_until_explicitly_enabled(self):
         os.environ["LECTURE_BROKER"] = "kiwoom"

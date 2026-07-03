@@ -47,7 +47,10 @@ async def _maybe_start_chatgpt_oauth_proxy() -> tuple[bool, dict[str, str | None
     back to mock mode instead of blocking the beginner demo.
     """
     saved = {key: os.environ.get(key) for key in _OPENAI_ENV_KEYS}
-    if os.getenv("PRISM_OPENAI_AUTH_MODE") != "chatgpt_oauth":
+    from runtime_config import load_runtime_config
+
+    cfg = load_runtime_config()
+    if not cfg.llm_enabled or not cfg.chatgpt_oauth_requested or os.getenv("OPENAI_BASE_URL"):
         return False, saved
 
     try:
@@ -67,14 +70,35 @@ async def _maybe_start_chatgpt_oauth_proxy() -> tuple[bool, dict[str, str | None
     return False, saved
 
 
+def _resolve_runtime_options(args) -> dict:
+    """Resolve CLI flags plus `.env` profile into pipeline options."""
+
+    from runtime_config import load_runtime_config, resolve_trade_dry_run
+
+    cfg = load_runtime_config()
+    return {
+        "config": cfg,
+        "dry_run": resolve_trade_dry_run(
+            explicit_live=bool(getattr(args, "live", False)),
+            explicit_dry_run=bool(getattr(args, "dry_run", False)),
+            config=cfg,
+        ),
+        "use_real_data": bool(getattr(args, "real", False) or cfg.screening_mode == "pykrx"),
+    }
+
+
 async def run_pipeline(dry_run: bool = True, target_ticker: Optional[str] = None,
                        use_real_data: bool = False):
     proxy_started = False
     saved_openai_env: dict[str, str | None] = {}
 
+    from runtime_config import load_runtime_config
+    cfg = load_runtime_config()
+
     log.info("=" * 60)
     log.info("lecture-prism 파이프라인 시작")
     log.info(f"모드: {'시뮬레이션(dry-run)' if dry_run else '실거래'}")
+    log.info(f"런타임 설정: {cfg.summary()}")
     log.info("=" * 60)
 
     try:
@@ -100,6 +124,12 @@ async def run_pipeline(dry_run: bool = True, target_ticker: Optional[str] = None
             analyses.append(result)
             log.info(f"      → {ticker} 완료: 추천={result['recommendation']}({result['decision']}), "
                      f"매수점수={result['buy_score']}/10, 목표가={result['target_price']:,}원")
+
+        from report_writer import write_reports
+        report_paths = await asyncio.to_thread(write_reports, analyses)
+        if report_paths:
+            joined = ", ".join(str(path) for path in report_paths)
+            log.info(f"      → 분석 보고서 저장: {joined}")
 
         # Step 3: 매매
         log.info("[3/4] 매매 의사결정 시작")
@@ -128,11 +158,17 @@ async def run_pipeline(dry_run: bool = True, target_ticker: Optional[str] = None
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="lecture-prism 자동매매 시스템")
-    parser.add_argument("--dry-run", action="store_true", default=True, help="시뮬레이션 모드 (기본값)")
+    parser.add_argument("--dry-run", action="store_true", help="시뮬레이션 모드로 강제 실행")
     parser.add_argument("--live", action="store_true", help="실거래 모드 (KIS API 필요)")
     parser.add_argument("--ticker", type=str, help="특정 종목 코드 (예: 005930)")
     parser.add_argument("--real", action="store_true", help="스크리닝에 pykrx 실데이터 사용 (기본: 데모값)")
     args = parser.parse_args()
 
-    dry_run = not args.live
-    asyncio.run(run_pipeline(dry_run=dry_run, target_ticker=args.ticker, use_real_data=args.real))
+    options = _resolve_runtime_options(args)
+    asyncio.run(
+        run_pipeline(
+            dry_run=options["dry_run"],
+            target_ticker=args.ticker,
+            use_real_data=options["use_real_data"],
+        )
+    )

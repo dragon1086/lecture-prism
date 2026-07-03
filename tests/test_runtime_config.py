@@ -1,0 +1,98 @@
+import os
+import unittest
+
+import runtime_config
+
+
+_ENV_KEYS = {
+    "LECTURE_PROFILE",
+    "LECTURE_DATA_MODE",
+    "LECTURE_SCREENING_MODE",
+    "LECTURE_LLM_MODE",
+    "LECTURE_REPORT_MODE",
+    "LECTURE_RESEARCH_TOOLS",
+    "LECTURE_TRADE_MODE",
+    "LECTURE_BROKER",
+    "LECTURE_BROKER_MODE",
+    "LECTURE_ENABLE_LIVE_BROKER",
+    "LECTURE_ALLOW_REAL_BROKER",
+    "OPENAI_API_KEY",
+    "OPENAI_BASE_URL",
+    "PRISM_OPENAI_AUTH_MODE",
+    "FIRECRAWL_API_KEY",
+    "PERPLEXITY_API_KEY",
+    "KRX_ID",
+    "KRX_PW",
+    "KAKAO_ID",
+    "KAKAO_PW",
+}
+
+
+class RuntimeConfigTest(unittest.TestCase):
+    def setUp(self):
+        self._saved = {key: os.environ.get(key) for key in _ENV_KEYS}
+        for key in _ENV_KEYS:
+            os.environ.pop(key, None)
+
+    def tearDown(self):
+        for key, value in self._saved.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+
+    def test_default_profile_is_mock_and_simulation_safe(self):
+        cfg = runtime_config.load_runtime_config()
+
+        self.assertEqual(cfg.profile, "mock")
+        self.assertEqual(cfg.data_mode, "mock")
+        self.assertEqual(cfg.screening_mode, "mock")
+        self.assertEqual(cfg.llm_mode, "mock")
+        self.assertEqual(cfg.report_mode, "lite")
+        self.assertEqual(cfg.trade_mode, "simulation")
+        self.assertTrue(runtime_config.resolve_trade_dry_run(False, False, cfg))
+
+    def test_research_profile_enables_tools_without_enabling_broker_orders(self):
+        os.environ["LECTURE_PROFILE"] = "research"
+        os.environ["FIRECRAWL_API_KEY"] = "fc-test"
+        os.environ["PERPLEXITY_API_KEY"] = "pplx-test"
+        os.environ["KRX_ID"] = "student"
+        os.environ["KRX_PW"] = "secret"
+
+        cfg = runtime_config.load_runtime_config()
+
+        self.assertEqual(cfg.profile, "research")
+        self.assertEqual(cfg.data_mode, "auto")
+        self.assertEqual(cfg.report_mode, "research")
+        self.assertEqual(cfg.trade_mode, "simulation")
+        self.assertEqual(cfg.research_tools, ("kospi_kosdaq", "perplexity", "firecrawl"))
+        self.assertTrue(cfg.tool_ready["kospi_kosdaq"])
+        self.assertTrue(cfg.tool_ready["perplexity"])
+        self.assertTrue(cfg.tool_ready["firecrawl"])
+        self.assertTrue(runtime_config.resolve_trade_dry_run(False, False, cfg))
+
+    def test_paper_trade_mode_uses_broker_path_but_cli_dry_run_wins(self):
+        os.environ["LECTURE_PROFILE"] = "paper"
+
+        cfg = runtime_config.load_runtime_config()
+
+        self.assertEqual(cfg.trade_mode, "demo")
+        self.assertFalse(runtime_config.resolve_trade_dry_run(False, False, cfg))
+        self.assertTrue(runtime_config.resolve_trade_dry_run(False, True, cfg))
+        self.assertFalse(runtime_config.resolve_trade_dry_run(True, False, cfg))
+
+    def test_explicit_env_values_override_profile_defaults(self):
+        os.environ["LECTURE_PROFILE"] = "research"
+        os.environ["LECTURE_DATA_MODE"] = "mock"
+        os.environ["LECTURE_REPORT_MODE"] = "lite"
+        os.environ["LECTURE_RESEARCH_TOOLS"] = "perplexity"
+
+        cfg = runtime_config.load_runtime_config()
+
+        self.assertEqual(cfg.data_mode, "mock")
+        self.assertEqual(cfg.report_mode, "lite")
+        self.assertEqual(cfg.research_tools, ("perplexity",))
+
+
+if __name__ == "__main__":
+    unittest.main()
