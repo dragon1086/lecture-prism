@@ -9,6 +9,10 @@ default_unit_amount_usd: 100     # 미국 주식 (USD)
 auto_trading: true
 
 # 기본 매매 환경 (demo: 모의투자, real: 실전투자)
+# lecture-prism에서 KIS를 쓸 때 수강생이 주로 바꾸는 두 번째 설정입니다.
+# .env의 LECTURE_PROFILE/LECTURE_TRADE_MODE/LECTURE_KIS_MODE와 같은 방향이어야 합니다.
+# 예: paper 실습이면 .env는 LECTURE_TRADE_MODE=demo, 여기는 default_mode: demo.
+# 예: live 실전이면 .env와 이 파일 모두 real이어야 하며, 이중 안전 플래그도 켜야 합니다.
 default_mode: demo
 
 # 기본 상품 코드
@@ -92,3 +96,5 @@ my_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, 
 # 4. 이 파일을 kis_devlp.yaml로 복사
 # 5. 각 계좌 항목의 app_key / app_secret에 해당 계좌 전용 키 입력
 # 6. HTS ID, my_htsid 값 입력
+# 7. .env에서 paper/live 프로필과 LECTURE_KIS_MODE 값을 이 파일의 mode와 맞춤
+# 8. demo도 실제 증권사 API 요청이므로, .env의 LECTURE_ENABLE_LIVE_BROKER=1은 본인이 의도할 때만 설정

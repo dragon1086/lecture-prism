@@ -4,9 +4,9 @@
 
 ## 1. 전체 학습 지도
 
-![lecture-prism 학습 지도](assets/readme/hero-learning-map.png)
+![강의 학습 지도](assets/readme/hero-learning-map.png)
 
-lecture-prism은 “내 전략을 말한다 → 코딩 에이전트가 실행·수정한다 → 데모 모드로 검증한다 → 대시보드로 확인한다”는 흐름을 연습하는 저장소입니다.
+이 강의 저장소는 “내 전략을 말한다 → 코딩 에이전트가 실행·수정한다 → 데모 모드로 검증한다 → 보고서와 대시보드로 확인한다”는 흐름을 연습하는 공간입니다.
 
 ## 2. 처음 5분 루트
 
@@ -14,9 +14,9 @@ lecture-prism은 “내 전략을 말한다 → 코딩 에이전트가 실행·�
 
 처음에는 설치·OAuth·Git을 한꺼번에 해결하지 않습니다. 가장 먼저 확인할 것은 **API 키 없이 기본 데모가 실행되는지**입니다.
 
-## 3. 작은 PRISM 파이프라인
+## 3. 강의용 투자 파이프라인
 
-![lecture-prism 파이프라인 지도](assets/readme/pipeline-map.png)
+![강의용 투자 파이프라인 지도](assets/readme/pipeline-map.png)
 
 | 단계 | 파일 | 쉬운 비유 | 결과 |
 |---|---|---|---|
@@ -28,7 +28,13 @@ lecture-prism은 “내 전략을 말한다 → 코딩 에이전트가 실행·�
 
 LLM 연결이 없으면 mock 응답으로 동작합니다. 그래서 수업 초반에는 API 키가 없어도 전체 흐름을 먼저 볼 수 있습니다.
 
-## 4. 파일별 역할 지도
+## 4. 옵션별 전체 아키텍처
+
+![옵션별 전체 아키텍처 지도](assets/readme/runtime-architecture-map.png)
+
+`.env`의 프로필 하나가 더미 데이터, 실데이터, LLM, Perplexity/Firecrawl, 브로커 모의투자, 실전투자 잠금까지 어느 깊이로 켤지 결정합니다. 키나 패키지가 없으면 해당 부가 기능만 건너뛰고 더 안전한 단계로 폴백합니다.
+
+## 5. 파일별 역할 지도
 
 ![파일별 역할 지도](assets/readme/module-guide.png)
 
@@ -40,25 +46,25 @@ LLM 연결이 없으면 mock 응답으로 동작합니다. 그래서 수업 초�
 - 얼마나 보수적으로 운용할지 바꾸고 싶다 → `trading.py`의 리스크 상수
 - 결과를 보고 싶다 → `dashboard.py`
 
-## 5. API 키와 선택 연동
+## 6. API 키와 선택 연동
 
 ![API 키와 선택 연동 안전 지도](assets/readme/optional-integrations-safety.png)
 
 강의 기본 실습에는 필수 API 키가 없습니다. 실제 LLM은 내장 ChatGPT OAuth 프록시 또는 OpenAI API 키로 선택 연결하고, KIS API는 심화 실습에서만 다룹니다. `trading.py`는 실거래 요청을 기본 차단합니다.
 
-## 6. Strategy Harness Lite
+## 7. 전략 하네스
 
-![Strategy Harness Lite 흐름](assets/readme/strategy-harness-lite.png)
+![전략 하네스 흐름](assets/readme/strategy-harness-lite.png)
 
 수강생이 전략을 두루뭉술하게 말해도, 코딩 에이전트가 진입·분석·청산·리스크 중 어디를 바꿀지 정리하고 가장 안전한 한 파일부터 수정·검증하도록 돕습니다.
 
-## 7. 제출 전 보안 체크
+## 8. 제출 전 보안 체크
 
 ![제출 전 보안 체크](assets/readme/submission-security.png)
 
 GitHub에 올려야 하는 것은 학습 코드와 문서입니다. 실제 API 키, OAuth 토큰, KIS 설정, DB 파일, 로그 파일은 로컬에만 남겨야 합니다.
 
-## 8. PRISM 본 시스템과의 관계
+## 9. 본 시스템과의 관계
 
 lecture-prism은 PRISM 본 시스템의 축소판입니다.
 

@@ -67,6 +67,20 @@ MY_STRATEGY.md를 읽고 내 전략을 lecture-prism에 반영해줘.
 5. 데모 모드로 실행 검증한다.
 6. 마지막에 변경 파일, 검증 결과, 다음 추천을 알려준다.
 
+## API 키와 브로커 설정은 별도 트랙
+
+Strategy Harness Lite의 목표는 **내 전략을 코드 한 곳에 반영하는 것**입니다. 실데이터, Perplexity, Firecrawl, KIS 모의투자 같은 외부 연동은 전략 하네스가 직접 섞어 처리하지 않습니다.
+
+수업 이후 고급 설정까지 켜고 싶다면 먼저 [`docs/runtime-profiles.md`](runtime-profiles.md)를 보고 `.env`와 `trading/trading/config/kis_devlp.yaml`을 준비한 뒤, 코딩 에이전트에게 아래처럼 말하세요.
+
+```text
+내 전략 수정은 Strategy Harness Lite 방식으로 유지하되,
+현재 .env 런타임 프로필과 kis_devlp.yaml 설정도 함께 점검해줘.
+전략 검증은 먼저 mock/simulation에서 통과시키고,
+그 다음 내가 선택한 프로필이 real_data/research/paper/live 중 어디까지 실제로 켜지는지 설명해줘.
+실제 주문 가능성이 있으면 먼저 차단 상태인지 확인해줘.
+```
+
 ## 강사용 운영 팁
 
 - 초반에는 `MY_STRATEGY.md`를 꼭 채우게 하지 않아도 됩니다. 말로 설명하게 하고 하네스가 정리하게 하세요.

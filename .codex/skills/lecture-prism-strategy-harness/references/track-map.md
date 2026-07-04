@@ -48,3 +48,19 @@ Preserve:
 Verify:
 - 시뮬레이션 매매 실행
 - 새 상수가 수량/매수 여부에 실제 반영되는지 설명
+
+## Runtime/API settings are not strategy tracks
+
+Good for:
+- `.env` profile choice: mock, real_data, research, paper, live
+- API keys: OpenAI/OAuth, Perplexity, Firecrawl, KRX/Kakao
+- Broker config: `LECTURE_BROKER`, `LECTURE_TRADE_MODE`, `kis_devlp.yaml`
+
+Preserve:
+- Strategy harness changes must still start from mock/simulation verification.
+- Do not enable broker API calls while applying a strategy unless the user explicitly asks for paper/live setup.
+
+Verify:
+- Read `docs/runtime-profiles.md`
+- Explain which integrations are active and which ones fall back
+- Confirm real orders remain blocked unless both live broker safety flags are set
