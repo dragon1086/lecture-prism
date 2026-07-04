@@ -11,7 +11,7 @@
 - “뉴스 좋은 애만 보면 안 돼요?”
 - “몰빵은 무서워요.”
 
-Strategy Harness Lite는 이런 표현을 아래 네 트랙 중 하나로 자동 정리하도록 돕습니다.
+Strategy Harness Lite는 이런 표현을 아래 네 트랙 중 하나로 정리하도록 돕습니다.
 
 | 트랙 | 의미 | 파일 |
 |---|---|---|
@@ -69,13 +69,13 @@ MY_STRATEGY.md를 읽고 내 전략을 lecture-prism에 반영해줘.
 
 ## API 키와 브로커 설정은 별도 트랙
 
-Strategy Harness Lite의 목표는 **내 전략을 코드 한 곳에 반영하는 것**입니다. 실데이터, Perplexity, Firecrawl, KIS 모의투자 같은 외부 연동은 전략 하네스가 직접 섞어 처리하지 않습니다.
+Strategy Harness Lite의 목표는 **내 전략을 코드 한 곳에 반영하는 것**입니다. 실데이터, Perplexity, Firecrawl, KIS 모의투자 같은 외부 연결은 전략 하네스가 직접 섞어 처리하지 않습니다.
 
 수업 이후 고급 설정까지 켜고 싶다면 먼저 [`docs/runtime-profiles.md`](runtime-profiles.md)를 보고 `.env`와 `trading/trading/config/kis_devlp.yaml`을 준비한 뒤, 코딩 에이전트에게 아래처럼 말하세요.
 
 ```text
 내 전략 수정은 Strategy Harness Lite 방식으로 유지하되,
-현재 .env 런타임 프로필과 kis_devlp.yaml 설정도 함께 점검해줘.
+현재 .env 실행 단계와 kis_devlp.yaml 설정도 함께 점검해줘.
 전략 검증은 먼저 mock/simulation에서 통과시키고,
 그 다음 내가 선택한 프로필이 real_data/research/paper/live 중 어디까지 실제로 켜지는지 설명해줘.
 실제 주문 가능성이 있으면 먼저 차단 상태인지 확인해줘.
