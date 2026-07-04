@@ -29,8 +29,13 @@ from datetime import datetime, timedelta
 log = logging.getLogger(__name__)
 
 # 야후 파이낸스 심볼 접미사: 코스피 .KS / 코스닥 .KQ
-# 6자리 종목코드 → 우선 .KS, 데이터 없으면 .KQ 재시도.
+# 6자리 종목코드 → 우선 .KS, 시장 불일치/데이터 없으면 .KQ 재시도.
 _KRX_SUFFIXES = (".KS", ".KQ")
+
+# 야후 exchange 코드 ↔ 접미사 매핑 (KSC=코스피, KOE=코스닥).
+# 야후는 잘못된 접미사(예: 코스닥 종목의 .KS)도 같은 시세를 반환하지만
+# 종목명·섹터 등 메타데이터가 깨지므로, 진짜 시장의 심볼만 채택합니다.
+_EXCHANGE_BY_SUFFIX = {".KS": "KSC", ".KQ": "KOE"}
 
 # 종목별 mock 프로필 (Tier 0). 실데이터가 없어도 6섹션 리치 리포트가 나오도록
 # 기술·수급·재무·산업·뉴스 문장을 모두 담습니다. 실데이터 연동 시 이 값들이 실측치로 대체됩니다.
@@ -296,6 +301,16 @@ def _fetch_kospi_kosdaq(ticker: str) -> dict | None:
 def _fetch_symbol(yf, ticker: str, symbol: str) -> dict | None:
     t = yf.Ticker(symbol)
 
+    # 시장-접미사 일치 검증: 코스닥 종목을 .KS로 조회하면 메타데이터가 깨짐 → 다음 접미사로
+    expected = _EXCHANGE_BY_SUFFIX.get(symbol[len(ticker):])
+    try:
+        exchange = t.fast_info.get("exchange")
+    except Exception:  # noqa: BLE001 — exchange 확인 불가 시 기존 동작 유지
+        exchange = None
+    if exchange and expected and exchange != expected:
+        log.info("  %s: 시장 불일치(exchange=%s) — 다른 접미사 재시도", symbol, exchange)
+        return None
+
     hist = t.history(period="3mo")
     if hist is None or hist.empty:
         return None
@@ -338,6 +353,8 @@ def _fetch_symbol(yf, ticker: str, symbol: str) -> dict | None:
         "current_price": int(round(price)),
         "sector": info.get("sector") or "기타",
         "industry": info.get("industry") or "",
+        # 시가총액 (KRW) — screening.py --real 의 시총 필터에서 사용
+        "market_cap": info["marketCap"] if isinstance(info.get("marketCap"), (int, float)) else None,
         # 기술
         "ma5": ma5, "ma20": ma20, "rsi": rsi,
         "vol_ratio": vol_ratio, "ret_1d": ret_1d,

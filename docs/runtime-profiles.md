@@ -35,7 +35,7 @@ lecture-prism은 한 저장소 안에서 초급자용 더미 데모부터 고급
 | 값 | 선택지 | 의미 |
 |---|---|---|
 | `LECTURE_DATA_MODE` | `mock`, `auto`, `yfinance`, `kospi_kosdaq` | 분석 데이터 원천 |
-| `LECTURE_SCREENING_MODE` | `mock`, `pykrx` | 스크리닝 유니버스 원천 |
+| `LECTURE_SCREENING_MODE` | `mock`, `real` | 스크리닝 유니버스 원천 (`real` = yfinance 실데이터 필터) |
 | `LECTURE_LLM_MODE` | `mock`, `auto`, `oauth`, `openai` | LLM 호출 여부 |
 | `LECTURE_REPORT_MODE` | `lite`, `research` | 보고서 깊이 |
 | `LECTURE_RESEARCH_TOOLS` | `kospi_kosdaq,perplexity,firecrawl` | 선택 리서치 도구 |

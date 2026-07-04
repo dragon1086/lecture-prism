@@ -41,8 +41,8 @@ class MainRuntimeOptionsTest(unittest.TestCase):
 
         self.assertTrue(opts["dry_run"])
 
-    def test_screening_mode_pykrx_enables_real_screening(self):
-        os.environ["LECTURE_SCREENING_MODE"] = "pykrx"
+    def test_screening_mode_real_enables_real_screening(self):
+        os.environ["LECTURE_SCREENING_MODE"] = "real"
 
         opts = main._resolve_runtime_options(Namespace(live=False, dry_run=False, real=False))
 

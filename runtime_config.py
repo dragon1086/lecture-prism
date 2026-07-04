@@ -213,8 +213,8 @@ def load_runtime_config() -> RuntimeConfig:
     screening_mode = _normalize(
         os.getenv("LECTURE_SCREENING_MODE") or defaults["screening_mode"],
         default=defaults["screening_mode"],
-        aliases={"demo": "mock", "real": "pykrx"},
-        allowed={"mock", "pykrx"},
+        aliases={"demo": "mock", "pykrx": "real", "yfinance": "real"},
+        allowed={"mock", "real"},
     )
     llm_mode = _normalize(
         os.getenv("LECTURE_LLM_MODE") or os.getenv("PRISM_LLM_MODE") or defaults["llm_mode"],

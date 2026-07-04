@@ -16,12 +16,13 @@ from typing import Optional
 log = logging.getLogger(__name__)
 
 # ── 스크리닝 조건 (파트4 트랙A에서 수강생이 수정하는 부분) ──────────
-VOLUME_SURGE_RATIO = 5.0        # 거래량이 5일 평균의 N배 이상
+VOLUME_SURGE_RATIO = 5.0        # 거래량이 최근 평균(실데이터: 20일)의 N배 이상
 MIN_MARKET_CAP_KRW = 500_000_000_000  # 시가총액 5000억 이상
 MOMENTUM_DAYS = [5, 20]         # N일 이동평균 돌파 기준
 MAX_CANDIDATES = 3              # 최종 선정 종목 수
 
-# ── 데모용 내장 종목 유니버스 (pykrx 없이도 '필터가 실제로 작동'하도록) ──
+# ── 데모용 내장 종목 유니버스 (실데이터 없이도 '필터가 실제로 작동'하도록) ──
+# --real 모드에서는 이 유니버스의 종목들을 yfinance 실데이터로 다시 필터링합니다.
 # 강의에서 VOLUME_SURGE_RATIO를 바꾸면 통과 종목이 실제로 달라지는 걸 보여주기 위함.
 # (ticker, 거래량배수, 시가총액(KRW), 등락률%)
 _SAMPLE_UNIVERSE = [
@@ -41,7 +42,7 @@ async def run_screening(target_ticker: Optional[str] = None, use_real: bool = Fa
 
     Args:
         target_ticker: 지정 시 해당 종목만 분석 (디버그용)
-        use_real: True면 pykrx 실데이터, False면 데모 예시값 (기본).
+        use_real: True면 yfinance 실데이터, False면 데모 예시값 (기본).
                   실데이터 조회 실패 시 자동으로 데모값으로 폴백합니다.
 
     Returns:
@@ -58,17 +59,17 @@ async def run_screening(target_ticker: Optional[str] = None, use_real: bool = Fa
 
 
 async def _filter_candidates(use_real: bool = False) -> list[str]:
-    """필터링 로직. use_real=True면 pykrx 실데이터, 실패 시 데모값 폴백."""
+    """필터링 로직. use_real=True면 yfinance 실데이터, 실패 시 데모값 폴백."""
     log.info(f"  조건1: 거래량 급등 ({VOLUME_SURGE_RATIO}배 이상) 체크 중...")
     log.info(f"  조건2: 시가총액 {MIN_MARKET_CAP_KRW/1e8:.0f}억 이상 체크 중...")
     log.info(f"  조건3: {MOMENTUM_DAYS}일 이동평균 돌파 체크 중...")
 
     if use_real:
-        real = await _filter_with_pykrx()
+        real = await _filter_with_real_data()
         if real:
             log.info(f"  → 선정(실데이터): {real}")
             return real[:MAX_CANDIDATES]
-        log.warning("  pykrx 실데이터 조회 실패 — 데모 유니버스로 폴백합니다.")
+        log.warning("  실데이터 스크리닝 결과 없음/실패 — 데모 유니버스로 폴백합니다.")
 
     # 데모 유니버스에 실제 필터 적용 (조건을 바꾸면 결과가 진짜로 달라짐)
     passed = [
@@ -85,44 +86,58 @@ async def _filter_candidates(use_real: bool = False) -> list[str]:
     return result
 
 
-async def _filter_with_pykrx() -> list[str]:
+async def _filter_with_real_data() -> list[str]:
     """
-    pykrx 벌크 조회 기반 실제 스크리닝.
+    yfinance 실데이터 기반 스크리닝 (data_source.fetch_stock_data 재사용).
 
-    전종목을 1~2회 호출로 가져와(루프 없이) 빠르게 필터링:
-      1. 시가총액 ≥ MIN_MARKET_CAP_KRW
-      2. 당일 거래대금 상위 + 상승 종목
-    PRISM 본 시스템(trigger_batch.py)의 거래량 급증 로직을 강의용으로 단순화한 버전.
+    KRX 전종목 벌크 조회(시가총액·거래대금)는 KRX가 로그인을 요구해
+    무료·무로그인으로는 불가능합니다(pykrx 벌크 API 포함). 그래서
+    데모 유니버스 종목들에 대해 '같은 필터'를 실데이터 지표로 계산합니다:
+      1. 거래량 급등: 당일 거래량 / 20일 평균 ≥ VOLUME_SURGE_RATIO
+      2. 시가총액  : market_cap ≥ MIN_MARKET_CAP_KRW
+      3. 모멘텀    : 현재가가 5·20일 이동평균 위 + 당일 상승
+
+    조건이 실데이터 기준으로 너무 엄격하면(예: 거래량 5배 급등은 드묾)
+    통과 종목이 0개일 수 있고, 그 경우 데모 유니버스로 폴백합니다.
+    VOLUME_SURGE_RATIO를 낮춰 보면 실데이터에서도 결과가 달라집니다.
     """
-    try:
-        from pykrx import stock
-    except ImportError:
-        log.warning("  pykrx 미설치 (pip install pykrx) — 데모값 사용")
-        return []
-
     def _query() -> list[str]:
-        from datetime import datetime
-        today = datetime.now().strftime("%Y%m%d")
+        from data_source import fetch_stock_data
 
-        # 벌크 1회 호출: 전종목 시가총액
-        cap = stock.get_market_cap_by_ticker(today, market="ALL")
-        if cap is None or cap.empty:
-            return []
-        # 시총 필터
-        cap = cap[cap["시가총액"] >= MIN_MARKET_CAP_KRW]
+        scored: list[tuple[str, float]] = []
+        for ticker, *_ in _SAMPLE_UNIVERSE:
+            data = fetch_stock_data(ticker)
+            if data.get("source") == "mock":  # 실데이터(yfinance/kospi_kosdaq)만 필터 대상
+                log.info(f"  [{ticker}] 실데이터 없음 — 스크리닝에서 제외")
+                continue
 
-        # 벌크 1회 호출: 전종목 당일 OHLCV (등락률·거래대금)
-        ohlcv = stock.get_market_ohlcv_by_ticker(today, market="ALL")
-        if ohlcv is None or ohlcv.empty:
-            return []
+            price = data.get("current_price")
+            vol_ratio = data.get("vol_ratio")
+            market_cap = data.get("market_cap")
+            ret_1d = data.get("ret_1d") or 0.0
+            ma5, ma20 = data.get("ma5"), data.get("ma20")
 
-        merged = ohlcv.join(cap[["시가총액"]], how="inner")
-        # 상승 종목만 + 거래대금 상위 정렬
-        merged = merged[merged["등락률"] > 0].sort_values("거래대금", ascending=False)
-        return merged.index.tolist()[:MAX_CANDIDATES]
+            # 값이 없는 지표는 탈락 사유로 삼지 않음 (데이터 결측 ≠ 조건 미달)
+            if vol_ratio is not None and vol_ratio < VOLUME_SURGE_RATIO:
+                continue
+            if market_cap is not None and market_cap < MIN_MARKET_CAP_KRW:
+                continue
+            if any(ma is not None and price < ma for ma in (ma5, ma20)):
+                continue
+            if ret_1d <= 0:
+                continue
+            scored.append((ticker, ret_1d))
 
-    # pykrx는 동기 라이브러리 → 이벤트 루프 블로킹 방지 위해 별도 스레드에서 실행
-    return await asyncio.to_thread(_query)
+        # 등락률 높은 순 상위 N개 (데모 경로와 동일한 정렬 기준)
+        scored.sort(key=lambda x: x[1], reverse=True)
+        return [ticker for ticker, _ in scored[:MAX_CANDIDATES]]
+
+    # yfinance는 동기 라이브러리 → 이벤트 루프 블로킹 방지 위해 별도 스레드에서 실행
+    try:
+        return await asyncio.to_thread(_query)
+    except Exception as e:  # noqa: BLE001 — 실데이터 실패는 어떤 경우든 데모로 폴백
+        log.warning(f"  실데이터 스크리닝 오류({type(e).__name__}: {e}) — 데모값 사용")
+        return []
 
 
 if __name__ == "__main__":
@@ -132,7 +147,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--ticker", type=str)
-    parser.add_argument("--real", action="store_true", help="pykrx 실데이터 사용 (기본: 데모값)")
+    parser.add_argument("--real", action="store_true", help="yfinance 실데이터 사용 (기본: 데모값)")
     args = parser.parse_args()
 
     result = asyncio.run(run_screening(target_ticker=args.ticker, use_real=args.real))

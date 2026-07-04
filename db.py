@@ -13,6 +13,9 @@ feedback.py가 매매·분석·교훈을 여기에 기록하면 dashboard.py가 
 dashboard.py와 feedback.py 모두 여기서 init_db()를 호출합니다.
 """
 
+from __future__ import annotations
+
+import json
 import sqlite3
 from contextlib import contextmanager
 from datetime import datetime
@@ -39,7 +42,8 @@ CREATE TABLE IF NOT EXISTS analysis_decisions (
     recommendation TEXT NOT NULL,    -- BUY / HOLD / PASS
     score INTEGER,
     reason TEXT,
-    risk TEXT
+    risk TEXT,
+    sections TEXT                    -- 6섹션 요약 JSON (기술/수급/재무/산업/뉴스/시장)
 );
 
 CREATE TABLE IF NOT EXISTS feedback_lessons (
@@ -69,6 +73,11 @@ def init_db() -> None:
     """테이블 생성 (없을 때만). 멱등 — 여러 번 호출해도 안전."""
     with _connect() as conn:
         conn.executescript(_SCHEMA)
+        # 구버전 DB 마이그레이션: sections 컬럼이 없으면 추가
+        try:
+            conn.execute("ALTER TABLE analysis_decisions ADD COLUMN sections TEXT")
+        except sqlite3.OperationalError:
+            pass  # 이미 존재
 
 
 def _now() -> str:
@@ -77,13 +86,24 @@ def _now() -> str:
 
 # ── 쓰기 (feedback.py / 파이프라인에서 호출) ──────────────────────────────────
 
+# analysis.py 6섹션 요약 키 (dashboard.py가 같은 키로 렌더링)
+_SECTION_KEYS = ("technical_summary", "supply_summary", "financial_summary",
+                 "industry_summary", "news_summary", "market_condition")
+
+
+def _pack_sections(analysis: dict) -> str | None:
+    """6섹션 요약을 JSON 문자열로 (있는 것만). 없으면 None."""
+    sections = {k: analysis[k] for k in _SECTION_KEYS if analysis.get(k)}
+    return json.dumps(sections, ensure_ascii=False) if sections else None
+
+
 def save_analysis(analysis: dict) -> None:
     """분석 결과 1건 저장."""
     init_db()
     with _connect() as conn:
         conn.execute(
-            "INSERT INTO analysis_decisions (timestamp, ticker, recommendation, score, reason, risk) "
-            "VALUES (?,?,?,?,?,?)",
+            "INSERT INTO analysis_decisions (timestamp, ticker, recommendation, score, reason, risk, sections) "
+            "VALUES (?,?,?,?,?,?,?)",
             (
                 _now(),
                 analysis.get("ticker", ""),
@@ -91,6 +111,7 @@ def save_analysis(analysis: dict) -> None:
                 int(analysis.get("buy_score", analysis.get("score", 0)) or 0),  # 0~10점
                 analysis.get("rationale") or analysis.get("reason", ""),
                 analysis.get("risk", ""),
+                _pack_sections(analysis),
             ),
         )
 

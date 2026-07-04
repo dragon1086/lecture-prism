@@ -83,7 +83,7 @@ def _resolve_runtime_options(args) -> dict:
             explicit_dry_run=bool(getattr(args, "dry_run", False)),
             config=cfg,
         ),
-        "use_real_data": bool(getattr(args, "real", False) or cfg.screening_mode == "pykrx"),
+        "use_real_data": bool(getattr(args, "real", False) or cfg.screening_mode == "real"),
     }
 
 
@@ -161,7 +161,7 @@ if __name__ == "__main__":
     parser.add_argument("--dry-run", action="store_true", help="시뮬레이션 모드로 강제 실행")
     parser.add_argument("--live", action="store_true", help="실거래 모드 (KIS API 필요)")
     parser.add_argument("--ticker", type=str, help="특정 종목 코드 (예: 005930)")
-    parser.add_argument("--real", action="store_true", help="스크리닝에 pykrx 실데이터 사용 (기본: 데모값)")
+    parser.add_argument("--real", action="store_true", help="스크리닝에 yfinance 실데이터 사용 (기본: 데모값)")
     args = parser.parse_args()
 
     options = _resolve_runtime_options(args)
