@@ -21,10 +21,6 @@ _ENV_KEYS = {
     "PRISM_OPENAI_AUTH_MODE",
     "FIRECRAWL_API_KEY",
     "PERPLEXITY_API_KEY",
-    "KRX_ID",
-    "KRX_PW",
-    "KAKAO_ID",
-    "KAKAO_PW",
 }
 
 
@@ -56,8 +52,6 @@ class RuntimeConfigTest(unittest.TestCase):
         os.environ["LECTURE_PROFILE"] = "research"
         os.environ["FIRECRAWL_API_KEY"] = "fc-test"
         os.environ["PERPLEXITY_API_KEY"] = "pplx-test"
-        os.environ["KRX_ID"] = "student"
-        os.environ["KRX_PW"] = "secret"
 
         cfg = runtime_config.load_runtime_config()
 
@@ -65,8 +59,7 @@ class RuntimeConfigTest(unittest.TestCase):
         self.assertEqual(cfg.data_mode, "auto")
         self.assertEqual(cfg.report_mode, "research")
         self.assertEqual(cfg.trade_mode, "simulation")
-        self.assertEqual(cfg.research_tools, ("kospi_kosdaq", "perplexity", "firecrawl"))
-        self.assertTrue(cfg.tool_ready["kospi_kosdaq"])
+        self.assertEqual(cfg.research_tools, ("perplexity", "firecrawl"))
         self.assertTrue(cfg.tool_ready["perplexity"])
         self.assertTrue(cfg.tool_ready["firecrawl"])
         self.assertTrue(runtime_config.resolve_trade_dry_run(False, False, cfg))
