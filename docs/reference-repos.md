@@ -14,4 +14,4 @@
 | 한국투자증권 | [open-trading-api](https://github.com/koreainvestment/open-trading-api) | KIS 공식 Open Trading API 샘플과 실전/모의투자 구조 |
 | 에이전트 설계 | [Anthropic — Building effective agents](https://anthropic.com/research/building-effective-agents) | Prompt Chaining, Routing, Parallelization 같은 에이전트 패턴 |
 
-주의: 참고 저장소의 코드를 그대로 복붙하기보다, lecture-prism에서는 `brokers/` 어댑터 구조와 데모 모드 안전장치를 유지한 채 필요한 아이디어만 가져오는 것을 권장합니다.
+주의: 참고 저장소의 코드를 그대로 복사해 붙이기보다, lecture-prism에서는 `brokers/` 어댑터 구조와 데모 모드 안전장치를 유지한 채 필요한 아이디어만 가져오는 것을 권장합니다.
