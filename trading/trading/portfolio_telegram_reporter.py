@@ -76,7 +76,7 @@ class PortfolioTelegramReporter:
     US_START_DATE = "2026.01.20"
     US_START_AMOUNT = 10_000  # Starting capital in USD
 
-    def __init__(self, telegram_token: str = None, chat_id: str = None, trading_mode: str = None, broadcast_languages: list = None):
+    def __init__(self, telegram_token: str = None, chat_id: str = None, trading_mode: str = None):
         """
         Initialize
 
@@ -84,13 +84,10 @@ class PortfolioTelegramReporter:
             telegram_token: Telegram bot token
             chat_id: Telegram channel ID
             trading_mode: Trading mode ('demo' or 'real', uses yaml config if None)
-            broadcast_languages: List of languages to broadcast in parallel (e.g., ['en', 'ja', 'zh'])
         """
         # Telegram configuration
         self.telegram_token = telegram_token or os.environ.get("TELEGRAM_BOT_TOKEN")
         self.chat_id = chat_id or os.environ.get("TELEGRAM_CHANNEL_ID")
-        self.broadcast_languages = broadcast_languages or []
-        self.broadcast_channel_ids = {}
 
         if not self.telegram_token:
             raise ValueError("Telegram bot token is required. Please provide via environment variable TELEGRAM_BOT_TOKEN or parameter.")
@@ -98,30 +95,12 @@ class PortfolioTelegramReporter:
         if not self.chat_id:
             raise ValueError("Telegram channel ID is required. Please provide via environment variable TELEGRAM_CHANNEL_ID or parameter.")
 
-        # Load broadcast channel IDs
-        self._load_broadcast_channels()
-
         # Trading configuration - use yaml default_mode as default value
         self.trading_mode = trading_mode if trading_mode is not None else _cfg["default_mode"]
         self.telegram_bot = TelegramBotAgent(token=self.telegram_token)
 
         logger.info("PortfolioTelegramReporter initialized")
         logger.info(f"Trading mode: {self.trading_mode} (yaml config: {_cfg['default_mode']})")
-
-    def _load_broadcast_channels(self):
-        """
-        Load telegram channel IDs for broadcast languages
-        """
-        for lang in self.broadcast_languages:
-            lang_upper = lang.upper()
-            env_key = f"TELEGRAM_CHANNEL_ID_{lang_upper}"
-            channel_id = os.getenv(env_key)
-
-            if channel_id:
-                self.broadcast_channel_ids[lang] = channel_id
-                logger.info(f"Broadcast channel loaded: {lang} -> {channel_id[:10]}...")
-            else:
-                logger.warning(f"Broadcast channel ID not configured for language: {lang} (env var: {env_key})")
 
     def format_currency(self, amount: float, currency: str = "KRW") -> str:
         """Format amount in specified currency"""
@@ -415,7 +394,6 @@ class PortfolioTelegramReporter:
             )
 
             logger.info("Sending telegram message...")
-            # Send to main channel
             success = await self.telegram_bot.send_message(self.chat_id, message)
 
             if success:
@@ -423,68 +401,11 @@ class PortfolioTelegramReporter:
             else:
                 logger.error("Failed to send portfolio report!")
 
-            # Send to broadcast channels and await completion before returning
-            if self.broadcast_languages:
-                try:
-                    await self._send_translated_portfolio_report(message)
-                except Exception as e:
-                    logger.error(f"Broadcast portfolio report failed: {e}")
-
             return success
 
         except Exception as e:
             logger.error(f"Error sending portfolio report: {str(e)}")
             return False
-
-    async def _send_translated_portfolio_report(self, original_message: str):
-        """
-        Send translated portfolio report to additional language channels
-
-        Args:
-            original_message: Original Korean message
-        """
-        try:
-            import sys
-            from pathlib import Path
-
-            # Add cores directory to path for importing translator agent
-            cores_path = Path(__file__).parent.parent / "cores"
-            if str(cores_path) not in sys.path:
-                sys.path.insert(0, str(cores_path))
-
-            from agents.telegram_translator_agent import translate_telegram_message
-
-            for lang in self.broadcast_languages:
-                try:
-                    # Get channel ID for this language
-                    channel_id = self.broadcast_channel_ids.get(lang)
-                    if not channel_id:
-                        logger.warning(f"No channel ID configured for language: {lang}")
-                        continue
-
-                    logger.info(f"Translating portfolio report to {lang}")
-
-                    # Translate message
-                    translated_message = await translate_telegram_message(
-                        original_message,
-                        model="gpt-5.4-nano",
-                        from_lang="ko",
-                        to_lang=lang
-                    )
-
-                    # Send translated message
-                    success = await self.telegram_bot.send_message(channel_id, translated_message)
-
-                    if success:
-                        logger.info(f"Portfolio report sent successfully to {lang} channel")
-                    else:
-                        logger.error(f"Failed to send portfolio report to {lang} channel")
-
-                except Exception as e:
-                    logger.error(f"Error sending portfolio report to {lang}: {str(e)}")
-
-        except Exception as e:
-            logger.error(f"Error in _send_translated_portfolio_report: {str(e)}")
 
     async def send_simple_status(self, status_type: str = "morning") -> bool:
         """
@@ -571,21 +492,15 @@ async def main():
                        default="full", help="Report type")
     parser.add_argument("--token", help="Telegram bot token")
     parser.add_argument("--chat-id", help="Telegram channel ID")
-    parser.add_argument("--broadcast-languages", type=str, default="",
-                       help="Additional languages for parallel telegram channel broadcasting (comma-separated, e.g., 'en,ja,zh')")
 
     args = parser.parse_args()
-
-    # Parse broadcast languages
-    broadcast_languages = [lang.strip() for lang in args.broadcast_languages.split(",") if lang.strip()]
 
     try:
         # Initialize reporter (uses yaml config if mode is None)
         reporter = PortfolioTelegramReporter(
             telegram_token=args.token,
             chat_id=args.chat_id,
-            trading_mode=args.mode,  # Uses yaml's default_mode if None
-            broadcast_languages=broadcast_languages
+            trading_mode=args.mode  # Uses yaml's default_mode if None
         )
 
         # Execute based on report type

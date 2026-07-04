@@ -1,5 +1,7 @@
 # lecture-prism Harness Track Map
 
+> 전략이 여러 트랙에 걸치면 한 번에 다 수정하지 말 것. 순서를 제안하고 [한 트랙 수정 → 데모 검증 → 전후 비교] 사이클을 트랙별로 반복한다.
+
 ## Track A — screening.py
 
 Good for:
@@ -19,7 +21,7 @@ Good for:
 
 Preserve:
 - `run_analysis(ticker: str) -> dict`
-- 반환 dict keys: ticker, recommendation, score, reason, risk, technical_summary, news_summary
+- 반환 dict keys 유지: ticker, recommendation, decision, buy_score(0~10), rationale, risk, target_price, stop_loss + 6섹션 요약(technical/supply/financial/industry/news_summary, market_condition)
 
 Verify:
 - analysis 단독 실행
@@ -53,7 +55,7 @@ Verify:
 
 Good for:
 - `.env` profile choice: mock, real_data, research, paper, live
-- API keys: OpenAI/OAuth, Perplexity, Firecrawl, KRX/Kakao
+- API keys: OpenAI/OAuth, Perplexity, Firecrawl
 - Broker config: `LECTURE_BROKER`, `LECTURE_TRADE_MODE`, `kis_devlp.yaml`
 
 Preserve:

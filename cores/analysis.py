@@ -31,7 +31,7 @@ from cores.utils import clean_markdown
 # Market analysis cache storage (global variable)
 _market_analysis_cache = {}
 
-async def analyze_stock(company_code: str = "000660", company_name: str = "SK하이닉스", reference_date: str = None, language: str = "ko", macro_context: dict = None):
+async def analyze_stock(company_code: str = "000660", company_name: str = "SK하이닉스", reference_date: str = None, macro_context: dict = None):
     """
     Generate comprehensive stock analysis report
 
@@ -39,7 +39,6 @@ async def analyze_stock(company_code: str = "000660", company_name: str = "SK하
         company_code: Stock code
         company_name: Company name
         reference_date: Analysis reference date (YYYYMMDD format)
-        language: Language code ("ko" or "en")
 
     Returns:
         str: Generated final report markdown text
@@ -75,7 +74,7 @@ async def analyze_stock(company_code: str = "000660", company_name: str = "SK하
             prefetched = {}
 
         # 5. Get agents (with prefetched data)
-        agents = get_agent_directory(company_name, company_code, reference_date, base_sections, language, prefetched_data=prefetched)
+        agents = get_agent_directory(company_name, company_code, reference_date, base_sections, prefetched_data=prefetched)
 
         # 6. Execute base analysis
         # Parallel processing option: Activated when PRISM_PARALLEL_REPORT=true is set in .env file
@@ -107,11 +106,11 @@ async def analyze_stock(company_code: str = "000660", company_name: str = "SK하
                                 return section, _market_analysis_cache["report"]
                             else:
                                 section_logger.info("Generating new market analysis")
-                                report = await generate_market_report(agent, section, reference_date, section_logger, language)
+                                report = await generate_market_report(agent, section, reference_date, section_logger)
                                 _market_analysis_cache["report"] = report
                                 return section, report
                         else:
-                            report = await generate_report(agent, section, company_name, company_code, reference_date, section_logger, language)
+                            report = await generate_report(agent, section, company_name, company_code, reference_date, section_logger)
                             return section, report
                     except Exception as e:
                         section_logger.error(f"Final failure processing {section}: {e}")
@@ -138,11 +137,11 @@ async def analyze_stock(company_code: str = "000660", company_name: str = "SK하
                                 report = _market_analysis_cache["report"]
                             else:
                                 logger.info("Generating new market analysis")
-                                report = await generate_market_report(agent, section, reference_date, logger, language)
+                                report = await generate_market_report(agent, section, reference_date, logger)
                                 # Save to cache
                                 _market_analysis_cache["report"] = report
                         else:
-                            report = await generate_report(agent, section, company_name, company_code, reference_date, logger, language)
+                            report = await generate_report(agent, section, company_name, company_code, reference_date, logger)
                         section_reports[section] = report
                     except Exception as e:
                         logger.error(f"Final failure processing {section}: {e}")
@@ -160,7 +159,7 @@ async def analyze_stock(company_code: str = "000660", company_name: str = "SK하
             logger.info(f"Processing investment_strategy for {company_name}...")
 
             investment_strategy = await generate_investment_strategy(
-                section_reports, combined_reports, company_name, company_code, reference_date, logger, language
+                section_reports, combined_reports, company_name, company_code, reference_date, logger
             )
             section_reports["investment_strategy"] = investment_strategy.lstrip('\n')
             logger.info(f"Completed investment_strategy - {len(investment_strategy)} characters")
@@ -178,7 +177,7 @@ async def analyze_stock(company_code: str = "000660", company_name: str = "SK하
         # 9. Generate summary
         try:
             executive_summary = await generate_summary(
-                section_reports, company_name, company_code, reference_date, logger, language
+                section_reports, company_name, company_code, reference_date, logger
             )
             # Remove duplicate title/date if the agent added them
             import re
@@ -202,7 +201,7 @@ async def analyze_stock(company_code: str = "000660", company_name: str = "SK하
             executive_summary = executive_summary.lstrip('\n')
         except Exception as e:
             logger.error(f"Error generating executive summary: {e}")
-            executive_summary = "## 핵심 요약\n\n요약 생성 중 오류가 발생했습니다." if language == "ko" else "## Executive Summary\n\nProblem occurred while generating analysis summary."
+            executive_summary = "## 핵심 요약\n\n요약 생성 중 오류가 발생했습니다."
 
         # 10. Generate charts
         charts_dir = os.path.join("../charts", f"{company_code}_{reference_date}")
@@ -311,7 +310,7 @@ async def analyze_stock(company_code: str = "000660", company_name: str = "SK하
                     # NOT the buy gate (that remains the S5/TODO below).
                     if vision_in_report():
                         vision_pattern_md = format_vision_pattern_md(
-                            _bq_analysis, language
+                            _bq_analysis
                         )
                     # TODO(S5/LIVE): when not vision_shadow(), inject
                     # _bq_verdict into the entry matrix (Step 2 of the
@@ -344,69 +343,42 @@ async def analyze_stock(company_code: str = "000660", company_name: str = "SK하
                 lagging = macro_context.get("lagging_sectors", [])
                 risks = macro_context.get("risk_events", [])
 
-                if language == "ko":
-                    regime_labels = {
-                        "parabolic": "폭주 강세장",
-                        "strong_bull": "강한 강세장", "moderate_bull": "보통 강세장",
-                        "sideways": "횡보장", "moderate_bear": "보통 약세장", "strong_bear": "강한 약세장"
-                    }
-                    macro_section += "### 거시경제 환경\n\n"
-                    macro_section += f"**시장 체제**: {regime_labels.get(regime, regime)}\n\n"
-                    if regime_rationale:
-                        macro_section += f"**판단 근거**: {regime_rationale}\n\n"
-                    if leading:
-                        sectors_str = ", ".join([s.get("sector", "") for s in leading[:3]])
-                        macro_section += f"**주도 섹터**: {sectors_str}\n\n"
-                    if lagging:
-                        sectors_str = ", ".join([s.get("sector", "") for s in lagging[:3]])
-                        macro_section += f"**소외 섹터**: {sectors_str}\n\n"
-                    if risks:
-                        for r in risks[:3]:
-                            macro_section += f"- ⚠️ {r.get('event', '')} (영향: {r.get('severity', 'medium')})\n"
-                        macro_section += "\n"
-                else:
-                    macro_section += "### Macroeconomic Environment\n\n"
-                    macro_section += f"**Market Regime**: {regime.replace('_', ' ').title()}\n\n"
-                    if regime_rationale:
-                        macro_section += f"**Rationale**: {regime_rationale}\n\n"
-                    if leading:
-                        sectors_str = ", ".join([s.get("sector", "") for s in leading[:3]])
-                        macro_section += f"**Leading Sectors**: {sectors_str}\n\n"
-                    if lagging:
-                        sectors_str = ", ".join([s.get("sector", "") for s in lagging[:3]])
-                        macro_section += f"**Lagging Sectors**: {sectors_str}\n\n"
-                    if risks:
-                        for r in risks[:3]:
-                            macro_section += f"- ⚠️ {r.get('event', '')} (Severity: {r.get('severity', 'medium')})\n"
-                        macro_section += "\n"
+                regime_labels = {
+                    "parabolic": "폭주 강세장",
+                    "strong_bull": "강한 강세장", "moderate_bull": "보통 강세장",
+                    "sideways": "횡보장", "moderate_bear": "보통 약세장", "strong_bear": "강한 약세장"
+                }
+                macro_section += "### 거시경제 환경\n\n"
+                macro_section += f"**시장 체제**: {regime_labels.get(regime, regime)}\n\n"
+                if regime_rationale:
+                    macro_section += f"**판단 근거**: {regime_rationale}\n\n"
+                if leading:
+                    sectors_str = ", ".join([s.get("sector", "") for s in leading[:3]])
+                    macro_section += f"**주도 섹터**: {sectors_str}\n\n"
+                if lagging:
+                    sectors_str = ", ".join([s.get("sector", "") for s in lagging[:3]])
+                    macro_section += f"**소외 섹터**: {sectors_str}\n\n"
+                if risks:
+                    for r in risks[:3]:
+                        macro_section += f"- ⚠️ {r.get('event', '')} (영향: {r.get('severity', 'medium')})\n"
+                    macro_section += "\n"
 
         # 12. Compose final report with proper heading hierarchy
-        disclaimer = get_disclaimer(language)
+        disclaimer = get_disclaimer()
 
         # Format reference date for display
         formatted_date = f"{reference_date[:4]}.{reference_date[4:6]}.{reference_date[6:]}"
 
-        # Define main section headers by language
-        if language == "ko":
-            main_headers = {
-                "title": f"# {company_name} ({company_code}) 분석 보고서",
-                "pub_date": "발행일",
-                "tech_analysis": "## 1. 기술적 분석\n\n",
-                "fundamental": "## 2. 펀더멘털 분석\n\n",
-                "news": "## 3. 뉴스 분석\n\n",
-                "market": "## 4. 시장 분석\n\n",
-                "strategy": "## 5. 투자 전략\n\n"
-            }
-        else:
-            main_headers = {
-                "title": f"# {company_name} ({company_code}) Analysis Report",
-                "pub_date": "Publication Date",
-                "tech_analysis": "## 1. Technical Analysis\n\n",
-                "fundamental": "## 2. Fundamental Analysis\n\n",
-                "news": "## 3. News Analysis\n\n",
-                "market": "## 4. Market Analysis\n\n",
-                "strategy": "## 5. Investment Strategy\n\n"
-            }
+        # Define main section headers
+        main_headers = {
+            "title": f"# {company_name} ({company_code}) 분석 보고서",
+            "pub_date": "발행일",
+            "tech_analysis": "## 1. 기술적 분석\n\n",
+            "fundamental": "## 2. 펀더멘털 분석\n\n",
+            "news": "## 3. 뉴스 분석\n\n",
+            "market": "## 4. 시장 분석\n\n",
+            "strategy": "## 5. 투자 전략\n\n"
+        }
 
         # Build final report with title first (disclaimer at the end like US version)
         final_report = f"""{main_headers["title"]}
@@ -432,13 +404,13 @@ async def analyze_stock(company_code: str = "000660", company_name: str = "SK하
                     final_report += vision_pattern_md
                 # Add price and volume charts
                 if price_chart_html or volume_chart_html:
-                    chart_title = "### 가격 및 거래량 차트\n\n" if language == "ko" else "### Price and Volume Charts\n\n"
+                    chart_title = "### 가격 및 거래량 차트\n\n"
                     final_report += chart_title
                     if price_chart_html:
-                        chart_subtitle = "#### 가격 차트\n\n" if language == "ko" else "#### Price Chart\n\n"
+                        chart_subtitle = "#### 가격 차트\n\n"
                         final_report += chart_subtitle + price_chart_html + "\n\n"
                     if volume_chart_html:
-                        chart_subtitle = "#### 거래량 차트\n\n" if language == "ko" else "#### Trading Volume Chart\n\n"
+                        chart_subtitle = "#### 거래량 차트\n\n"
                         final_report += chart_subtitle + volume_chart_html + "\n\n"
             if "investor_trading_analysis" in section_reports:
                 final_report += section_reports["investor_trading_analysis"] + "\n\n"
@@ -450,13 +422,13 @@ async def analyze_stock(company_code: str = "000660", company_name: str = "SK하
                 final_report += section_reports["company_status"] + "\n\n"
                 # Add market cap and fundamental indicator charts
                 if market_cap_chart_html or fundamentals_chart_html:
-                    chart_title = "### 시가총액 및 펀더멘털 차트\n\n" if language == "ko" else "### Market Cap and Fundamental Charts\n\n"
+                    chart_title = "### 시가총액 및 펀더멘털 차트\n\n"
                     final_report += chart_title
                     if market_cap_chart_html:
-                        chart_subtitle = "#### 시가총액 추이\n\n" if language == "ko" else "#### Market Cap Trend\n\n"
+                        chart_subtitle = "#### 시가총액 추이\n\n"
                         final_report += chart_subtitle + market_cap_chart_html + "\n\n"
                     if fundamentals_chart_html:
-                        chart_subtitle = "#### 펀더멘털 지표 분석\n\n" if language == "ko" else "#### Fundamental Indicator Analysis\n\n"
+                        chart_subtitle = "#### 펀더멘털 지표 분석\n\n"
                         final_report += chart_subtitle + fundamentals_chart_html + "\n\n"
             if "company_overview" in section_reports:
                 final_report += section_reports["company_overview"] + "\n\n"
@@ -471,7 +443,7 @@ async def analyze_stock(company_code: str = "000660", company_name: str = "SK하
             final_report += main_headers["market"]
             final_report += section_reports["market_index_analysis"] + "\n\n"
             if macro_section:
-                macro_header = "### 거시경제 환경\n\n" if language == "ko" else "### Macroeconomic Environment\n\n"
+                macro_header = "### 거시경제 환경\n\n"
                 final_report += macro_header + macro_section
 
         # Investment Strategy section

@@ -18,6 +18,23 @@
 4. **새 필수 의존성 추가 금지.** 데모 경로는 표준 라이브러리로만 동작해야 합니다. 외부 패키지는 전부 "선택 연동"(`requirements.txt`)입니다.
 5. **시크릿을 커밋 대상으로 만들지 말 것.** `.env`, `*.secrets.yaml`, KIS 인증 파일, `prism.db`는 모두 `.gitignore`로 제외됩니다. `tasks/`, `.omc/`, `.omx/`도 로컬 운영용이라 커밋하지 않습니다.
 
+## 보안 / Git 히스토리 절대 금지
+
+이 저장소는 공개 강의용 레포를 전제로 합니다. 아래 파일과 값은 **현재 커밋뿐 아니라 Git 히스토리에도 절대 남기지 마세요.**
+
+- API 키와 토큰: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `PERPLEXITY_API_KEY`, `FIRECRAWL_API_KEY`, KIS/키움/토스 App Key·Secret·Access Token·Refresh Token.
+- 로컬 설정 파일: `.env`, `.env.*`, `*.secrets.yaml`, `mcp_agent.secrets.yaml`.
+- 증권사 인증/계좌 파일: `trading/trading/config/kis_devlp.yaml`, `kis_devlp.yaml`, 계좌번호·HTS ID·상품코드가 들어간 모든 파일.
+- 실행 산출물과 개인 데이터: `prism.db`, `reports/`, `*.log`, 대시보드 캡처, 개인 분석 보고서.
+
+작업 규칙:
+
+- 커밋 전에는 반드시 `git status --short`와 `git diff --cached --name-only`로 포함 파일을 확인하세요.
+- 민감정보가 보이면 커밋하지 말고, 먼저 `.gitignore` 보강 또는 파일 제외부터 처리하세요.
+- 이미 스테이징했다면 `git restore --staged <파일>`로 빼고 다시 확인하세요.
+- 한 번이라도 커밋에 들어간 키·토큰은 노출된 것으로 보고 즉시 폐기/재발급해야 합니다. 단순히 다음 커밋에서 삭제하는 것으로는 충분하지 않습니다.
+- 히스토리에서 비밀값을 지우는 작업(`filter-repo`, 강제 push 등)은 파괴적이므로 사용자의 명시 지시 없이 하지 마세요.
+
 ## 파이프라인 구조 (루트의 교육용 코드)
 
 4단계 파이프라인 + 확인 화면. `main.py`가 오케스트레이터입니다.

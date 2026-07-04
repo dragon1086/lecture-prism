@@ -20,7 +20,7 @@ lecture-prism은 **API 키 없이도 기본 데모가 바로 실행**되도록 �
 | 목표 | `.env` 추천값 | 필요한 키 |
 |---|---|---|
 | 키 없이 전체 흐름 확인 | `LECTURE_PROFILE=mock` | 없음 |
-| 실제 가격·거래량만 사용 | `LECTURE_PROFILE=real_data` | 보통 없음. 일부 확장은 KRX/Kakao 로그인 |
+| 실제 가격·거래량만 사용 | `LECTURE_PROFILE=real_data` | 없음 (yfinance는 무료·무키) |
 | 최신 뉴스·시장 리서치 보강 | `LECTURE_PROFILE=research` | OpenAI 또는 ChatGPT OAuth, 선택으로 Perplexity/Firecrawl |
 | 증권사 모의투자 주문 경로 | `LECTURE_PROFILE=paper` | 브로커 demo 키, KIS라면 `kis_devlp.yaml` |
 | 실전투자 | `LECTURE_PROFILE=live` | 브로커 real 키, 이중 안전 플래그 |
@@ -79,20 +79,7 @@ lecture-prism에서 기본 KIS 브리지 옆에 내가 준비한 증권사 API �
 5. 공식 문서에 없는 엔드포인트와 필드는 추측하지 마.
 ```
 
-## 6. PRISM 본 시스템급 확장
-
-원본 PRISM-INSIGHT의 MCP·리서치 기능까지 넓히려면 아래 키가 선택적으로 필요할 수 있습니다.
-
-| 키 | 용도 |
-|---|---|
-| `FIRECRAWL_API_KEY` | 웹 페이지 수집 |
-| `PERPLEXITY_API_KEY` | 뉴스·시장 리서치 |
-| `ANTHROPIC_API_KEY` | Claude 기반 에이전트 실험 |
-| KRX/Kakao 로그인 정보 | KRX MCP 서버를 직접 사용할 때 |
-
-이 키들은 lecture-prism 기본 수업에는 필요하지 않습니다.
-
-## 7. 보안 원칙
+## 6. 보안 원칙
 
 - 실제 키·토큰·계좌 설정 파일은 절대 GitHub에 올리지 않습니다.
 - `trading/trading/config/kis_devlp.yaml`은 실제 인증 파일이므로 커밋 금지입니다.

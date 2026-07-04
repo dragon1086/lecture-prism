@@ -1,7 +1,7 @@
 from mcp_agent.agents.agent import Agent
 
 
-def create_macro_intelligence_agent(reference_date, language="ko", prefetched_data: dict = None):
+def create_macro_intelligence_agent(reference_date, prefetched_data: dict = None):
     """Create macro intelligence agent for KR market
 
     The agent receives pre-computed regime and index data from programmatic prefetch,
@@ -9,14 +9,13 @@ def create_macro_intelligence_agent(reference_date, language="ko", prefetched_da
 
     Args:
         reference_date: Analysis reference date (YYYYMMDD)
-        language: Language code ("ko" or "en")
         prefetched_data: Dict with computed_regime, kospi_ohlcv_md, kosdaq_ohlcv_md, sector_map
 
     Returns:
         Agent: Macro intelligence agent
     """
 
-    # Build context from prefetched data (language-agnostic)
+    # Build context from prefetched data
     regime_context = ""
     index_data_context = ""
 
@@ -63,7 +62,7 @@ perplexity data provides overwhelming contradictory evidence.
             if kosdaq_md:
                 index_data_context += kosdaq_md + "\n"
 
-    # JSON schema values (language-agnostic)
+    # JSON schema values
     schema_market_regime = prefetched_data.get('computed_regime', {}).get('market_regime', 'sideways') if prefetched_data else 'sideways'
     schema_regime_confidence = prefetched_data.get('computed_regime', {}).get('regime_confidence', 0.5) if prefetched_data else 0.5
     schema_simple_ma_regime = prefetched_data.get('computed_regime', {}).get('simple_ma_regime', 'sideways') if prefetched_data else 'sideways'
@@ -85,91 +84,11 @@ perplexity data provides overwhelming contradictory evidence.
     if not unique_sectors:
         unique_sectors = KRX_STANDARD_SECTORS
 
-    if language == "en":
-        sector_taxonomy_section = f"""## Sector Taxonomy
-Use these sector names from actual market data for leading_sectors and lagging_sectors:
-{', '.join(unique_sectors)}"""
-
-        instruction = f"""You are a Korean stock market macro intelligence analyst.
-Follow the instructions below to collect data, then output ONLY valid JSON. Do not include any text outside the JSON.
-
-Analysis date: {reference_date} (YYYYMMDD format)
-{regime_context}
-{index_data_context}
-## Tool Call to Execute
-
-### Perplexity macro search (1 call only)
-Use the perplexity_ask tool with the following query:
-"{reference_date} Korean stock market macro trends, sector performance, leading and lagging sectors, risk events, geopolitical risk comprehensive analysis"
-
----
-
-## Your Task
-
-Based on the perplexity search results AND the pre-computed index data above:
-1. Use the pre-computed market_regime and index_summary values as-is
-2. Identify leading and lagging sectors from perplexity analysis
-3. Identify risk events and beneficiary themes
-4. Write a `regime_rationale` explaining the regime judgment
-5. Write a `report_prose` section — a well-written 3-5 paragraph narrative summary for inclusion in stock analysis reports
-
----
-
-{sector_taxonomy_section}
-
----
-
-## Output JSON Schema (output exactly this structure)
-
-```json
-{{{{
-  "analysis_date": "YYYYMMDD",
-  "market": "KR",
-  "market_regime": "{schema_market_regime}",
-  "regime_confidence": {schema_regime_confidence},
-  "regime_rationale": "Brief rationale for the regime judgment (1-2 sentences)",
-  "simple_ma_regime": "{schema_simple_ma_regime}",
-  "index_summary": {schema_index_summary},
-  "leading_sectors": [
-    {{"sector": "반도체", "reason": "Surging AI demand", "confidence": 0.8}}
-  ],
-  "lagging_sectors": [
-    {{"sector": "건설", "reason": "Impact of rate hikes", "confidence": 0.6}}
-  ],
-  "risk_events": [
-    {{"event": "Escalating US-China trade tensions", "impact": "negative", "severity": "high", "affected_sectors": ["반도체", "자동차"]}}
-  ],
-  "beneficiary_themes": [
-    {{"theme": "Expanding AI infrastructure investment", "beneficiary_sectors": ["반도체", "IT/소프트웨어"], "duration": "medium_term"}}
-  ],
-  "report_prose": "Macro intelligence report narrative (3-5 paragraphs, formal English)"
-}}}}
-```
-
-## report_prose Guidelines
-
-Write a professional 3-5 paragraph narrative in formal English covering:
-1. Current market regime and its rationale
-2. Leading sectors and why they are outperforming
-3. Key risk events and their potential market impact
-4. Recommended investment posture given the current regime
-
-This prose will be directly inserted into stock analysis reports. Make it informative but concise.
-
-## Important Notes
-
-- Execute perplexity tool call before generating JSON
-- Output MUST be pure JSON only. No markdown code fences, no explanatory text
-- leading_sectors: max 5, descending confidence
-- lagging_sectors: max 5
-- Anti-hallucination: only include content confirmed from actual data
-"""
-    else:
-        sector_taxonomy_section_ko = f"""## 섹터 분류 체계
+    sector_taxonomy_section_ko = f"""## 섹터 분류 체계
 실제 시장 데이터의 다음 섹터명을 leading_sectors와 lagging_sectors에 사용하십시오:
 {', '.join(unique_sectors)}"""
 
-        instruction = f"""당신은 한국 주식시장 거시경제 인텔리전스 애널리스트입니다.
+    instruction = f"""당신은 한국 주식시장 거시경제 인텔리전스 애널리스트입니다.
 아래 지시에 따라 데이터를 수집한 후, 유효한 JSON만 출력하십시오. JSON 외부에 어떠한 텍스트도 포함하지 마십시오.
 
 분석 기준일: {reference_date} (YYYYMMDD 형식)
