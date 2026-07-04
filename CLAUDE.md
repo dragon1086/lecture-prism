@@ -42,9 +42,9 @@
 - **매수 점수(`buy_score`)는 0~10점 스케일.** (과거 5점에서 전수 통일됨. 5점으로 되돌리지 마세요.) 진입 게이트: `analysis.MIN_BUY_SCORE = 6`, `trading.BUY_SCORE_THRESHOLD = 6`.
 - **모든 튜닝 값은 각 파일 상단 상수**에 모여 있어 한 줄만 고치면 동작이 실제로 바뀝니다.
 - **매매 철학**: 윌리엄 오닐식 추세추종. 목표가는 '마일스톤', 수익은 트레일링 스탑으로 보호. 청산 점검 순서 = ① 손절 → ② 트레일링 스탑 → ③ 목표가.
-- `screening.py`의 `_SAMPLE_UNIVERSE`는 필터가 "실제로 작동"함을 보여주는 데모 유니버스입니다. `--real` 플래그로 pykrx 실데이터를 쓰되 실패 시 자동 폴백합니다.
-- `data_source.fetch_stock_data()` (분석) / `screening._filter_with_pykrx()` (스크리닝) — 실데이터 연동 접점. `fetch_stock_data`가 yfinance 시도→mock 폴백을 단일 처리하므로, 다른 소스로 바꾸려면 이 함수만 교체.
-- **데이터 소스 주의**: 수급(기관/외국인/개인)·재무 상세·지수는 KRX가 로그인을 요구해 pykrx로 못 가져옵니다(회색지대). 그래서 분석은 무료·무로그인 **yfinance**(가격·거래량·재무·뉴스·지수)를 쓰고, 수급은 **거래량 파생 프록시**로 정직하게 대체합니다. yfinance 뉴스는 **영문 국제 기사**라 LLM이 한글로 해석합니다.
+- `screening.py`의 `_SAMPLE_UNIVERSE`는 필터가 "실제로 작동"함을 보여주는 데모 유니버스입니다. `--real` 플래그를 켜면 이 유니버스 종목들을 yfinance 실데이터로 다시 필터링하고, 실패/결과 0개 시 데모값으로 자동 폴백합니다.
+- `data_source.fetch_stock_data()` — 분석·스크리닝 공통 실데이터 단일 접점 (`screening._filter_with_real_data()`도 이 함수를 재사용). yfinance 시도→mock 폴백을 단일 처리하므로, 다른 소스로 바꾸려면 이 함수만 교체.
+- **데이터 소스 주의**: KRX는 전종목 벌크 조회(시총·거래대금·수급·재무·지수)에 로그인을 요구해 pykrx로 못 가져옵니다(2026-07 실측: 벌크 API는 KeyError로 깨지고 per-ticker 시세만 동작). 그래서 스크리닝·분석 모두 무료·무로그인 **yfinance**(가격·거래량·시총·재무·뉴스·지수)를 쓰고, 수급은 **거래량 파생 프록시**로 정직하게 대체합니다. yfinance 뉴스는 **영문 국제 기사**라 LLM이 한글로 해석합니다.
 
 ## `cores/` 는 원본 참조 사본 (주의)
 
@@ -68,7 +68,7 @@
 ```bash
 python3 main.py                     # 기본 데모 (mock 폴백, 키 불필요) — 반드시 완주해야 함
 python3 main.py --ticker 005930     # 단일 종목
-python3 main.py --real              # pykrx 실데이터 스크리닝 (실패 시 데모 폴백)
+python3 main.py --real              # yfinance 실데이터 스크리닝 (실패 시 데모 폴백)
 python3 trading.py --exit           # 청산 3시나리오(손절/트레일링/목표가) 데모
 python3 trading.py --live           # 반드시 live_blocked 반환(실주문 안 함)이어야 정상
 python3 dashboard.py                # http://localhost:8080 (fastapi/uvicorn 필요)

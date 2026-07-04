@@ -12,10 +12,7 @@ uvicorn>=0.29
 openai>=1.40
 aiohttp>=3.9
 
-# 실데이터 스크리닝 (screening.py --real)
-pykrx>=1.0.45
-
-# 실데이터 분석 (analysis.py / data_source.py)
+# 실데이터 스크리닝 + 분석 (screening.py --real / analysis.py / data_source.py)
 # 무료·무로그인으로 한국주식 가격·거래량·재무·뉴스·지수를 가져옵니다(야후 파이낸스).
 # 미설치 시 analysis.py는 자동으로 mock 데이터로 폴백합니다.
 yfinance>=0.2.40
