@@ -27,6 +27,7 @@ tasks/
 prism.db
 *.db
 *.log
+reports/
 trading/**/*.log
 trading/**/logs/
 trading/**/log/

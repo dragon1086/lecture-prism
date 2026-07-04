@@ -131,7 +131,7 @@ if __name__ == "__main__":
     parser.add_argument("--dry-run", action="store_true", default=True, help="시뮬레이션 모드 (기본값)")
     parser.add_argument("--live", action="store_true", help="실거래 모드 (KIS API 필요)")
     parser.add_argument("--ticker", type=str, help="특정 종목 코드 (예: 005930)")
-    parser.add_argument("--real", action="store_true", help="스크리닝에 pykrx 실데이터 사용 (기본: 데모값)")
+    parser.add_argument("--real", action="store_true", help="스크리닝에 yfinance 실데이터 사용 (기본: 데모값)")
     args = parser.parse_args()
 
     dry_run = not args.live

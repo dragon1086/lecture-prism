@@ -8,6 +8,7 @@ dashboard.py — 로컬 웹 대시보드
     python dashboard.py          # http://localhost:8080
 """
 
+import json
 import sqlite3
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
@@ -15,6 +16,8 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
+
+from data_source import mock_profile  # 데모 시드의 6섹션 텍스트 재사용 (표준 라이브러리만 사용)
 
 DB_PATH = Path("prism.db")
 
@@ -45,7 +48,8 @@ def _init_db() -> None:
             recommendation TEXT NOT NULL,  -- BUY / HOLD / PASS
             score INTEGER,
             reason TEXT,
-            risk TEXT
+            risk TEXT,
+            sections TEXT                  -- 6섹션 요약 JSON (기술/수급/재무/산업/뉴스/시장)
         );
 
         CREATE TABLE IF NOT EXISTS feedback_lessons (
@@ -59,12 +63,31 @@ def _init_db() -> None:
         );
     """)
 
+    # 구버전 DB 마이그레이션: sections 컬럼이 없으면 추가
+    try:
+        cur.execute("ALTER TABLE analysis_decisions ADD COLUMN sections TEXT")
+    except sqlite3.OperationalError:
+        pass  # 이미 존재
+
     # 데이터가 없으면 데모 데이터 삽입
     if cur.execute("SELECT COUNT(*) FROM trade_history").fetchone()[0] == 0:
         _seed_demo_data(cur)
 
     conn.commit()
     conn.close()
+
+
+def _demo_sections(ticker: str) -> str:
+    """데모 시드용 6섹션 JSON — data_source의 mock 프로필 문장을 재사용."""
+    p = mock_profile(ticker)
+    return json.dumps({
+        "technical_summary": p["tech"],
+        "supply_summary": p["supply"],
+        "financial_summary": p["finance"],
+        "industry_summary": p["industry"],
+        "news_summary": p["news"],
+        "market_condition": "KOSPI 저항선 돌파 시도, 거래대금 회복 국면 (데모)",
+    }, ensure_ascii=False)
 
 
 def _seed_demo_data(cur: sqlite3.Cursor) -> None:
@@ -91,19 +114,21 @@ def _seed_demo_data(cur: sqlite3.Cursor) -> None:
         ],
     )
 
-    # ── AI 분석 결정: 추천/점수/리스크 다양 ──
+    # ── AI 분석 결정: 추천/점수/리스크 다양 + 6섹션 리포트 ──
+    analysis_seed = [
+        (ts(0, 1), "005930", "BUY",  8, "20일선 위 거래량 3배 급등. 외국인 5거래일 순매수 유입.", "지수 급락 시 대형주 동반 조정"),
+        (ts(0, 1), "000660", "BUY",  9, "HBM 수요 강세 + 목표주가 상향 리포트 다수.", "메모리 가격 피크아웃 우려"),
+        (ts(0, 1), "042700", "BUY",  8, "후공정 장비 수주 증가. 신고가 돌파 임박.", "전방 capex 둔화 가능성"),
+        (ts(0, 1), "035420", "BUY",  7, "AI 신사업 기대 + 광고 매출 회복 조짐.", "플랫폼 규제 리스크"),
+        (ts(0, 1), "247540", "BUY",  7, "낙폭과대 + 기관 수급 전환. 업황 바닥 신호.", "전기차 수요 둔화 지속 시 변동성"),
+        (ts(0, 1), "005380", "HOLD", 5, "실적은 양호하나 단기 과열 구간. 눌림목 대기.", "환율·금리 변수 상존"),
+        (ts(0, 1), "105560", "PASS", 3, "밸류 매력 있으나 촉매 부재. 거래량 한산.", "금리 인하 지연 시 모멘텀 약화"),
+        (ts(0, 1), "068270", "PASS", 2, "이평선 정배열 붕괴 + 수급 이탈.", "바이오 섹터 투심 악화"),
+    ]
     cur.executemany(
-        "INSERT INTO analysis_decisions (timestamp, ticker, recommendation, score, reason, risk) VALUES (?,?,?,?,?,?)",
-        [
-            (ts(0, 1), "005930", "BUY",  8, "20일선 위 거래량 3배 급등. 외국인 5거래일 순매수 유입.", "지수 급락 시 대형주 동반 조정"),
-            (ts(0, 1), "000660", "BUY",  9, "HBM 수요 강세 + 목표주가 상향 리포트 다수.", "메모리 가격 피크아웃 우려"),
-            (ts(0, 1), "042700", "BUY",  8, "후공정 장비 수주 증가. 신고가 돌파 임박.", "전방 capex 둔화 가능성"),
-            (ts(0, 1), "035420", "BUY",  7, "AI 신사업 기대 + 광고 매출 회복 조짐.", "플랫폼 규제 리스크"),
-            (ts(0, 1), "247540", "BUY",  7, "낙폭과대 + 기관 수급 전환. 업황 바닥 신호.", "전기차 수요 둔화 지속 시 변동성"),
-            (ts(0, 1), "005380", "HOLD", 5, "실적은 양호하나 단기 과열 구간. 눌림목 대기.", "환율·금리 변수 상존"),
-            (ts(0, 1), "105560", "PASS", 3, "밸류 매력 있으나 촉매 부재. 거래량 한산.", "금리 인하 지연 시 모멘텀 약화"),
-            (ts(0, 1), "068270", "PASS", 2, "이평선 정배열 붕괴 + 수급 이탈.", "바이오 섹터 투심 악화"),
-        ],
+        "INSERT INTO analysis_decisions (timestamp, ticker, recommendation, score, reason, risk, sections) "
+        "VALUES (?,?,?,?,?,?,?)",
+        [row + (_demo_sections(row[1]),) for row in analysis_seed],
     )
 
     # ── 피드백 교훈: 단기/중기/장기 + 판단/실행 오류 ──
@@ -250,7 +275,29 @@ def index():
     if not trade_rows:
         trade_rows = '<tr><td colspan="6" class="empty">매매 내역이 없습니다.</td></tr>'
 
-    # ── AI 분석 결정 테이블 ──
+    # ── AI 분석 결정 테이블 (+ 6섹션 리포트 펼침) ──
+    section_labels = [
+        ("technical_summary", "기술"), ("supply_summary", "수급"),
+        ("financial_summary", "재무"), ("industry_summary", "산업"),
+        ("news_summary", "뉴스"), ("market_condition", "시장"),
+    ]
+
+    def sections_detail(a: dict) -> str:
+        """sections JSON이 있으면 4칸 전체 폭의 펼침 행 반환, 없으면 빈 문자열."""
+        try:
+            sections = json.loads(a.get("sections") or "")
+        except (json.JSONDecodeError, TypeError):
+            return ""
+        items = "".join(
+            f'<div class="sec"><span class="seclabel">{label}</span><p>{sections[key]}</p></div>'
+            for key, label in section_labels if sections.get(key)
+        )
+        if not items:
+            return ""
+        return (f'<tr class="secrow"><td colspan="4"><details>'
+                f'<summary>6섹션 분석 리포트 보기</summary>'
+                f'<div class="secgrid">{items}</div></details></td></tr>')
+
     analysis_rows = ""
     for a in analyses_u:
         analysis_rows += (
@@ -259,6 +306,7 @@ def index():
             f'<td>{action_badge(a["recommendation"])}</td>'
             f'<td>{score_bar(a["score"])}</td>'
             f'<td class="muted small">{(a["reason"] or "")[:48]}</td></tr>'
+            f'{sections_detail(a)}'
         )
     if not analysis_rows:
         analysis_rows = '<tr><td colspan="4" class="empty">분석 데이터가 없습니다.</td></tr>'
@@ -408,6 +456,23 @@ PAGE = """<!DOCTYPE html>
       background: oklch(0.27 0.015 264); overflow: hidden; vertical-align: middle; }}
     .wbar span {{ display: block; height: 100%; background: var(--primary); border-radius: 999px; }}
     .wlabel {{ font-size: 12px; color: var(--muted); margin-left: 8px; }}
+
+    /* 6섹션 분석 리포트 (펼침) */
+    .secrow td {{ padding: 0 22px 6px; border-top: none; background: oklch(0.14 0.015 264); }}
+    tbody tr.secrow:hover td {{ background: oklch(0.14 0.015 264); }}
+    .secrow summary {{ cursor: pointer; font-size: 11.5px; color: var(--muted);
+      padding: 8px 0; list-style: none; user-select: none; }}
+    .secrow summary::before {{ content: "▸ "; }}
+    .secrow details[open] summary::before {{ content: "▾ "; }}
+    .secrow summary:hover {{ color: var(--fg); }}
+    .secgrid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 10px; padding: 4px 0 14px; }}
+    .sec {{ background: var(--card2); border: 1px solid var(--border); border-radius: 10px;
+      padding: 10px 14px; }}
+    .seclabel {{ display: inline-block; font-size: 10.5px; font-weight: 700; color: var(--primary);
+      border: 1px solid oklch(0.65 0.24 264 / 0.4); padding: 1px 8px; border-radius: 999px;
+      margin-bottom: 6px; }}
+    .sec p {{ font-size: 12.5px; line-height: 1.6; color: oklch(0.85 0.01 264); }}
 
     /* 교훈 */
     .lessons {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));

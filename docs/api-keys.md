@@ -28,7 +28,7 @@ lecture-prism은 **API 키 없이도 기본 데모가 즉시 실행**되도록 �
 
 | 범위 | 필요한 것 | 기본 실습 필요 여부 |
 |---|---|---|
-| `screening.py --real` 실데이터 | `pykrx` 패키지와 인터넷 연결 | 선택 |
+| `screening.py --real` 실데이터 | `yfinance` 패키지와 인터넷 연결 (분석 실데이터와 동일) | 선택 |
 | KIS 모의투자 조회·주문 구조 | 한국투자증권 모의투자 App Key, App Secret, HTS ID, 계좌번호 앞 8자리, 상품코드 2자리 | 심화 |
 | Kiwoom 모의투자/REST 구조 | 키움증권 REST API App Key, Secret Key 또는 Access Token | 심화 |
 | Toss Securities | 2026년 6월 28일 기준 공개 공식 주문 API 문서 확인 불가. 파트너/비공개 문서가 있을 때만 템플릿 확장 | 선택 |
