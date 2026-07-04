@@ -215,7 +215,7 @@ dashboard.py를 실행해서 로컬 대시보드를 열 수 있게 도와줘.
 
 **런타임 5단계** (아래로 갈수록 풍부, 없으면 자동 폴백):
 1. **mock** — 표준 라이브러리만: 더미 데이터로 6섹션 리치 리포트 (키·설치 불필요)
-2. **real_data** — yfinance 또는 kospi_kosdaq: 가격·거래량·지수 실데이터
+2. **real_data** — yfinance: 가격·거래량·지수 실데이터
 3. **research** — OpenAI/OAuth + Perplexity/Firecrawl: 뉴스·시장 맥락 보강
 4. **paper** — 증권사 demo 모드: KIS/키움 등 모의투자 API 경로 검증
 5. **live** — 실전투자 모드: 이중 안전 플래그 없이는 주문 차단

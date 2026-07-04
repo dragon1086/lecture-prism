@@ -16,7 +16,7 @@ lecture-prism은 한 저장소 안에서 초급자용 더미 데모부터 고급
 | 프로필 | 데이터 | 분석 보고서 | 매매 | 추천 대상 |
 |---|---|---|---|---|
 | `mock` | 더미 데이터 | 6섹션 lite 보고서 | 시뮬레이션 | 첫 실행, Part 4 전략 실습 |
-| `real_data` | yfinance/kospi_kosdaq 실데이터 폴백 | 6섹션 lite 보고서 | 시뮬레이션 | 실제 가격·거래량으로 보고 싶은 수강생 |
+| `real_data` | yfinance 실데이터 폴백 | 6섹션 lite 보고서 | 시뮬레이션 | 실제 가격·거래량으로 보고 싶은 수강생 |
 | `research` | 실데이터 | LLM + Perplexity/Firecrawl 선택 리서치 | 시뮬레이션 | 원본 PRISM에 가까운 분석을 원하는 수강생 |
 | `paper` | 실데이터 | research 보고서 | 증권사 모의투자 경로 | KIS/키움 모의투자 키가 있는 수강생 |
 | `live` | 실데이터 | research 보고서 | 실전투자 경로 | 강의 이후 본인이 책임지고 운영할 고급 사용자 |
@@ -34,11 +34,11 @@ lecture-prism은 한 저장소 안에서 초급자용 더미 데모부터 고급
 
 | 값 | 선택지 | 의미 |
 |---|---|---|
-| `LECTURE_DATA_MODE` | `mock`, `auto`, `yfinance`, `kospi_kosdaq` | 분석 데이터 원천 |
+| `LECTURE_DATA_MODE` | `mock`, `auto`, `yfinance` | 분석 데이터 원천 |
 | `LECTURE_SCREENING_MODE` | `mock`, `real` | 스크리닝 유니버스 원천 (`real` = yfinance 실데이터 필터) |
 | `LECTURE_LLM_MODE` | `mock`, `auto`, `oauth`, `openai` | LLM 호출 여부 |
 | `LECTURE_REPORT_MODE` | `lite`, `research` | 보고서 깊이 |
-| `LECTURE_RESEARCH_TOOLS` | `kospi_kosdaq,perplexity,firecrawl` | 선택 리서치 도구 |
+| `LECTURE_RESEARCH_TOOLS` | `perplexity,firecrawl` | 선택 리서치 도구 |
 | `LECTURE_TRADE_MODE` | `simulation`, `demo`, `real` | 매매 실행 수준 |
 | `LECTURE_SAVE_REPORTS` | `1`, `0` | `reports/` Markdown 저장 여부 |
 
@@ -64,7 +64,7 @@ LECTURE_DATA_MODE=auto
 LECTURE_TRADE_MODE=simulation
 ```
 
-얻는 것: yfinance 또는 kospi_kosdaq이 가능하면 실데이터를 쓰고, 실패하면 mock으로 돌아갑니다.
+얻는 것: yfinance가 가능하면 실데이터를 쓰고, 실패하면 mock으로 돌아갑니다.
 
 ### 고급자: 원본 PRISM에 가까운 리서치 보고서
 
@@ -72,7 +72,7 @@ LECTURE_TRADE_MODE=simulation
 LECTURE_PROFILE=research
 LECTURE_LLM_MODE=auto
 LECTURE_REPORT_MODE=research
-LECTURE_RESEARCH_TOOLS=kospi_kosdaq,perplexity,firecrawl
+LECTURE_RESEARCH_TOOLS=perplexity,firecrawl
 OPENAI_API_KEY="..."
 PERPLEXITY_API_KEY="..."
 FIRECRAWL_API_KEY="..."

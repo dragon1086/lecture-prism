@@ -131,8 +131,6 @@ async def run_analysis(ticker: str) -> dict:
     market = await asyncio.to_thread(data_source.fetch_market_index)
     if data["source"] == "yfinance":
         src = "실데이터(yfinance)"
-    elif data["source"] == "kospi_kosdaq":
-        src = "실데이터(kospi_kosdaq_server)"
     else:
         src = "모의 데이터(mock)"
     log.info(f"  [{ticker}] 데이터 원천: {src}")
@@ -171,7 +169,7 @@ async def run_analysis(ticker: str) -> dict:
 # ── 섹션 빌더: 규칙(실데이터 템플릿 / mock) ─────────────────────────────
 def _section_supply(data: dict) -> str:
     """수급(거래 흐름). 실데이터면 거래량 파생 프록시, 아니면 mock 문장."""
-    if data["source"] not in {"yfinance", "kospi_kosdaq"}:
+    if data["source"] != "yfinance":
         return data.get("supply", "")
     s = data.get("supply", {})
     ratio, obv = s.get("up_down_vol_ratio"), s.get("obv", "중립")
@@ -183,11 +181,7 @@ def _section_supply(data: dict) -> str:
     if vol_ratio is not None:
         parts.append(f"당일 거래량은 20일 평균의 {vol_ratio}배")
     parts.append(f"OBV 기준 {obv}")
-    if s.get("investor_flow_available"):
-        parts.append("투자자별 수급 데이터 확보")
     body = ", ".join(parts) + "."
-    if data["source"] == "kospi_kosdaq" and s.get("investor_flow_available"):
-        return body + " (kospi_kosdaq_server 직접 조회)"
     return body + " (※ 기관/외국인/개인 세부 순매수는 KRX 로그인이 필요해 거래량 기반으로 추정)"
 
 
@@ -242,7 +236,7 @@ def _section_market(market: dict | None) -> str:
 # ── 에이전트: 기술 (LLM 또는 데이터 템플릿) ──────────────────────────────
 def _technical_data_text(data: dict) -> str:
     """실데이터 기술 지표를 문장으로."""
-    if data["source"] not in {"yfinance", "kospi_kosdaq"}:
+    if data["source"] != "yfinance":
         return data.get("tech", "")
     bits = []
     ma20 = data.get("ma20")
@@ -330,7 +324,7 @@ def _optional_research_context(ticker: str, data: dict) -> str:
 # ── 에이전트: 투자전략 (LLM 통합 또는 규칙 스코어링) ────────────────────
 def _rule_based_score(data: dict) -> dict:
     """실데이터(LLM 없음) 경로용 규칙 기반 매수 점수 0~10."""
-    if data["source"] not in {"yfinance", "kospi_kosdaq"}:
+    if data["source"] != "yfinance":
         # mock: 프로필이 준 판단값 사용
         return {"recommendation": data.get("rec", "BUY"), "buy_score": data.get("buy_score", 7),
                 "expected_return_pct": data.get("ret", 12), "expected_loss_pct": data.get("loss", 6),
@@ -460,8 +454,6 @@ if __name__ == "__main__":
     # 원본 PRISM 리포트와 유사한 6섹션 출력
     if r["data_source"] == "yfinance":
         src = "실데이터(yfinance)"
-    elif r["data_source"] == "kospi_kosdaq":
-        src = "실데이터(kospi_kosdaq_server)"
     else:
         src = "모의 데이터(mock)"
     print(f"\n{'='*60}")

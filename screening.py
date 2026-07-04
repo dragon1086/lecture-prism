@@ -107,7 +107,7 @@ async def _filter_with_real_data() -> list[str]:
         scored: list[tuple[str, float]] = []
         for ticker, *_ in _SAMPLE_UNIVERSE:
             data = fetch_stock_data(ticker)
-            if data.get("source") == "mock":  # 실데이터(yfinance/kospi_kosdaq)만 필터 대상
+            if data.get("source") == "mock":  # 실데이터만 필터 대상
                 log.info(f"  [{ticker}] 실데이터 없음 — 스크리닝에서 제외")
                 continue
 

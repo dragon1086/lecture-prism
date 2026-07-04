@@ -45,7 +45,7 @@
 - `screening.py`의 `_SAMPLE_UNIVERSE`는 필터가 "실제로 작동"함을 보여주는 데모 유니버스입니다. `--real` 플래그를 켜면 이 유니버스 종목들을 yfinance 실데이터로 다시 필터링하고, 실패/결과 0개 시 데모값으로 자동 폴백합니다.
 - `data_source.fetch_stock_data()` — 분석·스크리닝 공통 실데이터 단일 접점 (`screening._filter_with_real_data()`도 이 함수를 재사용). yfinance 시도→mock 폴백을 단일 처리하므로, 다른 소스로 바꾸려면 이 함수만 교체.
 - **데이터 소스 주의**: KRX는 전종목 벌크 조회(시총·거래대금·수급·재무·지수)에 로그인을 요구해 pykrx로 못 가져옵니다(2026-07 실측: 벌크 API는 KeyError로 깨지고 per-ticker 시세만 동작). 그래서 스크리닝·분석 모두 무료·무로그인 **yfinance**(가격·거래량·시총·재무·뉴스·지수)를 쓰고, 수급은 **거래량 파생 프록시**로 정직하게 대체합니다. yfinance 뉴스는 **영문 국제 기사**라 LLM이 한글로 해석합니다.
-- **런타임 프로필**: `.env`의 `LECTURE_PROFILE=mock|real_data|research|paper|live`이 `runtime_config.py`를 통해 데이터/LLM/리포트/매매 경로를 라우팅합니다(`docs/runtime-profiles.md`). `research_tools.py`(Perplexity/Firecrawl)·`report_writer.py`(`reports/` 저장)·`kospi_kosdaq_stock_server`(선택 설치+KRX 로그인, 심화)는 전부 선택 연동이며 미설정 시 자동 폴백 — 기본 mock 경로를 절대 깨지 마세요.
+- **런타임 프로필**: `.env`의 `LECTURE_PROFILE=mock|real_data|research|paper|live`이 `runtime_config.py`를 통해 데이터/LLM/리포트/매매 경로를 라우팅합니다(`docs/runtime-profiles.md`). `research_tools.py`(Perplexity/Firecrawl)·`report_writer.py`(`reports/` 저장)는 전부 선택 연동이며 미설정 시 자동 폴백 — 기본 mock 경로를 절대 깨지 마세요.
 
 ## `cores/` 는 원본 참조 사본 (주의)
 

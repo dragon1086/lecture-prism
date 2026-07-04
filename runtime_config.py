@@ -35,7 +35,7 @@ _PROFILE_DEFAULTS = {
         "screening_mode": "mock",
         "llm_mode": "auto",
         "report_mode": "research",
-        "research_tools": "kospi_kosdaq,perplexity,firecrawl",
+        "research_tools": "perplexity,firecrawl",
         "trade_mode": "simulation",
     },
     "paper": {
@@ -43,7 +43,7 @@ _PROFILE_DEFAULTS = {
         "screening_mode": "mock",
         "llm_mode": "auto",
         "report_mode": "research",
-        "research_tools": "kospi_kosdaq,perplexity,firecrawl",
+        "research_tools": "perplexity,firecrawl",
         "trade_mode": "demo",
     },
     "live": {
@@ -51,7 +51,7 @@ _PROFILE_DEFAULTS = {
         "screening_mode": "mock",
         "llm_mode": "auto",
         "report_mode": "research",
-        "research_tools": "kospi_kosdaq,perplexity,firecrawl",
+        "research_tools": "perplexity,firecrawl",
         "trade_mode": "real",
     },
 }
@@ -79,9 +79,6 @@ _DATA_ALIASES = {
     "simulation": "mock",
     "yf": "yfinance",
     "yahoo": "yfinance",
-    "mcp": "kospi_kosdaq",
-    "kospi-kosdaq": "kospi_kosdaq",
-    "prism": "kospi_kosdaq",
 }
 
 _LLM_ALIASES = {
@@ -168,12 +165,6 @@ def _csv(value: str) -> tuple[str, ...]:
 
 
 def _tool_ready(tool: str) -> bool:
-    if tool == "kospi_kosdaq":
-        return bool(
-            (os.getenv("KRX_ID") and os.getenv("KRX_PW"))
-            or (os.getenv("KAKAO_ID") and os.getenv("KAKAO_PW"))
-            or truthy(os.getenv("KOSPI_KOSDAQ_ALLOW_NO_LOGIN"))
-        )
     if tool == "perplexity":
         return bool(os.getenv("PERPLEXITY_API_KEY"))
     if tool == "firecrawl":
@@ -208,7 +199,7 @@ def load_runtime_config() -> RuntimeConfig:
         os.getenv("LECTURE_DATA_MODE") or os.getenv("PRISM_DATA_MODE") or defaults["data_mode"],
         default=defaults["data_mode"],
         aliases=_DATA_ALIASES,
-        allowed={"mock", "auto", "yfinance", "kospi_kosdaq"},
+        allowed={"mock", "auto", "yfinance"},
     )
     screening_mode = _normalize(
         os.getenv("LECTURE_SCREENING_MODE") or defaults["screening_mode"],

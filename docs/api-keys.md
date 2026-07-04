@@ -41,7 +41,6 @@ lecture-prism은 **API 키 없이도 기본 데모가 즉시 실행**되도록 �
 | 범위 | 필요한 것 | 기본 실습 필요 여부 |
 |---|---|---|
 | yfinance 가격·거래량 (분석·`screening.py --real` 공통) | `yfinance` 패키지와 인터넷 연결 | 선택 |
-| kospi_kosdaq_server 직접 조회 | KRX/Kakao 로그인 정보 또는 사용 가능한 로컬 서버 모듈 | 심화 |
 | Perplexity 리서치 | `PERPLEXITY_API_KEY` | 심화 |
 | Firecrawl 웹 수집 | `FIRECRAWL_API_KEY` | 심화 |
 
