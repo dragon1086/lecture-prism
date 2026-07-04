@@ -1,4 +1,4 @@
-def get_agent_directory(company_name, company_code, reference_date, base_sections, language: str = "ko", prefetched_data: dict = None):
+def get_agent_directory(company_name, company_code, reference_date, base_sections, prefetched_data: dict = None):
     """
     Return agent directory for each section
 
@@ -7,7 +7,6 @@ def get_agent_directory(company_name, company_code, reference_date, base_section
         company_code: Stock code
         reference_date: Analysis reference date (YYYYMMDD)
         base_sections: List of agent sections to create
-        language: Language code ("ko" or "en")
         prefetched_data: Dictionary of prefetched data for agents (optional)
 
     Returns:
@@ -50,24 +49,24 @@ def get_agent_directory(company_name, company_code, reference_date, base_section
 
     agent_creators = {
         "price_volume_analysis": lambda: create_price_volume_analysis_agent(
-            company_name, company_code, reference_date, max_years_ago, max_years, language,
+            company_name, company_code, reference_date, max_years_ago, max_years,
             prefetched_data=pf.get("stock_ohlcv")
         ),
         "investor_trading_analysis": lambda: create_investor_trading_analysis_agent(
-            company_name, company_code, reference_date, max_years_ago, max_years, language,
+            company_name, company_code, reference_date, max_years_ago, max_years,
             prefetched_data=pf.get("trading_volume")
         ),
         "company_status": lambda: create_company_status_agent(
-            company_name, company_code, reference_date, urls, language
+            company_name, company_code, reference_date, urls
         ),
         "company_overview": lambda: create_company_overview_agent(
-            company_name, company_code, reference_date, urls, language
+            company_name, company_code, reference_date, urls
         ),
         "news_analysis": lambda: create_news_analysis_agent(
-            company_name, company_code, reference_date, language
+            company_name, company_code, reference_date
         ),
         "market_index_analysis": lambda: create_market_index_analysis_agent(
-            reference_date, max_years_ago, max_years, language,
+            reference_date, max_years_ago, max_years,
             prefetched_kospi=pf.get("kospi_index"),
             prefetched_kosdaq=pf.get("kosdaq_index")
         )

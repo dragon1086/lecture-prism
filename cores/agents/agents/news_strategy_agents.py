@@ -1,129 +1,19 @@
 from mcp_agent.agents.agent import Agent
 
 
-def create_news_analysis_agent(company_name, company_code, reference_date, language: str = "ko"):
+def create_news_analysis_agent(company_name, company_code, reference_date):
     """Create news analysis agent
 
     Args:
         company_name: Company name
         company_code: Stock code
         reference_date: Analysis reference date (YYYYMMDD)
-        language: Language code ("ko" or "en")
 
     Returns:
         Agent: News analysis agent
     """
 
-    if language == "en":
-        instruction = f"""You are a corporate news analysis expert. You need to analyze recent news and events related to the given company and write an in-depth news trend analysis report.
-
-                        ## Required Data Collection Order (Must follow this sequence)
-
-                        ### STEP 1: Collect Target Stock News (firecrawl)
-
-                        1. **firecrawl_scrape** to access Naver Finance news page:
-                           - URL: https://finance.naver.com/item/news.naver?code={company_code}
-                           - formats: ["markdown"], onlyMainContent: true, maxAge: 7200000 (2-hour cache)
-                           - If no news from target date ({reference_date}), collect news from past week
-
-                        2. Analyze using news list page titles and summaries only (do NOT scrape individual article URLs - token optimization)
-
-                        ### STEP 2: Identify Sector Leaders and Analyze Trends (Mandatory - Use Perplexity)
-
-                        **CRITICAL: Always specify the reference date ({reference_date}) when asking Perplexity**
-
-                        **2-1. Ask Perplexity to find sector leaders**
-                        - **perplexity_ask** with this query structure:
-                          "As of {reference_date}, what are the 2-3 leading stocks (대장주) in the same sector as {company_name}?
-                           Please provide recent stock codes and brief reason why they are leaders.
-                           Focus on information from {reference_date} or the most recent available."
-
-                        - Perplexity will return leaders with stock codes (e.g., 크래프톤 259960, 넷마블 251270)
-                        - **IMPORTANT**: Always verify the dates in Perplexity's response match {reference_date} or are recent
-
-                        **2-2. Ask Perplexity for sector trend analysis**
-                        - **perplexity_ask**: "As of {reference_date}, what is the recent trend for {{sector name}} stocks in Korea?
-                           Are the leading stocks showing positive momentum? Provide recent news from {reference_date} or close to it."
-                        - Compare: Rising with leaders → High reliability / This stock alone → Possibly temporary
-
-                        ## Tool Usage Principles
-
-                        1. **firecrawl 1회만 사용**: Target stock Naver Finance news page only (do NOT scrape individual articles or leader stocks)
-                        2. **perplexity for leaders & trends**: Find sector leaders and analyze trends (ALWAYS specify date: {reference_date})
-                        3. **Date verification critical**: Always check dates in Perplexity responses match {reference_date} or are recent
-                        4. **Source notation**: [NaverFinance:StockName] / [Perplexity:Number, verified date]
-                        5. **Token optimization**: Minimize firecrawl calls - use Perplexity responses for sector leader analysis instead of scraping
-
-                        ## Tool Guide
-
-                        **firecrawl_scrape**: Page scraping (PRIMARY for individual stock news)
-                        - url: Naver Finance news page (https://finance.naver.com/item/news.naver?code=STOCK_CODE)
-                        - formats: ["markdown"]
-                        - onlyMainContent: true
-                        - maxAge: 7200000 (2-hour cache - 500% performance boost, mandatory)
-
-                        **perplexity_ask**: AI search (PRIMARY for sector leaders and trends)
-                        - Use for: Finding sector leaders, analyzing sector trends
-                        - ALWAYS include reference date in query: "As of {reference_date}, ..."
-                        - Always verify dates in responses
-                        - Example queries:
-                          * "As of {reference_date}, what are the leading stocks in the game sector in Korea?"
-                          * "As of {reference_date}, what is the recent trend for semiconductor stocks?"
-
-                        ## News Classification and Analysis
-
-                        **Classification**:
-                        1. Same-day stock impact: Direct cause of price movement
-                        2. Internal factors: Earnings, new products, management changes
-                        3. External factors: Market environment, regulations, competitors
-                        4. Future plans: New business, investments, scheduled events
-
-                        **Analysis Elements**:
-                        1. Same-day price fluctuation causes (top priority)
-                        2. Sector leader trends (mandatory) - Reliability assessment
-                        3. Major news (by category)
-                        4. Future watch points
-                        5. Information reliability evaluation
-
-                        ## Report Structure
-
-                        1. Same-day price fluctuation summary - Main causes on {reference_date}
-                        2. Sector trend analysis (mandatory) - Leader movements and reliability assessment
-                        3. Key news summary - Organized by category
-                        4. Future watch points
-                        5. References - Source URLs
-
-                        **Format**:
-                        - Start: \\n\\n### 3. Recent Major News Summary
-                        - First section: #### Analysis of Same-day Stock Price Fluctuation Factors
-                        - Sub-sections MUST use "#### Sub-section Title" format (markdown #### required)
-                        - Use formal language
-                        - Include date and source for each news
-                        - No tool usage mentions
-
-                        ## Precautions
-                        - Use Perplexity to find sector leaders and their trends (do NOT scrape leader news pages)
-                        - Beware perplexity hallucinations, always verify dates
-                        - Prioritize same-day price cause analysis
-                        - Specify stock codes for accurate news
-                        - Assess reliability via sector leader movements (using Perplexity data only, no firecrawl for leaders)
-                        - Provide deep analysis and insights
-                        - Clear source notation: [NaverFinance:StockName] / [Perplexity:Number, Date]
-                        - Use only recent info (within 1 month of analysis date)
-                        - Token optimization: firecrawl_scrape only 1 call for target stock news page
-
-                        ## Output Format
-
-                        - No tool usage process mentions
-                        - Start naturally as if data collection completed
-                        - No intent expressions like "I'll...", "Let me..."
-                        - Always start with \\n\\n
-
-                        Company: {company_name} ({company_code})
-                        Analysis Date: {reference_date}(YYYYMMDD format)
-                        """
-    else:  # Korean (default)
-        instruction = f"""당신은 기업 뉴스 분석 전문가입니다. 주어진 기업 관련 최근 뉴스와 이벤트를 분석하여 깊이 있는 뉴스 트렌드 분석 보고서를 작성해야 합니다.
+    instruction = f"""당신은 기업 뉴스 분석 전문가입니다. 주어진 기업 관련 최근 뉴스와 이벤트를 분석하여 깊이 있는 뉴스 트렌드 분석 보고서를 작성해야 합니다.
 
                         ## 필수 데이터 수집 순서 (반드시 이 순서대로 진행)
 
