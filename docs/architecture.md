@@ -72,7 +72,7 @@ lecture-prism은 PRISM 본 시스템의 축소판입니다.
 |---|---|
 | 많은 데이터 중 후보만 추리기 | `screening.py` |
 | 여러 AI 에이전트를 순서대로 연결하기 | `analysis.py` |
-| ChatGPT 구독으로 API 키 없이 LLM 쓰기 | `cores/chatgpt_proxy/`, `analysis.py` |
+| 구독 어댑터 또는 API 키로 실제 LLM 붙이기 | `cores/chatgpt_proxy/`, `analysis.py` |
 | 주문 전 리스크 판단하기 | `trading.py` |
 | 매매일지와 장기 기억 만들기 | `feedback.py`, `db.py` |
 | 사람이 결과를 보고 다음 개선 방향 잡기 | `dashboard.py`, 실습 프롬프트 |

@@ -462,7 +462,7 @@
       <div class="overview-card">
         <div class="overview-card-label">오픈소스</div>
         <div class="overview-card-value">GitHub ⭐ 650 · 텔레그램 820명</div>
-        <div class="overview-card-sub">2026.6 기준 · ChatGPT OAuth로 API 키 없이 실행</div>
+        <div class="overview-card-sub">2026.6 기준 · 구독 어댑터 또는 API 키로 실제 LLM 연동</div>
       </div>
     </div>
 
@@ -570,7 +570,7 @@
     <div class="section-header">
       <div class="section-icon" style="background:#EFF6FF;">⚙️</div>
       <div>
-        <div class="section-title">파트 3 — ChatGPT OAuth + KIS API + 에이전트 파이프라인</div>
+        <div class="section-title">파트 3 — 실제 LLM 연동 + KIS API + 에이전트 파이프라인</div>
         <div class="section-subtitle">90분 콘텐츠 + Q&A 30분 · 5챕터</div>
       </div>
     </div>
@@ -578,11 +578,11 @@
     <div class="part-header">
       <span class="part-number" style="background:#DBEAFE;color:#1D4ED8;">PART 3</span>
       <div class="part-info">
-        <div class="part-title">API 키 없이 ChatGPT 쓰는 법 + KIS 연동 — AI 에이전트 매매 파이프라인 소개 (라이브 데모)</div>
+        <div class="part-title">구독으로 AI 붙이기 + KIS 연동 — AI 에이전트 매매 파이프라인 소개 (라이브 데모)</div>
         <div class="part-desc">
           <strong>FastCampus 목표:</strong> 한국투자증권 API와 ChatGPT 연동으로 기초 환경을 잡고,
           분석·매매·요약·전략 등 에이전트 협업 구조가 어떻게 맞물리는지 라이브 데모로 이해 (본인 이론 구현은 파트4).<br><br>
-          <strong>첫 5분 임팩트:</strong> ChatGPT Plus 구독($20/월)으로 OpenAI API 키 없이 <strong>최신 GPT-5.5</strong>를 쓰는 OAuth 꿀팁 라이브 시연.
+          <strong>첫 5분 임팩트:</strong> 강의용 어댑터에 ChatGPT Plus 구독($20/월) 계정을 로그인해 <strong>최신 GPT-5.5</strong>를 파이썬에 라이브로 연동하는 시연 (실무 운영은 정식 API 키 권장).
           → KIS API로 실시간 가격 조회 → AI 에이전트 투자 판단 → 시뮬레이션 매매 전 사이클을 Claude Code와 함께 데모 실행.<br><br>
           <strong>KIS API 실습 범위:</strong> 강사는 실계좌로 전 사이클 시연. 수강생은 <code>dry_run=True</code> 시뮬레이션 모드로 실습
           (Part 1/2에서 KIS API 설정 완료 또는 다른 증권사 API 경험 가정). 계좌 없는 수강생은 모의투자 토큰으로 조회까지 실습.
@@ -617,11 +617,11 @@
           <div class="chapter-main">
             <div class="chapter-header">
               <span class="chapter-num">CH 01</span>
-              <span class="chapter-title">오프닝 임팩트: API 키 없이 최신 GPT-5.5 연동 + 오픈소스 사례로 배우는 AI-Native 전략</span>
+              <span class="chapter-title">오프닝 임팩트: 구독으로 최신 GPT-5.5 연동 + 오픈소스 사례로 배우는 AI-Native 전략</span>
               <span class="time-chip">⏱ 20분</span>
             </div>
             <div class="chapter-desc">
-              "ChatGPT Plus 구독($20/월)으로 API 키 없이 <strong>최신 GPT-5.5</strong>를 파이썬에서 직접 쓰는 법" — 첫 5분에 OAuth 꿀팁 라이브 시연으로 임팩트를 주고, 그 위에 AI-Native 매매 전략이 왜 필요한지 설득. "알고리즘은 공개하면 파훼되지만 LLM 판단은 복제 불가능하다." <span style="color:#64748B;font-size:13px;">(PRISM 실제 구성: 보고서 생성 <code>gpt-5.4-mini</code>, 매매 판단 <code>gpt-5.5</code> — 모두 API 키 없이 구독만으로)</span>
+              "ChatGPT Plus 구독($20/월) 계정을 강의용 어댑터에 붙여 <strong>최신 GPT-5.5</strong>를 파이썬에서 바로 실행하는 법" — 첫 5분에 라이브 연동 시연으로 임팩트를 주고(실무 운영은 정식 API 키 권장), 그 위에 AI-Native 매매 전략이 왜 필요한지 설득. "알고리즘은 공개하면 파훼되지만 LLM 판단은 복제 불가능하다." <span style="color:#64748B;font-size:13px;">(PRISM 실제 구성: 보고서 생성 <code>gpt-5.4-mini</code>, 매매 판단 <code>gpt-5.5</code>)</span>
             </div>
             <div class="chapter-tags">
               <span class="tag tag-demo">Claude Code 데모</span>
@@ -967,7 +967,7 @@
               <div class="bullet">③ 손절이 당일 노이즈에 자꾸 걸림 → 진입 트리거(급등·거래량)별 <strong>손절폭 차등 + 트레일링</strong>으로 수익 보호</div>
               <div class="bullet">④ 종목은 좋아도 시장이 무너지면 끝 → 시장 국면·주도 섹터를 보는 <strong>Macro Intelligence 추가</strong></div>
               <div class="bullet">⑤ 같은 실수를 반복함 → <strong>매매일지 피드백 루프</strong>: 교훈을 다음 매매 프롬프트에 자동 주입</div>
-              <div class="bullet">⑥ API 비용 부담 → <strong>ChatGPT 구독(OAuth)으로 전환</strong>해 운영비 절감 (파트3 CH1에서 배운 그것)</div>
+              <div class="bullet">⑥ API 비용 관리 → 모델 티어·호출 빈도 조정으로 운영비 최적화</div>
               <div class="bullet"><strong>검증은 포워드 테스트:</strong> LLM은 비결정적·look-ahead·비용 때문에 백테스트가 부적합 → 데모 모드로 오늘부터 모의 운용하며 7/14/30일 성과를 쌓고, 충분히 검증되면 소액 실거래 → 슬랏 확대</div>
               <div class="bullet"><strong>끝까지 자율에이전트에 다 맡기지 않는다:</strong> 포워드 성과 3개월 검증 + 손절 로직 확실할 때만 비중 확대. 사람이 개선 방향을 잡고 시스템이 실행</div>
               <div class="bullet">커뮤니티 연결: GitHub PR 기여 / 텔레그램 토론방 / 개인 연락처</div>
@@ -1123,7 +1123,7 @@
     <div class="callout">
       <span class="callout-icon">💡</span>
       <div class="callout-text">
-        <strong>설계 원칙:</strong> 각 모듈은 독립 실행 가능. 모든 의사결정이 <code>prism.db</code>(SQLite)에 기록되어 대시보드(<code>localhost:8080</code>)로 표시. <strong>API 키 없이도 즉시 동작</strong>(데모 모드) → 실제 LLM은 내장 ChatGPT OAuth 프록시(키 불필요) 또는 API 키로 연동. KIS API는 선택이며 기본 강의 모드에서는 주문 차단. — 강의 중 코딩 에이전트에게 실행·검증을 맡겨 동작 확인.
+        <strong>설계 원칙:</strong> 각 모듈은 독립 실행 가능. 모든 의사결정이 <code>prism.db</code>(SQLite)에 기록되어 대시보드(<code>localhost:8080</code>)로 표시. <strong>API 키 없이도 즉시 동작</strong>(mock 데모 모드) → 실제 LLM은 강의용 구독 어댑터 또는 정식 API 키로 연동. KIS API는 선택이며 기본 강의 모드에서는 주문 차단. — 강의 중 코딩 에이전트에게 실행·검증을 맡겨 동작 확인.
       </div>
     </div>
 

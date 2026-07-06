@@ -21,7 +21,7 @@ lecture-prism은 **API 키 없이도 기본 데모가 바로 실행**되도록 �
 |---|---|---|
 | 키 없이 전체 흐름 확인 | `LECTURE_PROFILE=mock` | 없음 |
 | 실제 가격·거래량만 사용 | `LECTURE_PROFILE=real_data` | 없음 (yfinance는 무료·무키) |
-| 최신 뉴스·시장 리서치 보강 | `LECTURE_PROFILE=research` | OpenAI 또는 ChatGPT OAuth, 선택으로 Perplexity/Firecrawl |
+| 최신 뉴스·시장 리서치 보강 | `LECTURE_PROFILE=research` | OpenAI API 키 또는 강의용 구독 어댑터, 선택으로 Perplexity/Firecrawl |
 | 증권사 모의투자 주문 경로 | `LECTURE_PROFILE=paper` | 브로커 demo 키, KIS라면 `kis_devlp.yaml` |
 | 실전투자 | `LECTURE_PROFILE=live` | 브로커 real 키, 이중 안전 플래그 |
 
@@ -31,10 +31,10 @@ lecture-prism은 **API 키 없이도 기본 데모가 바로 실행**되도록 �
 
 | 방식 | 수강생 준비물 | 설명 |
 |---|---|---|
-| ChatGPT OAuth 프록시 | ChatGPT Plus 또는 Pro 계정 | 이 리포지토리의 `cores/chatgpt_proxy` 기본형 사용. OpenAI API 키는 없어도 됩니다. |
-| OpenAI API | `OPENAI_API_KEY` | 플랫폼 API 과금 계정이 있을 때만 사용합니다. |
+| 강의용 ChatGPT 어댑터 | ChatGPT Plus 또는 Pro 계정 | 이 리포지토리의 `cores/chatgpt_proxy` 기본형. 구독 계정을 로그인해 붙이는 강의·실습 편의용 경로입니다. |
+| OpenAI API (정식·권장) | `OPENAI_API_KEY` | 정식으로 지원되는 안정적 경로. 실제 서비스 운영에는 이 방식을 권장합니다. |
 
-초보 수강생에게는 **ChatGPT OAuth 프록시를 강사 데모 또는 선택 실습**으로 보여주는 구성이 가장 쉽습니다.
+초보 수강생에게는 **기본 실습을 mock으로 두고**, 구독 어댑터나 API 키 연동은 **강사 데모 또는 선택 실습**으로 보여주는 구성이 가장 쉽고 안전합니다.
 
 ## 4. 실데이터·리서치 도구
 
