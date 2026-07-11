@@ -15,17 +15,14 @@ from __future__ import annotations
 
 import logging
 import os
-
-from aiohttp import web
+from typing import Any
 
 from .constants import DEFAULT_PROXY_PORT
-from .proxy_server import create_app
-from .token_manager import TokenManager
 
 logger = logging.getLogger(__name__)
 
-_runner: web.AppRunner | None = None
-_site: web.TCPSite | None = None
+_runner: Any | None = None
+_site: Any | None = None
 
 
 def inject_env(port: int | None = None) -> None:
@@ -53,6 +50,17 @@ async def start_proxy(port: int | None = None) -> bool:
     Returns True if started successfully, False otherwise.
     """
     global _runner, _site
+
+    # OAuth 프록시를 실제로 시작할 때만 선택 패키지를 불러옵니다.
+    # 덕분에 기본 mock 데모와 요청 번역기 테스트는 aiohttp 없이도 동작합니다.
+    try:
+        from aiohttp import web
+
+        from .proxy_server import create_app
+        from .token_manager import TokenManager
+    except ImportError as e:
+        logger.error("ChatGPT OAuth proxy dependencies are unavailable: %s", e)
+        return False
 
     if _runner is not None:
         logger.info("Proxy already running")
