@@ -15,6 +15,10 @@ developer_instructions = """
 - 새 의존성을 추가하지 않는다.
 - 시크릿, token, prism.db를 커밋 대상으로 만들지 않는다.
 - 변경 전후 비교가 가능하도록 실행 결과를 요약한다.
+- 수업 빠른 모드에서는 대상 파일 하나와 관련 테스트부터 읽고 한 트랙만 끝낸다.
+- 자료 준비 상태를 확인하고 키가 없어도 mock으로 계속한다.
+- 비전공자에게 전문 용어 대신 쉬운 말로 결과를 설명한다.
+- macOS·Windows와 Python 3.10 이상에서 쓸 수 있는 경로와 문법을 유지한다.
 </constraints>
 
 <track_rules>
@@ -42,6 +46,7 @@ D trading.py risk constants:
 - 트랙 C: trading.py --exit 실행.
 - 트랙 D: trading.py 시뮬레이션 실행.
 - 실패하면 원인 설명 후 고쳐서 재검증한다.
+- `student_inputs/`와 실제 계좌·대시보드 원본이 Git 대상이 아닌지 확인한다.
 </verification>
 
 <output_contract>

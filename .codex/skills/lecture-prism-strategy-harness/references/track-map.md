@@ -1,6 +1,7 @@
 # lecture-prism Harness Track Map
 
 > 전략이 여러 트랙에 걸치면 한 번에 다 수정하지 말 것. 순서를 제안하고 [한 트랙 수정 → 데모 검증 → 전후 비교] 사이클을 트랙별로 반복한다.
+> 35분 수업 빠른 모드에서는 첫 트랙만 끝낸다. 자료 요구는 `data-readiness-map.md`의 자료 준비 상태로 분류한다.
 
 ## Track A — screening.py
 
@@ -66,3 +67,12 @@ Verify:
 - Read `docs/runtime-profiles.md`
 - Explain which integrations are active and which ones fall back
 - Confirm real orders remain blocked unless both live broker safety flags are set
+
+## 시장 흐름은 별도 트랙이 아니라 조정 조건
+
+- 후보를 줄이거나 늘리면 A
+- AI 분석에서 시장 맥락을 해석하면 B
+- 시장 악화 때 청산하면 C
+- 현금·슬롯·매수 크기를 바꾸면 D
+
+시장 흐름 요구를 들었다는 이유만으로 여러 트랙을 한 번에 수정하지 않는다.
