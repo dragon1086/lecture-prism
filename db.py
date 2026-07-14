@@ -11,6 +11,8 @@ feedback.py가 매매·분석·교훈을 여기에 기록하면 dashboard.py가 
   - pipeline_runs       : 파이프라인 실행 상태
   - pipeline_events     : 실행별 순서가 보장된 이벤트
   - notification_deliveries : 채널별 알림 전달 상태 (비밀값 제외)
+  - broker_orders       : 복구 가능한 증권사 주문 상태
+  - market_calendar_cache : 시장 영업일 조회 캐시
 
 이 파일이 "스키마의 진실 원천(single source of truth)"입니다.
 dashboard.py와 feedback.py 모두 여기서 init_db()를 호출합니다.
@@ -98,6 +100,50 @@ CREATE TABLE IF NOT EXISTS notification_deliveries (
     completed_at TEXT,
     error TEXT,
     UNIQUE(run_id, sequence, channel)
+);
+
+CREATE TABLE IF NOT EXISTS broker_orders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    broker TEXT NOT NULL,
+    mode TEXT NOT NULL,
+    client_request_id TEXT NOT NULL,
+    order_date TEXT NOT NULL,
+    org_no TEXT,
+    order_no TEXT,
+    ticker TEXT NOT NULL,
+    side TEXT NOT NULL,
+    status TEXT NOT NULL,
+    requested_qty INTEGER NOT NULL,
+    filled_qty INTEGER NOT NULL DEFAULT 0,
+    remaining_qty INTEGER NOT NULL,
+    requested_price INTEGER,
+    avg_fill_price REAL,
+    message TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    UNIQUE(broker, mode, client_request_id)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_broker_orders_broker_identity
+ON broker_orders(broker, mode, order_date, org_no, order_no)
+WHERE org_no IS NOT NULL AND org_no <> ''
+  AND order_no IS NOT NULL AND order_no <> '';
+
+CREATE INDEX IF NOT EXISTS idx_broker_orders_pending
+ON broker_orders(broker, mode, status, updated_at)
+WHERE status IN (
+    'submitting', 'accepted', 'unknown', 'unfilled',
+    'partial_fill', 'cancel_requested'
+);
+
+CREATE TABLE IF NOT EXISTS market_calendar_cache (
+    broker TEXT NOT NULL,
+    market TEXT NOT NULL,
+    business_date TEXT NOT NULL,
+    is_open INTEGER NOT NULL,
+    source TEXT,
+    checked_at TEXT NOT NULL,
+    PRIMARY KEY(broker, market, business_date)
 );
 """
 
@@ -327,6 +373,293 @@ def save_notification_delivery(delivery: dict) -> None:
                 sanitized_error,
             ),
         )
+
+
+_ORDER_STATUSES = {
+    "submitting",
+    "accepted",
+    "unknown",
+    "unfilled",
+    "partial_fill",
+    "filled",
+    "cancel_requested",
+    "cancelled",
+    "rejected",
+}
+_PENDING_ORDER_STATUSES = (
+    "submitting",
+    "accepted",
+    "unknown",
+    "unfilled",
+    "partial_fill",
+    "cancel_requested",
+)
+_TERMINAL_ORDER_STATUSES = {"filled", "cancelled", "rejected"}
+_ORDER_TRANSITIONS = {
+    "submitting": {"accepted", "unknown", "rejected"},
+    "accepted": {
+        "unfilled", "partial_fill", "filled", "cancel_requested", "rejected"
+    },
+    "unknown": {
+        "accepted", "unfilled", "partial_fill", "filled",
+        "cancel_requested", "cancelled", "rejected",
+    },
+    "unfilled": {"partial_fill", "filled", "cancel_requested", "cancelled", "rejected"},
+    "partial_fill": {"filled", "cancel_requested", "cancelled", "rejected"},
+    "cancel_requested": {"partial_fill", "filled", "cancelled", "rejected"},
+    "filled": set(),
+    "cancelled": set(),
+    "rejected": set(),
+}
+
+
+def _clean_order_identifier(value: object | None) -> str | None:
+    text = str(value or "").strip()
+    return text or None
+
+
+def _find_broker_order(conn: sqlite3.Connection, order: dict) -> sqlite3.Row | None:
+    if order.get("id") is not None:
+        return conn.execute(
+            "SELECT * FROM broker_orders WHERE id = ?", (int(order["id"]),)
+        ).fetchone()
+
+    broker = str(order.get("broker") or "").strip().lower()
+    mode = str(order.get("mode") or "").strip().lower()
+    order_date = str(order.get("order_date") or "").strip()
+    org_no = _clean_order_identifier(order.get("org_no"))
+    order_no = _clean_order_identifier(order.get("order_no"))
+    if broker and mode and order_date and org_no and order_no:
+        row = conn.execute(
+            "SELECT * FROM broker_orders "
+            "WHERE broker = ? AND mode = ? AND order_date = ? "
+            "AND org_no = ? AND order_no = ?",
+            (broker, mode, order_date, org_no, order_no),
+        ).fetchone()
+        if row is not None:
+            return row
+
+    client_request_id = str(order.get("client_request_id") or "").strip()
+    if broker and mode and client_request_id:
+        return conn.execute(
+            "SELECT * FROM broker_orders "
+            "WHERE broker = ? AND mode = ? AND client_request_id = ?",
+            (broker, mode, client_request_id),
+        ).fetchone()
+    return None
+
+
+def _normalized_order(order: dict, existing: sqlite3.Row | None = None) -> dict:
+    source = dict(existing) if existing is not None else {}
+    source.update(
+        {
+            key: order[key]
+            for key in (
+                "broker", "mode", "client_request_id", "order_date", "org_no",
+                "order_no", "ticker", "side", "status", "requested_qty",
+                "filled_qty", "remaining_qty", "requested_price", "avg_fill_price",
+                "message", "created_at", "updated_at",
+            )
+            if key in order
+        }
+    )
+    required = (
+        "broker", "mode", "client_request_id", "order_date", "ticker", "side",
+        "status", "requested_qty",
+    )
+    missing = [name for name in required if source.get(name) in (None, "")]
+    if missing:
+        raise ValueError(f"missing broker order fields: {', '.join(missing)}")
+
+    status = str(source["status"]).strip().lower()
+    if status not in _ORDER_STATUSES:
+        raise ValueError(f"unknown broker order status: {status}")
+    requested_qty = int(source["requested_qty"])
+    filled_qty = int(source.get("filled_qty") or 0)
+    remaining_qty = int(
+        source.get("remaining_qty")
+        if source.get("remaining_qty") is not None
+        else requested_qty - filled_qty
+    )
+    if requested_qty <= 0:
+        raise ValueError("requested_qty must be positive")
+    if filled_qty < 0 or remaining_qty < 0 or filled_qty > requested_qty:
+        raise ValueError("invalid broker order quantities")
+    if filled_qty + remaining_qty > requested_qty:
+        raise ValueError("filled_qty plus remaining_qty exceeds requested_qty")
+
+    now = _utc_now()
+    created_at = source.get("created_at") or now
+    requested_price = source.get("requested_price")
+    avg_fill_price = source.get("avg_fill_price")
+    return {
+        "broker": str(source["broker"]).strip().lower(),
+        "mode": str(source["mode"]).strip().lower(),
+        "client_request_id": str(source["client_request_id"]).strip(),
+        "order_date": str(source["order_date"]).strip(),
+        "org_no": _clean_order_identifier(source.get("org_no")),
+        "order_no": _clean_order_identifier(source.get("order_no")),
+        "ticker": str(source["ticker"]).strip(),
+        "side": str(source["side"]).strip().upper(),
+        "status": status,
+        "requested_qty": requested_qty,
+        "filled_qty": filled_qty,
+        "remaining_qty": remaining_qty,
+        "requested_price": int(requested_price) if requested_price is not None else None,
+        "avg_fill_price": float(avg_fill_price) if avg_fill_price is not None else None,
+        "message": _sanitize_text(str(source.get("message") or "")),
+        "created_at": _normalize_utc_timestamp(created_at),
+        "updated_at": _normalize_utc_timestamp(source.get("updated_at") or now),
+    }
+
+
+def _validate_order_progress(existing: sqlite3.Row, updated: dict) -> None:
+    current_status = str(existing["status"])
+    next_status = updated["status"]
+    if current_status != next_status:
+        if current_status in _TERMINAL_ORDER_STATUSES:
+            raise ValueError(f"terminal order state cannot regress from {current_status}")
+        if next_status not in _ORDER_TRANSITIONS[current_status]:
+            raise ValueError(
+                f"invalid broker order transition: {current_status} -> {next_status}"
+            )
+    if int(existing["requested_qty"]) != updated["requested_qty"]:
+        raise ValueError("requested_qty cannot change")
+    if updated["filled_qty"] < int(existing["filled_qty"]):
+        raise ValueError("filled_qty cannot decrease")
+    if updated["remaining_qty"] > int(existing["remaining_qty"]):
+        raise ValueError("remaining_qty cannot increase")
+
+
+def _update_broker_order_row(
+    conn: sqlite3.Connection, existing: sqlite3.Row, order: dict
+) -> dict:
+    updated = _normalized_order(order, existing)
+    _validate_order_progress(existing, updated)
+    conn.execute(
+        "UPDATE broker_orders SET "
+        "order_date = ?, org_no = ?, order_no = ?, ticker = ?, side = ?, status = ?, "
+        "requested_qty = ?, filled_qty = ?, remaining_qty = ?, requested_price = ?, "
+        "avg_fill_price = ?, message = ?, updated_at = ? WHERE id = ?",
+        (
+            updated["order_date"], updated["org_no"], updated["order_no"],
+            updated["ticker"], updated["side"], updated["status"],
+            updated["requested_qty"], updated["filled_qty"], updated["remaining_qty"],
+            updated["requested_price"], updated["avg_fill_price"], updated["message"],
+            updated["updated_at"], existing["id"],
+        ),
+    )
+    return dict(
+        conn.execute("SELECT * FROM broker_orders WHERE id = ?", (existing["id"],)).fetchone()
+    )
+
+
+def save_broker_order(order: dict) -> dict:
+    """주문을 저장하고 client/broker 식별자가 같으면 단조롭게 갱신한다."""
+    init_db()
+    with _connect() as conn:
+        existing = _find_broker_order(conn, order)
+        if existing is not None:
+            return _update_broker_order_row(conn, existing, order)
+        normalized = _normalized_order(order)
+        cursor = conn.execute(
+            "INSERT INTO broker_orders "
+            "(broker, mode, client_request_id, order_date, org_no, order_no, ticker, side, "
+            "status, requested_qty, filled_qty, remaining_qty, requested_price, "
+            "avg_fill_price, message, created_at, updated_at) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (
+                normalized["broker"], normalized["mode"],
+                normalized["client_request_id"], normalized["order_date"],
+                normalized["org_no"], normalized["order_no"], normalized["ticker"],
+                normalized["side"], normalized["status"], normalized["requested_qty"],
+                normalized["filled_qty"], normalized["remaining_qty"],
+                normalized["requested_price"], normalized["avg_fill_price"],
+                normalized["message"], normalized["created_at"], normalized["updated_at"],
+            ),
+        )
+        return dict(
+            conn.execute("SELECT * FROM broker_orders WHERE id = ?", (cursor.lastrowid,)).fetchone()
+        )
+
+
+def update_broker_order(order: dict) -> dict:
+    """기존 주문을 식별해 허용된 전이와 수량 진행만 저장한다."""
+    init_db()
+    with _connect() as conn:
+        existing = _find_broker_order(conn, order)
+        if existing is None:
+            raise KeyError("broker order not found")
+        return _update_broker_order_row(conn, existing, order)
+
+
+def get_pending_broker_orders(
+    *, broker: str | None = None, mode: str | None = None
+) -> list[dict]:
+    """재시작 후 조회·복구가 필요한 비종결 주문을 반환한다."""
+    init_db()
+    placeholders = ",".join("?" for _ in _PENDING_ORDER_STATUSES)
+    sql = f"SELECT * FROM broker_orders WHERE status IN ({placeholders})"
+    params: list[object] = list(_PENDING_ORDER_STATUSES)
+    if broker is not None:
+        sql += " AND broker = ?"
+        params.append(str(broker).strip().lower())
+    if mode is not None:
+        sql += " AND mode = ?"
+        params.append(str(mode).strip().lower())
+    sql += " ORDER BY updated_at, id"
+    with _connect() as conn:
+        rows = conn.execute(sql, params).fetchall()
+    return [dict(row) for row in rows]
+
+
+def save_market_day(day: dict) -> dict:
+    """브로커가 확인한 시장 영업일을 인증정보 없이 upsert한다."""
+    broker = str(day.get("broker") or "").strip().lower()
+    market = str(day.get("market") or "").strip().upper()
+    business_date = str(day.get("business_date") or "").strip()
+    if not broker or not market or not business_date or "is_open" not in day:
+        raise ValueError("broker, market, business_date and is_open are required")
+    checked_at = _normalize_utc_timestamp(day.get("checked_at"))
+    source = _sanitize_text(str(day.get("source") or ""))
+    init_db()
+    with _connect() as conn:
+        conn.execute(
+            "INSERT INTO market_calendar_cache "
+            "(broker, market, business_date, is_open, source, checked_at) "
+            "VALUES (?,?,?,?,?,?) "
+            "ON CONFLICT(broker, market, business_date) DO UPDATE SET "
+            "is_open = excluded.is_open, source = excluded.source, checked_at = excluded.checked_at",
+            (broker, market, business_date, int(bool(day["is_open"])), source, checked_at),
+        )
+        row = conn.execute(
+            "SELECT * FROM market_calendar_cache "
+            "WHERE broker = ? AND market = ? AND business_date = ?",
+            (broker, market, business_date),
+        ).fetchone()
+    result = dict(row)
+    result["is_open"] = bool(result["is_open"])
+    return result
+
+
+def get_market_day(broker: str, market: str, business_date: str) -> dict | None:
+    """시장 영업일 캐시를 조회한다."""
+    init_db()
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT * FROM market_calendar_cache "
+            "WHERE broker = ? AND market = ? AND business_date = ?",
+            (
+                str(broker).strip().lower(),
+                str(market).strip().upper(),
+                str(business_date).strip(),
+            ),
+        ).fetchone()
+    if row is None:
+        return None
+    result = dict(row)
+    result["is_open"] = bool(result["is_open"])
+    return result
 
 # analysis.py 6섹션 요약 키 (dashboard.py가 같은 키로 렌더링)
 _SECTION_KEYS = ("technical_summary", "supply_summary", "financial_summary",
