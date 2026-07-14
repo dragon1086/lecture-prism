@@ -139,6 +139,11 @@ class KISBrokerAdapter:
     def get_account(self) -> dict[str, Any]:
         return self._get_client().get_balance()
 
+    def get_orderable_quantity(
+        self, ticker: str, price: int | float
+    ) -> dict[str, Any]:
+        return self._get_client().get_orderable_quantity(ticker, price)
+
     def get_order_status(self, order_no: str, **kwargs: Any) -> dict[str, Any]:
         return self._get_client().get_order_status(order_no, **kwargs)
 

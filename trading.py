@@ -14,7 +14,12 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+from datetime import datetime
 from typing import Optional
+from uuid import uuid4
+
+import db
+from market_calendar import KST
 
 log = logging.getLogger(__name__)
 
@@ -142,7 +147,13 @@ def _decide_exit(holding: dict, current_price: float) -> Optional[dict]:
 
 
 def _exit(holding: dict, price: float, reason: str) -> dict:
-    return {"action": "SELL", "ticker": holding["ticker"], "price": price, "reason": reason}
+    return {
+        "action": "SELL",
+        "ticker": holding["ticker"],
+        "quantity": int(holding.get("quantity", 0) or 0),
+        "price": price,
+        "reason": reason,
+    }
 
 
 async def run_exit_check(holdings: list[dict], price_map: dict) -> list[dict]:
@@ -215,6 +226,411 @@ def _real_broker_allowed(broker_name: str) -> bool:
     return any_truthy(keys)
 
 
+def _optional_int(value: object) -> int | None:
+    if value in (None, ""):
+        return None
+    try:
+        return int(float(str(value).replace(",", "")))
+    except (TypeError, ValueError):
+        return None
+
+
+def _number_from(record: dict, *keys: str) -> int | None:
+    normalized = {str(key).lower(): value for key, value in record.items()}
+    for key in keys:
+        if key.lower() in normalized:
+            parsed = _optional_int(normalized[key.lower()])
+            if parsed is not None:
+                return parsed
+    return None
+
+
+def _rows(value: object) -> list[dict]:
+    if isinstance(value, dict):
+        return [value]
+    if isinstance(value, list):
+        return [item for item in value if isinstance(item, dict)]
+    return []
+
+
+def _cap_kis_quantity(adapter: object, decision: dict) -> int:
+    desired = max(0, int(decision.get("quantity", 0) or 0))
+    price = max(0, int(decision.get("price", 0) or 0))
+    ticker = str(decision.get("ticker") or "")
+    account = adapter.get_account()
+
+    if str(decision.get("action") or "").upper() == "SELL":
+        for holding in _rows(account.get("output1")):
+            holding_ticker = str(
+                holding.get("pdno") or holding.get("ticker") or ""
+            ).strip()
+            if holding_ticker != ticker:
+                continue
+            sellable = _number_from(
+                holding, "ord_psbl_qty", "sellable_qty", "hldg_qty", "quantity"
+            )
+            return min(desired, max(0, sellable or 0))
+        return 0
+
+    orderable = adapter.get_orderable_quantity(ticker, price)
+    orderable_qty = _number_from(
+        orderable, "nrcvb_buy_qty", "ord_psbl_qty", "buyable_qty"
+    )
+    if orderable_qty is None or orderable_qty <= 0:
+        return 0
+
+    capped = min(desired, orderable_qty)
+    if price <= 0:
+        return 0
+
+    cash_limits: list[int] = []
+    orderable_cash = _number_from(
+        orderable, "ord_psbl_cash", "ord_psbl_amt", "buyable_cash"
+    )
+    if orderable_cash is not None:
+        cash_limits.append(max(0, orderable_cash))
+    for summary in _rows(account.get("output2")):
+        cash = _number_from(
+            summary,
+            "dnca_tot_amt",
+            "ord_psbl_cash",
+            "prvs_rcdl_excc_amt",
+            "cash",
+        )
+        if cash is not None:
+            cash_limits.append(max(0, cash))
+            break
+    if cash_limits:
+        capped = min(capped, *(cash // price for cash in cash_limits))
+    return max(0, capped)
+
+
+def _db_broker_mode(mode: str) -> str:
+    return "real" if str(mode).lower() == "real" else "paper"
+
+
+def _blocked_order_result(decision: dict, broker: str, mode: str, message: str) -> dict:
+    return {
+        **decision,
+        "quantity": 0,
+        "requested_qty": 0,
+        "filled_qty": 0,
+        "remaining_qty": 0,
+        "avg_fill_price": None,
+        "status": "blocked",
+        "accepted": False,
+        "executed": False,
+        "executed_price": None,
+        "terminal": True,
+        "requires_reconciliation": False,
+        "mode": f"{broker}_{mode}_blocked",
+        "pnl": None,
+        "broker": broker,
+        "order_no": None,
+        "message": message,
+    }
+
+
+def _trade_result_from_order(
+    decision: dict,
+    order: dict,
+    *,
+    broker_mode: str,
+    broker_result: dict | None = None,
+) -> dict:
+    status = str(order.get("status") or "unknown")
+    filled_qty = int(order.get("filled_qty", 0) or 0)
+    avg_fill_price = order.get("avg_fill_price")
+    return {
+        **decision,
+        "quantity": int(order.get("requested_qty", 0) or 0),
+        "requested_qty": int(order.get("requested_qty", 0) or 0),
+        "filled_qty": filled_qty,
+        "remaining_qty": int(order.get("remaining_qty", 0) or 0),
+        "avg_fill_price": avg_fill_price,
+        "status": status,
+        "accepted": status in {"accepted", "unfilled", "partial_fill", "filled"},
+        "executed": status == "filled",
+        "executed_price": avg_fill_price if status == "filled" else None,
+        "terminal": status in {"filled", "cancelled", "rejected"},
+        "requires_reconciliation": status in {
+            "accepted", "unknown", "unfilled", "partial_fill"
+        },
+        "mode": broker_mode,
+        "pnl": None,
+        "broker": "kis",
+        "order_no": order.get("order_no"),
+        "message": order.get("message") or "",
+        "broker_result": broker_result or {},
+    }
+
+
+def _text_from(record: dict, *keys: str) -> str:
+    normalized = {str(key).lower(): value for key, value in record.items()}
+    for key in keys:
+        value = normalized.get(key.lower())
+        if value not in (None, ""):
+            return str(value).strip()
+    return ""
+
+
+def _inquiry_row(response: dict, stored: dict) -> dict | None:
+    rows = _rows(response.get("output1"))
+    order_no = str(stored.get("order_no") or "").strip()
+    if order_no:
+        for row in rows:
+            candidate = _text_from(row, "odno", "order_no")
+            if candidate == order_no:
+                return row
+        return None
+
+    expected_side = str(stored.get("side") or "").upper()
+    expected_code = "02" if expected_side == "BUY" else "01"
+    matches = []
+    for row in rows:
+        if _text_from(row, "pdno", "ticker") != str(stored.get("ticker") or ""):
+            continue
+        if _number_from(row, "ord_qty", "requested_qty") != int(
+            stored["requested_qty"]
+        ):
+            continue
+        side_code = _text_from(row, "sll_buy_dvsn_cd")
+        side_name = _text_from(row, "sll_buy_dvsn_cd_name", "side").upper()
+        if side_code and side_code != expected_code:
+            continue
+        side_name_matches = (
+            expected_side in side_name
+            or (expected_side == "BUY" and "매수" in side_name)
+            or (expected_side == "SELL" and "매도" in side_name)
+        )
+        if side_name and not side_name_matches:
+            continue
+        matches.append(row)
+    return matches[0] if len(matches) == 1 else None
+
+
+def _order_progress_from_inquiry(stored: dict, response: dict) -> dict | None:
+    row = _inquiry_row(response, stored)
+    if row is None:
+        return None
+
+    requested = int(stored["requested_qty"])
+    reported_filled = _number_from(
+        row, "tot_ccld_qty", "ccld_qty", "filled_qty"
+    )
+    filled = max(int(stored.get("filled_qty", 0) or 0), reported_filled or 0)
+    filled = min(requested, filled)
+    reported_remaining = _number_from(row, "rmn_qty", "remaining_qty")
+    if reported_remaining is None:
+        remaining = requested - filled
+    else:
+        remaining = min(
+            int(stored.get("remaining_qty", requested) or 0),
+            max(0, reported_remaining),
+        )
+        remaining = min(remaining, requested - filled)
+
+    if filled <= 0:
+        status = "unfilled"
+    elif filled >= requested or remaining == 0:
+        status = "filled"
+        filled = requested
+        remaining = 0
+    else:
+        status = "partial_fill"
+    average = _number_from(
+        row, "avg_prvs", "avg_fill_price", "ccld_avg_pric", "avg_pric"
+    )
+    if not average:
+        average = stored.get("avg_fill_price")
+    return {
+        **stored,
+        "org_no": _text_from(row, "ord_gno_brno", "krx_fwdg_ord_orgno")
+        or stored.get("org_no"),
+        "order_no": _text_from(row, "odno", "order_no")
+        or stored.get("order_no"),
+        "status": status,
+        "filled_qty": filled,
+        "remaining_qty": remaining,
+        "avg_fill_price": average,
+        "message": f"KIS 체결 조회: {status}",
+    }
+
+
+def _reconcile_stored_order(
+    adapter: object, stored: dict, *, broker_mode: str
+) -> dict | None:
+    order_no = stored.get("order_no")
+    if not order_no and stored.get("status") != "unknown":
+        return None
+    inquiry_kwargs = {}
+    if not order_no:
+        inquiry_kwargs = {
+            "start_date": stored["order_date"],
+            "end_date": stored["order_date"],
+        }
+    response = adapter.get_order_status(str(order_no or ""), **inquiry_kwargs)
+    progress = _order_progress_from_inquiry(stored, response)
+    if progress is None:
+        return None
+    updated = db.update_broker_order(progress)
+    decision = {
+        "action": updated["side"],
+        "ticker": updated["ticker"],
+        "quantity": updated["requested_qty"],
+        "price": updated.get("requested_price") or 0,
+        "reason": updated.get("message") or "",
+    }
+    return _trade_result_from_order(
+        decision, updated, broker_mode=broker_mode, broker_result=response
+    )
+
+
+async def reconcile_pending_broker_orders(
+    *, adapter: object | None = None, mode: str | None = None
+) -> list[dict]:
+    """재시작 뒤 미종결 KIS 주문을 조회하며 주문 POST는 다시 보내지 않는다."""
+    from brokers.factory import get_broker_adapter
+
+    selected_mode = mode or _selected_broker_mode("kis")
+    if adapter is None:
+        if not _live_broker_enabled("kis"):
+            return []
+        if str(selected_mode).lower() == "real" and not _real_broker_allowed("kis"):
+            return []
+        adapter = get_broker_adapter("kis")
+
+    db_mode = _db_broker_mode(selected_mode)
+    results = []
+    for stored in db.get_pending_broker_orders(broker="kis", mode=db_mode):
+        if stored["status"] == "submitting":
+            continue
+        if not stored.get("order_no") and stored["status"] != "unknown":
+            continue
+        try:
+            result = _reconcile_stored_order(
+                adapter,
+                stored,
+                broker_mode=f"kis_{'real' if db_mode == 'real' else 'demo'}",
+            )
+        except Exception as exc:  # fail open for the rest of the recovery batch
+            log.warning("  KIS 주문 복구 조회 실패: %s", exc)
+            continue
+        if result is not None:
+            results.append(result)
+    return results
+
+
+async def _execute_kis_broker_order(
+    decision: dict, adapter: object, *, mode: str
+) -> dict:
+    try:
+        quantity = _cap_kis_quantity(adapter, decision)
+    except Exception as exc:
+        return _blocked_order_result(
+            decision, "kis", mode, f"KIS 주문 가능 수량 조회 실패: {exc}"
+        )
+    if quantity <= 0:
+        return _blocked_order_result(
+            decision, "kis", mode, "KIS 계좌의 주문 가능 수량이 없어 주문하지 않습니다."
+        )
+
+    adjusted = {**decision, "quantity": quantity}
+    db_mode = _db_broker_mode(mode)
+    persisted = db.save_broker_order(
+        {
+            "broker": "kis",
+            "mode": db_mode,
+            "client_request_id": str(
+                decision.get("client_request_id") or uuid4().hex
+            ),
+            "order_date": datetime.now(tz=KST).date().isoformat(),
+            "org_no": None,
+            "order_no": None,
+            "ticker": adjusted["ticker"],
+            "side": adjusted["action"],
+            "status": "submitting",
+            "requested_qty": quantity,
+            "filled_qty": 0,
+            "remaining_qty": quantity,
+            "requested_price": int(adjusted["price"]),
+            "avg_fill_price": None,
+            "message": "KIS 주문 제출 전 저장",
+        }
+    )
+
+    from brokers import BrokerOrder
+
+    try:
+        broker_result = await adapter.place_order(
+            BrokerOrder(
+                action=adjusted["action"],
+                ticker=adjusted["ticker"],
+                quantity=quantity,
+                price=int(adjusted["price"]),
+                reason=adjusted.get("reason", ""),
+            )
+        )
+    except Exception as exc:
+        rejected = db.update_broker_order(
+            {
+                **persisted,
+                "status": "rejected",
+                "message": f"KIS 주문 실패: {exc}",
+            }
+        )
+        return _trade_result_from_order(
+            adjusted, rejected, broker_mode=f"kis_{mode}"
+        )
+
+    status = str(
+        broker_result.get("status")
+        or ("accepted" if broker_result.get("success") else "rejected")
+    ).lower()
+    persisted_status = "rejected" if status == "blocked" else status
+    if persisted_status not in {"accepted", "unknown", "rejected"}:
+        persisted_status = "accepted" if broker_result.get("success") else "rejected"
+    persisted = db.update_broker_order(
+        {
+            **persisted,
+            "status": persisted_status,
+            "org_no": broker_result.get("branch_no"),
+            "order_no": broker_result.get("order_no"),
+            "message": broker_result.get("message") or "",
+        }
+    )
+    result = _trade_result_from_order(
+        adjusted,
+        persisted,
+        broker_mode=broker_result.get("mode") or f"kis_{mode}",
+        broker_result=broker_result,
+    )
+    if status == "blocked":
+        result.update(
+            {
+                "status": "blocked",
+                "accepted": False,
+                "terminal": True,
+                "message": broker_result.get("message") or result["message"],
+            }
+        )
+        return result
+
+    if persisted_status == "accepted" and persisted.get("order_no"):
+        try:
+            reconciled = _reconcile_stored_order(
+                adapter,
+                persisted,
+                broker_mode=broker_result.get("mode") or f"kis_{mode}",
+            )
+        except Exception as exc:
+            log.warning("  KIS 접수 주문 체결 조회 실패: %s", exc)
+        else:
+            if reconciled is not None:
+                return reconciled
+    return result
+
+
 async def _execute_broker_order(decision: dict, broker_name: str | None = None) -> dict:
     """
     선택 브로커 API 주문 실행.
@@ -277,6 +693,9 @@ async def _execute_broker_order(decision: dict, broker_name: str | None = None) 
             "broker": broker,
             "message": f"{broker} 어댑터 로드 실패: {e}",
         }
+
+    if broker == "kis":
+        return await _execute_kis_broker_order(decision, adapter, mode=mode)
 
     try:
         broker_result = await adapter.place_order(

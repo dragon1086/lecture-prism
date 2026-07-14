@@ -82,6 +82,9 @@ class _FakeKISClient:
     def get_balance(self):
         return self.account
 
+    def get_orderable_quantity(self, ticker, price):
+        return {"ticker": ticker, "price": price, "nrcvb_buy_qty": "7"}
+
     def get_order_status(self, order_no, **kwargs):
         return {"order_no": order_no, "kwargs": kwargs}
 
@@ -215,6 +218,10 @@ class BrokerAdapterTest(unittest.TestCase):
         adapter = KISBrokerAdapter(mode="demo", client=client, market_gate=gate)
 
         self.assertEqual(client.account, adapter.get_account())
+        self.assertEqual(
+            {"ticker": "005930", "price": 70000, "nrcvb_buy_qty": "7"},
+            adapter.get_orderable_quantity("005930", 70000),
+        )
         self.assertEqual(
             {"order_no": "101", "kwargs": {"start_date": "20260715"}},
             adapter.get_order_status("101", start_date="20260715"),

@@ -46,17 +46,36 @@ async def run_feedback(trade_results: list[dict], analyses: list[dict]) -> None:
     for result in trade_results:
         analysis = analysis_by_ticker.get(result["ticker"], {})
 
+        status = str(result.get("status") or "").lower()
+        is_simulation_fill = (
+            result.get("mode") == "simulation" and result.get("executed") is True
+        )
+        is_broker_fill = status == "filled" and result.get("executed") is True
+        if not (is_simulation_fill or is_broker_fill):
+            log.info(
+                "  [%s] 주문 상태 %s — 체결 완료 전까지 매매일지/보유내역에 반영하지 않습니다.",
+                result["ticker"],
+                status or "pending",
+            )
+            continue
+
         # 매매 내역 저장
-        db.save_trade(result)
+        completed = dict(result)
+        if is_broker_fill:
+            completed["quantity"] = int(result.get("filled_qty", 0) or 0)
+            completed["executed_price"] = (
+                result.get("avg_fill_price") or result.get("executed_price")
+            )
+        db.save_trade(completed)
 
         # 판단 오류 vs 실행 오류 분류
-        error_type = _classify_error(result, analysis)
+        error_type = _classify_error(completed, analysis)
 
         # 교훈 추출
-        lesson = await _extract_lesson(result, analysis, error_type)
+        lesson = await _extract_lesson(completed, analysis, error_type)
 
         # 메모리 저장
-        await _save_to_memory(result, lesson, error_type, tier="short")
+        await _save_to_memory(completed, lesson, error_type, tier="short")
 
         log.info(f"  [{result['ticker']}] 매매일지 저장: {lesson[:50]}...")
 
