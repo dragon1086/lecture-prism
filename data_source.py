@@ -227,6 +227,14 @@ def _fetch_symbol(yf, ticker: str, symbol: str) -> dict | None:
     if len(hist) < 2:
         return None
 
+    last_index = hist.index[-1]
+    if hasattr(last_index, "date"):
+        last_index = last_index.date()
+    if hasattr(last_index, "isoformat"):
+        data_as_of = last_index.isoformat()
+    else:
+        data_as_of = str(last_index)[:10]
+
     closes = [float(x) for x in hist["Close"].tolist()]
     volumes = [float(x) for x in hist["Volume"].tolist()]
 
@@ -257,6 +265,8 @@ def _fetch_symbol(yf, ticker: str, symbol: str) -> dict | None:
 
     return {
         "source": "yfinance",
+        "data_source": "yfinance",
+        "data_as_of": data_as_of,
         "ticker": ticker,
         "name": info.get("shortName") or info.get("longName") or mock_profile(ticker)["name"],
         "current_price": int(round(price)),
@@ -377,6 +387,8 @@ def _fetch_mock(ticker: str) -> dict:
     prof = mock_profile(ticker)
     return {
         "source": "mock",
+        "data_source": "mock",
+        "data_as_of": None,
         "ticker": ticker,
         "name": prof["name"],
         "current_price": prof["price"],
