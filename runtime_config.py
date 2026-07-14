@@ -128,13 +128,24 @@ class RuntimeConfig:
     tool_ready: dict[str, bool]
     live_broker_enabled: bool
     real_broker_allowed: bool
+    notify_discord: bool
+    notify_telegram: bool
 
     def summary(self) -> str:
         tools = ",".join(self.research_tools) if self.research_tools else "off"
+        notifications = ",".join(
+            channel
+            for channel, enabled in (
+                ("discord", self.notify_discord),
+                ("telegram", self.notify_telegram),
+            )
+            if enabled
+        ) or "off"
         return (
             f"profile={self.profile}, data={self.data_mode}, screening={self.screening_mode}, "
             f"llm={self.llm_mode}, report={self.report_mode}, tools={tools}, "
-            f"trade={self.trade_mode}, broker={self.broker}/{self.broker_mode}"
+            f"trade={self.trade_mode}, broker={self.broker}/{self.broker_mode}, "
+            f"notifications={notifications}"
         )
 
 
@@ -254,6 +265,8 @@ def load_runtime_config() -> RuntimeConfig:
     real_broker_allowed = truthy(os.getenv("LECTURE_ALLOW_REAL_BROKER")) or truthy(
         os.getenv(f"LECTURE_ALLOW_REAL_{broker.upper()}")
     )
+    notify_discord = truthy(os.getenv("LECTURE_NOTIFY_DISCORD"))
+    notify_telegram = truthy(os.getenv("LECTURE_NOTIFY_TELEGRAM"))
 
     return RuntimeConfig(
         profile=profile,
@@ -270,6 +283,8 @@ def load_runtime_config() -> RuntimeConfig:
         tool_ready=tool_ready,
         live_broker_enabled=live_broker_enabled,
         real_broker_allowed=real_broker_allowed,
+        notify_discord=notify_discord,
+        notify_telegram=notify_telegram,
     )
 
 

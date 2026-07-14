@@ -70,6 +70,25 @@ class PipelineStoreTests(unittest.TestCase):
         self.assertEqual("analysis", finished["failure_stage"])
         self.assertIsNotNone(finished["completed_at"])
 
+    def test_pipeline_run_provenance_can_be_updated_after_analysis(self):
+        db.start_pipeline_run(
+            {
+                "run_id": "run-provenance",
+                "profile": "real_data",
+                "trade_state": "simulation",
+            }
+        )
+
+        db.update_pipeline_run_provenance(
+            "run-provenance",
+            data_source="yfinance",
+            data_as_of="2026-07-10",
+        )
+
+        run = db.get_latest_pipeline_run()
+        self.assertEqual("yfinance", run["data_source"])
+        self.assertEqual("2026-07-10", run["data_as_of"])
+
     def test_latest_pipeline_run_compares_mixed_offsets_chronologically(self):
         db.start_pipeline_run(
             {

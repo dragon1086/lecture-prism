@@ -267,6 +267,18 @@ def finish_pipeline_run(
         )
 
 
+def update_pipeline_run_provenance(
+    run_id: str, *, data_source: str | None, data_as_of: str | None
+) -> None:
+    """분석에서 확인된 실제 데이터 출처와 기준일을 실행 행에 반영한다."""
+    init_db()
+    with _connect() as conn:
+        conn.execute(
+            "UPDATE pipeline_runs SET data_source = ?, data_as_of = ? WHERE run_id = ?",
+            (data_source, data_as_of, run_id),
+        )
+
+
 def save_pipeline_event(event: dict) -> None:
     """비밀값을 제거한 파이프라인 이벤트를 저장한다."""
     init_db()

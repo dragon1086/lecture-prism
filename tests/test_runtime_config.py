@@ -16,6 +16,11 @@ _ENV_KEYS = {
     "LECTURE_BROKER_MODE",
     "LECTURE_ENABLE_LIVE_BROKER",
     "LECTURE_ALLOW_REAL_BROKER",
+    "LECTURE_NOTIFY_DISCORD",
+    "LECTURE_NOTIFY_TELEGRAM",
+    "DISCORD_WEBHOOK_URL",
+    "TELEGRAM_BOT_TOKEN",
+    "TELEGRAM_CHAT_ID",
     "OPENAI_API_KEY",
     "OPENAI_BASE_URL",
     "PRISM_OPENAI_AUTH_MODE",
@@ -85,6 +90,32 @@ class RuntimeConfigTest(unittest.TestCase):
         self.assertEqual(cfg.data_mode, "mock")
         self.assertEqual(cfg.report_mode, "lite")
         self.assertEqual(cfg.research_tools, ("perplexity",))
+
+    def test_notification_channels_are_disabled_by_default(self):
+        cfg = runtime_config.load_runtime_config()
+
+        self.assertFalse(cfg.notify_discord)
+        self.assertFalse(cfg.notify_telegram)
+
+    def test_summary_reports_only_enabled_channels_and_never_secrets(self):
+        webhook = "https://discord.com/api/webhooks/" + "123/private-value"
+        token = "123456789:" + "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghi"
+        chat_id = "private-chat-id"
+        os.environ["LECTURE_NOTIFY_DISCORD"] = "1"
+        os.environ["LECTURE_NOTIFY_TELEGRAM"] = "true"
+        os.environ["DISCORD_WEBHOOK_URL"] = webhook
+        os.environ["TELEGRAM_BOT_TOKEN"] = token
+        os.environ["TELEGRAM_CHAT_ID"] = chat_id
+
+        cfg = runtime_config.load_runtime_config()
+        summary = cfg.summary()
+
+        self.assertTrue(cfg.notify_discord)
+        self.assertTrue(cfg.notify_telegram)
+        self.assertIn("notifications=discord,telegram", summary)
+        self.assertNotIn(webhook, summary)
+        self.assertNotIn(token, summary)
+        self.assertNotIn(chat_id, summary)
 
 
 if __name__ == "__main__":
