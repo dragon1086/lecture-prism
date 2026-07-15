@@ -22,7 +22,7 @@ lecture-prism은 **API 키 없이도 기본 데모가 바로 실행**되도록 �
 | 키 없이 전체 흐름 확인 | `LECTURE_PROFILE=mock` | 없음 |
 | 실제 가격·거래량만 사용 | `LECTURE_PROFILE=real_data` | 없음 (yfinance는 무료·무키) |
 | 최신 뉴스·시장 리서치 보강 | `LECTURE_PROFILE=research` | OpenAI API 키 또는 강의용 구독 어댑터, 선택으로 Perplexity/Firecrawl |
-| 증권사 모의투자 주문 경로 | `LECTURE_PROFILE=paper` | 브로커 demo 키, KIS라면 `kis_devlp.yaml` |
+| 증권사 모의투자 주문 경로 | `LECTURE_PROFILE=paper` | 브로커 demo 키, KIS라면 `KIS_PAPER_*` 환경변수 |
 | 실전투자 | `LECTURE_PROFILE=live` | 브로커 real 키, 이중 안전 플래그 |
 
 ## 3. 실제 LLM 응답을 보고 싶을 때
@@ -46,7 +46,19 @@ lecture-prism은 **API 키 없이도 기본 데모가 바로 실행**되도록 �
 
 Perplexity와 Firecrawl은 `LECTURE_REPORT_MODE=research`이고 해당 키가 있을 때만 보조 자료로 붙습니다. 키가 비어 있으면 그 도구만 건너뛰고 기본 보고서는 계속 생성됩니다.
 
-## 5. 증권사 브로커 심화
+## 5. 3주차 알림과 KIS 모의투자 준비
+
+3주차 마지막 과제에서는 **Discord Incoming Webhook을 필수로 준비**하고, **Telegram은 선택**으로 준비합니다. Discord는 강의 결과물의 기본 전달 채널이지만 런타임에서는 선택 기능이므로, 웹훅이 없거나 알림 실패가 발생해도 파이프라인은 계속 실행됩니다.
+
+| 준비 | 환경변수 | 수업 기준 |
+|---|---|---|
+| Discord | `LECTURE_NOTIFY_DISCORD`, `DISCORD_WEBHOOK_URL` | 필수 준비, 로컬 `.env`에만 저장 |
+| Telegram BotFather 봇·첫 대화·chat id | `LECTURE_NOTIFY_TELEGRAM`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | 선택 준비, 건너뛰어도 Discord로 완료 가능 |
+| KIS 모의투자 App Key·Secret | `KIS_PAPER_APP_KEY`, `KIS_PAPER_APP_SECRET` | 키 준비만, `KIS_PAPER_ACCOUNT_NO` 입력과 주문 연동은 4주차 감독 아래 진행 |
+
+3주차에는 `LECTURE_ENABLE_LIVE_BROKER=0`, `LECTURE_ALLOW_REAL_BROKER=0`, `LECTURE_ALLOW_REAL_KIS=0`을 유지합니다. 웹훅 URL을 제출하지 말고, 봇 토큰을 제출하지 말고, 계좌번호를 제출하지 말고, `.env`를 제출하지 않습니다. 코딩 에이전트에게도 **시크릿 값은 출력하지 말라**고 명시합니다.
+
+## 6. 증권사 브로커 심화
 
 | 범위 | 필요한 것 | 기본 실습 필요 여부 |
 |---|---|---|
@@ -59,7 +71,7 @@ Perplexity와 Firecrawl은 `LECTURE_REPORT_MODE=research`이고 해당 키가 �
 
 | 브로커 | 선택값 | 구현 상태 |
 |---|---|---|
-| 한국투자증권 | `LECTURE_BROKER=kis` | 기존 PRISM KIS 브리지 wrapping |
+| 한국투자증권 | `LECTURE_BROKER=kis` | 공식 REST 규격 기반 표준 라이브러리 클라이언트, 접수 후 체결 조회 분리 |
 | 키움증권 | `LECTURE_BROKER=kiwoom` | 공식 REST API의 `/oauth2/token`, `/api/dostk/ordr`, `kt10000/kt10001` 구조 반영 |
 | 토스증권 | `LECTURE_BROKER=toss` | 공개 주문 API 미확인으로 기본 차단 템플릿 제공 |
 | 기타 증권사 | `LECTURE_BROKER=custom` | `LECTURE_BROKER_ADAPTER=module:Class`로 수강생 전용 어댑터 연결 |
@@ -79,8 +91,9 @@ lecture-prism에서 기본 KIS 브리지 옆에 내가 준비한 증권사 API �
 5. 공식 문서에 없는 엔드포인트와 필드는 추측하지 마.
 ```
 
-## 6. 보안 원칙
+## 7. 보안 원칙
 
 - 실제 키·토큰·계좌 설정 파일은 절대 GitHub에 올리지 않습니다.
-- `trading/trading/config/kis_devlp.yaml`은 실제 인증 파일이므로 커밋 금지입니다.
+- KIS 인증값과 계좌번호는 `KIS_PAPER_*` / `KIS_REAL_*` 이름으로 로컬 `.env`에만 저장합니다.
+- 예전 `trading/trading/config/kis_devlp.yaml`을 따로 만들어 쓰는 경우에도 실제 인증 파일은 커밋 금지입니다. 현재 기본 클라이언트의 인증 원천은 `.env`입니다.
 - 커밋 전에는 README의 “보안 점검 프롬프트”를 코딩 에이전트에게 입력하세요.

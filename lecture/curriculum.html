@@ -745,6 +745,8 @@
               <div class="bullet">시뮬레이터 vs 실거래 병행: 판단 오류(에이전트 문제) vs 실행 오류(API 문제) 분리</div>
               <div class="cc-cmd"><span class="cc-bubble">Claude Code</span><div><span class="cc-text">"로컬 대시보드 실행해줘. 오늘 시뮬레이션 매매 내역이랑 의사결정 이유 보고 싶어"</span><div class="cc-result">→ dashboard.py 실행 → localhost:8080 → 매매현황·의사결정 내역·교훈 리스트 확인</div></div></div>
               <div class="bullet">파트4 사전과제 안내: "본인의 매매 이론을 3줄로 정리해오기 (진입/청산/리스크)"</div>
+              <div class="bullet"><strong>3주차 필수 준비:</strong> Discord Incoming Webhook을 로컬 <code>.env</code>에 저장하고 시험 메시지 확인. Telegram BotFather·chat id 준비는 선택이며, KIS 모의투자 키는 발급 준비만 하고 실전 허용 플래그는 0으로 유지</div>
+              <div class="bullet">웹훅·봇 토큰·계좌번호는 제출하지 않음. 알림 실패는 채널 상태로 남기되 <strong>파이프라인은 계속</strong> 실행되는 구조 확인</div>
             </div>
           </div>
         </div>
@@ -822,6 +824,10 @@
             <div class="callout" style="margin-bottom:16px;">
               <span class="callout-icon">🎯</span>
               <div class="callout-text"><strong>사전과제 3줄이 그대로 트랙이 됩니다:</strong> 진입 조건 → 트랙 A·B / 청산 조건 → 트랙 C / 리스크 관리 → 트랙 D. 준비해온 이론 중 <strong>하나만</strong> 골라 구현하면 오늘은 성공.</div>
+            </div>
+            <div class="callout" style="margin-bottom:16px;">
+              <span class="callout-icon">✅</span>
+              <div class="callout-text"><strong>System Completion Lane:</strong> A/B/C/D 한 트랙 성공 후 같은 <code>run_id</code>의 <code>sequence</code>, <code>data_as_of</code>, Discord·선택 Telegram 전달, KIS 모의투자 주문 상태와 <code>live_blocked</code>, 대시보드 증거를 맞춰 본다. 알림 실패 시에도 파이프라인은 계속된다.</div>
             </div>
             <div class="track-grid">
               <div class="track-card">

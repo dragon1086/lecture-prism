@@ -28,6 +28,65 @@
 - 한국투자증권 모의투자 앱키/시크릿: KIS 구조 이해·심화 실습용
 - GitHub 계정 및 강사의 collaborator 초대 수락: 브랜치 제출을 선택할 때만 필요
 
+## 3주차 마지막 과제 — 4주차 시스템 연결 준비
+
+4주차에는 전략 코드만 바꾸고 끝내지 않고, 실행 단계와 결과를 메시지와 대시보드로 확인합니다. 따라서 **Discord는 필수 준비**, **Telegram은 선택 준비**, KIS는 **모의투자 키 준비까지만** 합니다. Discord 웹훅을 준비해도 런타임에서 알림을 켜는 것은 4주차 검증 때 하므로, 키가 없거나 전송이 실패해도 기본 파이프라인은 계속 동작합니다.
+
+### Discord Incoming Webhook — 필수 준비
+
+아래 내용을 코딩 에이전트에게 그대로 붙여넣으세요.
+
+```text
+lecture-prism 4주차 실습을 위한 Discord 필수 준비를 도와줘.
+
+내가 할 일과 네가 할 일을 나눠서 아주 쉽게 안내해줘.
+1. Discord에서 강의용 서버와 비공개 채널을 만들고, 그 채널의 Incoming Webhook을 만드는 화면까지 안내해줘.
+2. lecture-prism의 .env.example을 기준으로 로컬 .env를 만들거나 기존 .env를 점검해줘.
+3. DISCORD_WEBHOOK_URL은 .env에만 저장하고 LECTURE_NOTIFY_DISCORD=1로 준비해줘.
+4. 사람 이름이나 투자 정보가 없는 “lecture-prism 알림 연결 확인” 메시지 한 건만 안전하게 시험 전송해줘.
+5. 전송 성공 여부만 알려주고 웹훅 URL과 시크릿 값은 출력하지 마.
+6. .env가 .gitignore로 제외되는지 확인하고, Git 변경 목록과 답변 어디에도 웹훅 값이 노출되지 않았는지 점검해줘.
+7. 실패하면 기본 파이프라인을 멈추거나 실거래 설정을 켜지 말고 원인과 다음 안전 조치만 설명해줘.
+
+웹훅 URL을 제출하지 말고, .env를 제출하지 않도록 마지막에 다시 확인해줘.
+내가 직접 터미널 명령을 치지 않게 필요한 점검과 시험 전송은 네가 맡아줘.
+```
+
+### Telegram — 선택 준비
+
+Telegram을 쓰지 않는 수강생은 건너뛰어도 됩니다. 건너뛰면 Discord만으로 4주차 완료 증거를 만들 수 있습니다.
+
+```text
+lecture-prism의 Telegram 알림을 선택으로 준비해줘.
+
+1. Telegram의 공식 BotFather 대화에서 새 봇을 만드는 방법을 안내해줘.
+2. 봇을 만든 뒤 내가 그 봇과 첫 대화를 시작하고 아무 메시지나 한 번 보내도록 안내해줘.
+3. 공식 getUpdates 응답에서 내 TELEGRAM_CHAT_ID를 찾는 과정을 도와주되, 봇 토큰과 chat id 원문은 답변에 출력하지 마.
+4. TELEGRAM_BOT_TOKEN과 TELEGRAM_CHAT_ID는 Git에서 제외되는 로컬 .env에만 저장하고 LECTURE_NOTIFY_TELEGRAM=1로 준비해줘.
+5. “lecture-prism Telegram 연결 확인” 메시지 한 건만 시험 전송하고 성공/실패 상태만 알려줘.
+6. .gitignore와 Git 변경 목록을 점검해 시크릿이 들어가지 않았는지 확인해줘.
+7. Telegram을 건너뛰거나 전송이 실패해도 Discord 및 파이프라인 실행은 계속된다고 설명해줘.
+
+봇 토큰을 제출하지 말고, .env를 제출하지 마. 시크릿 값은 출력하지 마.
+```
+
+### KIS 모의투자 — 키 준비만
+
+3주차에는 KIS 모의투자 App Key와 App Secret 발급 준비까지만 합니다. 계좌번호·HTS ID 입력, 주문 호출, 실전투자 전환은 4주차 감독 아래 별도로 확인합니다.
+
+```text
+4주차 KIS 모의투자 실습을 위한 준비 상태만 점검해줘.
+
+1. 한국투자증권 공식 모의투자 환경에서 발급받아야 하는 App Key와 App Secret을 안내해줘.
+2. 발급값은 채팅에 붙이지 않고 로컬 .env 또는 Git에서 제외된 인증 파일에 내가 직접 넣도록 안내해줘.
+3. LECTURE_BROKER=kis, LECTURE_BROKER_MODE=demo, LECTURE_KIS_MODE=demo인지 확인해줘.
+4. LECTURE_ENABLE_LIVE_BROKER=0, LECTURE_ALLOW_REAL_BROKER=0, LECTURE_ALLOW_REAL_KIS=0을 그대로 유지해줘.
+5. 지금은 인증값 출력, 계좌 조회, 주문 전송을 하지 말고 준비 완료/미완료만 알려줘.
+6. .env와 인증 파일이 .gitignore로 제외되는지 확인해줘.
+
+계좌번호를 제출하지 말고, App Key·Secret과 .env를 제출하지 마. 시크릿 값은 출력하지 마.
+```
+
 ---
 
 ## 실습 1 — 첫 성공 확인: 데모 파이프라인 (CH1 준비 · 5분)

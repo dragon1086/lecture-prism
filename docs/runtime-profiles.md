@@ -2,12 +2,11 @@
 
 lecture-prism은 한 저장소 안에서 초급자용 더미 데모부터 고급자용 실데이터·리서치·브로커 연결까지 단계적으로 켤 수 있습니다.
 
-수강생이 기본적으로 만지는 파일은 두 개입니다.
+수강생이 기본적으로 만지는 파일은 하나입니다.
 
 | 파일 | 역할 |
 |---|---|
-| `.env` | 더미/실데이터/리서치/매매 수준 선택, API 키 입력 |
-| `trading/trading/config/kis_devlp.yaml` | KIS 계좌번호, App Key, App Secret, 모의/실전 계좌 설정 |
+| `.env` | 더미/실데이터/리서치/매매 수준 선택, 알림·KIS API 키와 계좌 입력 |
 
 처음에는 `.env` 없이도 됩니다. 설정을 따로 만들고 싶다면 `.env.example`을 참고해 `.env`를 만들고 `LECTURE_PROFILE=mock`으로 시작하세요. 이 값이면 API 키가 없어도 스크리닝, 분석, 가상 매매, 피드백 저장, Markdown 보고서 생성까지 돌아갑니다.
 
@@ -43,6 +42,13 @@ lecture-prism은 한 저장소 안에서 초급자용 더미 데모부터 고급
 | `LECTURE_SAVE_REPORTS` | `1`, `0` | `reports/` Markdown 저장 여부 |
 
 중요한 점은 각 스위치가 실패해도 전체 실행이 멈추지 않고 더 안전한 단계로 돌아간다는 것입니다. 예를 들어 `research`를 골랐지만 `PERPLEXITY_API_KEY`가 없으면 Perplexity 리서치만 빠지고, 기본 뉴스/데이터 분석은 계속 진행됩니다.
+
+알림도 같은 원칙을 따릅니다. Discord 또는 Telegram 알림 실패는 해당 전달 상태를 `failed`로 남기지만 **파이프라인은 계속** 실행됩니다. Discord는 3주차 필수 준비이고 Telegram은 선택 준비이며, 인증값은 로컬 `.env`에만 둡니다.
+
+| 채널 | 스위치 | 인증값 | 강의 기준 |
+|---|---|---|---|
+| Discord | `LECTURE_NOTIFY_DISCORD` | `DISCORD_WEBHOOK_URL` | 필수 준비, 4주차 기본 증거 채널 |
+| Telegram | `LECTURE_NOTIFY_TELEGRAM` | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | 선택, Discord와 같은 `run_id`·`sequence` 확인 |
 
 ## 3. 추천 조합
 
@@ -89,11 +95,17 @@ LECTURE_BROKER=kis
 LECTURE_BROKER_MODE=demo
 LECTURE_ENABLE_LIVE_BROKER=1
 LECTURE_KIS_MODE=demo
+KIS_PAPER_APP_KEY="..."
+KIS_PAPER_APP_SECRET="..."
+KIS_PAPER_ACCOUNT_NO="..." # 계좌번호 앞 8자리
+KIS_PAPER_PRODUCT_CODE="01"
 ```
 
-추가로 `trading/trading/config/kis_devlp.yaml`에 KIS 모의투자 App Key, App Secret, HTS ID, 계좌번호를 채웁니다.
+KIS 기본 클라이언트는 위 `KIS_PAPER_*` 값을 읽습니다. 실제 값은 로컬 `.env`에만 두고 출력하거나 제출하지 않습니다.
 
 주의: `LECTURE_ENABLE_LIVE_BROKER=1`은 브로커 API 호출을 허용한다는 뜻입니다. 모의투자 모드라도 실제 증권사 서버에 요청이 나갈 수 있습니다.
+
+3주차에는 KIS 모의투자 키 준비만 하고 `LECTURE_ENABLE_LIVE_BROKER=0`, `LECTURE_ALLOW_REAL_BROKER=0`, `LECTURE_ALLOW_REAL_KIS=0`을 유지합니다. 위의 paper 호출 허용은 4주차에 코딩 에이전트가 demo 계정과 안전 게이트를 다시 확인한 뒤 진행합니다.
 
 ### 실전투자: 이중 안전장치가 모두 필요
 
@@ -105,9 +117,13 @@ LECTURE_BROKER_MODE=real
 LECTURE_ENABLE_LIVE_BROKER=1
 LECTURE_ALLOW_REAL_BROKER=1
 LECTURE_KIS_MODE=real
+KIS_REAL_APP_KEY="..."
+KIS_REAL_APP_SECRET="..."
+KIS_REAL_ACCOUNT_NO="..." # 계좌번호 앞 8자리
+KIS_REAL_PRODUCT_CODE="01"
 ```
 
-추가로 `kis_devlp.yaml`의 `default_mode`와 계좌별 `mode`도 `real`이어야 합니다.
+실전 모드는 `KIS_REAL_*` 인증값을 별도로 읽습니다. 모의투자 키를 실전 서버에 재사용하지 않습니다.
 
 이 상태에서도 주문 어댑터가 실패하면 결과에는 실패 사유가 기록되고, 파이프라인은 설명 가능한 상태로 종료됩니다.
 
@@ -126,7 +142,7 @@ LECTURE_KIS_MODE=real
 ## 5. 에이전트에게 맡기는 점검 프롬프트
 
 ```text
-lecture-prism의 현재 .env와 kis_devlp.yaml 설정을 점검해줘.
+lecture-prism의 현재 .env 설정을 점검해줘. 시크릿 값 자체는 출력하지 마.
 
 확인할 것:
 1. LECTURE_PROFILE 기준으로 어떤 데이터/리포트/매매 수준인지 설명해줘.
@@ -134,4 +150,16 @@ lecture-prism의 현재 .env와 kis_devlp.yaml 설정을 점검해줘.
 3. main.py 기본 실행이 API 키 없이도 깨지지 않는지 확인해줘.
 4. demo 또는 real 매매가 켜져 있다면 안전 플래그가 의도와 맞는지 확인해줘.
 5. 실제 주문 가능성이 있으면 빨간불로 표시하고, 내가 원하지 않는 한 simulation으로 되돌려줘.
+```
+
+## 6. 4주차 System Completion Lane 증거
+
+A/B/C/D 중 한 전략 트랙을 먼저 통과한 뒤, 같은 실행의 `run_id`와 이벤트 `sequence`, 실제 데이터 기준일 `data_as_of`, Discord 및 선택 Telegram 전달 상태, KIS 모의투자 주문 상태, 대시보드를 맞춰 봅니다. 주문 접수와 체결은 다르므로 `accepted`, `partial_fill`, `filled`, `blocked`, `live_blocked`를 구분하고 포트폴리오에는 체결 수량만 반영합니다.
+
+```text
+내 전략 트랙 검증이 끝났으니 System Completion Lane 증거를 점검해줘.
+같은 run_id의 data_as_of와 sequence, Discord 전달, 설정된 경우 Telegram parity,
+주문 접수·부분 체결·체결·차단 상태, 대시보드 표시가 서로 일치하는지 확인해줘.
+알림 실패가 있어도 파이프라인은 계속되었는지 보여주고 시크릿 값은 출력하지 마.
+실전 주문은 live_blocked 상태를 유지해줘.
 ```
