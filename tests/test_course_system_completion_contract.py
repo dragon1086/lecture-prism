@@ -53,8 +53,27 @@ class CourseSystemCompletionContractTests(unittest.TestCase):
             "LECTURE_NOTIFY_TELEGRAM=0", 'TELEGRAM_BOT_TOKEN=""',
             'TELEGRAM_CHAT_ID=""', "LECTURE_ENABLE_LIVE_BROKER=0",
             "LECTURE_ALLOW_REAL_BROKER=0",
+            'KIS_PAPER_APP_KEY=""', 'KIS_PAPER_APP_SECRET=""',
+            'KIS_PAPER_ACCOUNT_NO=""', 'KIS_REAL_APP_KEY=""',
         ):
             self.assertIn(marker, text, marker)
+
+    def test_readme_and_architecture_explain_observable_system_outcome(self):
+        combined = "\n".join(
+            self.read(path)
+            for path in (
+                "README.md",
+                "docs/architecture.md",
+                "docs/broker-adapters.md",
+                "docs/agent-prompt-equivalence.md",
+            )
+        )
+        for marker in (
+            "run_id", "data_as_of", "Discord", "Telegram", "accepted",
+            "partial_fill", "filled_qty", "/api/dashboard",
+            "KIS_PAPER_APP_KEY", "KIS_REAL_APP_KEY",
+        ):
+            self.assertIn(marker, combined, marker)
 
     def test_student_evidence_never_submits_secrets_or_account_data(self):
         combined = "\n".join(

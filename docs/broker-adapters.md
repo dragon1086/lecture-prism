@@ -8,7 +8,8 @@ lecture-prism의 기본 성공 기준은 여전히 **API 키 없이 데모 모�
 |---|---|
 | `trading.py` | 전략이 만든 공통 주문 정보를 선택한 브로커로 넘깁니다. |
 | `brokers/base.py` | 모든 브로커가 맞춰야 하는 최소 인터페이스입니다. |
-| `brokers/kis.py` | 기존 한국투자증권 브리지를 감싸는 어댑터입니다. |
+| `brokers/kis.py` | KIS 시장 안전 게이트와 공통 주문 상태를 연결합니다. |
+| `brokers/kis_client.py` | 공식 REST 규격을 표준 라이브러리만으로 호출하고 접수 후 체결을 조회합니다. |
 | `brokers/kiwoom.py` | 키움증권 REST API용 교육용 어댑터입니다. |
 | `brokers/toss.py` | 토스증권 파트너/비공개 문서가 있을 때 채워 넣는 안전 템플릿입니다. |
 | `.env.example` | 브로커를 갈아끼우는 환경변수 예시입니다. 실제 `.env`는 커밋 금지입니다. |
@@ -17,7 +18,7 @@ lecture-prism의 기본 성공 기준은 여전히 **API 키 없이 데모 모�
 
 | 값 | 의미 |
 |---|---|
-| `kis` | 기존 한국투자증권 브리지 사용 |
+| `kis` | 한국투자증권 공식 REST 규격 기반 클라이언트 사용 |
 | `kiwoom` | 키움증권 REST API 어댑터 사용 |
 | `toss` | 토스증권 안전 템플릿 사용. 기본 상태에서는 주문하지 않음 |
 | `custom` | 수강생이 만든 `module:Class` 어댑터 사용 |
@@ -35,7 +36,22 @@ lecture-prism의 기본 성공 기준은 여전히 **API 키 없이 데모 모�
 
 수업 중에는 `LECTURE_ALLOW_REAL_BROKER=1`을 쓰지 않는 것이 원칙입니다.
 
-## 3. 키움증권 어댑터
+## 3. KIS 모의투자와 주문 진실
+
+KIS 모의투자는 `.env`의 `KIS_PAPER_APP_KEY`, `KIS_PAPER_APP_SECRET`, `KIS_PAPER_ACCOUNT_NO`, `KIS_PAPER_PRODUCT_CODE`를 읽습니다. 실전투자는 별도 `KIS_REAL_APP_KEY`, `KIS_REAL_APP_SECRET`, `KIS_REAL_ACCOUNT_NO`, `KIS_REAL_PRODUCT_CODE`를 읽어 모의·실전 인증이 섞이지 않게 합니다.
+
+주문 응답의 `accepted`는 증권사가 요청을 접수했다는 뜻입니다. 체결 조회 전에는 보유 종목으로 계산하지 않습니다. 조회 결과가 `partial_fill`이면 실제 `filled_qty`만, `filled`이면 전량 체결 수량만 포트폴리오와 피드백에 반영합니다. 휴장·장외시간·시장 상태 미확인은 `blocked`로 남기고 분석은 계속합니다.
+
+```text
+KIS 모의투자 연결을 점검해줘.
+KIS_PAPER_APP_KEY 같은 변수 이름과 값의 존재 여부만 확인하고 실제 값은 출력하지 마.
+LECTURE_ENABLE_LIVE_BROKER=0에서 주문이 blocked인지 먼저 검증해줘.
+내가 모의투자 호출을 명시적으로 허용한 뒤에도 accepted를 체결로 쓰지 말고,
+체결 조회의 partial_fill 또는 filled와 실제 filled_qty를 따로 보여줘.
+실전 플래그는 절대 켜지 마.
+```
+
+## 4. 키움증권 어댑터
 
 공식 키움 REST API 가이드에서 확인한 핵심은 다음과 같습니다.
 
@@ -62,7 +78,7 @@ lecture-prism에서 KIS 대신 키움증권 어댑터를 쓰게 설정해줘.
 5. 키움 공식 문서의 /oauth2/token, /api/dostk/ordr, kt10000/kt10001 필드와 코드가 맞는지 점검해줘.
 ```
 
-## 4. 토스증권 어댑터
+## 5. 토스증권 어댑터
 
 2026년 6월 28일 기준으로 확인 가능한 토스 공식 개발자 문서는 토스페이먼츠 결제 API 중심입니다. 토스증권의 공개 개인용 주문 API 문서는 확인하지 못했습니다. 그래서 `brokers/toss.py`는 **주문을 보내지 않는 안전 템플릿**입니다.
 
@@ -79,7 +95,7 @@ lecture-prism의 brokers/toss.py를 내가 제공하는 토스증권 API 문서�
 5. 먼저 테스트에서 요청 payload만 검증하고, 실제 주문 API 호출은 하지 마.
 ```
 
-## 5. 완전히 다른 증권사 붙이기
+## 6. 완전히 다른 증권사 붙이기
 
 새 브로커는 `BrokerOrder`를 받아 `dict` 결과를 돌려주면 됩니다.
 
@@ -110,8 +126,9 @@ lecture-prism에 내가 가져온 증권사 API 문서를 기반으로 새 브�
 5. README와 docs/api-keys.md에 수강생용 프롬프트 방식으로 사용법을 추가해줘.
 ```
 
-## 6. 공식 참고 링크
+## 7. 공식 참고 링크
 
+- KIS 공식 샘플 저장소: <https://github.com/koreainvestment/open-trading-api>
 - 키움 REST API 가이드: <https://openapi.kiwoom.com/guide/apiguide>
 - 키움 REST API 테스트 샘플: <https://openapi.kiwoom.com/guide/guideTestSample>
 - 토스증권 공식 사이트: <https://www.tossinvest.com/>

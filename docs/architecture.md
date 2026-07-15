@@ -22,11 +22,15 @@
 |---|---|---|---|
 | 1 | `screening.py` | 넓은 시장에서 볼 종목을 줄이는 체 | 후보 종목 리스트 |
 | 2 | `analysis.py` | 후보를 여러 관점에서 읽는 AI 분석팀 | 추천, 점수, 근거, 리스크 |
-| 3 | `trading.py` | 살지 말지, 얼마나 살지 정하는 매매 규칙 | 시뮬레이션 체결 결과 |
+| 3 | `trading.py` | 살지 말지, 얼마나 살지 정하는 매매 규칙 | 시뮬레이션 또는 주문 상태 |
 | 4 | `feedback.py` | 매매일지를 쓰고 교훈을 뽑는 회고 담당 | 다음 판단에 쓸 교훈 |
 | 5 | `dashboard.py` | 결과를 눈으로 보는 화면 | 웹 대시보드 |
 
 LLM 연결이 없으면 더미 응답으로 동작합니다. 그래서 수업 초반에는 API 키가 없어도 전체 흐름을 먼저 볼 수 있습니다.
+
+각 실행은 `main.py`가 만든 `run_id` 하나로 묶입니다. 단계 이벤트에는 증가하는 `sequence`가 붙고, 데이터에는 실제 기준일 `data_as_of`가 남습니다. `notifications.py`는 같은 이벤트를 Discord와 선택 Telegram에 비동기로 전달하며, 한 채널이 실패해도 파이프라인은 계속됩니다. `dashboard.py`의 `/api/dashboard`는 이 실행 한 건의 이벤트·전달·주문·분석·교훈을 함께 보여줍니다.
+
+주문 상태도 사실 그대로 분리합니다. `accepted`는 접수, `partial_fill`은 부분 체결, `filled`는 전량 체결입니다. 포트폴리오는 `partial_fill`을 포함한 실제 `filled_qty`만 계산하고, 알 수 없는 현금 잔고는 추정하지 않습니다.
 
 ## 4. 옵션별 전체 아키텍처
 
@@ -74,6 +78,8 @@ lecture-prism은 PRISM 본 시스템의 축소판입니다.
 | 여러 AI 에이전트를 순서대로 연결하기 | `analysis.py` |
 | 구독 어댑터 또는 API 키로 실제 LLM 붙이기 | `cores/chatgpt_proxy/`, `analysis.py` |
 | 주문 전 리스크 판단하기 | `trading.py` |
+| 접수와 체결을 분리해 확인하기 | `brokers/kis.py`, `brokers/kis_client.py`, `db.py` |
+| Discord·Telegram으로 단계별 자동 보고하기 | `notifications.py`, `main.py` |
 | 매매일지와 장기 기억 만들기 | `feedback.py`, `db.py` |
 | 사람이 결과를 보고 다음 개선 방향 잡기 | `dashboard.py`, 실습 프롬프트 |
 

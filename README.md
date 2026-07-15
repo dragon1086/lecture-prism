@@ -17,11 +17,11 @@
 
 | | 무엇을 하나 | 여러분이 하는 것 |
 |---|---|---|
-| **파트 3** | **구독으로 AI 붙이기 + 증권사(KIS) 연동** — 첫 5분, 강의용 어댑터에 ChatGPT Plus/Pro 구독 계정을 로그인해 최신 GPT를 라이브로 연결하는 시연(실무 운영은 정식 API 키 권장)에 이어, KIS 시세 조회 → AI 에이전트 투자 판단 → 시뮬레이션 매매까지 **전체 흐름을 눈앞에서 실행**합니다 | 같은 데모를 본인 노트북에서 코딩 에이전트로 따라 실행 (기본은 mock, 매매는 전부 시뮬레이션 모드, 계좌가 없으면 조회까지만) |
-| **파트 4** | 사전과제로 준비한 **내 매매 이론 3줄(진입·청산·리스크)** 중 하나를 골라, **모듈 1개를 교체(또는 추가)** 해서 내 로직이 담긴 시스템을 들고 갑니다 | 트랙 A~D 중 하나 선택 → 에이전트에게 요청 → 결과 확인 |
+| **파트 3** | **AI·증권사·알림 연결 준비** — KIS 시세 조회 → AI 판단 → 시뮬레이션 매매 흐름을 보고, 4주차 자동 보고에 쓸 Discord Incoming Webhook을 준비합니다 | 같은 데모를 코딩 에이전트로 실행하고 Discord는 필수 준비, Telegram은 선택 준비 (기본은 mock·시뮬레이션) |
+| **파트 4** | **내 전략을 관찰 가능한 시스템으로 완성** — A~D 중 모듈 하나를 바꾼 뒤, 같은 실행의 데이터 기준일·알림·주문 상태·대시보드 증거를 맞춥니다 | 트랙 A~D 중 하나 선택 → 전략 검증 → System Completion Lane 확인 |
 
 - **사전과제(파트4)**: 내 매매 이론 3줄 — ① 언제 사는가(진입) ② 언제 파는가(청산) ③ 얼마나 지키는가(리스크)
-- **준비물**: 노트북 + Claude Code 또는 Codex + (선택) ChatGPT Plus/Pro 구독 + (선택) KIS 모의투자 App Key
+- **준비물**: 노트북 + Claude Code 또는 Codex + Discord Incoming Webhook + (선택) Telegram 봇 + (선택) ChatGPT Plus/Pro 구독·KIS 모의투자 App Key
 - **코딩 경험은 없어도 됩니다.** 코드는 AI가 고치고, 여러분은 "무엇을 만들지"를 판단합니다.
 
 ---
@@ -71,9 +71,11 @@ lecture-prism은 **네 단계 흐름 + 하나의 확인 화면**입니다. 사�
 | `analysis.py` | "이 종목, 어떻게 해석할까?" 6섹션 분석 | 분석 에이전트 프롬프트 → **트랙 B** |
 | `trading.py` | "얼마나 사고, 언제 팔까?" 매매 판단 | 청산 규칙 → **트랙 C** / 리스크 상수 → **트랙 D** |
 | `feedback.py` | "이번 판단에서 뭘 배웠나?" 매매일지 | 교훈을 뽑는 방식 |
-| `dashboard.py` | 결과를 보는 웹 화면 (localhost:8080) | 표·카드 추가 |
+| `dashboard.py` | 같은 실행의 단계·알림·주문·분석을 보는 운영 화면 | 카드·표 추가 |
 
-이 밖에 `data_source.py`(실데이터 연결 창구), `db.py`(저장소), `blank_pipeline.py`(심화: 처음부터 만들기)가 있습니다.
+`main.py`는 매 실행에 `run_id`와 순번을 붙이고, `notifications.py`는 Discord와 선택 Telegram에 단계별 상태를 비동기로 보냅니다. `db.py`에는 실제 데이터 기준일 `data_as_of`, 전달 결과, 주문 접수·체결 상태가 함께 남습니다. 알림 실패는 기록하되 분석은 계속됩니다.
+
+이 밖에 `data_source.py`(실데이터 연결 창구), `db.py`(실행 증거 저장소), `blank_pipeline.py`(심화: 처음부터 만들기)가 있습니다.
 그림으로 더 보고 싶으면 [`docs/architecture.md`](docs/architecture.md)를 보세요.
 
 ---
@@ -143,7 +145,7 @@ lecture-prism에 포함된 ChatGPT OAuth 프록시로 실제 LLM 분석을 연�
 | 종목 필터 | "screening.py만 실행해서 종목 후보가 어떻게 선정되는지 보여줘. 거래량 급등·시가총액·상승 조건이 코드 어디에 있는지 설명하고, 조건을 바꾸면 결과가 어떻게 달라질지도 예시로 설명해줘." |
 | AI 분석 | "analysis.py로 삼성전자 005930을 분석해줘. 기술적 분석 → 뉴스 분석 → 투자전략 에이전트 순서로 어떤 데이터가 넘어가는지 설명해줘. LLM 연결이 없어서 더미 응답으로 동작한다면 그 사실도 명확히 말해줘." |
 | 청산 규칙 | "trading.py의 청산 데모를 실행해줘. 손절·트레일링 스탑·목표가 도달 시나리오가 각각 어떤 조건에서 발화하는지 코드와 실행 결과를 연결해서 설명해줘." |
-| 대시보드 | "dashboard.py를 실행해서 로컬 대시보드를 열 수 있게 도와줘. 필요한 패키지가 있으면 설치하고, 대시보드에서 매매현황·AI 분석 근거·축적된 교훈이 어디에 보이는지 설명해줘." |
+| 대시보드 | "dashboard.py를 실행해서 로컬 대시보드를 열어줘. 최신 run_id 한 건의 data_as_of, 단계 순서, Discord·Telegram 전달 상태, 주문 접수와 실제 체결, 6섹션 분석, 교훈이 서로 같은 실행인지 확인해줘." |
 
 각 모듈의 기본값이 **왜 그 값인지**(매매 철학 포함)는 [`docs/defaults-and-philosophy.md`](docs/defaults-and-philosophy.md)에 정리했습니다. 파트4에서 값을 바꾸기 전에 한 번 읽어보면 좋습니다.
 
@@ -176,6 +178,20 @@ MY_STRATEGY.md를 읽고 내 전략을 lecture-prism에 반영해줘.
 ```
 
 > 이 리포지토리에는 **Strategy Harness Lite**가 들어 있습니다. 전략을 두루뭉술하게 말해도 에이전트가 어디를 바꾸면 좋을지 정리하고, 가장 안전한 한 파일부터 수정·검증합니다. 에이전트가 모르는 것처럼 답하면 "`docs/harness-lite.md`와 `MY_STRATEGY.md`를 먼저 읽고 Strategy Harness Lite 방식으로 진행해줘"라고 말하세요. 자세한 실습 절차는 [`lecture/exercises/part4_실습가이드.md`](lecture/exercises/part4_실습가이드.md)에 있습니다.
+
+### 전략이 돈 뒤에는 System Completion Lane
+
+전략 수정이 성공하면 새 트랙을 더 만들지 않고, 그 한 번의 실행이 끝까지 설명되는지 확인합니다. `accepted`는 주문 접수일 뿐 체결이 아니며, `partial_fill`과 `filled`의 실제 `filled_qty`만 포트폴리오에 반영됩니다. 휴장일에는 금요일 같은 최근 영업일의 `data_as_of`를 오늘 날짜로 꾸미지 않습니다.
+
+```text
+내 A/B/C/D 전략 트랙 검증이 끝났어. 이제 System Completion Lane을 확인해줘.
+최신 run_id 하나를 골라 data_as_of와 단계 sequence,
+Discord와 설정된 경우 Telegram 전달 상태,
+accepted·partial_fill·filled·blocked·live_blocked 주문 상태,
+대시보드의 분석·포트폴리오·교훈이 모두 같은 실행인지 검증해줘.
+partial_fill을 포함한 실제 filled_qty만 보유 수량으로 보고,
+시크릿 값은 출력하지 말고 실전 주문은 계속 차단해줘.
+```
 
 ---
 
