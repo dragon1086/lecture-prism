@@ -23,6 +23,16 @@ logger = logging.getLogger(__name__)
 _DISCORD_MESSAGE_LIMIT = 2_000
 _TELEGRAM_MESSAGE_LIMIT = 4_096
 _STOP = object()
+_DISCORD_HOSTS = {
+    "discord.com",
+    "canary.discord.com",
+    "ptb.discord.com",
+    "discordapp.com",
+    "canary.discordapp.com",
+    "ptb.discordapp.com",
+}
+_DISCORD_WEBHOOK_PATH_RE = re.compile(r"^/api/webhooks/\d+/[A-Za-z0-9._-]+$")
+_TELEGRAM_TOKEN_EXACT_RE = re.compile(r"^\d{6,12}:[A-Za-z0-9_-]{20,}$")
 
 _DISCORD_WEBHOOK_RE = re.compile(
     r"https://(?:canary\.|ptb\.)?discord(?:app)?\.com/api/webhooks/\S+",
@@ -227,6 +237,16 @@ class DiscordChannel(_HttpNotificationChannel):
         retry_backoff: float = 0.25,
         max_retry_after: float = 5.0,
     ):
+        parsed = urllib.parse.urlsplit(webhook_url)
+        if (
+            parsed.scheme != "https"
+            or (parsed.hostname or "").lower() not in _DISCORD_HOSTS
+            or not _DISCORD_WEBHOOK_PATH_RE.fullmatch(parsed.path)
+            or parsed.username is not None
+            or parsed.password is not None
+            or parsed.port not in (None, 443)
+        ):
+            raise ValueError("DISCORD_WEBHOOK_URL must be an official HTTPS webhook URL")
         separator = "&" if "?" in webhook_url else "?"
         endpoint = (
             webhook_url
@@ -263,6 +283,10 @@ class TelegramChannel(_HttpNotificationChannel):
         retry_backoff: float = 0.25,
         max_retry_after: float = 5.0,
     ):
+        if not _TELEGRAM_TOKEN_EXACT_RE.fullmatch(bot_token):
+            raise ValueError("TELEGRAM_BOT_TOKEN has an invalid format")
+        if not chat_id or len(chat_id) > 128 or any(char in chat_id for char in "\r\n"):
+            raise ValueError("TELEGRAM_CHAT_ID has an invalid format")
         self._chat_id = chat_id
         super().__init__(
             name="telegram",
@@ -278,6 +302,18 @@ class TelegramChannel(_HttpNotificationChannel):
         return {"chat_id": self._chat_id, "text": chunk}
 
 
+class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """알림 인증정보가 다른 출처로 전달되지 않도록 리다이렉트를 거부한다."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: ANN001
+        return None
+
+
+def _open_notification_request(request: urllib.request.Request, timeout: float):
+    opener = urllib.request.build_opener(_NoRedirectHandler())
+    return opener.open(request, timeout=timeout)
+
+
 def _post_json(endpoint: str, payload: dict[str, object], timeout: float) -> None:
     request = urllib.request.Request(
         endpoint,
@@ -285,7 +321,7 @@ def _post_json(endpoint: str, payload: dict[str, object], timeout: float) -> Non
         headers={"Content-Type": "application/json"},
         method="POST",
     )
-    with urllib.request.urlopen(request, timeout) as response:
+    with _open_notification_request(request, timeout) as response:
         status = int(getattr(response, "status", 200))
         response.read()
         if not 200 <= status < 300:
@@ -489,7 +525,13 @@ def build_notification_dispatcher(
     discord_enabled = _enabled(settings.get("LECTURE_NOTIFY_DISCORD"))
     webhook_url = settings.get("DISCORD_WEBHOOK_URL", "").strip()
     if discord_enabled and webhook_url:
-        channels.append(DiscordChannel(webhook_url))
+        try:
+            channels.append(DiscordChannel(webhook_url))
+        except ValueError:
+            channels.append(_DisabledChannel("discord"))
+            logger.warning(
+                "Discord notifications are disabled because configuration is invalid"
+            )
     else:
         channels.append(_DisabledChannel("discord"))
         if discord_enabled:
@@ -501,7 +543,13 @@ def build_notification_dispatcher(
     bot_token = settings.get("TELEGRAM_BOT_TOKEN", "").strip()
     chat_id = settings.get("TELEGRAM_CHAT_ID", "").strip()
     if telegram_enabled and bot_token and chat_id:
-        channels.append(TelegramChannel(bot_token, chat_id))
+        try:
+            channels.append(TelegramChannel(bot_token, chat_id))
+        except ValueError:
+            channels.append(_DisabledChannel("telegram"))
+            logger.warning(
+                "Telegram notifications are disabled because configuration is invalid"
+            )
     else:
         channels.append(_DisabledChannel("telegram"))
         if telegram_enabled:

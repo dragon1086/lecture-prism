@@ -178,7 +178,7 @@ class NotificationTests(unittest.IsolatedAsyncioTestCase):
         await dispatcher.start()
 
         with patch(
-            "notifications.urllib.request.urlopen",
+            "notifications._open_notification_request",
             side_effect=AssertionError("disabled channels must not use HTTP"),
         ):
             await dispatcher.enqueue(
@@ -221,7 +221,7 @@ class NotificationTests(unittest.IsolatedAsyncioTestCase):
         )
 
         with patch(
-            "notifications.urllib.request.urlopen", return_value=_FakeResponse()
+            "notifications._open_notification_request", return_value=_FakeResponse()
         ) as urlopen:
             with patch(
                 "notifications.asyncio.to_thread",
@@ -255,7 +255,7 @@ class NotificationTests(unittest.IsolatedAsyncioTestCase):
         )
 
         with patch(
-            "notifications.urllib.request.urlopen", return_value=_FakeResponse()
+            "notifications._open_notification_request", return_value=_FakeResponse()
         ) as urlopen:
             attempts = await channel.send(event)
 
@@ -310,7 +310,7 @@ class NotificationTests(unittest.IsolatedAsyncioTestCase):
         for channel, payload_key in channels:
             with self.subTest(channel=channel.name):
                 with patch(
-                    "notifications.urllib.request.urlopen",
+                    "notifications._open_notification_request",
                     return_value=_FakeResponse(),
                 ) as urlopen:
                     await channel.send(event)
@@ -348,7 +348,7 @@ class NotificationTests(unittest.IsolatedAsyncioTestCase):
         )
 
         with patch(
-            "notifications.urllib.request.urlopen",
+            "notifications._open_notification_request",
             side_effect=[too_many_requests, _FakeResponse()],
         ) as urlopen:
             with patch("notifications.asyncio.sleep", new=AsyncMock()) as sleep:
@@ -374,7 +374,7 @@ class NotificationTests(unittest.IsolatedAsyncioTestCase):
         )
 
         with patch(
-            "notifications.urllib.request.urlopen", side_effect=TimeoutError("slow")
+            "notifications._open_notification_request", side_effect=TimeoutError("slow")
         ) as urlopen:
             with patch("notifications.asyncio.sleep", new=AsyncMock()) as sleep:
                 with self.assertRaises(NotificationDeliveryError) as captured:
@@ -400,7 +400,7 @@ class NotificationTests(unittest.IsolatedAsyncioTestCase):
         server_error = HTTPError(webhook, 503, "Unavailable", Message(), None)
 
         with patch(
-            "notifications.urllib.request.urlopen",
+            "notifications._open_notification_request",
             side_effect=[server_error, _FakeResponse()],
         ) as urlopen:
             self.assertEqual(2, await channel.send(event))
@@ -408,7 +408,7 @@ class NotificationTests(unittest.IsolatedAsyncioTestCase):
 
         client_error = HTTPError(webhook, 400, "Bad Request", Message(), None)
         with patch(
-            "notifications.urllib.request.urlopen", side_effect=client_error
+            "notifications._open_notification_request", side_effect=client_error
         ) as urlopen:
             with self.assertRaises(NotificationDeliveryError):
                 await channel.send(event)
@@ -440,6 +440,20 @@ class NotificationTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn(webhook, rendered)
         self.assertNotIn(token, rendered)
         self.assertNotIn("private-chat-id", rendered)
+
+    def test_discord_rejects_non_official_or_non_https_webhooks(self):
+        invalid = (
+            "http://127.0.0.1:8080/api/internal",
+            "https://example.com/api/webhooks/123/private-value",
+            "https://discord.com/not-a-webhook/123/private-value",
+        )
+        for webhook in invalid:
+            with self.subTest(webhook=webhook), self.assertRaises(ValueError):
+                DiscordChannel(webhook)
+
+    def test_telegram_rejects_token_path_injection(self):
+        with self.assertRaises(ValueError):
+            TelegramChannel("invalid/token", "123")
 
 
 if __name__ == "__main__":

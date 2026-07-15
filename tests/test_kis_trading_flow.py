@@ -352,7 +352,37 @@ class KISTradingFlowTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual([], adapter.order_calls)
         self.assertEqual("filled", self._broker_rows()[0]["status"])
 
-    async def test_unknown_without_order_number_recovers_only_from_unique_matching_inquiry(self):
+    async def test_zero_remaining_does_not_invent_a_full_fill(self):
+        db.save_broker_order(_stored_order())
+        adapter = _FakeKISAdapter(
+            inquiry_results=[
+                {
+                    "output1": [
+                        {
+                            "odno": "100",
+                            "ord_qty": "5",
+                            "tot_ccld_qty": "2",
+                            "rmn_qty": "0",
+                            "avg_prvs": "70100",
+                        }
+                    ]
+                }
+            ]
+        )
+
+        result = (
+            await trading.reconcile_pending_broker_orders(
+                adapter=adapter, mode="paper"
+            )
+        )[0]
+
+        self.assertEqual("partial_fill", result["status"])
+        self.assertEqual(2, result["filled_qty"])
+        self.assertEqual(0, result["remaining_qty"])
+        self.assertFalse(result["executed"])
+        self.assertTrue(result["requires_reconciliation"])
+
+    async def test_unknown_without_order_number_stays_unknown_without_strong_correlation(self):
         db.save_broker_order(
             _stored_order(
                 status="unknown",
@@ -385,19 +415,12 @@ class KISTradingFlowTests(unittest.IsolatedAsyncioTestCase):
             adapter=adapter, mode="paper"
         )
 
-        self.assertEqual(1, len(results))
-        self.assertEqual("unfilled", results[0]["status"])
-        self.assertEqual("200", results[0]["order_no"])
-        self.assertEqual(
-            [
-                (
-                    "",
-                    {"start_date": "2026-07-15", "end_date": "2026-07-15"},
-                )
-            ],
-            adapter.inquiry_calls,
-        )
+        self.assertEqual([], results)
+        self.assertEqual([], adapter.inquiry_calls)
         self.assertEqual([], adapter.order_calls)
+        stored = self._broker_rows()[0]
+        self.assertEqual("unknown", stored["status"])
+        self.assertIsNone(stored["order_no"])
 
     async def test_feedback_only_records_fills_and_keeps_acceptance_unknown_pending(self):
         db.save_broker_order(_stored_order(client_request_id="accepted"))

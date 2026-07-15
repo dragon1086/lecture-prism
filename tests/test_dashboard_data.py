@@ -156,6 +156,8 @@ class DashboardSnapshotTests(unittest.TestCase):
                 "details": {
                     "failure_stage": "analysis",
                     "bot_token": secret,
+                    "appkey": "SYNTHETIC-KIS-APPKEY",
+                    "apikey": "SYNTHETIC-APIKEY",
                     "safe_note": "<img src=x onerror=alert(1)>",
                 },
             }
@@ -179,6 +181,8 @@ class DashboardSnapshotTests(unittest.TestCase):
         self.assertEqual(
             "[REDACTED]", snapshot["events"][1]["details"]["bot_token"]
         )
+        self.assertEqual("[REDACTED]", snapshot["events"][1]["details"]["appkey"])
+        self.assertEqual("[REDACTED]", snapshot["events"][1]["details"]["apikey"])
         self.assertNotIn(secret, serialized)
         self.assertNotIn("<script>", serialized)
         self.assertNotIn("<img", serialized)
@@ -308,6 +312,9 @@ class DashboardSnapshotTests(unittest.TestCase):
                 "buy_score": 8,
                 "rationale": "<script>분석</script>",
                 "technical_summary": f"돌파 token={secret}",
+                "profile": "real_data",
+                "data_source": "yfinance",
+                "data_as_of": "2026-07-14",
             }
         )
         db.save_lesson(
@@ -327,7 +334,8 @@ class DashboardSnapshotTests(unittest.TestCase):
         self.assertEqual(
             {
                 "run_id", "timestamp", "ticker", "recommendation", "score",
-                "reason", "risk", "sections",
+                "reason", "risk", "profile", "data_source", "data_as_of",
+                "sections",
             },
             set(snapshot["analyses"][0]),
         )
@@ -414,10 +422,47 @@ class DashboardSnapshotTests(unittest.TestCase):
                     row[1] for row in conn.execute(f"PRAGMA table_info({table})")
                 }
                 self.assertIn("run_id", columns)
+            analysis_columns = {
+                row[1]
+                for row in conn.execute("PRAGMA table_info(analysis_decisions)")
+            }
+            self.assertTrue(
+                {"profile", "data_source", "data_as_of"}.issubset(analysis_columns)
+            )
             preserved = conn.execute(
                 "SELECT ticker, quantity, run_id FROM trade_history"
             ).fetchone()
             self.assertEqual(("005930", 1, None), preserved)
+
+    def test_cancelled_partial_fill_remains_a_position(self):
+        self._start_run("run-cancelled-partial")
+        order = db.save_broker_order(
+            {
+                "run_id": "run-cancelled-partial",
+                "broker": "kis",
+                "mode": "paper",
+                "client_request_id": "partial-cancel",
+                "order_date": "2026-07-15",
+                "org_no": "01",
+                "order_no": "777",
+                "ticker": "005930",
+                "side": "BUY",
+                "status": "partial_fill",
+                "requested_qty": 5,
+                "filled_qty": 2,
+                "remaining_qty": 3,
+                "requested_price": 70000,
+                "avg_fill_price": 70100,
+            }
+        )
+        db.update_broker_order(
+            {**order, "status": "cancelled", "remaining_qty": 0}
+        )
+
+        snapshot = db.get_dashboard_snapshot("run-cancelled-partial")
+
+        self.assertEqual(2, snapshot["positions"][0]["quantity"])
+        self.assertEqual(70100, snapshot["positions"][0]["average_price"])
 
 
 class RunIdPropagationTests(unittest.IsolatedAsyncioTestCase):

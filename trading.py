@@ -202,31 +202,16 @@ def _selected_broker_mode(broker_name: str) -> str:
 
 def _live_broker_enabled(broker_name: str) -> bool:
     """Global safety gate for any real broker API call."""
-    from brokers.config import any_truthy
+    from brokers.config import broker_order_enabled
 
-    broker = broker_name.upper()
-    keys = [
-        "LECTURE_ENABLE_LIVE_BROKER",
-        f"LECTURE_ENABLE_LIVE_{broker}",
-    ]
-    # Backward compatibility with the previous KIS-only bridge.
-    if broker_name.lower() == "kis":
-        keys.append("LECTURE_ENABLE_LIVE_KIS")
-    return any_truthy(keys)
+    return broker_order_enabled(broker_name)
 
 
 def _real_broker_allowed(broker_name: str) -> bool:
     """Extra safety gate for real-money mode."""
-    from brokers.config import any_truthy
+    from brokers.config import broker_real_allowed
 
-    broker = broker_name.upper()
-    keys = [
-        "LECTURE_ALLOW_REAL_BROKER",
-        f"LECTURE_ALLOW_REAL_{broker}",
-    ]
-    if broker_name.lower() == "kis":
-        keys.append("LECTURE_ALLOW_REAL_KIS")
-    return any_truthy(keys)
+    return broker_real_allowed(broker_name)
 
 
 def _optional_int(value: object) -> int | None:
@@ -334,6 +319,33 @@ def _blocked_order_result(decision: dict, broker: str, mode: str, message: str) 
     }
 
 
+def _safety_gate_result(
+    decision: dict, broker: str, *, mode: str, message: str,
+    status: str = "live_blocked",
+) -> dict:
+    """주문 시도 전 안전 게이트가 막은 결정을 완전한 상태 계약으로 반환한다."""
+    requested_qty = max(0, int(decision.get("quantity", 0) or 0))
+    return {
+        **decision,
+        "quantity": requested_qty,
+        "requested_qty": requested_qty,
+        "filled_qty": 0,
+        "remaining_qty": requested_qty,
+        "avg_fill_price": None,
+        "status": status,
+        "accepted": False,
+        "executed": False,
+        "executed_price": None,
+        "terminal": True,
+        "requires_reconciliation": False,
+        "mode": mode,
+        "pnl": None,
+        "broker": broker,
+        "order_no": None,
+        "message": message,
+    }
+
+
 def _trade_result_from_order(
     decision: dict,
     order: dict,
@@ -383,36 +395,13 @@ def _text_from(record: dict, *keys: str) -> str:
 def _inquiry_row(response: dict, stored: dict) -> dict | None:
     rows = _rows(response.get("output1"))
     order_no = str(stored.get("order_no") or "").strip()
-    if order_no:
-        for row in rows:
-            candidate = _text_from(row, "odno", "order_no")
-            if candidate == order_no:
-                return row
+    if not order_no:
         return None
-
-    expected_side = str(stored.get("side") or "").upper()
-    expected_code = "02" if expected_side == "BUY" else "01"
-    matches = []
     for row in rows:
-        if _text_from(row, "pdno", "ticker") != str(stored.get("ticker") or ""):
-            continue
-        if _number_from(row, "ord_qty", "requested_qty") != int(
-            stored["requested_qty"]
-        ):
-            continue
-        side_code = _text_from(row, "sll_buy_dvsn_cd")
-        side_name = _text_from(row, "sll_buy_dvsn_cd_name", "side").upper()
-        if side_code and side_code != expected_code:
-            continue
-        side_name_matches = (
-            expected_side in side_name
-            or (expected_side == "BUY" and "매수" in side_name)
-            or (expected_side == "SELL" and "매도" in side_name)
-        )
-        if side_name and not side_name_matches:
-            continue
-        matches.append(row)
-    return matches[0] if len(matches) == 1 else None
+        candidate = _text_from(row, "odno", "order_no")
+        if candidate == order_no:
+            return row
+    return None
 
 
 def _order_progress_from_inquiry(stored: dict, response: dict) -> dict | None:
@@ -438,7 +427,7 @@ def _order_progress_from_inquiry(stored: dict, response: dict) -> dict | None:
 
     if filled <= 0:
         status = "unfilled"
-    elif filled >= requested or remaining == 0:
+    elif filled >= requested:
         status = "filled"
         filled = requested
         remaining = 0
@@ -467,15 +456,13 @@ def _reconcile_stored_order(
     adapter: object, stored: dict, *, broker_mode: str
 ) -> dict | None:
     order_no = stored.get("order_no")
-    if not order_no and stored.get("status") != "unknown":
-        return None
-    inquiry_kwargs = {}
     if not order_no:
-        inquiry_kwargs = {
-            "start_date": stored["order_date"],
-            "end_date": stored["order_date"],
-        }
-    response = adapter.get_order_status(str(order_no or ""), **inquiry_kwargs)
+        return None
+    response = adapter.get_order_status(
+        str(order_no),
+        start_date=stored["order_date"],
+        end_date=stored["order_date"],
+    )
     progress = _order_progress_from_inquiry(stored, response)
     if progress is None:
         return None
@@ -512,7 +499,7 @@ async def reconcile_pending_broker_orders(
     for stored in db.get_pending_broker_orders(broker="kis", mode=db_mode):
         if stored["status"] == "submitting":
             continue
-        if not stored.get("order_no") and stored["status"] != "unknown":
+        if not stored.get("order_no"):
             continue
         try:
             result = _reconcile_stored_order(
@@ -666,35 +653,36 @@ async def _execute_broker_order(decision: dict, broker_name: str | None = None) 
 
     broker = (broker_name or selected_broker_name(default="kis")).strip().lower()
     mode = _selected_broker_mode(broker)
-    log.warning("  실거래 요청 감지: 기본 강의 모드에서는 브로커 주문을 차단합니다. broker=%s mode=%s", broker, mode)
+    log.warning(
+        "  브로커 주문 요청 감지: 안전 플래그가 없으면 주문을 차단합니다. "
+        "broker=%s mode=%s",
+        broker,
+        mode,
+    )
 
     if not _live_broker_enabled(broker):
-        return {
-            **decision,
-            "executed": False,
-            "executed_price": None,
-            "mode": "live_blocked",
-            "pnl": None,
-            "broker": broker,
-            "message": (
+        is_real_mode = mode == "real"
+        return _safety_gate_result(
+            decision,
+            broker,
+            mode="live_blocked" if is_real_mode else f"{broker}_demo_blocked",
+            status="live_blocked" if is_real_mode else "blocked",
+            message=(
                 f"{broker} 주문 차단: LECTURE_ENABLE_LIVE_BROKER=1 "
                 f"또는 LECTURE_ENABLE_LIVE_{broker.upper()}=1 없이는 주문하지 않습니다."
             ),
-        }
+        )
 
     if mode == "real" and not _real_broker_allowed(broker):
-        return {
-            **decision,
-            "executed": False,
-            "executed_price": None,
-            "mode": "real_blocked",
-            "pnl": None,
-            "broker": broker,
-            "message": (
+        return _safety_gate_result(
+            decision,
+            broker,
+            mode="real_blocked",
+            message=(
                 f"실전투자 차단: LECTURE_ALLOW_REAL_BROKER=1 "
                 f"또는 LECTURE_ALLOW_REAL_{broker.upper()}=1 없이는 real 모드를 쓰지 않습니다."
             ),
-        }
+        )
 
     try:
         adapter = get_broker_adapter(broker)
@@ -733,10 +721,36 @@ async def _execute_broker_order(decision: dict, broker_name: str | None = None) 
             "message": f"{broker} 주문 실패: {e}",
         }
 
+    status = str(
+        broker_result.get("status")
+        or ("accepted" if broker_result.get("success") else "rejected")
+    ).lower()
+    requested_qty = max(0, int(decision.get("quantity", 0) or 0))
+    reported_filled = max(0, int(broker_result.get("filled_qty", 0) or 0))
+    filled_qty = min(requested_qty, reported_filled)
+    executed = status == "filled" and filled_qty > 0
+    if status == "filled" and not executed:
+        status = "unknown"
+    remaining_qty = max(0, requested_qty - filled_qty)
     return {
         **decision,
-        "executed": bool(broker_result.get("success")),
-        "executed_price": broker_result.get("current_price") or decision["price"],
+        "status": status,
+        "accepted": status in {"accepted", "unfilled", "partial_fill", "filled"},
+        "executed": executed,
+        "requested_qty": requested_qty,
+        "filled_qty": filled_qty,
+        "remaining_qty": remaining_qty,
+        "executed_price": (
+            broker_result.get("avg_fill_price")
+            or broker_result.get("current_price")
+            or decision["price"]
+            if executed
+            else None
+        ),
+        "terminal": status in {"filled", "cancelled", "rejected"},
+        "requires_reconciliation": status in {
+            "accepted", "unknown", "unfilled", "partial_fill"
+        },
         "mode": broker_result.get("mode") or f"{broker}_{mode}",
         "pnl": None,
         "broker": broker,

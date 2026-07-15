@@ -103,7 +103,11 @@ async def run_pipeline(dry_run: bool = True, target_ticker: Optional[str] = None
     run_id = uuid.uuid4().hex
     sequence = 0
     current_stage = "startup"
-    trade_state = "simulation" if dry_run else cfg.trade_mode
+    trade_state = (
+        "simulation"
+        if dry_run
+        else ("real" if cfg.broker_mode == "real" else "paper")
+    )
     data_source = "mock" if cfg.data_mode == "mock" else None
     data_as_of = None
     market_status = "simulation" if dry_run else "unknown"
@@ -152,7 +156,12 @@ async def run_pipeline(dry_run: bool = True, target_ticker: Optional[str] = None
 
     log.info("=" * 60)
     log.info("lecture-prism 파이프라인 시작")
-    log.info(f"모드: {'시뮬레이션(dry-run)' if dry_run else '실거래'}")
+    mode_label = (
+        "시뮬레이션(dry-run)"
+        if dry_run
+        else ("실거래" if cfg.broker_mode == "real" else "모의투자 브로커(paper)")
+    )
+    log.info("모드: %s", mode_label)
     log.info(f"런타임 설정: {cfg.summary()}")
     log.info("=" * 60)
 
@@ -173,13 +182,27 @@ async def run_pipeline(dry_run: bool = True, target_ticker: Optional[str] = None
                 "market_status": market_status,
             }
         )
-        await emit("pipeline.started", summary="파이프라인을 시작합니다.")
+        await emit(
+            "pipeline.started", status="started", summary="파이프라인을 시작합니다."
+        )
+        await emit(
+            "market.checked",
+            status="skipped",
+            summary=(
+                "시뮬레이션에서는 시장 주문 가능 여부를 확인하지 않습니다."
+                if dry_run
+                else "시장 주문 가능 여부는 브로커 주문 직전 안전 게이트에서 확인합니다."
+            ),
+            details={"market_status": market_status},
+        )
         proxy_started, saved_openai_env = await _maybe_start_chatgpt_oauth_proxy()
 
         # Step 1: 스크리닝
         current_stage = "screening"
         log.info("[1/4] 스크리닝 시작 — 전종목 필터링")
-        await emit("screening.started", summary="종목 스크리닝을 시작합니다.")
+        await emit(
+            "screening.started", status="started", summary="종목 스크리닝을 시작합니다."
+        )
         from screening import run_screening
         candidates = await run_screening(target_ticker=target_ticker, use_real=use_real_data)
         log.info(f"      → 선정 종목: {candidates}")
@@ -204,25 +227,38 @@ async def run_pipeline(dry_run: bool = True, target_ticker: Optional[str] = None
         log.info("[2/4] 분석 파이프라인 시작")
         await emit(
             "analysis.started",
+            status="started",
             summary=f"후보 종목 {len(candidates)}개 분석을 시작합니다.",
             details={"candidate_count": len(candidates)},
         )
         from analysis import run_analysis
         analyses = []
+        provenance_sources: set[str] = set()
+        provenance_dates: set[str] = set()
         for ticker in candidates:
             log.info(f"      → {ticker} 분석 중...")
             result = await run_analysis(ticker)
             result["run_id"] = run_id
+            result["profile"] = cfg.profile
             analyses.append(result)
             result_data_source = result.get("data_source")
             if result_data_source is not None:
-                data_source = result_data_source
-                data_as_of = result.get("data_as_of")
-                db.update_pipeline_run_provenance(
-                    run_id,
-                    data_source=data_source,
-                    data_as_of=data_as_of,
+                provenance_sources.add(str(result_data_source))
+            result_data_as_of = result.get("data_as_of")
+            if result_data_as_of:
+                provenance_dates.add(str(result_data_as_of))
+            if provenance_sources:
+                data_source = (
+                    next(iter(provenance_sources))
+                    if len(provenance_sources) == 1
+                    else "mixed"
                 )
+            data_as_of = max(provenance_dates) if provenance_dates else None
+            db.update_pipeline_run_provenance(
+                run_id,
+                data_source=data_source,
+                data_as_of=data_as_of,
+            )
             log.info(f"      → {ticker} 완료: 추천={result['recommendation']}({result['decision']}), "
                      f"매수점수={result['buy_score']}/10, 목표가={result['target_price']:,}원")
             await emit(
@@ -244,11 +280,21 @@ async def run_pipeline(dry_run: bool = True, target_ticker: Optional[str] = None
         # Step 3: 매매
         current_stage = "trading"
         log.info("[3/4] 매매 의사결정 시작")
-        await emit("trading.started", summary="매매 의사결정을 시작합니다.")
+        await emit(
+            "trading.started", status="started", summary="매매 의사결정을 시작합니다."
+        )
         from trading import run_trading
         trade_results = await run_trading(analyses, dry_run=dry_run)
         for trade_result in trade_results:
             trade_result.setdefault("run_id", run_id)
+
+        result_by_ticker: dict[str, list[dict]] = {}
+        for trade_result in trade_results:
+            ticker_key = str(trade_result.get("ticker") or "")
+            result_by_ticker.setdefault(ticker_key, []).append(trade_result)
+
+        async def emit_order_status(trade_result: dict) -> None:
+            nonlocal market_status, trade_state
             broker_market_status = trade_result.get("market_status")
             if broker_market_status:
                 market_status = str(broker_market_status)
@@ -266,9 +312,22 @@ async def run_pipeline(dry_run: bool = True, target_ticker: Optional[str] = None
                 trade_result.get("filled_qty")
                 or (requested_qty if trade_result.get("executed") else 0)
             )
+            if order_status == "live_blocked" or str(
+                trade_result.get("mode") or ""
+            ) in {"live_blocked", "real_blocked"}:
+                trade_state = "live_blocked"
+                db.update_pipeline_run_trade_state(run_id, trade_state)
+            if order_status == "rejected":
+                event_status = "failed"
+            elif order_status in {
+                "blocked", "live_blocked", "skipped", "decision_only"
+            }:
+                event_status = "skipped"
+            else:
+                event_status = "succeeded"
             await emit(
                 "order.status",
-                status="failed" if order_status == "rejected" else "completed",
+                status=event_status,
                 ticker=trade_result.get("ticker"),
                 summary=(
                     f"{trade_result.get('ticker', '종목')} 주문 상태: {order_status}"
@@ -287,6 +346,44 @@ async def run_pipeline(dry_run: bool = True, target_ticker: Optional[str] = None
                     "market_status": broker_market_status,
                 },
             )
+
+        for analysis in analyses:
+            ticker = str(analysis.get("ticker") or "")
+            matches = result_by_ticker.get(ticker, [])
+            trade_result = matches.pop(0) if matches else None
+            await emit(
+                "trading.decision",
+                status="succeeded" if trade_result else "skipped",
+                ticker=ticker or None,
+                summary=(
+                    f"{ticker} 매매 결정을 계산했습니다."
+                    if trade_result
+                    else f"{ticker}는 주문 기준을 충족하지 않아 건너뜁니다."
+                ),
+                details={
+                    "recommendation": analysis.get("recommendation"),
+                    "buy_score": analysis.get("buy_score"),
+                    "action": trade_result.get("action") if trade_result else "PASS",
+                },
+            )
+            if trade_result is None:
+                trade_result = {
+                    "run_id": run_id,
+                    "ticker": ticker,
+                    "action": "PASS",
+                    "status": "skipped",
+                    "requested_qty": 0,
+                    "filled_qty": 0,
+                    "remaining_qty": 0,
+                    "executed": False,
+                    "mode": "decision_only",
+                }
+            await emit_order_status(trade_result)
+
+        for unmatched in (
+            result for values in result_by_ticker.values() for result in values
+        ):
+            await emit_order_status(unmatched)
         log.info(f"      → 매매 결과 건수: {len(trade_results)}")
         await emit(
             "trading.completed",
@@ -297,11 +394,13 @@ async def run_pipeline(dry_run: bool = True, target_ticker: Optional[str] = None
         # Step 4: 피드백
         current_stage = "feedback"
         log.info("[4/4] 피드백 & 매매일지 기록")
-        await emit("feedback.started", summary="피드백 기록을 시작합니다.")
+        await emit(
+            "feedback.started", status="started", summary="피드백 기록을 시작합니다."
+        )
         from feedback import run_feedback
         await run_feedback(trade_results, analyses)
         log.info("      → 매매일지 저장 완료")
-        await emit("feedback.completed", summary="피드백과 매매일지를 저장했습니다.")
+        await emit("feedback.saved", summary="피드백과 매매일지를 저장했습니다.")
 
         await emit("pipeline.completed", summary="파이프라인을 정상 완료했습니다.")
         db.finish_pipeline_run(run_id, "succeeded")

@@ -50,7 +50,8 @@ class MainNotificationTests(unittest.IsolatedAsyncioTestCase):
         }
 
     async def _run_with_stages(
-        self, dispatcher, *, candidates=None, analysis=None, trades=None
+        self, dispatcher, *, candidates=None, analysis=None, trades=None,
+        dry_run=True,
     ):
         candidates = ["005930"] if candidates is None else candidates
         analysis = self._analysis() if analysis is None else analysis
@@ -66,7 +67,7 @@ class MainNotificationTests(unittest.IsolatedAsyncioTestCase):
         ), patch(
             "feedback.run_feedback", new=AsyncMock(return_value=None)
         ):
-            return await main.run_pipeline(dispatcher=dispatcher)
+            return await main.run_pipeline(dispatcher=dispatcher, dry_run=dry_run)
 
     async def test_normal_run_persists_ordered_stage_lifecycle_and_flushes(self):
         dispatcher = _RecordingDispatcher()
@@ -75,14 +76,17 @@ class MainNotificationTests(unittest.IsolatedAsyncioTestCase):
 
         expected = [
             "pipeline.started",
+            "market.checked",
             "screening.started",
             "screening.completed",
             "analysis.started",
             "analysis.completed",
             "trading.started",
+            "trading.decision",
+            "order.status",
             "trading.completed",
             "feedback.started",
-            "feedback.completed",
+            "feedback.saved",
             "pipeline.completed",
         ]
         self.assertTrue(dispatcher.started)
@@ -92,7 +96,11 @@ class MainNotificationTests(unittest.IsolatedAsyncioTestCase):
             list(range(1, len(expected) + 1)),
             [event.sequence for event in dispatcher.events],
         )
-        self.assertEqual("2026-07-10", dispatcher.events[4].data_as_of)
+        self.assertEqual("2026-07-10", dispatcher.events[5].data_as_of)
+        self.assertEqual("started", dispatcher.events[0].status)
+        self.assertEqual("skipped", dispatcher.events[1].status)
+        self.assertEqual("started", dispatcher.events[2].status)
+        self.assertNotIn("completed", {event.status for event in dispatcher.events})
 
         run = db.get_latest_pipeline_run()
         self.assertEqual("succeeded", run["status"])
@@ -102,6 +110,61 @@ class MainNotificationTests(unittest.IsolatedAsyncioTestCase):
             expected,
             [row["event_type"] for row in db.get_pipeline_events(run["run_id"])],
         )
+
+    async def test_mixed_ticker_provenance_is_preserved_per_analysis(self):
+        dispatcher = _RecordingDispatcher()
+        analyses = [
+            self._analysis("005930"),
+            {
+                **self._analysis("000660"),
+                "data_source": "mock",
+                "data_as_of": None,
+            },
+        ]
+        with patch(
+            "screening.run_screening", new=AsyncMock(return_value=["005930", "000660"])
+        ), patch(
+            "analysis.run_analysis", new=AsyncMock(side_effect=analyses)
+        ), patch(
+            "report_writer.write_reports", return_value=[]
+        ), patch(
+            "trading.run_trading", new=AsyncMock(return_value=[])
+        ):
+            await main.run_pipeline(dispatcher=dispatcher)
+
+        snapshot = db.get_dashboard_snapshot("latest")
+        self.assertEqual("mixed", snapshot["run"]["data_source"])
+        self.assertEqual("2026-07-10", snapshot["run"]["data_as_of"])
+        self.assertEqual(
+            [("yfinance", "2026-07-10"), ("mock", None)],
+            [(row["data_source"], row["data_as_of"]) for row in snapshot["analyses"]],
+        )
+
+    async def test_live_blocked_result_updates_run_and_order_truth(self):
+        dispatcher = _RecordingDispatcher()
+        trades = [
+            {
+                "ticker": "005930",
+                "action": "BUY",
+                "status": "live_blocked",
+                "requested_qty": 5,
+                "filled_qty": 0,
+                "remaining_qty": 5,
+                "executed": False,
+                "mode": "live_blocked",
+            }
+        ]
+
+        await self._run_with_stages(
+            dispatcher, trades=trades, dry_run=False
+        )
+
+        self.assertEqual("live_blocked", db.get_latest_pipeline_run()["trade_state"])
+        order_event = next(
+            event for event in dispatcher.events if event.event_type == "order.status"
+        )
+        self.assertEqual("live_blocked", order_event.details["order_status"])
+        self.assertEqual("skipped", order_event.status)
 
     async def test_each_order_result_emits_truthful_order_status_event(self):
         dispatcher = _RecordingDispatcher()
@@ -172,6 +235,7 @@ class MainNotificationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(
             [
                 "pipeline.started",
+                "market.checked",
                 "screening.started",
                 "screening.completed",
                 "pipeline.completed",

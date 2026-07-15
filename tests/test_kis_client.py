@@ -1,3 +1,4 @@
+import os
 import unittest
 from datetime import datetime, timezone
 
@@ -44,6 +45,16 @@ class _FakeTransport:
 
 class KISClientTests(unittest.TestCase):
     def setUp(self):
+        self._gate_keys = (
+            "LECTURE_ENABLE_LIVE_BROKER",
+            "LECTURE_ENABLE_LIVE_KIS",
+            "LECTURE_ALLOW_REAL_BROKER",
+            "LECTURE_ALLOW_REAL_KIS",
+        )
+        self._saved_gates = {key: os.environ.get(key) for key in self._gate_keys}
+        for key in self._gate_keys:
+            os.environ.pop(key, None)
+        os.environ["LECTURE_ENABLE_LIVE_BROKER"] = "1"
         self.config = KISConfig(
             mode="paper",
             app_key="paper-app-key",
@@ -61,6 +72,40 @@ class KISClientTests(unittest.TestCase):
         )
         self.client.authenticate()
         self.transport.calls.clear()
+
+    def tearDown(self):
+        for key, value in self._saved_gates.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+
+    def test_order_submission_is_blocked_when_safety_gate_is_closed(self):
+        os.environ.pop("LECTURE_ENABLE_LIVE_BROKER", None)
+
+        with self.assertRaises(KISConfigError):
+            self.client.place_cash_order("005930", "BUY", 1, 70000)
+
+        self.assertEqual([], self.transport.calls)
+
+    def test_real_order_submission_requires_independent_real_money_gate(self):
+        os.environ.pop("LECTURE_ALLOW_REAL_BROKER", None)
+        real_transport = _FakeTransport()
+        real_client = KISClient(
+            KISConfig(
+                mode="real",
+                app_key="real-app-key",
+                app_secret="real-app-secret",
+                account_no="87654321",
+            ),
+            transport=real_transport,
+            clock=self.clock,
+        )
+
+        with self.assertRaises(KISConfigError):
+            real_client.place_cash_order("005930", "BUY", 1, 70000)
+
+        self.assertEqual([], real_transport.calls)
 
     def test_config_from_env_isolates_paper_and_real_credentials(self):
         environ = {
@@ -180,6 +225,7 @@ class KISClientTests(unittest.TestCase):
         self.assertEqual("2", sell_call["json_body"]["ORD_QTY"])
         self.assertEqual("71000", sell_call["json_body"]["ORD_UNPR"])
         self.assertEqual("accepted", buy["status"])
+        self.assertTrue(buy["requires_reconciliation"])
         self.assertEqual("101", sell["order_no"])
 
     def test_post_order_timeout_is_unknown_and_is_never_retried(self):
@@ -194,6 +240,44 @@ class KISClientTests(unittest.TestCase):
         self.assertIsNone(result["order_no"])
         self.assertNotIn("paper-app-secret", repr(result))
 
+    def test_post_order_connection_reset_is_unknown_and_is_never_retried(self):
+        self.transport.queue_error(ConnectionResetError("response lost after submit"))
+
+        result = self.client.place_cash_order("005930", "BUY", 1, 70000)
+
+        self.assertEqual(1, len(self.transport.calls))
+        self.assertFalse(result["success"])
+        self.assertEqual("unknown", result["status"])
+        self.assertTrue(result["requires_reconciliation"])
+        self.assertIsNone(result["order_no"])
+
+    def test_success_response_without_order_number_remains_unknown(self):
+        self.transport.queue({"rt_cd": "0", "output": {}})
+
+        result = self.client.place_cash_order("005930", "BUY", 1, 70000)
+
+        self.assertEqual("unknown", result["status"])
+        self.assertTrue(result["requires_reconciliation"])
+        self.assertIsNone(result["order_no"])
+
+    def test_success_response_without_output_remains_unknown(self):
+        self.transport.queue({"rt_cd": "0"})
+
+        result = self.client.place_cash_order("005930", "BUY", 1, 70000)
+
+        self.assertEqual("unknown", result["status"])
+        self.assertTrue(result["requires_reconciliation"])
+        self.assertIsNone(result["order_no"])
+
+    def test_response_with_order_number_but_missing_result_code_is_unknown(self):
+        self.transport.queue({"output": {"ODNO": "100"}})
+
+        result = self.client.place_cash_order("005930", "BUY", 1, 70000)
+
+        self.assertEqual("unknown", result["status"])
+        self.assertTrue(result["requires_reconciliation"])
+        self.assertIsNone(result["order_no"])
+
     def test_fill_inquiry_uses_today_and_official_paper_tr_id(self):
         self.transport.queue({"rt_cd": "0", "output1": [], "output2": {}})
 
@@ -205,6 +289,37 @@ class KISClientTests(unittest.TestCase):
         self.assertEqual("20260715", call["params"]["INQR_STRT_DT"])
         self.assertEqual("20260715", call["params"]["INQR_END_DT"])
         self.assertEqual("100", call["params"]["ODNO"])
+        self.assertEqual("KRX", call["params"]["EXCG_ID_DVSN_CD"])
+
+    def test_fill_inquiry_follows_official_continuation_pages(self):
+        self.transport.queue(
+            {
+                "rt_cd": "0",
+                "output1": [{"odno": "099"}],
+                "output2": {},
+                "ctx_area_fk100": "next-fk",
+                "ctx_area_nk100": "next-nk",
+            },
+            {"tr_cont": "M"},
+        )
+        self.transport.queue(
+            {
+                "rt_cd": "0",
+                "output1": [{"odno": "100"}],
+                "output2": {},
+                "ctx_area_fk100": "",
+                "ctx_area_nk100": "",
+            },
+            {"tr_cont": ""},
+        )
+
+        result = self.client.get_order_status("100")
+
+        self.assertEqual(["099", "100"], [row["odno"] for row in result["output1"]])
+        self.assertEqual(2, len(self.transport.calls))
+        self.assertEqual("next-fk", self.transport.calls[1]["params"]["CTX_AREA_FK100"])
+        self.assertEqual("next-nk", self.transport.calls[1]["params"]["CTX_AREA_NK100"])
+        self.assertEqual("N", self.transport.calls[1]["headers"]["tr_cont"])
 
     def test_market_day_uses_holiday_contract_and_exposes_open_flag(self):
         self.transport.queue(
@@ -219,6 +334,14 @@ class KISClientTests(unittest.TestCase):
         self.assertEqual("20260715", call["params"]["BASS_DT"])
         self.assertTrue(result["is_open"])
         self.assertEqual("Y", result["opnd_yn"])
+
+    def test_market_day_fails_closed_when_requested_date_is_missing(self):
+        self.transport.queue(
+            {"rt_cd": "0", "output": [{"bass_dt": "20260716", "opnd_yn": "Y"}]}
+        )
+
+        with self.assertRaises(KISResponseError):
+            self.client.get_market_day("20260715")
 
     def test_daily_prices_use_business_dates_and_return_price_rows(self):
         rows = [{"stck_bsop_date": "20260714", "stck_clpr": "70000"}]

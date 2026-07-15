@@ -12,6 +12,8 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Callable, Mapping, Protocol
 
+from .config import broker_order_enabled, broker_real_allowed
+
 
 _PAPER_BASE_URL = "https://openapivts.koreainvestment.com:29443"
 _REAL_BASE_URL = "https://openapi.koreainvestment.com:9443"
@@ -339,6 +341,7 @@ class KISClient:
     def place_cash_order(
         self, ticker: str, side: str, quantity: int, price: int | float
     ) -> dict[str, Any]:
+        self._require_order_safety_gates()
         normalized_side = str(side).strip().upper()
         if normalized_side not in {"BUY", "SELL"}:
             raise ValueError("side must be BUY or SELL")
@@ -364,29 +367,61 @@ class KISClient:
     ) -> dict[str, Any]:
         today = _date_text(self._clock())
         tr_id = self._tr_id("status")
-        response = self._request(
-            "GET",
-            _ORDER_STATUS_PATH,
-            tr_id,
-            params={
-                **self._account_params(),
-                "INQR_STRT_DT": _date_text(start_date or today),
-                "INQR_END_DT": _date_text(end_date or today),
-                "SLL_BUY_DVSN_CD": "00",
-                "PDNO": "",
-                "CCLD_DVSN": "00",
-                "INQR_DVSN": "00",
-                "INQR_DVSN_3": "00",
-                "ORD_GNO_BRNO": "",
-                "ODNO": str(order_no),
-                "INQR_DVSN_1": "",
-                "CTX_AREA_FK100": "",
-                "CTX_AREA_NK100": "",
-            },
-        )
-        body = self._validate(response, tr_id)
-        self._object_list(body.get("output1"), "output1", tr_id)
-        return dict(body)
+        context_fk = ""
+        context_nk = ""
+        continuation = ""
+        all_rows: list[dict[str, Any]] = []
+        latest_output2: object = {}
+        for _page in range(20):
+            response = self._request(
+                "GET",
+                _ORDER_STATUS_PATH,
+                tr_id,
+                params={
+                    **self._account_params(),
+                    "INQR_STRT_DT": _date_text(start_date or today),
+                    "INQR_END_DT": _date_text(end_date or today),
+                    "SLL_BUY_DVSN_CD": "00",
+                    "PDNO": "",
+                    "CCLD_DVSN": "00",
+                    "INQR_DVSN": "00",
+                    "INQR_DVSN_3": "00",
+                    "ORD_GNO_BRNO": "",
+                    "ODNO": str(order_no),
+                    "INQR_DVSN_1": "",
+                    "EXCG_ID_DVSN_CD": "KRX",
+                    "CTX_AREA_FK100": context_fk,
+                    "CTX_AREA_NK100": context_nk,
+                },
+                continuation=continuation,
+            )
+            body = self._validate(response, tr_id)
+            all_rows.extend(
+                self._object_list(body.get("output1"), "output1", tr_id)
+            )
+            latest_output2 = body.get("output2", latest_output2)
+            tr_cont = str(
+                response.headers.get("tr_cont")
+                or response.headers.get("TR_CONT")
+                or ""
+            ).upper()
+            if tr_cont not in {"M", "F"}:
+                result = dict(body)
+                result["output1"] = all_rows
+                result["output2"] = latest_output2
+                return result
+            context_fk = str(
+                body.get("ctx_area_fk100") or body.get("CTX_AREA_FK100") or ""
+            )
+            context_nk = str(
+                body.get("ctx_area_nk100") or body.get("CTX_AREA_NK100") or ""
+            )
+            if not context_fk and not context_nk:
+                raise KISResponseError(
+                    f"KIS continuation context missing (tr_id={tr_id})"
+                )
+            continuation = "N"
+        raise KISResponseError(f"KIS continuation page limit exceeded (tr_id={tr_id})")
 
     def get_market_day(
         self, business_date: str | date | datetime | None = None
@@ -401,7 +436,7 @@ class KISClient:
         )
         body = self._validate(response, tr_id)
         rows = self._object_list(body.get("output"), "output", tr_id)
-        row = next((item for item in rows if str(item.get("bass_dt")) == day), rows[0] if rows else None)
+        row = next((item for item in rows if str(item.get("bass_dt")) == day), None)
         if row is None or row.get("opnd_yn") not in {"Y", "N"}:
             raise KISResponseError(f"KIS holiday response missing opnd_yn (tr_id={tr_id})")
         return {"date": day, "opnd_yn": row["opnd_yn"], "is_open": row["opnd_yn"] == "Y"}
@@ -441,6 +476,7 @@ class KISClient:
         price: int | float = 0,
         cancel_all: bool = True,
     ) -> dict[str, Any]:
+        self._require_order_safety_gates()
         tr_id = self._tr_id("cancel")
         payload = {
             **self._account_params(),
@@ -458,33 +494,58 @@ class KISClient:
     def _post_order(
         self, path: str, tr_id: str, payload: Mapping[str, object]
     ) -> dict[str, Any]:
+        # 인증 실패는 주문 전 실패라 재시도 가능하다. 인증을 먼저 끝내 두면
+        # 아래 예외는 주문 POST가 전송됐을 수도 있는 불명확 결과로 한정된다.
+        self.authenticate()
         try:
             response = self._request(
                 "POST", path, tr_id, json_body=payload, preserve_timeout=True
             )
-        except Exception as exc:
-            if _is_timeout(exc):
-                return {
-                    "success": False,
-                    "status": "unknown",
-                    "order_no": None,
-                    "branch_no": None,
-                    "requires_reconciliation": True,
-                    "message": "KIS 주문 응답 시간이 초과되었습니다. 재주문 전 체결 조회가 필요합니다.",
-                }
-            raise
+        except (KISTransportError, TimeoutError, socket.timeout, urllib.error.URLError):
+            return self._unknown_order_result(
+                "KIS 주문 응답을 확인할 수 없습니다. 재주문 전 체결 조회가 필요합니다."
+            )
+        body = self._body(response)
+        if "rt_cd" not in body or str(body.get("rt_cd") or "").strip() == "":
+            return self._unknown_order_result(
+                "KIS 주문 결과 코드를 확인할 수 없습니다. 재주문 전 체결 조회가 필요합니다."
+            )
         body = self._validate(response, tr_id)
-        output = self._object(body.get("output"), "output", tr_id)
+        raw_output = body.get("output")
+        if not isinstance(raw_output, Mapping):
+            return self._unknown_order_result(
+                "KIS 주문번호를 확인할 수 없습니다. 재주문 전 체결 조회가 필요합니다."
+            )
+        output = dict(raw_output)
         order_no = output.get("ODNO")
         if not order_no:
-            raise KISResponseError(f"KIS order response missing ODNO (tr_id={tr_id})")
+            return self._unknown_order_result(
+                "KIS 주문번호를 확인할 수 없습니다. 재주문 전 체결 조회가 필요합니다."
+            )
         return {
             "success": True,
             "status": "accepted",
             "order_no": str(order_no),
             "branch_no": str(output.get("KRX_FWDG_ORD_ORGNO") or ""),
-            "requires_reconciliation": False,
+            "requires_reconciliation": True,
             "raw": output,
+        }
+
+    def _require_order_safety_gates(self) -> None:
+        if not broker_order_enabled("kis"):
+            raise KISConfigError("KIS order safety gate is disabled")
+        if self.config.mode == "real" and not broker_real_allowed("kis"):
+            raise KISConfigError("KIS real-money safety gate is disabled")
+
+    @staticmethod
+    def _unknown_order_result(message: str) -> dict[str, Any]:
+        return {
+            "success": False,
+            "status": "unknown",
+            "order_no": None,
+            "branch_no": None,
+            "requires_reconciliation": True,
+            "message": message,
         }
 
     def _request(

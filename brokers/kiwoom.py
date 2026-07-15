@@ -17,7 +17,12 @@ import urllib.request
 from typing import Any
 
 from .base import BrokerOrder
-from .config import mask_secret, normalize_mode
+from .config import (
+    broker_order_enabled,
+    broker_real_allowed,
+    mask_secret,
+    normalize_mode,
+)
 
 
 class KiwoomBrokerAdapter:
@@ -99,6 +104,30 @@ class KiwoomBrokerAdapter:
         return str(response.get("return_code", "0")) == "0"
 
     async def place_order(self, order: BrokerOrder) -> dict[str, Any]:
+        if not broker_order_enabled("kiwoom"):
+            return {
+                "success": False,
+                "status": "blocked",
+                "accepted": False,
+                "executed": False,
+                "filled_qty": 0,
+                "remaining_qty": int(order.quantity),
+                "mode": f"kiwoom_{self.mode}_blocked",
+                "order_no": None,
+                "message": "키움 주문 안전 게이트가 닫혀 있어 주문하지 않습니다.",
+            }
+        if self.mode == "real" and not broker_real_allowed("kiwoom"):
+            return {
+                "success": False,
+                "status": "live_blocked",
+                "accepted": False,
+                "executed": False,
+                "filled_qty": 0,
+                "remaining_qty": int(order.quantity),
+                "mode": "real_blocked",
+                "order_no": None,
+                "message": "키움 실전투자 안전 게이트가 닫혀 있어 주문하지 않습니다.",
+            }
         if order.side not in {"BUY", "SELL"}:
             return {
                 "success": False,
@@ -144,6 +173,12 @@ class KiwoomBrokerAdapter:
         success = self._is_success(response)
         return {
             "success": success,
+            "status": "accepted" if success else "rejected",
+            "accepted": success,
+            "executed": False,
+            "filled_qty": 0,
+            "remaining_qty": int(order.quantity),
+            "requires_reconciliation": success,
             "mode": f"kiwoom_{self.mode}",
             "order_no": response.get("ord_no"),
             "stock_code": order.ticker,

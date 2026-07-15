@@ -67,6 +67,24 @@ def any_truthy(keys: Iterable[str]) -> bool:
     return any(truthy(os.getenv(key)) for key in keys)
 
 
+def broker_order_enabled(broker_name: str) -> bool:
+    """Return whether the first broker-order safety gate is explicitly open."""
+    broker = str(broker_name).strip().upper()
+    keys = ["LECTURE_ENABLE_LIVE_BROKER", f"LECTURE_ENABLE_LIVE_{broker}"]
+    if broker == "KIS":
+        keys.append("LECTURE_ENABLE_LIVE_KIS")
+    return any_truthy(keys)
+
+
+def broker_real_allowed(broker_name: str) -> bool:
+    """Return whether the independent real-money safety gate is open."""
+    broker = str(broker_name).strip().upper()
+    keys = ["LECTURE_ALLOW_REAL_BROKER", f"LECTURE_ALLOW_REAL_{broker}"]
+    if broker == "KIS":
+        keys.append("LECTURE_ALLOW_REAL_KIS")
+    return any_truthy(keys)
+
+
 def normalize_mode(value: str | None, *, default: str = "demo") -> str:
     normalized = str(value or default).strip().lower()
     if normalized in {"demo", "paper", "mock", "vps", "sim", "simulation"}:

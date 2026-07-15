@@ -12,6 +12,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, Query
 from fastapi.responses import HTMLResponse
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 import db
 
@@ -29,6 +30,10 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(title="PRISM 실행 대시보드", lifespan=lifespan)
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=["127.0.0.1", "localhost", "testserver"],
+)
 
 
 @app.get("/api/dashboard")
@@ -82,6 +87,7 @@ _HTML = r'''<!doctype html>
     }
 
     button, summary { font: inherit; }
+    .muted { color: var(--muted); font-size: .88rem; }
     button:focus-visible, summary:focus-visible, a:focus-visible {
       outline: 3px solid rgba(105, 167, 255, .55);
       outline-offset: 3px;
@@ -385,11 +391,13 @@ _HTML = r'''<!doctype html>
       live_blocked: "실거래 차단"
     };
     const eventLabels = {
-      "pipeline.started": "파이프라인 시작", "screening.started": "스크리닝 시작",
+      "pipeline.started": "파이프라인 시작", "market.checked": "시장 상태 확인",
+      "screening.started": "스크리닝 시작",
       "screening.completed": "스크리닝 완료", "analysis.started": "분석 시작",
       "analysis.completed": "분석 완료", "trading.started": "매매 판단 시작",
+      "trading.decision": "매매 결정",
       "order.status": "주문 상태", "trading.completed": "매매 판단 완료",
-      "feedback.started": "피드백 시작", "feedback.completed": "피드백 완료",
+      "feedback.started": "피드백 시작", "feedback.saved": "피드백 저장",
       "pipeline.completed": "파이프라인 완료", "pipeline.failed": "파이프라인 실패"
     };
 
@@ -505,6 +513,7 @@ _HTML = r'''<!doctype html>
         const top = node("div", "card-top");
         const title = node("div"); title.append(node("h3", "", analysis.ticker), badge(value(analysis.recommendation), analysis.recommendation === "BUY" ? "completed" : "unknown"));
         const score = node("div", "score", number(analysis.score)); score.append(node("small", "", " / 10")); top.append(title, score); card.append(top);
+        card.append(node("p", "muted", `프로필 ${value(analysis.profile, "기록 없음")} · 데이터 ${value(analysis.data_source, "기록 없음")} · 기준일 ${value(analysis.data_as_of, "기록 없음")}`));
         card.append(node("p", "", value(analysis.reason, "판단 근거가 저장되지 않았습니다.")));
         if (analysis.risk) card.append(node("p", "", `주의: ${analysis.risk}`));
         const sectionEntries = Object.entries(analysis.sections || {}).filter(([, text]) => text);

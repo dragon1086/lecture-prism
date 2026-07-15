@@ -53,6 +53,9 @@ CREATE TABLE IF NOT EXISTS analysis_decisions (
     score INTEGER,
     reason TEXT,
     risk TEXT,
+    profile TEXT,
+    data_source TEXT,
+    data_as_of TEXT,
     sections TEXT                    -- 6섹션 요약 JSON (기술/수급/재무/산업/뉴스/시장)
 );
 
@@ -168,11 +171,12 @@ def init_db() -> None:
     """테이블 생성 (없을 때만). 멱등 — 여러 번 호출해도 안전."""
     with _connect() as conn:
         conn.executescript(_SCHEMA)
-        # 구버전 DB 마이그레이션: sections 컬럼이 없으면 추가
-        try:
-            conn.execute("ALTER TABLE analysis_decisions ADD COLUMN sections TEXT")
-        except sqlite3.OperationalError:
-            pass  # 이미 존재
+        # 구버전 DB 마이그레이션: 새 분석 메타데이터 컬럼을 가산적으로 추가
+        for column in ("sections TEXT", "profile TEXT", "data_source TEXT", "data_as_of TEXT"):
+            try:
+                conn.execute(f"ALTER TABLE analysis_decisions ADD COLUMN {column}")
+            except sqlite3.OperationalError:
+                pass  # 이미 존재
         for table in (
             "trade_history",
             "analysis_decisions",
@@ -220,7 +224,9 @@ def _normalize_utc_timestamp(value: object | None) -> str:
 _SENSITIVE_KEY_PARTS = (
     "account",
     "api_key",
+    "apikey",
     "app_key",
+    "appkey",
     "authorization",
     "bot_token",
     "cano",
@@ -359,6 +365,16 @@ def update_pipeline_run_market_status(run_id: str, market_status: str) -> None:
         conn.execute(
             "UPDATE pipeline_runs SET market_status = ? WHERE run_id = ?",
             (_sanitize_text(str(market_status)), run_id),
+        )
+
+
+def update_pipeline_run_trade_state(run_id: str, trade_state: str) -> None:
+    """실행 중 확인된 실제 매매 상태를 실행 행에 반영한다."""
+    init_db()
+    with _connect() as conn:
+        conn.execute(
+            "UPDATE pipeline_runs SET trade_state = ? WHERE run_id = ?",
+            (_sanitize_text(str(trade_state)), run_id),
         )
 
 
@@ -728,8 +744,9 @@ def save_analysis(analysis: dict) -> None:
     with _connect() as conn:
         conn.execute(
             "INSERT INTO analysis_decisions "
-            "(run_id, timestamp, ticker, recommendation, score, reason, risk, sections) "
-            "VALUES (?,?,?,?,?,?,?,?)",
+            "(run_id, timestamp, ticker, recommendation, score, reason, risk, "
+            "profile, data_source, data_as_of, sections) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
             (
                 analysis.get("run_id"),
                 _now(),
@@ -740,6 +757,9 @@ def save_analysis(analysis: dict) -> None:
                     analysis.get("rationale") or analysis.get("reason", "")
                 )),
                 _sanitize_text(str(analysis.get("risk", ""))),
+                _sanitize_text(str(analysis.get("profile") or "")) or None,
+                _sanitize_text(str(analysis.get("data_source") or "")) or None,
+                _sanitize_text(str(analysis.get("data_as_of") or "")) or None,
                 _pack_sections(analysis),
             ),
         )
@@ -830,7 +850,7 @@ _ORDER_DASHBOARD_FIELDS = (
 )
 _ANALYSIS_DASHBOARD_FIELDS = (
     "run_id", "timestamp", "ticker", "recommendation", "score", "reason", "risk",
-    "sections",
+    "profile", "data_source", "data_as_of", "sections",
 )
 _LESSON_DASHBOARD_FIELDS = (
     "run_id", "timestamp", "ticker", "action", "lesson", "tier", "error_type",
@@ -922,8 +942,7 @@ def _derive_run_positions(
 ) -> list[dict]:
     book: dict[tuple[str, str, str], dict] = {}
     for row in broker_orders:
-        status = str(row["status"] or "").lower()
-        if status not in {"partial_fill", "filled"}:
+        if int(row["filled_qty"] or 0) <= 0:
             continue
         price = row["avg_fill_price"]
         _apply_position_fill(
@@ -1031,7 +1050,8 @@ def get_dashboard_snapshot(run_id: str = "latest") -> dict:
             (selected_run_id,),
         ).fetchall()
         analyses = conn.execute(
-            "SELECT run_id, timestamp, ticker, recommendation, score, reason, risk, sections "
+            "SELECT run_id, timestamp, ticker, recommendation, score, reason, risk, "
+            "profile, data_source, data_as_of, sections "
             "FROM analysis_decisions WHERE run_id = ? ORDER BY id",
             (selected_run_id,),
         ).fetchall()

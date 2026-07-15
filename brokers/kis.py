@@ -10,7 +10,7 @@ from typing import Any
 from market_calendar import MarketGate, MarketStatus
 
 from .base import BrokerOrder
-from .config import normalize_mode
+from .config import broker_order_enabled, broker_real_allowed, normalize_mode
 from .kis_client import KISClient, KISConfig
 
 _DEFAULT_KIS_CONFIG = (
@@ -87,6 +87,16 @@ class KISBrokerAdapter:
         return self._market_gate
 
     async def place_order(self, order: BrokerOrder) -> dict[str, Any]:
+        if not broker_order_enabled("kis"):
+            return self._blocked_result(
+                "broker_disabled",
+                "KIS 주문 안전 게이트가 닫혀 있어 주문하지 않습니다.",
+            )
+        if self.mode == "real" and not broker_real_allowed("kis"):
+            return self._blocked_result(
+                "real_broker_disabled",
+                "KIS 실전투자 안전 게이트가 닫혀 있어 주문하지 않습니다.",
+            )
         side = order.side
         if side not in {"BUY", "SELL"}:
             return self._blocked_result(

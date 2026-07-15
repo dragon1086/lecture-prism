@@ -128,6 +128,7 @@ class BrokerAdapterTest(unittest.TestCase):
             self.assertEqual(os.environ["QUOTED_VALUE"], "hello world")
 
     def test_kiwoom_order_payload_uses_official_order_fields(self):
+        os.environ["LECTURE_ENABLE_LIVE_BROKER"] = "1"
         os.environ["KIWOOM_ACCESS_TOKEN"] = "token"
         adapter = KiwoomBrokerAdapter(mode="demo")
         calls = []
@@ -141,6 +142,9 @@ class BrokerAdapterTest(unittest.TestCase):
         result = asyncio.run(adapter.place_order(BrokerOrder("BUY", "005930", 3, 70000)))
 
         self.assertTrue(result["success"])
+        self.assertEqual("accepted", result["status"])
+        self.assertFalse(result["executed"])
+        self.assertEqual(0, result["filled_qty"])
         self.assertEqual(result["order_no"], "00024")
         self.assertEqual(calls[0][0], "/api/dostk/ordr")
         self.assertEqual(calls[0][2]["api-id"], "kt10000")
@@ -157,12 +161,24 @@ class BrokerAdapterTest(unittest.TestCase):
         )
 
     def test_kiwoom_adapter_fails_closed_without_credentials(self):
+        os.environ["LECTURE_ENABLE_LIVE_BROKER"] = "1"
         adapter = KiwoomBrokerAdapter(mode="demo")
 
         result = asyncio.run(adapter.place_order(BrokerOrder("BUY", "005930", 1, 70000)))
 
         self.assertFalse(result["success"])
         self.assertEqual(result["mode"], "kiwoom_credentials_missing")
+
+    def test_kiwoom_adapter_itself_enforces_order_safety_gate(self):
+        os.environ["KIWOOM_ACCESS_TOKEN"] = "token"
+        adapter = KiwoomBrokerAdapter(mode="demo")
+
+        result = asyncio.run(
+            adapter.place_order(BrokerOrder("BUY", "005930", 1, 70000))
+        )
+
+        self.assertEqual("blocked", result["status"])
+        self.assertFalse(result["executed"])
 
     def test_kis_mode_can_fall_back_to_yaml_default_mode(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -172,6 +188,7 @@ class BrokerAdapterTest(unittest.TestCase):
             self.assertEqual(selected_kis_mode(config_path=config_path), "real")
 
     def test_kis_adapter_maps_buy_and_sell_without_marking_acceptance_filled(self):
+        os.environ["LECTURE_ENABLE_LIVE_BROKER"] = "1"
         client = _FakeKISClient()
         adapter = KISBrokerAdapter(
             mode="demo", client=client, market_gate=_FakeMarketGate()
@@ -196,6 +213,7 @@ class BrokerAdapterTest(unittest.TestCase):
             self.assertEqual("market_open", result["market_status"])
 
     def test_kis_adapter_blocks_post_when_market_gate_denies(self):
+        os.environ["LECTURE_ENABLE_LIVE_BROKER"] = "1"
         client = _FakeKISClient()
         adapter = KISBrokerAdapter(
             mode="demo",
@@ -212,6 +230,20 @@ class BrokerAdapterTest(unittest.TestCase):
         self.assertEqual("blocked", result["status"])
         self.assertEqual("market_closed", result["reason"])
         self.assertEqual("market_closed", result["market_status"])
+        self.assertEqual([], client.order_calls)
+
+    def test_kis_adapter_itself_enforces_order_safety_gate(self):
+        client = _FakeKISClient()
+        adapter = KISBrokerAdapter(
+            mode="demo", client=client, market_gate=_FakeMarketGate()
+        )
+
+        result = asyncio.run(
+            adapter.place_order(BrokerOrder("BUY", "005930", 1, 70000))
+        )
+
+        self.assertEqual("blocked", result["status"])
+        self.assertEqual("broker_disabled", result["reason"])
         self.assertEqual([], client.order_calls)
 
     def test_kis_adapter_exposes_account_status_cancel_and_market_methods(self):
@@ -254,15 +286,20 @@ class BrokerAdapterTest(unittest.TestCase):
         result = asyncio.run(_execute_broker_order(_decision()))
 
         self.assertFalse(result["executed"])
-        self.assertEqual(result["mode"], "live_blocked")
+        self.assertEqual(result["mode"], "kiwoom_demo_blocked")
         self.assertEqual(result["broker"], "kiwoom")
+        self.assertEqual("blocked", result["status"])
+        self.assertEqual(0, result["filled_qty"])
+        self.assertFalse(result["accepted"])
 
     def test_kis_paper_still_requires_the_live_broker_enable_gate(self):
         result = asyncio.run(_execute_broker_order(_decision(), broker_name="kis"))
 
         self.assertFalse(result["executed"])
-        self.assertEqual("live_blocked", result["mode"])
+        self.assertEqual("kis_demo_blocked", result["mode"])
         self.assertEqual("kis", result["broker"])
+        self.assertEqual("blocked", result["status"])
+        self.assertEqual(0, result["filled_qty"])
 
     def test_kis_real_mode_still_requires_the_second_live_gate(self):
         os.environ["LECTURE_KIS_MODE"] = "real"
@@ -273,6 +310,7 @@ class BrokerAdapterTest(unittest.TestCase):
         self.assertFalse(result["executed"])
         self.assertEqual("real_blocked", result["mode"])
         self.assertEqual("kis", result["broker"])
+        self.assertEqual("live_blocked", result["status"])
 
     def test_toss_adapter_is_safe_unsupported_template(self):
         os.environ["LECTURE_ENABLE_LIVE_BROKER"] = "1"
@@ -283,6 +321,29 @@ class BrokerAdapterTest(unittest.TestCase):
         self.assertEqual(result["mode"], "toss_unsupported")
         self.assertEqual(result["broker"], "toss")
         self.assertIn("공개 주문 API", result["message"])
+
+    def test_generic_broker_success_is_acceptance_not_a_fill(self):
+        os.environ["LECTURE_ENABLE_LIVE_BROKER"] = "1"
+        os.environ["LECTURE_BROKER"] = "kiwoom"
+
+        class _AcceptedAdapter:
+            async def place_order(self, order):
+                return {
+                    "success": True,
+                    "status": "accepted",
+                    "order_no": "100",
+                    "current_price": order.price,
+                    "mode": "kiwoom_demo",
+                }
+
+        with patch("brokers.factory.get_broker_adapter", return_value=_AcceptedAdapter()):
+            result = asyncio.run(_execute_broker_order(_decision()))
+
+        self.assertEqual("accepted", result["status"])
+        self.assertTrue(result["accepted"])
+        self.assertFalse(result["executed"])
+        self.assertEqual(0, result["filled_qty"])
+        self.assertEqual(result["requested_qty"], result["remaining_qty"])
 
 
 if __name__ == "__main__":

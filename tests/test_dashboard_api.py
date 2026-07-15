@@ -231,3 +231,9 @@ class DashboardAPITests(unittest.TestCase):
 
     def test_server_binds_loopback_only(self):
         self.assertEqual("127.0.0.1", dashboard.DASHBOARD_HOST)
+
+    def test_server_rejects_untrusted_host_header(self):
+        with self._client() as client:
+            response = client.get("/api/dashboard", headers={"Host": "attacker.example"})
+
+        self.assertEqual(400, response.status_code)
