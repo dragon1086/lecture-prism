@@ -317,7 +317,7 @@ async def run_pipeline(dry_run: bool = True, target_ticker: Optional[str] = None
             ) in {"live_blocked", "real_blocked"}:
                 trade_state = "live_blocked"
                 db.update_pipeline_run_trade_state(run_id, trade_state)
-            if order_status == "rejected":
+            if order_status in {"rejected", "unknown"}:
                 event_status = "failed"
             elif order_status in {
                 "blocked", "live_blocked", "skipped", "decision_only"

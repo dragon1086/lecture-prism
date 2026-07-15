@@ -359,6 +359,13 @@ class KISClientTests(unittest.TestCase):
 
     def test_cancel_order_uses_official_payload_and_string_numbers(self):
         self.transport.queue(
+            {
+                "rt_cd": "0",
+                "output1": [{"odno": "100", "rmn_qty": "2"}],
+                "output2": {},
+            }
+        )
+        self.transport.queue(
             {"rt_cd": "0", "output": {"ODNO": "200", "KRX_FWDG_ORD_ORGNO": "01"}}
         )
 
@@ -366,14 +373,29 @@ class KISClientTests(unittest.TestCase):
             "100", 3, branch_no="01", price=70000, cancel_all=False
         )
 
-        call = self.transport.calls[0]
+        inquiry_call, call = self.transport.calls
+        self.assertTrue(inquiry_call["url"].endswith("/inquire-daily-ccld"))
         self.assertEqual("VTTC0013U", call["headers"]["tr_id"])
         self.assertTrue(call["url"].endswith("/order-rvsecncl"))
         self.assertEqual("100", call["json_body"]["ORGN_ODNO"])
         self.assertEqual("02", call["json_body"]["RVSE_CNCL_DVSN_CD"])
-        self.assertEqual("3", call["json_body"]["ORD_QTY"])
+        self.assertEqual("2", call["json_body"]["ORD_QTY"])
         self.assertEqual("70000", call["json_body"]["ORD_UNPR"])
         self.assertEqual("N", call["json_body"]["QTY_ALL_ORD_YN"])
+
+    def test_cancel_order_fails_closed_when_no_cancellable_quantity_remains(self):
+        self.transport.queue(
+            {
+                "rt_cd": "0",
+                "output1": [{"odno": "100", "rmn_qty": "0"}],
+                "output2": {},
+            }
+        )
+
+        with self.assertRaises(KISResponseError):
+            self.client.cancel_order("100", 3, branch_no="01")
+
+        self.assertEqual(1, len(self.transport.calls))
 
     def test_invalid_response_raises_safe_error_and_repr_redacts_credentials(self):
         self.transport.queue(

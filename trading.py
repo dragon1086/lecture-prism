@@ -346,6 +346,37 @@ def _safety_gate_result(
     }
 
 
+def _broker_error_result(
+    decision: dict,
+    broker: str,
+    mode: str,
+    *,
+    status: str,
+    message: str,
+) -> dict:
+    """브로커 경계 실패도 주문 상태/수량 계약을 잃지 않게 만든다."""
+    requested_qty = max(0, int(decision.get("quantity", 0) or 0))
+    return {
+        **decision,
+        "quantity": requested_qty,
+        "requested_qty": requested_qty,
+        "filled_qty": 0,
+        "remaining_qty": requested_qty,
+        "avg_fill_price": None,
+        "status": status,
+        "accepted": False,
+        "executed": False,
+        "executed_price": None,
+        "terminal": status == "rejected",
+        "requires_reconciliation": status == "unknown",
+        "mode": f"{broker}_{mode}_{status}",
+        "pnl": None,
+        "broker": broker,
+        "order_no": None,
+        "message": message,
+    }
+
+
 def _trade_result_from_order(
     decision: dict,
     order: dict,
@@ -687,15 +718,13 @@ async def _execute_broker_order(decision: dict, broker_name: str | None = None) 
     try:
         adapter = get_broker_adapter(broker)
     except Exception as e:  # noqa: BLE001 — 강의용 브리지는 실패 사유를 결과로 돌려줌
-        return {
-            **decision,
-            "executed": False,
-            "executed_price": None,
-            "mode": "broker_import_failed",
-            "pnl": None,
-            "broker": broker,
-            "message": f"{broker} 어댑터 로드 실패: {e}",
-        }
+        return _broker_error_result(
+            decision,
+            broker,
+            mode,
+            status="rejected",
+            message=f"{broker} 어댑터 로드 실패: {type(e).__name__}",
+        )
 
     if broker == "kis":
         return await _execute_kis_broker_order(decision, adapter, mode=mode)
@@ -711,15 +740,16 @@ async def _execute_broker_order(decision: dict, broker_name: str | None = None) 
             )
         )
     except Exception as e:  # noqa: BLE001 — 인증/네트워크 실패도 초보자에게 설명 가능해야 함
-        return {
-            **decision,
-            "executed": False,
-            "executed_price": None,
-            "mode": f"{broker}_{mode}_failed",
-            "pnl": None,
-            "broker": broker,
-            "message": f"{broker} 주문 실패: {e}",
-        }
+        return _broker_error_result(
+            decision,
+            broker,
+            mode,
+            status="unknown",
+            message=(
+                f"{broker} 주문 응답 확인 실패: {type(e).__name__}. "
+                "재주문 전 브로커 주문 내역을 확인하세요."
+            ),
+        )
 
     status = str(
         broker_result.get("status")

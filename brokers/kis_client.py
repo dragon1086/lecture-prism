@@ -475,8 +475,24 @@ class KISClient:
         branch_no: str,
         price: int | float = 0,
         cancel_all: bool = True,
+        order_date: str | date | datetime | None = None,
     ) -> dict[str, Any]:
         self._require_order_safety_gates()
+        requested_quantity = int(_number_text(quantity, positive=True))
+        inquiry_date = order_date or self._clock()
+        inquiry = self.get_order_status(
+            order_no,
+            start_date=inquiry_date,
+            end_date=inquiry_date,
+        )
+        remaining_quantity = self._cancellable_quantity(inquiry, str(order_no))
+        if remaining_quantity <= 0:
+            raise KISResponseError("KIS order has no cancellable remaining quantity")
+        cancel_quantity = (
+            remaining_quantity
+            if cancel_all
+            else min(requested_quantity, remaining_quantity)
+        )
         tr_id = self._tr_id("cancel")
         payload = {
             **self._account_params(),
@@ -484,12 +500,36 @@ class KISClient:
             "ORGN_ODNO": str(order_no),
             "ORD_DVSN": "00",
             "RVSE_CNCL_DVSN_CD": "02",
-            "ORD_QTY": _number_text(quantity, positive=True),
+            "ORD_QTY": _number_text(cancel_quantity, positive=True),
             "ORD_UNPR": _number_text(price),
             "QTY_ALL_ORD_YN": "Y" if cancel_all else "N",
             "EXCG_ID_DVSN_CD": "KRX",
         }
         return self._post_order(_CANCEL_PATH, tr_id, payload)
+
+    def _cancellable_quantity(
+        self, inquiry: Mapping[str, Any], order_no: str
+    ) -> int:
+        rows = self._object_list(
+            inquiry.get("output1"), "output1", self._tr_id("status")
+        )
+        for row in rows:
+            normalized = {str(key).lower(): value for key, value in row.items()}
+            if str(normalized.get("odno") or "") != order_no:
+                continue
+            try:
+                if normalized.get("rmn_qty") not in (None, ""):
+                    return max(0, int(str(normalized["rmn_qty"]).replace(",", "")))
+                ordered = int(str(normalized.get("ord_qty") or "0").replace(",", ""))
+                filled = int(
+                    str(normalized.get("tot_ccld_qty") or "0").replace(",", "")
+                )
+            except ValueError as exc:
+                raise KISResponseError(
+                    "KIS cancellable quantity is invalid"
+                ) from exc
+            return max(0, ordered - filled)
+        raise KISResponseError("KIS order was not found for cancellation")
 
     def _post_order(
         self, path: str, tr_id: str, payload: Mapping[str, object]

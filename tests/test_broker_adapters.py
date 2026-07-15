@@ -345,6 +345,39 @@ class BrokerAdapterTest(unittest.TestCase):
         self.assertEqual(0, result["filled_qty"])
         self.assertEqual(result["requested_qty"], result["remaining_qty"])
 
+    def test_generic_broker_transport_exception_is_unknown_with_quantities(self):
+        os.environ["LECTURE_ENABLE_LIVE_BROKER"] = "1"
+        os.environ["LECTURE_BROKER"] = "kiwoom"
+
+        class _AmbiguousAdapter:
+            async def place_order(self, order):
+                raise ConnectionResetError("response lost after submit")
+
+        with patch("brokers.factory.get_broker_adapter", return_value=_AmbiguousAdapter()):
+            result = asyncio.run(_execute_broker_order(_decision()))
+
+        self.assertEqual("unknown", result["status"])
+        self.assertFalse(result["executed"])
+        self.assertEqual(2, result["requested_qty"])
+        self.assertEqual(0, result["filled_qty"])
+        self.assertEqual(2, result["remaining_qty"])
+        self.assertTrue(result["requires_reconciliation"])
+
+    def test_broker_import_failure_is_rejected_with_complete_contract(self):
+        os.environ["LECTURE_ENABLE_LIVE_BROKER"] = "1"
+        os.environ["LECTURE_BROKER"] = "kiwoom"
+
+        with patch(
+            "brokers.factory.get_broker_adapter", side_effect=ImportError("missing")
+        ):
+            result = asyncio.run(_execute_broker_order(_decision()))
+
+        self.assertEqual("rejected", result["status"])
+        self.assertFalse(result["executed"])
+        self.assertEqual(2, result["requested_qty"])
+        self.assertEqual(0, result["filled_qty"])
+        self.assertEqual(2, result["remaining_qty"])
+
 
 if __name__ == "__main__":
     unittest.main()
