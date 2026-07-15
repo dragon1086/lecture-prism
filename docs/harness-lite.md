@@ -66,6 +66,7 @@ MY_STRATEGY.md를 읽고 내 전략을 lecture-prism에 반영해줘.
 4. 실거래를 하지 않는다.
 5. 데모 모드로 실행 검증한다.
 6. 마지막에 변경 파일, 검증 결과, 다음 추천을 알려준다.
+7. 한 트랙 검증이 끝난 뒤에만 System Completion Lane으로 같은 실행의 알림·주문·대시보드 증거를 맞춘다.
 
 ## 수업 빠른 모드 — 35분 안에 한 트랙 끝내기
 
@@ -101,15 +102,27 @@ Python 3.10 이상이 설치되어 있는지 확인하고,
 
 Windows에서 선택 패키지 설치가 실패해도 기본 mock 데모는 계속 실행할 수 있어야 합니다.
 
+## System Completion Lane — 전략 다음의 완성 증거
+
+이 단계는 다섯 번째 전략 트랙이 아닙니다. A/B/C/D 중 한 트랙을 데모로 검증한 다음, 최신 `run_id` 한 건의 실제 `data_as_of`, 단계 `sequence`, Discord와 선택 Telegram 전달, 주문 접수·부분 체결·체결·차단, 대시보드가 서로 같은 실행을 보여주는지 확인합니다.
+
+```text
+내 전략 한 트랙의 데모 검증이 끝났어. 이제 System Completion Lane을 진행해줘.
+같은 run_id의 data_as_of와 sequence, Discord와 설정된 경우 Telegram 전달,
+accepted·partial_fill·filled·blocked·live_blocked 주문 상태,
+대시보드의 분석·실제 filled_qty·교훈이 일치하는지 확인해줘.
+시크릿 값은 출력하지 말고 실전 주문은 계속 차단해줘.
+```
+
 ## API 키와 브로커 설정은 별도 트랙
 
 Strategy Harness Lite의 목표는 **내 전략을 코드 한 곳에 반영하는 것**입니다. 실데이터, Perplexity, Firecrawl, KIS 모의투자 같은 외부 연결은 전략 하네스가 직접 섞어 처리하지 않습니다.
 
-수업 이후 고급 설정까지 켜고 싶다면 먼저 [`docs/runtime-profiles.md`](runtime-profiles.md)를 보고 `.env`와 `trading/trading/config/kis_devlp.yaml`을 준비한 뒤, 코딩 에이전트에게 아래처럼 말하세요.
+수업 이후 고급 설정까지 켜고 싶다면 먼저 [`docs/runtime-profiles.md`](runtime-profiles.md)를 보고 로컬 `.env`에 필요한 `KIS_PAPER_*` 값을 준비한 뒤, 코딩 에이전트에게 아래처럼 말하세요.
 
 ```text
 내 전략 수정은 Strategy Harness Lite 방식으로 유지하되,
-현재 .env 실행 단계와 kis_devlp.yaml 설정도 함께 점검해줘.
+현재 .env 실행 단계와 KIS_PAPER_* 설정의 존재 여부도 함께 점검해줘. 값 자체는 출력하지 마.
 전략 검증은 먼저 mock/simulation에서 통과시키고,
 그 다음 내가 선택한 프로필이 real_data/research/paper/live 중 어디까지 실제로 켜지는지 설명해줘.
 실제 주문 가능성이 있으면 먼저 차단 상태인지 확인해줘.

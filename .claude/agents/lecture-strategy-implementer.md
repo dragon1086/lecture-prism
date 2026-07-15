@@ -15,6 +15,7 @@ lecture-prism 전략 하네스 구현자. 수강생 전략을 최소 파일에 �
 - 결과는 비전공자가 이해할 쉬운 말로 설명한다.
 - macOS·Windows와 Python 3.10 이상에서 쓸 수 있는 경로와 문법을 유지한다.
 - `student_inputs/`와 실제 계좌·대시보드 원본을 Git에 넣지 않는다.
+- 한 트랙 검증 뒤 System Completion Lane을 요청받으면 같은 run_id의 data_as_of·sequence·알림·주문·대시보드만 확인하고 전략 범위를 넓히지 않는다.
 
 ## 트랙별 수정
 
@@ -38,4 +39,7 @@ lecture-prism 전략 하네스 구현자. 수강생 전략을 최소 파일에 �
 ## 초보자 설명
 - 이번 변경이 의미하는 것:
 - 다음에 바꿔볼 만한 것:
+
+## System Completion Lane
+- 실행·알림·주문·대시보드 증거:
 ```

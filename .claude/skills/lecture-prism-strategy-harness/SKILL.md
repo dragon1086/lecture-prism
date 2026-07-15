@@ -54,6 +54,21 @@ description: lecture-prism 수강생이 “내 전략 반영해줘”, “하네
 
 목표 시간은 전략 작성 3~5분, 수정 10~15분, 검증 5~10분이다. 시간 안에 끝내기 어렵다면 검증을 줄이지 말고 수정 범위를 더 작게 잡는다.
 
+## System Completion Lane
+
+System Completion Lane은 다섯 번째 전략 트랙이 아니다. A/B/C/D 중 한 트랙을 **수정 → API 키 없는 데모 검증 → 전후 비교**까지 끝낸 뒤에만 진행한다. 전략을 더 고치는 단계가 아니라, 그 전략이 들어간 한 번의 실행을 끝까지 설명할 수 있는지 확인하는 단계다. 상세 체크리스트는 `references/system-completion.md`를 읽는다.
+
+다음 증거는 모두 같은 `run_id`를 가리켜야 한다.
+
+- `data_as_of`: 휴장일이면 오늘 날짜로 꾸미지 않고 실제 최근 영업일을 표시한다.
+- `sequence`: 파이프라인 시작부터 완료 또는 실패까지 증가하는 순서를 확인한다.
+- Discord: 3주차 필수 준비 채널이다. 전송 실패는 기록하되 파이프라인은 계속되는지 확인한다.
+- Telegram: 선택 채널이다. 설정했다면 Discord와 같은 `run_id`·`sequence`를 받는지 확인하고, 없으면 “선택 채널 미설정”으로 남긴다.
+- 주문: `accepted`, `partial_fill`, `filled`, `blocked`, `live_blocked`를 바꿔 말하지 않는다. `accepted`는 체결이 아니며, `partial_fill`을 포함한 실제 `filled_qty`만 포트폴리오에 반영한다.
+- 대시보드: 이벤트·알림·주문·분석 6섹션·교훈이 선택한 실행 하나에서 왔는지 확인한다. 모르는 현금 잔고나 평가액을 만들어내지 않는다.
+
+기본 mock/simulation 검증은 알림 또는 KIS 키가 없어도 완주해야 한다. 실제 Discord·Telegram 메시지는 로컬 `.env`에 해당 채널이 설정된 경우에만 보내고, KIS 모의투자 API 호출은 사용자가 안전 플래그를 명시적으로 허용한 경우에만 한다. 실전 주문은 항상 `live_blocked`여야 한다. 웹훅 URL, 봇 토큰, 계좌번호, `.env` 원문은 출력·제출·커밋하지 않는다.
+
 ## 트랙 선택 규칙
 
 | 트랙 | 파일 | 선택 조건 | 난이도 |
@@ -147,6 +162,7 @@ description: lecture-prism 수강생이 “내 전략 반영해줘”, “하네
 - macOS·Windows에서 쓸 수 있는 경로인지, Python 3.10 문법인지 확인
 - 실거래 경로가 실행되지 않았는지 확인
 - 시크릿, `student_inputs/`, 실제 계좌·대시보드 원본이 변경·스테이징되지 않았는지 확인
+- 한 트랙 검증 뒤 System Completion Lane을 진행했다면 `run_id`, `data_as_of`, `sequence`, 알림 전달, 주문 상태, 대시보드가 서로 같은 실행인지 확인
 
 ### 5. 보고
 
@@ -167,6 +183,13 @@ description: lecture-prism 수강생이 “내 전략 반영해줘”, “하네
 
 ## 다음에 바꾸면 좋은 것
 -
+
+## System Completion Lane
+- 실행 진실:
+- 알림 전달:
+- 주문 진실:
+- 대시보드 증거:
+- 시크릿 점검:
 ```
 
 ## “개떡같은 말” 해석 예시

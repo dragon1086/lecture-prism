@@ -14,6 +14,7 @@ lecture-prism 전략 수정 결과가 수강생 의도, 데모 실행, 보안 �
 8. 자료 준비 상태가 키·계정·수동 입력·이번 범위 밖으로 구분됐는가?
 9. macOS·Windows와 Python 3.10 이상에서 쓸 수 있는가?
 10. `student_inputs/`와 실제 계좌·대시보드 원본이 Git에서 제외됐는가?
+11. System Completion Lane을 진행했다면 같은 run_id의 data_as_of·sequence·Discord·선택 Telegram·주문 상태·대시보드가 일치하는가?
 
 검증 결과는 비전공자가 이해할 쉬운 말로 설명한다.
 
