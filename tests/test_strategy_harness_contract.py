@@ -25,6 +25,13 @@ class StrategyHarnessContractTests(unittest.TestCase):
             "키 또는 계정 필요",
             "사람이 넣어야 함",
             "이번 범위 밖",
+            "System Completion Lane",
+            "Discord",
+            "Telegram",
+            "data_as_of",
+            "run_id",
+            "sequence",
+            "live_blocked",
         ]
         contents = [self.read(path) for path in paths]
         self.assertEqual(contents[0], contents[1])
@@ -32,6 +39,18 @@ class StrategyHarnessContractTests(unittest.TestCase):
         for path, text in zip(paths, contents):
             for marker in required:
                 self.assertIn(marker, text, f"{path}: {marker}")
+            self.assertNotIn("Track E", text, path)
+
+    def test_harness_reference_copies_are_identical(self):
+        for filename in ("track-map.md", "system-completion.md"):
+            paths = [
+                f".codex/skills/lecture-prism-strategy-harness/references/{filename}",
+                f".claude/skills/lecture-prism-strategy-harness/references/{filename}",
+                f".agents/skills/lecture-prism-strategy-harness/references/{filename}",
+            ]
+            contents = [self.read(path) for path in paths]
+            self.assertEqual(contents[0], contents[1], filename)
+            self.assertEqual(contents[0], contents[2], filename)
 
     def test_student_template_captures_extended_strategy(self):
         text = self.read("MY_STRATEGY.md")
@@ -52,7 +71,12 @@ class StrategyHarnessContractTests(unittest.TestCase):
             ".claude/agents/lecture-strategy-implementer.md",
             ".claude/agents/lecture-strategy-verifier.md",
         ]
-        required = ["수업 빠른 모드", "쉬운 말", "자료 준비 상태"]
+        required = [
+            "수업 빠른 모드",
+            "쉬운 말",
+            "자료 준비 상태",
+            "System Completion Lane",
+        ]
         for path in paths:
             text = self.read(path)
             for marker in required:
