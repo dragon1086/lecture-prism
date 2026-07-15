@@ -16,3 +16,13 @@ aiohttp>=3.9
 # 무료·무로그인으로 한국주식 가격·거래량·재무·뉴스·지수를 가져옵니다(야후 파이낸스).
 # 미설치 시 analysis.py는 자동으로 mock 데이터로 폴백합니다.
 yfinance>=0.2.40
+
+# KIS 모의·실전 매수 주문 브리지 (brokers/kis.py)
+# 기본 mock 실행에는 필요하지 않으며, KIS 연결을 선택한 경우에만 사용합니다.
+pandas
+tenacity
+requests
+websockets
+PyYAML
+pycryptodome
+cryptography

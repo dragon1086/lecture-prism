@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PRISM Insight에서 나만의 시스템까지</title>
+<link rel="stylesheet" href="vendor/reveal.js/dist/reveal.css">
+<link rel="stylesheet" href="vendor/reveal.js/dist/theme/black.css">
+<style>
+  :root {
+    --bg: #0a0d18;
+    --panel: #131827;
+    --panel-2: #1a2033;
+    --line: #2c3551;
+    --text: #f4f5fb;
+    --muted: #aab1c7;
+    --purple: #9670ff;
+    --teal: #48d2ae;
+    --amber: #ffba64;
+    --danger: #ff7185;
+  }
+
+  * { box-sizing: border-box; }
+  body { background: var(--bg); }
+  .reveal { color: var(--text); font-family: 'Apple SD Gothic Neo', 'Pretendard', 'Noto Sans KR', system-ui, sans-serif; }
+  .reveal .slides { text-align: left; }
+  .reveal .slides > section { height: 100%; padding: 56px 76px 60px; }
+  .reveal h1, .reveal h2, .reveal h3, .reveal p { margin: 0; text-transform: none; letter-spacing: -0.03em; }
+  .reveal h1 { font-size: 68px; font-weight: 850; line-height: 1.14; }
+  .reveal h2 { font-size: 46px; font-weight: 850; line-height: 1.2; }
+  .reveal h3 { font-size: 26px; font-weight: 850; line-height: 1.25; }
+  .reveal p, .reveal li { font-size: 24px; line-height: 1.5; }
+  .reveal strong { color: var(--teal); }
+  .reveal .progress { color: var(--purple); height: 5px; }
+  .reveal .controls { color: var(--teal); }
+  .reveal .slide-number { bottom: 18px; right: 24px; font-size: 16px; color: var(--muted); background: transparent; }
+
+  .slide { position: relative; background: radial-gradient(circle at 84% 8%, rgba(150,112,255,.13), transparent 32%), var(--bg); overflow: hidden; }
+  .slide::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 6px; background: linear-gradient(90deg, var(--purple), var(--teal), var(--amber)); }
+  .kicker { color: var(--purple); font-size: 20px; font-weight: 800; letter-spacing: .08em; margin-bottom: 14px; }
+  .lede { margin-top: 20px !important; color: var(--muted); font-size: 25px !important; max-width: 900px; }
+  .note { position: absolute; left: 76px; right: 76px; bottom: 42px; color: var(--amber); font-size: 19px !important; }
+  .source { position: absolute; left: 76px; bottom: 18px; color: #6f7892; font-size: 13px !important; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: -.04em; }
+
+  .cover, .chapter { display: flex !important; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+  .cover { background: radial-gradient(circle at 50% 28%, rgba(150,112,255,.3), transparent 34%), linear-gradient(155deg, #11172b, #090c14 68%); }
+  .cover .eyebrow { color: var(--teal); font-size: 22px; font-weight: 850; letter-spacing: .12em; margin-bottom: 24px; }
+  .cover .subtitle { color: var(--muted); font-size: 28px; margin-top: 24px; }
+  .cover .repo-link { margin-top: 12px !important; color: var(--teal); font-size: 16px !important; }
+  .repo-link a { color: inherit; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; text-decoration: underline; text-decoration-color: rgba(72,210,174,.55); text-underline-offset: 3px; }
+  .start-hint { margin-top: 44px !important; padding: 11px 20px; border: 1px solid #5a4a91; border-radius: 999px; color: #d9d3ff; font-size: 17px !important; }
+  .signal-line { width: 720px; max-width: 80%; height: 70px; margin-top: 34px; position: relative; }
+  .signal-line::before { content: ''; position: absolute; left: 0; right: 0; top: 34px; height: 2px; background: linear-gradient(90deg, transparent, var(--purple), var(--teal), transparent); }
+  .signal-dot { position: absolute; top: 22px; width: 26px; height: 26px; border-radius: 50%; background: var(--bg); border: 3px solid var(--purple); }
+  .signal-dot:nth-child(1) { left: 12%; } .signal-dot:nth-child(2) { left: 45%; border-color: var(--teal); } .signal-dot:nth-child(3) { right: 12%; border-color: var(--amber); }
+
+  .chapter .chapter-no { color: var(--purple); font-size: 25px; font-weight: 850; letter-spacing: .2em; margin-bottom: 20px; }
+  .chapter .chapter-copy { color: var(--muted); max-width: 900px; font-size: 27px !important; margin-top: 22px; }
+  .chapter .bridge { color: var(--teal); max-width: 960px; font-size: 38px !important; font-weight: 800; line-height: 1.38; }
+
+  .grid { display: grid; gap: 16px; margin-top: 28px; }
+  .grid.two { grid-template-columns: repeat(2, 1fr); }
+  .grid.three { grid-template-columns: repeat(3, 1fr); }
+  .card { min-height: 164px; padding: 22px; background: linear-gradient(140deg, rgba(26,32,51,.95), rgba(17,22,37,.95)); border: 1px solid var(--line); border-radius: 16px; }
+  .card .label { color: var(--purple); font-size: 15px; font-weight: 850; margin-bottom: 9px; letter-spacing: .06em; }
+  .card .body { color: var(--muted); font-size: 18px !important; margin-top: 9px; line-height: 1.42; }
+  .card.emphasis { border-color: #5d50a6; background: linear-gradient(140deg, rgba(65,47,117,.55), rgba(18,27,45,.96)); }
+  .metric { color: var(--teal); font-size: 42px; font-weight: 900; line-height: 1; }
+
+  .timeline { display: grid; grid-template-columns: 150px 1fr; row-gap: 15px; column-gap: 20px; margin-top: 26px; }
+  .timeline .date { color: var(--purple); font-size: 18px; font-weight: 850; padding-top: 12px; }
+  .timeline .event { padding: 15px 18px; border: 1px solid var(--line); border-left: 5px solid var(--purple); border-radius: 10px; background: var(--panel); }
+  .timeline .event b { display: block; font-size: 22px; margin-bottom: 4px; }
+  .timeline .event span { color: var(--muted); font-size: 17px; line-height: 1.38; }
+  .timeline .event.teal { border-left-color: var(--teal); }
+  .timeline .event.amber { border-left-color: var(--amber); }
+  .timeline.compact { grid-template-columns: 190px 1fr; row-gap: 9px; margin-top: 20px; }
+  .timeline.compact .date { padding-top: 9px; }
+  .timeline.compact .event { padding: 10px 16px; }
+  .timeline.compact .event b { font-size: 20px; margin-bottom: 2px; }
+  .timeline.compact .event span { font-size: 15px; }
+
+  .diagram { display: grid; grid-template-columns: 1fr 58px 1fr 58px 1fr; align-items: center; gap: 8px; margin-top: 42px; }
+  .diagram .node { min-height: 150px; padding: 24px 18px; border: 1px solid var(--line); border-radius: 16px; background: var(--panel); text-align: center; }
+  .diagram .node p { color: var(--muted); font-size: 17px !important; margin-top: 10px; }
+  .diagram .arrow { color: var(--teal); font-size: 40px; text-align: center; }
+
+  .incident { margin-top: 26px; }
+  .incident .stat-card { min-height: 184px; }
+  .incident .stat-card .metric { margin: 12px 0 6px; }
+  .incident .stat-card p { color: var(--muted); font-size: 17px !important; }
+
+  .prompt-compare { display: grid; grid-template-columns: 1fr 72px 1fr; gap: 16px; align-items: stretch; margin-top: 24px; }
+  .prompt-side { min-height: 232px; padding: 22px 24px; border: 1px solid var(--line); border-radius: 16px; background: var(--panel); }
+  .prompt-side.before { border-color: #775d56; background: linear-gradient(140deg, rgba(83,53,50,.46), rgba(18,24,39,.96)); }
+  .prompt-side.after { border-color: #4a967f; background: linear-gradient(140deg, rgba(28,85,73,.5), rgba(18,27,45,.96)); }
+  .prompt-side .label { color: var(--amber); font-size: 15px; font-weight: 850; letter-spacing: .06em; }
+  .prompt-side.after .label { color: var(--teal); }
+  .prompt-quote { margin-top: 14px !important; font-size: 28px !important; font-weight: 850; line-height: 1.3 !important; }
+  .prompt-side .body { color: var(--muted); font-size: 17px !important; margin-top: 14px !important; line-height: 1.45; }
+  .prompt-arrow { display: flex; align-items: center; justify-content: center; color: var(--teal); font-size: 42px; font-weight: 900; }
+
+  .proof-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; margin-top: 24px; }
+  .proof { min-width: 0; }
+  .proof img { width: 100%; height: 286px; display: block; object-fit: cover; object-position: top; border-radius: 14px; border: 1px solid var(--line); }
+  .proof h3 { font-size: 19px; margin: 10px 0 4px; }
+  .proof p { color: var(--muted); font-size: 15px !important; }
+  .disclaimer { color: #7f879e; font-size: 14px !important; margin-top: 12px !important; }
+  .account-layout { display: grid; grid-template-columns: 260px 1fr; gap: 56px; align-items: center; margin-top: 20px; }
+  .account-crop { height: 410px; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #fff; border: 1px solid var(--line); border-radius: 14px; }
+  .account-crop img { display: block; width: auto; max-width: 100%; height: 100%; object-fit: contain; transform: none; }
+  .fact { padding: 18px 20px; margin-bottom: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; }
+  .fact .label { color: var(--muted); font-size: 16px; }
+  .fact .value { color: var(--teal); font-size: 35px; font-weight: 900; margin-top: 5px; }
+
+  .role { display: grid; grid-template-columns: 1fr 100px 1fr; gap: 18px; align-items: center; margin-top: 42px; }
+  .role .vs { color: var(--amber); font-size: 26px; font-weight: 900; text-align: center; }
+  .checklist { margin-top: 24px; display: grid; gap: 12px; }
+  .check { display: flex; gap: 15px; align-items: center; padding: 14px 18px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
+  .check .number { color: var(--purple); font-size: 20px; font-weight: 900; width: 30px; }
+  .check p { color: var(--muted); font-size: 20px !important; }
+
+  .speaker { margin-top: 28px !important; color: #dcd8ff; font-size: 21px !important; font-weight: 750; }
+  .visual-frame { margin-top: 22px; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: #0d1220; }
+  .visual-frame img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .chart-frame { height: 440px; }
+  .wide-frame { height: 400px; }
+  .split-media { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 22px; }
+  .media-card { min-width: 0; padding: 14px; border: 1px solid var(--line); border-radius: 16px; background: var(--panel); }
+  .media-card img { width: 100%; height: 300px; display: block; object-fit: contain; object-position: center; border-radius: 10px; background: #fff; }
+  .media-card h3 { margin-top: 10px; font-size: 20px; }
+  .media-card p { color: var(--muted); font-size: 15px !important; margin-top: 5px; }
+  .media-card .repo-link { margin-top: 9px !important; color: var(--teal); font-size: 13px !important; }
+  .story-grid { display: grid; grid-template-columns: 1.15fr .85fr; gap: 24px; margin-top: 22px; align-items: stretch; }
+  .story-grid img { width: 100%; height: 405px; object-fit: cover; object-position: top; border: 1px solid var(--line); border-radius: 16px; }
+  .story-copy { display: grid; gap: 12px; }
+  .story-copy .fact { margin: 0; }
+  .story-copy .value { font-size: 29px; }
+  .routine-image { height: 425px; background: #080b14; }
+  .routine-image img { object-fit: contain; object-position: center; }
+  .workflow { display: grid; grid-template-columns: repeat(5,1fr); gap: 10px; margin-top: 32px; }
+  .workflow .step { min-height: 152px; padding: 18px 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
+  .workflow .num { color: var(--purple); font-size: 15px; font-weight: 900; }
+  .workflow h3 { margin-top: 9px; font-size: 21px; }
+  .workflow p { margin-top: 8px; color: var(--muted); font-size: 15px !important; }
+  .workflow.compact-workflow { margin-top: 18px; }
+  .workflow.compact-workflow .step { min-height: 98px; padding: 11px 10px; }
+  .workflow.compact-workflow h3 { margin-top: 5px; font-size: 17px; }
+  .workflow.compact-workflow p { margin-top: 4px; font-size: 12px !important; line-height: 1.32; }
+  .case-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; height: 224px; margin-top: 14px; }
+  .case-image { overflow: hidden; border: 1px solid var(--line); border-radius: 14px; background: #fff; }
+  .case-image img { display: block; width: 100%; height: 100%; object-fit: contain; object-position: center; }
+  .issue-evidence { height: 274px; margin-top: 14px; }
+  .diagram.compact-diagram { margin-top: 20px; }
+  .diagram.compact-diagram .node { min-height: 105px; padding: 14px 12px; }
+  .diagram.compact-diagram .node h3 { font-size: 20px; }
+  .diagram.compact-diagram .node p { margin-top: 6px; font-size: 14px !important; line-height: 1.35; }
+  .sell-evidence { width: 72%; height: 112px; margin-top: 12px; }
+  .slippage-layout { display: grid; grid-template-columns: 1fr 315px; gap: 20px; height: 410px; margin-top: 18px; }
+  .slippage-layout .grid { grid-template-columns: 1fr; gap: 10px; margin-top: 0; }
+  .slippage-layout .card { min-height: 0; padding: 14px 17px; }
+  .slippage-layout .card h3 { font-size: 19px; }
+  .slippage-layout .card .body { margin-top: 5px; font-size: 15px !important; line-height: 1.35; }
+  .terminal { margin-top: 24px; padding: 20px 22px; border: 1px solid #33415f; border-radius: 14px; background: #070a11; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .terminal p { color: #b9c5df; font-size: 17px !important; line-height: 1.65; letter-spacing: -.03em; }
+  .terminal .ok { color: var(--teal); } .terminal .warn { color: var(--amber); } .terminal .tag { color: #b79dff; }
+  .memory-strip { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-top: 32px; }
+  .memory-strip .card { min-height: 180px; }
+  .readme { display: grid; grid-template-columns: .85fr 1.15fr; gap: 24px; margin-top: 24px; }
+  .readme-file { padding: 22px; border: 1px solid var(--line); border-radius: 16px; background: #0d1220; }
+  .readme-file .file-name { color: var(--teal); font-family: ui-monospace, monospace; font-size: 18px; font-weight: 800; }
+  .readme-file p { margin-top: 12px; color: #c7cee1; font-size: 18px !important; }
+  .readme-flow { display: grid; gap: 10px; }
+  .readme-flow .check { padding: 12px 16px; }
+  .readme-flow .check p { font-size: 18px !important; }
+  .small-note { color: var(--muted); font-size: 16px !important; margin-top: 10px !important; }
+
+  @media print {
+    .reveal .slides > section { padding: 56px 76px 60px; }
+  }
+</style>
+</head>
+<body>
+<div class="reveal">
+  <div class="slides">
+
+    <section class="slide cover">
+      <div class="eyebrow">패스트캠퍼스 사전 오픈 세미나</div>
+      <h1>PRISM Insight에서<br>나만의 시스템까지</h1>
+      <p class="subtitle">AI 네이티브 자동매매를 오픈소스로 만든 이유와 유지보수 루틴</p>
+      <p class="repo-link"><a href="https://github.com/dragon1086/prism-insight" target="_blank" rel="noopener noreferrer">github.com/dragon1086/prism-insight</a></p>
+      <p class="speaker">카카오 메이커스 백엔드 개발자 · 문상록 강사</p>
+      <div class="signal-line"><i class="signal-dot"></i><i class="signal-dot"></i><i class="signal-dot"></i></div>
+      <p class="start-hint">화면 오른쪽이나 <span class="mono">→</span> 키를 눌러 시작</p>
+    </section>
+
+    <section class="slide">
+      <div class="kicker">작은돈에는 꼼꼼한데, 큰돈 앞에서는 급해집니다</div>
+      <h2>밥집·쿠팡·주유소는 한참 비교하면서<br>주식은 기분 따라 덜컥 사고팔았습니다</h2>
+      <div class="grid three">
+        <div class="card"><div class="label">밥집</div><h3>리뷰를 끝까지 읽습니다</h3><p class="body">몇 만원짜리 식사도 후기와 메뉴, 거리를 꼼꼼히 따집니다.</p></div>
+        <div class="card"><div class="label">쿠팡·주유소</div><h3>몇 천원도 아끼려 합니다</h3><p class="body">최저가와 쿠폰을 찾고, 싼 주유소까지 일부러 돌아갑니다.</p></div>
+        <div class="card emphasis"><div class="label">주식</div><h3>큰돈을 순식간에 결정합니다</h3><p class="body">조금 오르면 쫓아 사고, 불안하면 팔고, 근거는 나중에 붙였습니다.</p></div>
+      </div>
+      <p class="note">돈의 크기와 조사에 들이는 시간이 거꾸로였습니다.</p>
+    </section>
+
+    <section class="slide">
+      <div class="kicker">2018년부터 2025년까지</div>
+      <h2>시장은 몇 번이나 기회를 줬지만<br>저는 같은 원칙으로 대응하지 못했습니다</h2>
+      <div class="visual-frame chart-frame"><img src="assets/kospi-annotated-2018-2025.png" alt="2018년 투자 시작, 코로나 시기 수익, 이후 반복 손실 구간을 표시한 KOSPI 차트"></div>
+      <p class="source">차트 구간: 2018~2025 · 개인 경험을 설명하기 위한 주석</p>
+    </section>
+
+    <section class="slide">
+      <div class="kicker">제 투자 경험을 시간순으로 보면</div>
+      <h2>시장이 좋을 때는 벌었지만<br>환경이 달라지자 같은 실수를 반복했습니다</h2>
+      <div class="timeline compact">
+        <div class="date">2018 · 투자 시작</div><div class="event"><b>책과 리딩방에서 매매 이론을 배웠습니다</b><span>아는 것은 늘었지만, 실제 매수·매도 기준은 그날 감정에 따라 달라졌습니다.</span></div>
+        <div class="date">코로나 시기 · 잠깐의 수익</div><div class="event teal"><b>약 1년 반 동안은 수익이 났습니다</b><span>상승장이 실력을 가려주면서 제 방법이 완성됐다고 착각했습니다.</span></div>
+        <div class="date">그 이후 · 반복 손실</div><div class="event amber"><b>시장이 달라지자 계속 잃었습니다</b><span>직장과 육아 중에는 정한 시점에 대응하지 못했고, 손실이 나면 원칙도 흔들렸습니다.</span></div>
+        <div class="date">다음 선택 · 시스템 매매</div><div class="event teal"><b>의지보다 구조를 바꾸기로 했습니다</b><span>사람이 세운 원칙을 빠뜨리지 않고 실행할 시스템을 만들기 시작했습니다.</span></div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="kicker">제가 내린 결론</div>
+      <h2>종목을 더 잘 맞히는 법보다,<br>정한 원칙을 빼먹지 않는 장치가 필요했습니다</h2>
+      <div class="grid three">
+        <div class="card"><div class="label">시간</div><h3>직장과 육아 중에도</h3><p class="body">차트를 못 보는 순간에 시스템은 정해둔 조건을 확인합니다.</p></div>
+        <div class="card"><div class="label">감정</div><h3>불안하거나 들떠도</h3><p class="body">어제 세운 손절과 매수 기준을 오늘 기분대로 바꾸지 않습니다.</p></div>
+        <div class="card emphasis"><div class="label">결심</div><h3>그래서 시스템 매매를 시작했습니다</h3><p class="body">예측 기계가 아니라, 제 원칙을 반복해서 실행할 도구를 만들기로 했습니다.</p></div>
+      </div>
+    </section>
+
+    <section class="slide chapter">
+      <div class="chapter-no">근거를 모으는 일부터</div>
+      <p class="bridge">AI에게 “살까?”라고 묻기 전에<br>판단할 자료부터 제대로 가져오게 했습니다.</p>
+    </section>
+
+    <section class="slide">
+      <div class="kicker">2025년 2월 · 첫 번째 도구</div>
+      <h2>한국 주식 데이터를 가져오고<br>출처가 남는 보고서를 만들었습니다</h2>
+      <div class="split-media">
+        <div class="media-card"><img src="assets/kospi-kosdaq-mcp.png" alt="KOSPI KOSDAQ MCP 서버 공개 화면"><h3>KOSPI·KOSDAQ MCP</h3><p>AI가 실제 시장 데이터를 조회하도록 만든 첫 오픈소스 도구입니다.</p><p class="repo-link"><a href="https://github.com/dragon1086/kospi-kosdaq-stock-server" target="_blank" rel="noopener noreferrer">github.com/dragon1086/kospi-kosdaq-stock-server</a></p></div>
+        <div class="media-card"><img src="assets/pdf-report-example.png" alt="PRISM Insight 기업 분석 PDF 예시"><h3>근거가 남는 PDF</h3><p>MCP와 리서치 도구를 엮어 출처·수치·판단 재료를 한 문서에 모았습니다.</p></div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="kicker">보고서 다음에 남은 일</div>
+      <h2>자료를 모으는 팀과<br>마지막 결정을 내리는 사람은 역할이 다릅니다</h2>
+      <div class="visual-frame wide-frame"><img src="assets/investment-research-team.png" alt="분석팀의 자료를 검토하고 최종 결정을 내리는 가상의 투자팀"></div>
+      <p class="note">가격·재무·뉴스를 정리하는 일과, 그 근거를 종합해 매수·매도를 고르는 일은 따로 설계해야 했습니다.</p>
+    </section>
+
+    <section class="slide">
+      <div class="kicker">2025년 3월~9월 · 시즌1</div>
+      <h2>첫 6개월 성적은 좋았습니다.<br>그렇다고 전략이 완성된 것은 아니었습니다</h2>
+      <div class="story-grid">
+        <img src="assets/season1-history.png" alt="PRISM 시즌1 주요 종목 수익률 화면">
+        <div class="story-copy">
+          <div class="fact"><div class="label">총 거래</div><div class="value">38건 · 승률 44.7%</div></div>
+          <div class="fact"><div class="label">누적수익률</div><div class="value">371%</div></div>
+          <div class="fact"><div class="label">당시 구조</div><div class="value">매수는 AI · 매도는 단순 규칙</div></div>
+          <p class="small-note">대세상승을 탄 몇 종목을 투박한 매도 규칙이 오래 보유한 영향이 컸습니다. 최대 손실도 컸고, 운이 따라준 결과라고 봅니다.</p>
+        </div>
+      </div>
+      <p class="source">시즌1 운영 기록 · 2025.03~09</p>
+    </section>
+
+    <section class="slide">
+      <div class="kicker">PRISM 연혁 1 · 2025년, 시즌1 다음</div>
+      <h2>시즌1에서 멈추지 않고<br>오픈소스·실계좌 운영으로 넓혔습니다</h2>
+      <div class="timeline compact">
+        <div class="date">2025.02 · MCP 공개</div><div class="event"><b>AI가 한국 주식 데이터를 직접 조회하게 했습니다</b><span>KOSPI·KOSDAQ 가격을 가져오는 MCP를 공개하고, Perplexity·Firecrawl을 엮어 출처가 남는 PDF 보고서를 만들었습니다.</span></div>
+        <div class="date">2025.03 · 시즌1</div><div class="event teal"><b>AI 매수 판단을 처음 매매 흐름에 연결했습니다</b><span>6개월 동안 38건을 거래해 승률 44.7%, 누적수익률 371%를 기록했습니다. 다만 매도는 단순 규칙이었고 큰 손실도 감수한 투박한 구조였습니다.</span></div>
+        <div class="date">2025.08 · 오픈소스와 실계좌</div><div class="event"><b>PRISM Insight를 공개하고 실제 주문을 붙였습니다</b><span>코드가 공개된 뒤에는 결과뿐 아니라 운영 중 드러난 오류와 판단 문제도 릴리스 기록으로 남기며 고치기 시작했습니다.</span></div>
+        <div class="date">2025.10 · 시즌2</div><div class="event amber"><b>매수와 매도, 시장 판단을 함께 AI 흐름으로 넓혔습니다</b><span>한국·미국 시장을 나눠 운영하고, 시뮬레이션과 실계좌 결과를 함께 보며 체결 차이와 슬리피지를 추적했습니다.</span></div>
+      </div>
+      <p class="source">2025년: 데이터 수집 → AI 매수 → 오픈소스 → 실계좌 운영</p>
+    </section>
+
+    <section class="slide">
+      <div class="kicker">PRISM 연혁 2 · 2026년, 실제 손실에서 안전장치를 배우다</div>
+      <h2>운영에서 다친 지점을<br>프롬프트와 코드 안전장치로 바꿨습니다</h2>
+      <div class="timeline compact">
+        <div class="date">2026.01 · 보수적인 프롬프트</div><div class="event"><b>강세장에도 AI가 자꾸 관망했습니다</b><span>손실 경고를 반복한 프롬프트가 미진입을 쉬운 답으로 만들었습니다. 관망하려면 명확한 반대 근거를 내도록 질문 구조를 바꿨습니다.</span></div>
+        <div class="date">2026.05 · 짧은 보유 손실</div><div class="event amber"><b>0~1일 만에 손절하는 거래가 반복됐습니다</b><span>시장 국면만 탓하지 않고 장중 흔들림 손절, 과열 추격, 매도 규칙을 함께 의심했습니다. 종가 확인과 진입·청산 조건을 다시 설계했습니다.</span></div>
+        <div class="date">2026.06 · 10분 실시간 루프</div><div class="event teal"><b>늦은 손절과 미체결을 장중에 반복 확인했습니다</b><span>하루 두세 번 배치 사이의 공백을 10분 점검으로 메웠습니다. 관찰 모드에서 로그를 쌓은 뒤 손절·추세이탈·체결 추적을 실제 운영으로 올렸습니다.</span></div>
+        <div class="date">2026.07 · 급락장 방어</div><div class="event"><b>급락장을 강세로 읽고, 손절 뒤 다시 사는 문제를 고쳤습니다</b><span>고변동·낙폭으로 시장 판정을 보정하고, 오래된 주문 기록 만료·24시간 재진입 차단·중복 매도 방어를 추가했습니다.</span></div>
+      </div>
+      <p class="source">Source: PRISM Insight v1.16.6~v1.16.7 · v2.13 · v2.15~v2.17 release notes</p>
+    </section>
+
+    <section class="slide chapter">
+      <div class="chapter-no">운영하면서 고치는 법</div>
+      <p class="bridge">완성된 시스템을 만든 적은 없습니다.<br>출퇴근길마다 이상한 점을 하나씩 고쳐 왔습니다.</p>
+    </section>
+
+    <section class="slide">
+      <div class="kicker">제가 실제로 일하는 모습</div>
+      <h2>출근길에는 미국시장, 퇴근길에는 한국시장.<br>유지보수의 95%는 휴대전화로 합니다</h2>
+      <div class="visual-frame routine-image"><img src="assets/commute-maintenance-routine.png" alt="지하철 텔레그램 확인부터 Mac mini의 AI 코딩과 배포 검증까지 이어지는 유지보수 루틴"></div>
+    </section>
+
+    <section class="slide">
+      <div class="kicker">텔레그램에서 원인 조사까지</div>
+      <h2>이상한 메시지를 보면,<br>그 자리에서 AI와 구조부터 뜯어봅니다</h2>
+      <div class="workflow compact-workflow">
+        <div class="step"><div class="num">01</div><h3>메시지 확인</h3><p>간밤의 미국시장 또는 당일 한국시장 결과에서 어색한 판단을 찾습니다.</p></div>
+        <div class="step"><div class="num">02</div><h3>원격 대화</h3><p>텔레그램의 cokacdir로 집의 Mac mini에 있는 Claude Code·Codex와 대화합니다.</p></div>
+        <div class="step"><div class="num">03</div><h3>근거 지정</h3><p>운영 DB와 로그 위치를 알려주고, 추측하지 말고 실제 기록을 읽게 합니다.</p></div>
+        <div class="step"><div class="num">04</div><h3>구조 파악</h3><p>어느 흐름에서 판단이나 체결이 어긋났는지 코드와 함께 찾습니다.</p></div>
+        <div class="step"><div class="num">05</div><h3>수정 설계</h3><p>바로 코드를 고치기 전에 실패 조건과 안전장치를 같이 정합니다.</p></div>
+      </div>
+      <div class="case-pair">
+        <div class="case-image"><img src="../../docs/assets/prism-insight/delay_message.png" alt="텔레그램 발송 오류로 늦게 전달된 매도 안내 메시지"></div>
+        <div class="case-image"><img src="../../docs/assets/prism-insight/skip_message.png" alt="시장 상황과 최근 손절 이력을 근거로 신규 매수를 보류한 메시지"></div>
+      </div>
+      <p class="note">운영서버 접속 스크립트, 소스코드, GitHub CLI가 Mac mini에 준비돼 있어 휴대전화만으로도 조사를 시작할 수 있습니다.</p>
+    </section>
+
+    <section class="slide">
+      <div class="kicker">생각난 일은 GitHub 이슈에 남깁니다</div>
+      <h2>메모에서 끝내지 않고<br>배포 뒤 운영 확인까지 한 묶음으로 맡깁니다</h2>
+      <div class="workflow compact-workflow">
+        <div class="step"><div class="num">ISSUE</div><h3>길에서 메모</h3><p>오류와 아이디어를 짧게 적어 잊지 않게 합니다.</p></div>
+        <div class="step"><div class="num">DESIGN</div><h3>AI와 딥다이브</h3><p>시간이 날 때 이슈 하나를 골라 원인과 대안을 따집니다.</p></div>
+        <div class="step"><div class="num">CODE</div><h3>작게 수정</h3><p>기존 흐름을 지키면서 필요한 부분만 고칩니다.</p></div>
+        <div class="step"><div class="num">DEPLOY</div><h3>테스트 후 배포</h3><p>코드만 만들고 멈추지 말고 실제 운영에 반영하게 합니다.</p></div>
+        <div class="step"><div class="num">VERIFY</div><h3>로그로 재확인</h3><p>같은 문제가 사라졌는지 DB와 로그를 다시 읽습니다.</p></div>
+      </div>
+      <div class="case-image issue-evidence"><img src="../../docs/assets/prism-insight/github_issue.png" alt="이동 중 떠오른 기능을 기록하고 사용자와 의견을 나눈 GitHub 이슈 화면"></div>
+      <p class="note">요즘 모델이 좋아지면서 구조를 함께 설계하고 기존 코드를 고치는 과정도 훨씬 안정돼 가고 있습니다.</p>
+    </section>
+
+    <section class="slide">
+      <div class="kicker">운영에서 크게 배운 것 1 · 손절</div>
+      <h2>하루 두세 번 도는 배치만으로는<br>급락을 제때 끊기 어려웠습니다</h2>
+      <div class="diagram compact-diagram">
+        <div class="node"><h3>예전</h3><p>오전·오후 배치 사이에 급락하면 다음 실행까지 손실을 그대로 맞았습니다.</p></div><div class="arrow">→</div>
+        <div class="node"><h3>10분 점검</h3><p>보유 종목의 손절선과 추세 이탈을 장중에 반복 확인합니다.</p></div><div class="arrow">→</div>
+        <div class="node"><h3>지금</h3><p>조건을 벗어나면 AI 재판단을 기다리지 않고 코드가 하드하게 매도합니다.</p></div>
+      </div>
+      <div class="case-image sell-evidence"><img src="../../docs/assets/prism-insight/sell_message.png" alt="10분 점검에서 손절 조건을 감지해 전량 매도한 텔레그램 메시지"></div>
+      <p class="note">빠른 루프도 처음부터 실주문으로 켜지 않았습니다. 관찰 모드에서 기록을 쌓고, 테스트한 뒤 실제 주문으로 올렸습니다.</p>
+      <p class="source">Source: PRISM Insight <a href="https://github.com/dragon1086/prism-insight/releases/tag/v2.15.0">v2.15</a> · <a href="https://github.com/dragon1086/prism-insight/releases/tag/v2.16.0">v2.16</a> · <a href="https://github.com/dragon1086/prism-insight/releases/tag/v2.17.0">v2.17</a></p>
+    </section>
+
+    <section class="slide">
+      <div class="kicker">운영에서 크게 배운 것 2 · 슬리피지</div>
+      <h2>시뮬레이션과 실계좌는<br>“주문이 실제로 체결됐는가”부터 달랐습니다</h2>
+      <div class="slippage-layout">
+        <div class="grid">
+          <div class="card"><div class="label">체결 차이</div><h3>신호가 나도 주문이 안 잡혔습니다</h3><p class="body">가격이 움직이면 지정가 주문이 남고, 시뮬레이터와 실제 보유 종목이 달라졌습니다.</p></div>
+          <div class="card"><div class="label">사람의 개입</div><h3>좋아 보이면 더 들고 있었습니다</h3><p class="body">시스템은 팔았는데 저는 보유했고, 그 선택이 손실을 더 키운 적이 많았습니다.</p></div>
+          <div class="card emphasis"><div class="label">현재 보완</div><h3>10분마다 미체결을 다시 확인합니다</h3><p class="body">허용한 가격 범위 안에서 체결을 끈질기게 따라가고, 실제 계좌와 내부 기록을 맞춥니다.</p></div>
+        </div>
+        <div class="case-image"><img src="../../docs/assets/prism-insight/new_buy_message.png" alt="근거와 손절 기준, 최근 손절 이력까지 기록한 신규 매수 텔레그램 메시지"></div>
+      </div>
+      <p class="note">실계좌 연결은 수익률을 자랑하려는 기능보다, 시뮬레이션과 현실 사이의 틈을 찾는 장치에 가깝습니다.</p>
+    </section>
+
+    <section class="slide chapter">
+      <div class="chapter-no">기록이 있어야 함께 고칠 수 있습니다</div>
+      <p class="bridge">AI도 사람도 그날 무슨 일이 있었는지 알아야<br>다음 수정이 추측으로 흐르지 않습니다.</p>
+    </section>
+
+    <section class="slide">
+      <div class="kicker">로그는 시스템의 기억입니다</div>
+      <h2>판단·주문·체결·실패 이유를<br>한 줄씩 남깁니다</h2>
+      <div class="memory-strip">
+        <div class="card"><div class="label">판단</div><h3>왜 샀는가</h3><p class="body">점수, 시장 국면, 진입을 허용한 근거.</p></div>
+        <div class="card"><div class="label">주문</div><h3>무엇을 요청했는가</h3><p class="body">종목, 수량, 가격, 매수·매도 이유.</p></div>
+        <div class="card"><div class="label">체결</div><h3>실제로 어떻게 됐는가</h3><p class="body">체결·미체결, 재시도, 실제 가격 차이.</p></div>
+        <div class="card emphasis"><div class="label">방어</div><h3>왜 막았는가</h3><p class="body">중복 주문, 재진입, 오래된 주문 기록, 약세장 제한.</p></div>
+      </div>
+      <p class="note">이 기록을 AI에게 읽히면 사건의 앞뒤가 이어지고, 사람도 같은 화면에서 설명을 검증할 수 있습니다.</p>
+    </section>
+
+    <section class="slide">
+      <div class="kicker">PRISM 코드가 실제로 남기는 로그</div>
+      <h2>“왜 안 팔았지?”라는 질문을<br>기록으로 다시 따라갑니다</h2>
+      <div class="terminal">
+        <p><span class="tag">[REGIME_SLOTS]</span> weak-regime top-down 억제</p>
+        <p><span class="warn">[SHADOW][KR]</span> WOULD SELL · reason=hard_stop</p>
+        <p><span class="ok">[LIVE][KR]</span> SELLING · reason=trend_exit</p>
+        <p><span class="tag">[REENTRY_COOLDOWN][LIVE]</span> gap=1.2h&lt;24h · 매수 차단</p>
+        <p><span class="warn">[KR]</span> BUY ceiling hit → 미체결 주문 추격 중단</p>
+      </div>
+      <p class="note">로그 이름과 DB 상태를 코드 위치까지 따라가면, AI가 원인을 짐작하지 않고 실제 실패 경로를 좁혀갑니다.</p>
+      <p class="source">Source: PRISM Insight `trigger_batch.py`, `hardstop_seller.py`, `reentry_cooldown.py`, `fill_chaser.py`</p>
+    </section>
+
+    <section class="slide">
+      <div class="kicker">사람이 보는 운영 화면</div>
+      <h2>한국과 미국 결과를 따로 보고<br>시장보다 나았는지도 함께 확인합니다</h2>
+      <div class="proof-grid">
+        <div class="proof"><img src="assets/kr-dashboard-2026-07-10.png" alt="한국 주식 시뮬레이션 대시보드"><h3>한국 · 2026.07.10</h3><p>PRISM 누적 실현 <strong>+37.91%</strong> · MDD <strong>-7.08%</strong></p></div>
+        <div class="proof"><img src="assets/us-dashboard-2026-07-10.png" alt="미국 주식 시뮬레이션 대시보드"><h3>미국 · 2026.07.10</h3><p>PRISM 누적 실현 <strong>+14.04%</strong> · MDD <strong>-7.89%</strong></p></div>
+      </div>
+      <p class="disclaimer">시뮬레이션 누적 실현 결과입니다. 실계좌 성과와 합산하지 않으며 미래 수익을 보장하지 않습니다.</p>
+    </section>
+
+    <section class="slide">
+      <div class="kicker">실계좌는 현실과의 차이를 찾는 장치입니다</div>
+      <h2>연결하고 지켜보면서<br>시뮬레이션과 다른 지점을 메웁니다</h2>
+      <div class="account-layout">
+        <div class="account-crop"><img src="assets/kis-account-2026-07-02.jpeg" alt="식별 정보를 제외한 한국투자증권 실계좌 손익 화면"></div>
+        <div>
+          <div class="fact"><div class="label">집계 기간</div><div class="value">2025.10 ~ 2026.07</div></div>
+          <div class="fact"><div class="label">전체기간 수익률</div><div class="value">24.86%</div></div>
+          <div class="fact"><div class="label">지금도 하는 일</div><div class="value">체결 차이·슬리피지 추적</div></div>
+          <p class="disclaimer">과거 실계좌 결과이며 미래 수익을 보장하지 않습니다. 계좌 식별 정보는 제외했습니다.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide chapter">
+      <div class="chapter-no">그래서 이 강의를 엽니다</div>
+      <p class="bridge">완성된 비법을 드리는 수업이 아니라,<br>자기 생각을 시스템으로 옮기는 첫걸음을 함께합니다.</p>
+    </section>
+
+    <section class="slide">
+      <div class="kicker">AI와 사람의 역할</div>
+      <h2>코드는 AI와 함께 고치고<br>무엇을 고칠지는 사람이 정합니다</h2>
+      <div class="role">
+        <div class="card"><div class="label">AI가 잘하는 일</div><h3>찾기·수정·테스트·배포</h3><p class="body">DB와 로그를 읽고, 관련 코드를 찾아, 작은 수정과 검증을 반복합니다.</p></div>
+        <div class="vs">↔</div>
+        <div class="card emphasis"><div class="label">사람이 맡을 일</div><h3>전략·위험·성공 기준</h3><p class="body">어떤 손실을 피할지, 좋은 매매가 무엇인지, 어디까지 자동화할지 정합니다.</p></div>
+      </div>
+      <p class="note">제 전략을 정답처럼 내놓기보다, 실제 구조와 시행착오를 열어두고 각자의 기준에 맞게 발전시키고 싶었습니다.</p>
+    </section>
+
+    <section class="slide">
+      <div class="kicker">비개발자도 만드는 AI 시스템 트레이딩, 그 첫걸음</div>
+      <h2>이제 실제 README를<br>열어보겠습니다</h2>
+      <div class="checklist">
+        <div class="check"><div class="number">01</div><p><strong>첫 번째 그림 · 전략에서 KIS 매수 주문까지</strong> — API 키 없이 시작해 실데이터·실제 AI로 확장하는 여정을 봅니다.</p></div>
+        <div class="check"><div class="number">02</div><p><strong>두 번째 그림 · 시스템의 전체 흐름</strong> — 후보 선정부터 매매 기록까지 연결됩니다.</p></div>
+        <div class="check"><div class="number">03</div><p><strong>세 번째 그림 · 내 전략을 넣는 네 가지 트랙</strong> — 한 영역씩 수정·검증합니다.</p></div>
+        <div class="check"><div class="number">04</div><p><strong>네 번째 그림 · 수업 뒤에도 자라는 나무 모종</strong> — 집에서 AI와 계속 가꿉니다.</p></div>
+      </div>
+      <p class="note">API 키 없이 먼저 실행합니다. 실계좌 주문은 기본 차단되며, KIS는 모의·실전 매수 주문 경로부터 연결합니다.</p>
+    </section>
+
+    <section class="slide cover">
+      <div class="eyebrow">THANK YOU</div>
+      <h1>질문</h1>
+      <p class="subtitle">여러분이라면 가장 먼저 어떤 매매 원칙을 시스템에 넣고 싶으신가요?</p>
+      <p class="start-hint"><span class="mono">← →</span> 키 · 화면 왼쪽/오른쪽 클릭 · 터치로 이동</p>
+    </section>
+
+  </div>
+</div>
+
+<script src="vendor/reveal.js/dist/reveal.js"></script>
+<script>
+  Reveal.initialize({
+    width: 1280,
+    height: 720,
+    margin: 0.04,
+    minScale: 0.2,
+    maxScale: 1.4,
+    controls: true,
+    controlsLayout: 'bottom-right',
+    progress: true,
+    slideNumber: 'c/t',
+    hash: true,
+    keyboard: true,
+    touch: true,
+    overview: true,
+    navigationMode: 'linear',
+    transition: 'fade',
+    transitionSpeed: 'fast',
+    backgroundTransition: 'fade',
+    center: false,
+    autoSlide: 0,
+  });
+
+  document.addEventListener('click', (event) => {
+    if (event.target.closest('a, button, .controls, .navigate-left, .navigate-right')) return;
+    if (event.clientX < window.innerWidth / 2) Reveal.prev();
+    else Reveal.next();
+  });
+</script>
+</body>
+</html>

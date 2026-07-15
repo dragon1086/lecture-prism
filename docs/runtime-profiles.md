@@ -82,6 +82,17 @@ FIRECRAWL_API_KEY="..."
 
 ### 모의투자: 증권사 API 연결 연습
 
+KIS 연결에 필요한 선택 패키지는 기본 mock 실행에는 필요하지 않습니다. 모의투자를 시작할 때 코딩 에이전트에게 아래 문장을 그대로 붙여넣으세요.
+
+```text
+lecture-prism의 KIS 모의투자 연결을 준비해줘.
+requirements.txt에서 KIS 브리지에 필요한 선택 패키지를 찾아 설치하고,
+모두 정상적으로 불러와지는지 확인해줘.
+그다음 .env와 trading/trading/config/kis_devlp.yaml에서 내가 채워야 할 값만
+초보자도 이해할 수 있게 하나씩 안내해줘.
+실계좌 주문은 절대 허용하지 말고, 현재 강의용 어댑터가 매수 주문부터 연결한다는 점도 알려줘.
+```
+
 ```env
 LECTURE_PROFILE=paper
 LECTURE_TRADE_MODE=demo
@@ -94,6 +105,8 @@ LECTURE_KIS_MODE=demo
 추가로 `trading/trading/config/kis_devlp.yaml`에 KIS 모의투자 App Key, App Secret, HTS ID, 계좌번호를 채웁니다.
 
 주의: `LECTURE_ENABLE_LIVE_BROKER=1`은 브로커 API 호출을 허용한다는 뜻입니다. 모의투자 모드라도 실제 증권사 서버에 요청이 나갈 수 있습니다.
+
+현재 강의용 KIS 어댑터는 국내주식 **매수 주문 경로부터** 연결합니다. 청산 규칙은 시뮬레이션에서 검증할 수 있지만, KIS 매도 주문 연결은 이후 확장 과제입니다.
 
 ### 실전투자: 이중 안전장치가 모두 필요
 

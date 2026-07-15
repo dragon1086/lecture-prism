@@ -78,3 +78,9 @@ lecture-prism은 PRISM 본 시스템의 축소판입니다.
 | 사람이 결과를 보고 다음 개선 방향 잡기 | `dashboard.py`, 실습 프롬프트 |
 
 강의에서는 “처음부터 완벽한 자동매매”보다, 본인의 전략을 작은 코드 변경으로 반영하고 검증하는 감각을 먼저 익힙니다.
+
+원본 시스템의 실제 실행 순서와 세부 매매 로직까지 보려면 다음 문서를 이어서 읽으세요.
+
+- [`run_full_pipeline` 전체 아키텍처](prism-insight/run-full-pipeline-architecture.md)
+- [원본 매매·시황·비중 제어 구조](prism-insight/trading-and-regime-architecture.md)
+- [원본 구조 기반 강의 질문 은행](prism-insight/lecture-question-bank.md)
