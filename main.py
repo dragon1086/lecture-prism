@@ -247,7 +247,40 @@ async def run_pipeline(dry_run: bool = True, target_ticker: Optional[str] = None
         trade_results = await run_trading(analyses, dry_run=dry_run)
         for trade_result in trade_results:
             trade_result.setdefault("run_id", run_id)
-        log.info(f"      → 체결 건수: {len(trade_results)}")
+            order_status = str(
+                trade_result.get("status")
+                or ("filled" if trade_result.get("executed") else "decision_only")
+            ).lower()
+            requested_qty = int(
+                trade_result.get("requested_qty")
+                or trade_result.get("quantity")
+                or 0
+            )
+            filled_qty = int(
+                trade_result.get("filled_qty")
+                or (requested_qty if trade_result.get("executed") else 0)
+            )
+            await emit(
+                "order.status",
+                status="failed" if order_status == "rejected" else "completed",
+                ticker=trade_result.get("ticker"),
+                summary=(
+                    f"{trade_result.get('ticker', '종목')} 주문 상태: {order_status}"
+                ),
+                details={
+                    "action": trade_result.get("action"),
+                    "order_status": order_status,
+                    "requested_qty": requested_qty,
+                    "filled_qty": filled_qty,
+                    "remaining_qty": int(
+                        trade_result.get("remaining_qty")
+                        if trade_result.get("remaining_qty") is not None
+                        else max(0, requested_qty - filled_qty)
+                    ),
+                    "mode": trade_result.get("mode"),
+                },
+            )
+        log.info(f"      → 매매 결과 건수: {len(trade_results)}")
         await emit(
             "trading.completed",
             summary=f"매매 결과 {len(trade_results)}건을 처리했습니다.",

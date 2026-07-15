@@ -49,9 +49,12 @@ class MainNotificationTests(unittest.IsolatedAsyncioTestCase):
             "data_as_of": "2026-07-10",
         }
 
-    async def _run_with_stages(self, dispatcher, *, candidates=None, analysis=None):
+    async def _run_with_stages(
+        self, dispatcher, *, candidates=None, analysis=None, trades=None
+    ):
         candidates = ["005930"] if candidates is None else candidates
         analysis = self._analysis() if analysis is None else analysis
+        trades = [] if trades is None else trades
         with patch(
             "screening.run_screening", new=AsyncMock(return_value=candidates)
         ), patch(
@@ -59,7 +62,7 @@ class MainNotificationTests(unittest.IsolatedAsyncioTestCase):
         ), patch(
             "report_writer.write_reports", return_value=[]
         ), patch(
-            "trading.run_trading", new=AsyncMock(return_value=[])
+            "trading.run_trading", new=AsyncMock(return_value=trades)
         ), patch(
             "feedback.run_feedback", new=AsyncMock(return_value=None)
         ):
@@ -99,6 +102,45 @@ class MainNotificationTests(unittest.IsolatedAsyncioTestCase):
             expected,
             [row["event_type"] for row in db.get_pipeline_events(run["run_id"])],
         )
+
+    async def test_each_order_result_emits_truthful_order_status_event(self):
+        dispatcher = _RecordingDispatcher()
+        trades = [
+            {
+                "ticker": "005930",
+                "action": "BUY",
+                "status": "accepted",
+                "requested_qty": 5,
+                "filled_qty": 0,
+                "remaining_qty": 5,
+                "executed": False,
+                "mode": "kis_demo",
+            },
+            {
+                "ticker": "000660",
+                "action": "BUY",
+                "status": "partial_fill",
+                "requested_qty": 3,
+                "filled_qty": 1,
+                "remaining_qty": 2,
+                "executed": False,
+                "mode": "kis_demo",
+            },
+        ]
+
+        await self._run_with_stages(dispatcher, trades=trades)
+
+        order_events = [
+            event for event in dispatcher.events
+            if event.event_type == "order.status"
+        ]
+        self.assertEqual(["005930", "000660"], [e.ticker for e in order_events])
+        self.assertEqual(
+            ["accepted", "partial_fill"],
+            [e.details["order_status"] for e in order_events],
+        )
+        self.assertEqual([0, 1], [e.details["filled_qty"] for e in order_events])
+        self.assertTrue(all(e.run_id == trades[0]["run_id"] for e in order_events))
 
     async def test_empty_screening_still_completes_and_flushes(self):
         dispatcher = _RecordingDispatcher()
