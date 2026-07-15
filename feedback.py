@@ -123,6 +123,7 @@ async def _save_to_memory(result: dict, lesson: str,
         lesson=lesson,
         tier=tier,
         error_type=error_type,
+        run_id=result.get("run_id"),
     )
     log.debug(f"  메모리 저장 [{tier}/{error_type}]: {result['ticker']}")
 

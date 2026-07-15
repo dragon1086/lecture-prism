@@ -21,6 +21,7 @@ dashboard.py와 feedback.py 모두 여기서 init_db()를 호출합니다.
 from __future__ import annotations
 
 import json
+import html
 import re
 import sqlite3
 from contextlib import contextmanager
@@ -33,6 +34,7 @@ DB_PATH = Path(__file__).parent / "prism.db"
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS trade_history (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id TEXT,
     timestamp TEXT NOT NULL,
     ticker TEXT NOT NULL,
     action TEXT NOT NULL,            -- BUY / SELL / PASS
@@ -44,6 +46,7 @@ CREATE TABLE IF NOT EXISTS trade_history (
 
 CREATE TABLE IF NOT EXISTS analysis_decisions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id TEXT,
     timestamp TEXT NOT NULL,
     ticker TEXT NOT NULL,
     recommendation TEXT NOT NULL,    -- BUY / HOLD / PASS
@@ -55,6 +58,7 @@ CREATE TABLE IF NOT EXISTS analysis_decisions (
 
 CREATE TABLE IF NOT EXISTS feedback_lessons (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id TEXT,
     timestamp TEXT NOT NULL,
     ticker TEXT NOT NULL,
     action TEXT NOT NULL,
@@ -104,6 +108,7 @@ CREATE TABLE IF NOT EXISTS notification_deliveries (
 
 CREATE TABLE IF NOT EXISTS broker_orders (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id TEXT,
     broker TEXT NOT NULL,
     mode TEXT NOT NULL,
     client_request_id TEXT NOT NULL,
@@ -168,6 +173,28 @@ def init_db() -> None:
             conn.execute("ALTER TABLE analysis_decisions ADD COLUMN sections TEXT")
         except sqlite3.OperationalError:
             pass  # 이미 존재
+        for table in (
+            "trade_history",
+            "analysis_decisions",
+            "feedback_lessons",
+            "broker_orders",
+        ):
+            try:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN run_id TEXT")
+            except sqlite3.OperationalError:
+                pass  # 이미 존재
+        conn.executescript(
+            """
+            CREATE INDEX IF NOT EXISTS idx_trade_history_run
+            ON trade_history(run_id, id);
+            CREATE INDEX IF NOT EXISTS idx_analysis_decisions_run
+            ON analysis_decisions(run_id, id);
+            CREATE INDEX IF NOT EXISTS idx_feedback_lessons_run
+            ON feedback_lessons(run_id, id);
+            CREATE INDEX IF NOT EXISTS idx_broker_orders_run
+            ON broker_orders(run_id, id);
+            """
+        )
 
 
 def _now() -> str:
@@ -376,6 +403,7 @@ def save_notification_delivery(delivery: dict) -> None:
 
 
 _ORDER_STATUSES = {
+    "blocked",
     "submitting",
     "accepted",
     "unknown",
@@ -394,19 +422,28 @@ _PENDING_ORDER_STATUSES = (
     "partial_fill",
     "cancel_requested",
 )
-_TERMINAL_ORDER_STATUSES = {"filled", "cancelled", "rejected"}
+_TERMINAL_ORDER_STATUSES = {"blocked", "filled", "cancelled", "rejected"}
 _ORDER_TRANSITIONS = {
-    "submitting": {"accepted", "unknown", "rejected"},
+    "blocked": set(),
+    "submitting": {"accepted", "unknown", "blocked", "rejected"},
     "accepted": {
-        "unfilled", "partial_fill", "filled", "cancel_requested", "rejected"
+        "unfilled", "partial_fill", "filled", "cancel_requested", "blocked",
+        "rejected",
     },
     "unknown": {
         "accepted", "unfilled", "partial_fill", "filled",
-        "cancel_requested", "cancelled", "rejected",
+        "cancel_requested", "cancelled", "blocked", "rejected",
     },
-    "unfilled": {"partial_fill", "filled", "cancel_requested", "cancelled", "rejected"},
-    "partial_fill": {"filled", "cancel_requested", "cancelled", "rejected"},
-    "cancel_requested": {"partial_fill", "filled", "cancelled", "rejected"},
+    "unfilled": {
+        "partial_fill", "filled", "cancel_requested", "cancelled", "blocked",
+        "rejected",
+    },
+    "partial_fill": {
+        "filled", "cancel_requested", "cancelled", "blocked", "rejected",
+    },
+    "cancel_requested": {
+        "partial_fill", "filled", "cancelled", "blocked", "rejected",
+    },
     "filled": set(),
     "cancelled": set(),
     "rejected": set(),
@@ -455,7 +492,7 @@ def _normalized_order(order: dict, existing: sqlite3.Row | None = None) -> dict:
         {
             key: order[key]
             for key in (
-                "broker", "mode", "client_request_id", "order_date", "org_no",
+                "run_id", "broker", "mode", "client_request_id", "order_date", "org_no",
                 "order_no", "ticker", "side", "status", "requested_qty",
                 "filled_qty", "remaining_qty", "requested_price", "avg_fill_price",
                 "message", "created_at", "updated_at",
@@ -493,6 +530,7 @@ def _normalized_order(order: dict, existing: sqlite3.Row | None = None) -> dict:
     requested_price = source.get("requested_price")
     avg_fill_price = source.get("avg_fill_price")
     return {
+        "run_id": _clean_order_identifier(source.get("run_id")),
         "broker": str(source["broker"]).strip().lower(),
         "mode": str(source["mode"]).strip().lower(),
         "client_request_id": str(source["client_request_id"]).strip(),
@@ -538,11 +576,11 @@ def _update_broker_order_row(
     _validate_order_progress(existing, updated)
     conn.execute(
         "UPDATE broker_orders SET "
-        "order_date = ?, org_no = ?, order_no = ?, ticker = ?, side = ?, status = ?, "
+        "run_id = ?, order_date = ?, org_no = ?, order_no = ?, ticker = ?, side = ?, status = ?, "
         "requested_qty = ?, filled_qty = ?, remaining_qty = ?, requested_price = ?, "
         "avg_fill_price = ?, message = ?, updated_at = ? WHERE id = ?",
         (
-            updated["order_date"], updated["org_no"], updated["order_no"],
+            updated["run_id"], updated["order_date"], updated["org_no"], updated["order_no"],
             updated["ticker"], updated["side"], updated["status"],
             updated["requested_qty"], updated["filled_qty"], updated["remaining_qty"],
             updated["requested_price"], updated["avg_fill_price"], updated["message"],
@@ -564,12 +602,12 @@ def save_broker_order(order: dict) -> dict:
         normalized = _normalized_order(order)
         cursor = conn.execute(
             "INSERT INTO broker_orders "
-            "(broker, mode, client_request_id, order_date, org_no, order_no, ticker, side, "
+            "(run_id, broker, mode, client_request_id, order_date, org_no, order_no, ticker, side, "
             "status, requested_qty, filled_qty, remaining_qty, requested_price, "
             "avg_fill_price, message, created_at, updated_at) "
-            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (
-                normalized["broker"], normalized["mode"],
+                normalized["run_id"], normalized["broker"], normalized["mode"],
                 normalized["client_request_id"], normalized["order_date"],
                 normalized["org_no"], normalized["order_no"], normalized["ticker"],
                 normalized["side"], normalized["status"], normalized["requested_qty"],
@@ -668,7 +706,9 @@ _SECTION_KEYS = ("technical_summary", "supply_summary", "financial_summary",
 
 def _pack_sections(analysis: dict) -> str | None:
     """6섹션 요약을 JSON 문자열로 (있는 것만). 없으면 None."""
-    sections = {k: analysis[k] for k in _SECTION_KEYS if analysis.get(k)}
+    sections = {
+        k: _sanitize_value(analysis[k]) for k in _SECTION_KEYS if analysis.get(k)
+    }
     return json.dumps(sections, ensure_ascii=False) if sections else None
 
 
@@ -677,15 +717,19 @@ def save_analysis(analysis: dict) -> None:
     init_db()
     with _connect() as conn:
         conn.execute(
-            "INSERT INTO analysis_decisions (timestamp, ticker, recommendation, score, reason, risk, sections) "
-            "VALUES (?,?,?,?,?,?,?)",
+            "INSERT INTO analysis_decisions "
+            "(run_id, timestamp, ticker, recommendation, score, reason, risk, sections) "
+            "VALUES (?,?,?,?,?,?,?,?)",
             (
+                analysis.get("run_id"),
                 _now(),
-                analysis.get("ticker", ""),
-                analysis.get("recommendation", "PASS"),
+                _sanitize_text(str(analysis.get("ticker", ""))),
+                _sanitize_text(str(analysis.get("recommendation", "PASS"))),
                 int(analysis.get("buy_score", analysis.get("score", 0)) or 0),  # 0~10점
-                analysis.get("rationale") or analysis.get("reason", ""),
-                analysis.get("risk", ""),
+                _sanitize_text(str(
+                    analysis.get("rationale") or analysis.get("reason", "")
+                )),
+                _sanitize_text(str(analysis.get("risk", ""))),
                 _pack_sections(analysis),
             ),
         )
@@ -696,29 +740,41 @@ def save_trade(trade: dict) -> None:
     init_db()
     with _connect() as conn:
         conn.execute(
-            "INSERT INTO trade_history (timestamp, ticker, action, price, quantity, mode, reason) "
-            "VALUES (?,?,?,?,?,?,?)",
+            "INSERT INTO trade_history "
+            "(run_id, timestamp, ticker, action, price, quantity, mode, reason) "
+            "VALUES (?,?,?,?,?,?,?,?)",
             (
+                trade.get("run_id"),
                 _now(),
-                trade.get("ticker", ""),
-                trade.get("action", "PASS"),
+                _sanitize_text(str(trade.get("ticker", ""))),
+                _sanitize_text(str(trade.get("action", "PASS"))),
                 int(trade.get("executed_price") or trade.get("price") or 0),
                 int(trade.get("quantity", 0) or 0),
-                trade.get("mode", "simulation"),
-                trade.get("reason", ""),
+                _sanitize_text(str(trade.get("mode", "simulation"))),
+                _sanitize_text(str(trade.get("reason", ""))),
             ),
         )
 
 
 def save_lesson(ticker: str, action: str, lesson: str,
-                tier: str = "short", error_type: str = "JUDGMENT") -> None:
+                tier: str = "short", error_type: str = "JUDGMENT",
+                run_id: str | None = None) -> None:
     """교훈 1건 저장 (단기/중기/장기 메모리)."""
     init_db()
     with _connect() as conn:
         conn.execute(
-            "INSERT INTO feedback_lessons (timestamp, ticker, action, lesson, tier, error_type) "
-            "VALUES (?,?,?,?,?,?)",
-            (_now(), ticker, action, lesson, tier, error_type),
+            "INSERT INTO feedback_lessons "
+            "(run_id, timestamp, ticker, action, lesson, tier, error_type) "
+            "VALUES (?,?,?,?,?,?,?)",
+            (
+                run_id,
+                _now(),
+                _sanitize_text(str(ticker)),
+                _sanitize_text(str(action)),
+                _sanitize_text(str(lesson)),
+                _sanitize_text(str(tier)),
+                _sanitize_text(str(error_type)),
+            ),
         )
 
 
@@ -743,6 +799,262 @@ def get_pipeline_events(run_id: str) -> list[dict]:
             (run_id,),
         ).fetchall()
     return [dict(row) for row in rows]
+
+
+_RUN_DASHBOARD_FIELDS = (
+    "run_id", "started_at", "completed_at", "status", "profile", "trade_state",
+    "data_source", "data_as_of", "market_status", "failure_stage",
+)
+_EVENT_DASHBOARD_FIELDS = (
+    "run_id", "sequence", "occurred_at", "event_type", "status", "ticker",
+    "summary", "details",
+)
+_DELIVERY_DASHBOARD_FIELDS = (
+    "run_id", "sequence", "channel", "status", "attempts", "queued_at",
+    "completed_at", "error",
+)
+_ORDER_DASHBOARD_FIELDS = (
+    "run_id", "broker", "mode", "order_date", "order_no", "ticker", "side",
+    "status", "requested_qty", "filled_qty", "remaining_qty", "requested_price",
+    "avg_fill_price", "message", "created_at", "updated_at",
+)
+_ANALYSIS_DASHBOARD_FIELDS = (
+    "run_id", "timestamp", "ticker", "recommendation", "score", "reason", "risk",
+    "sections",
+)
+_LESSON_DASHBOARD_FIELDS = (
+    "run_id", "timestamp", "ticker", "action", "lesson", "tier", "error_type",
+)
+
+
+def _dashboard_safe_value(value: Any, *, key: object | None = None) -> Any:
+    """Return JSON-safe display data with secrets removed and HTML inert."""
+    sanitized = _sanitize_value(value, key=key)
+    if isinstance(sanitized, dict):
+        return {
+            html.escape(str(item_key), quote=True): _dashboard_safe_value(
+                item_value, key=item_key
+            )
+            for item_key, item_value in sanitized.items()
+        }
+    if isinstance(sanitized, list):
+        return [_dashboard_safe_value(item) for item in sanitized]
+    if isinstance(sanitized, str):
+        return html.escape(sanitized, quote=True)
+    return sanitized
+
+
+def _decode_dashboard_json(value: object) -> dict | list:
+    if value in (None, ""):
+        return {}
+    try:
+        decoded = json.loads(str(value))
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return {}
+    safe = _dashboard_safe_value(decoded)
+    return safe if isinstance(safe, (dict, list)) else {}
+
+
+def _dashboard_row(
+    row: sqlite3.Row | dict,
+    fields: tuple[str, ...],
+    *,
+    json_fields: tuple[str, ...] = (),
+) -> dict:
+    source = dict(row)
+    return {
+        field: (
+            _decode_dashboard_json(source.get(field))
+            if field in json_fields
+            else _dashboard_safe_value(source.get(field), key=field)
+        )
+        for field in fields
+    }
+
+
+def _apply_position_fill(
+    book: dict[tuple[str, str, str], dict],
+    *,
+    key: tuple[str, str, str],
+    side: str,
+    quantity: int,
+    price: float | None,
+) -> None:
+    if quantity <= 0 or side not in {"BUY", "SELL"}:
+        return
+    entry = book.setdefault(
+        key,
+        {"quantity": 0, "known_cost": 0.0, "cost_is_known": True},
+    )
+    current_quantity = int(entry["quantity"])
+    if side == "BUY":
+        entry["quantity"] = current_quantity + quantity
+        if price is None:
+            entry["cost_is_known"] = False
+        elif entry["cost_is_known"]:
+            entry["known_cost"] += quantity * price
+        return
+
+    sold = min(current_quantity, quantity)
+    if sold <= 0:
+        return
+    remaining = current_quantity - sold
+    if remaining == 0:
+        entry.update(quantity=0, known_cost=0.0, cost_is_known=True)
+    else:
+        if entry["cost_is_known"]:
+            entry["known_cost"] *= remaining / current_quantity
+        entry["quantity"] = remaining
+
+
+def _derive_run_positions(
+    run_id: str, broker_orders: list[sqlite3.Row], trades: list[sqlite3.Row]
+) -> list[dict]:
+    book: dict[tuple[str, str, str], dict] = {}
+    for row in broker_orders:
+        status = str(row["status"] or "").lower()
+        if status not in {"partial_fill", "filled"}:
+            continue
+        price = row["avg_fill_price"]
+        _apply_position_fill(
+            book,
+            key=("broker_fills", str(row["mode"]), str(row["ticker"])),
+            side=str(row["side"] or "").upper(),
+            quantity=int(row["filled_qty"] or 0),
+            price=float(price) if price is not None else None,
+        )
+
+    for row in trades:
+        price = row["price"]
+        _apply_position_fill(
+            book,
+            key=("simulation_trades", "simulation", str(row["ticker"])),
+            side=str(row["action"] or "").upper(),
+            quantity=int(row["quantity"] or 0),
+            price=float(price) if price is not None else None,
+        )
+
+    positions = []
+    for (source, mode, ticker), entry in sorted(book.items()):
+        quantity = int(entry["quantity"])
+        if quantity <= 0:
+            continue
+        average_price = None
+        if entry["cost_is_known"]:
+            average_price = round(float(entry["known_cost"]) / quantity, 4)
+        positions.append(
+            {
+                "run_id": _dashboard_safe_value(run_id, key="run_id"),
+                "ticker": _dashboard_safe_value(ticker, key="ticker"),
+                "quantity": quantity,
+                "average_price": average_price,
+                "source": source,
+                "mode": _dashboard_safe_value(mode, key="mode"),
+            }
+        )
+    return positions
+
+
+def _portfolio_from_positions(positions: list[dict]) -> dict:
+    known_position_value = sum(
+        position["quantity"] * position["average_price"]
+        for position in positions
+        if position["average_price"] is not None
+    )
+    return {
+        "source": "selected_run_fills",
+        "limitations": "현금과 계좌 평가액은 저장하지 않아 표시하지 않습니다.",
+        "cash": None,
+        "cash_known": False,
+        "position_count": len(positions),
+        "known_position_value": round(known_position_value, 4),
+    }
+
+
+def get_dashboard_snapshot(run_id: str = "latest") -> dict:
+    """선택한 실행 하나의 안전한 운영 스냅샷을 조립한다."""
+    init_db()
+    with _connect() as conn:
+        if run_id == "latest":
+            run_row = conn.execute(
+                "SELECT run_id, started_at, completed_at, status, profile, trade_state, "
+                "data_source, data_as_of, market_status, failure_stage "
+                "FROM pipeline_runs ORDER BY started_at DESC, rowid DESC LIMIT 1"
+            ).fetchone()
+        else:
+            run_row = conn.execute(
+                "SELECT run_id, started_at, completed_at, status, profile, trade_state, "
+                "data_source, data_as_of, market_status, failure_stage "
+                "FROM pipeline_runs WHERE run_id = ?",
+                (run_id,),
+            ).fetchone()
+
+        selected_run_id = str(run_row["run_id"]) if run_row is not None else None
+        if selected_run_id is None:
+            positions: list[dict] = []
+            return {
+                "run": None,
+                "events": [],
+                "deliveries": [],
+                "orders": [],
+                "portfolio": _portfolio_from_positions(positions),
+                "positions": positions,
+                "analyses": [],
+                "lessons": [],
+            }
+
+        events = conn.execute(
+            "SELECT run_id, sequence, occurred_at, event_type, status, ticker, summary, details "
+            "FROM pipeline_events WHERE run_id = ? ORDER BY sequence, id",
+            (selected_run_id,),
+        ).fetchall()
+        deliveries = conn.execute(
+            "SELECT run_id, sequence, channel, status, attempts, queued_at, completed_at, error "
+            "FROM notification_deliveries WHERE run_id = ? ORDER BY sequence, channel, id",
+            (selected_run_id,),
+        ).fetchall()
+        orders = conn.execute(
+            "SELECT run_id, broker, mode, order_date, order_no, ticker, side, status, "
+            "requested_qty, filled_qty, remaining_qty, requested_price, avg_fill_price, "
+            "message, created_at, updated_at FROM broker_orders "
+            "WHERE run_id = ? ORDER BY id",
+            (selected_run_id,),
+        ).fetchall()
+        analyses = conn.execute(
+            "SELECT run_id, timestamp, ticker, recommendation, score, reason, risk, sections "
+            "FROM analysis_decisions WHERE run_id = ? ORDER BY id",
+            (selected_run_id,),
+        ).fetchall()
+        lessons = conn.execute(
+            "SELECT run_id, timestamp, ticker, action, lesson, tier, error_type "
+            "FROM feedback_lessons WHERE run_id = ? ORDER BY id",
+            (selected_run_id,),
+        ).fetchall()
+        simulation_trades = conn.execute(
+            "SELECT ticker, action, price, quantity FROM trade_history "
+            "WHERE run_id = ? AND mode = 'simulation' ORDER BY id",
+            (selected_run_id,),
+        ).fetchall()
+
+    positions = _derive_run_positions(selected_run_id, orders, simulation_trades)
+    return {
+        "run": _dashboard_row(run_row, _RUN_DASHBOARD_FIELDS),
+        "events": [
+            _dashboard_row(row, _EVENT_DASHBOARD_FIELDS, json_fields=("details",))
+            for row in events
+        ],
+        "deliveries": [
+            _dashboard_row(row, _DELIVERY_DASHBOARD_FIELDS) for row in deliveries
+        ],
+        "orders": [_dashboard_row(row, _ORDER_DASHBOARD_FIELDS) for row in orders],
+        "portfolio": _portfolio_from_positions(positions),
+        "positions": positions,
+        "analyses": [
+            _dashboard_row(row, _ANALYSIS_DASHBOARD_FIELDS, json_fields=("sections",))
+            for row in analyses
+        ],
+        "lessons": [_dashboard_row(row, _LESSON_DASHBOARD_FIELDS) for row in lessons],
+    }
 
 def get_recent_lessons(n: int = 5) -> list[str]:
     """최근 N개 교훈 텍스트 (다음 매매 프롬프트에 주입용)."""

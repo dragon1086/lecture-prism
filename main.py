@@ -210,6 +210,7 @@ async def run_pipeline(dry_run: bool = True, target_ticker: Optional[str] = None
         for ticker in candidates:
             log.info(f"      → {ticker} 분석 중...")
             result = await run_analysis(ticker)
+            result["run_id"] = run_id
             analyses.append(result)
             result_data_source = result.get("data_source")
             if result_data_source is not None:
@@ -244,6 +245,8 @@ async def run_pipeline(dry_run: bool = True, target_ticker: Optional[str] = None
         await emit("trading.started", summary="매매 의사결정을 시작합니다.")
         from trading import run_trading
         trade_results = await run_trading(analyses, dry_run=dry_run)
+        for trade_result in trade_results:
+            trade_result.setdefault("run_id", run_id)
         log.info(f"      → 체결 건수: {len(trade_results)}")
         await emit(
             "trading.completed",

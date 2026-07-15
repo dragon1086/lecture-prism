@@ -107,7 +107,7 @@ def _decide_position(analysis: dict, portfolio: dict) -> Optional[dict]:
     if quantity <= 0:
         return None
 
-    return {
+    decision = {
         "action": "BUY",
         "ticker": analysis["ticker"],
         "quantity": quantity,
@@ -116,6 +116,9 @@ def _decide_position(analysis: dict, portfolio: dict) -> Optional[dict]:
         "target_price": analysis.get("target_price"),
         "stop_loss": analysis.get("stop_loss", STOP_LOSS["default"]),
     }
+    if analysis.get("run_id") is not None:
+        decision["run_id"] = analysis["run_id"]
+    return decision
 
 
 def _decide_exit(holding: dict, current_price: float) -> Optional[dict]:
@@ -475,6 +478,7 @@ def _reconcile_stored_order(
         return None
     updated = db.update_broker_order(progress)
     decision = {
+        "run_id": updated.get("run_id"),
         "action": updated["side"],
         "ticker": updated["ticker"],
         "quantity": updated["requested_qty"],
@@ -539,6 +543,7 @@ async def _execute_kis_broker_order(
     db_mode = _db_broker_mode(mode)
     persisted = db.save_broker_order(
         {
+            "run_id": decision.get("run_id"),
             "broker": "kis",
             "mode": db_mode,
             "client_request_id": str(
