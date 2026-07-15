@@ -352,6 +352,16 @@ def update_pipeline_run_provenance(
         )
 
 
+def update_pipeline_run_market_status(run_id: str, market_status: str) -> None:
+    """브로커가 확인한 시장 상태를 선택 실행에 반영한다."""
+    init_db()
+    with _connect() as conn:
+        conn.execute(
+            "UPDATE pipeline_runs SET market_status = ? WHERE run_id = ?",
+            (_sanitize_text(str(market_status)), run_id),
+        )
+
+
 def save_pipeline_event(event: dict) -> None:
     """비밀값을 제거한 파이프라인 이벤트를 저장한다."""
     init_db()

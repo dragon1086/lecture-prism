@@ -193,6 +193,7 @@ class BrokerAdapterTest(unittest.TestCase):
             self.assertTrue(result["accepted"])
             self.assertFalse(result["executed"])
             self.assertEqual("accepted", result["status"])
+            self.assertEqual("market_open", result["market_status"])
 
     def test_kis_adapter_blocks_post_when_market_gate_denies(self):
         client = _FakeKISClient()
@@ -210,6 +211,7 @@ class BrokerAdapterTest(unittest.TestCase):
         self.assertFalse(result["executed"])
         self.assertEqual("blocked", result["status"])
         self.assertEqual("market_closed", result["reason"])
+        self.assertEqual("market_closed", result["market_status"])
         self.assertEqual([], client.order_calls)
 
     def test_kis_adapter_exposes_account_status_cancel_and_market_methods(self):

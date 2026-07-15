@@ -142,6 +142,28 @@ class MainNotificationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual([0, 1], [e.details["filled_qty"] for e in order_events])
         self.assertTrue(all(e.run_id == trades[0]["run_id"] for e in order_events))
 
+    async def test_broker_market_status_is_persisted_for_dashboard(self):
+        dispatcher = _RecordingDispatcher()
+        trades = [
+            {
+                "ticker": "005930",
+                "action": "BUY",
+                "status": "blocked",
+                "requested_qty": 0,
+                "filled_qty": 0,
+                "remaining_qty": 0,
+                "executed": False,
+                "mode": "kis_demo_blocked",
+                "market_status": "market_closed",
+            }
+        ]
+
+        await self._run_with_stages(dispatcher, trades=trades)
+
+        self.assertEqual(
+            "market_closed", db.get_latest_pipeline_run()["market_status"]
+        )
+
     async def test_empty_screening_still_completes_and_flushes(self):
         dispatcher = _RecordingDispatcher()
 

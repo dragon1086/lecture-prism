@@ -379,7 +379,10 @@ _HTML = r'''<!doctype html>
       sent: "전달 완료", skipped: "설정 안 됨", queued: "전달 대기", unknown: "확인 필요",
       mock: "데모(mock)", real_data: "실데이터(real_data)", research: "심층 분석(research)",
       paper: "모의투자(paper)", live: "실거래(live)", simulation: "가상 체결(simulation)",
-      open: "개장", closed: "휴장 또는 장 마감", live_blocked: "실거래 차단"
+      open: "개장", closed: "휴장 또는 장 마감", market_open: "주문 가능 시간",
+      market_closed: "휴장", outside_order_window: "주문 시간 밖",
+      market_status_unknown: "시장 상태 확인 실패",
+      live_blocked: "실거래 차단"
     };
     const eventLabels = {
       "pipeline.started": "파이프라인 시작", "screening.started": "스크리닝 시작",

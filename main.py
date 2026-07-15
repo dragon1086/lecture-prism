@@ -106,6 +106,7 @@ async def run_pipeline(dry_run: bool = True, target_ticker: Optional[str] = None
     trade_state = "simulation" if dry_run else cfg.trade_mode
     data_source = "mock" if cfg.data_mode == "mock" else None
     data_as_of = None
+    market_status = "simulation" if dry_run else "unknown"
 
     async def emit(
         event_type: str,
@@ -169,6 +170,7 @@ async def run_pipeline(dry_run: bool = True, target_ticker: Optional[str] = None
                 "trade_state": trade_state,
                 "data_source": data_source,
                 "data_as_of": data_as_of,
+                "market_status": market_status,
             }
         )
         await emit("pipeline.started", summary="파이프라인을 시작합니다.")
@@ -247,6 +249,10 @@ async def run_pipeline(dry_run: bool = True, target_ticker: Optional[str] = None
         trade_results = await run_trading(analyses, dry_run=dry_run)
         for trade_result in trade_results:
             trade_result.setdefault("run_id", run_id)
+            broker_market_status = trade_result.get("market_status")
+            if broker_market_status:
+                market_status = str(broker_market_status)
+                db.update_pipeline_run_market_status(run_id, market_status)
             order_status = str(
                 trade_result.get("status")
                 or ("filled" if trade_result.get("executed") else "decision_only")
@@ -278,6 +284,7 @@ async def run_pipeline(dry_run: bool = True, target_ticker: Optional[str] = None
                         else max(0, requested_qty - filled_qty)
                     ),
                     "mode": trade_result.get("mode"),
+                    "market_status": broker_market_status,
                 },
             )
         log.info(f"      → 매매 결과 건수: {len(trade_results)}")

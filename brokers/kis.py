@@ -132,6 +132,10 @@ class KISBrokerAdapter:
             "requires_reconciliation": bool(
                 result.get("requires_reconciliation", not terminal)
             ),
+            "market_status": market.reason,
+            "market_date": getattr(market, "business_date", None),
+            "market_source": getattr(market, "source", None),
+            "market_is_open": getattr(market, "is_open", True),
             "message": message,
             "raw": result,
         }
@@ -174,6 +178,10 @@ class KISBrokerAdapter:
             "analysis_allowed": (
                 market.analysis_allowed if market is not None else True
             ),
+            "market_status": market.reason if market is not None else reason,
+            "market_date": getattr(market, "business_date", None),
+            "market_source": getattr(market, "source", None),
+            "market_is_open": getattr(market, "is_open", None),
             "message": message,
         }
 
@@ -186,6 +194,7 @@ class KISBrokerAdapter:
             "executed": False,
             "terminal": True,
             "order_no": None,
+            "market_status": "market_status_unknown",
             "message": f"KIS 요청 실패: {exc}",
         }
 

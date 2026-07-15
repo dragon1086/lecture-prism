@@ -364,6 +364,9 @@ def _trade_result_from_order(
         "broker": "kis",
         "order_no": order.get("order_no"),
         "message": order.get("message") or "",
+        "market_status": (broker_result or {}).get("market_status"),
+        "market_date": (broker_result or {}).get("market_date"),
+        "market_source": (broker_result or {}).get("market_source"),
         "broker_result": broker_result or {},
     }
 
@@ -632,6 +635,13 @@ async def _execute_kis_broker_order(
             log.warning("  KIS 접수 주문 체결 조회 실패: %s", exc)
         else:
             if reconciled is not None:
+                reconciled.update(
+                    {
+                        "market_status": broker_result.get("market_status"),
+                        "market_date": broker_result.get("market_date"),
+                        "market_source": broker_result.get("market_source"),
+                    }
+                )
                 return reconciled
     return result
 
