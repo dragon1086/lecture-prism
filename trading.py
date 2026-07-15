@@ -592,8 +592,8 @@ async def _execute_kis_broker_order(
         broker_result.get("status")
         or ("accepted" if broker_result.get("success") else "rejected")
     ).lower()
-    persisted_status = "rejected" if status == "blocked" else status
-    if persisted_status not in {"accepted", "unknown", "rejected"}:
+    persisted_status = status
+    if persisted_status not in {"accepted", "unknown", "blocked", "rejected"}:
         persisted_status = "accepted" if broker_result.get("success") else "rejected"
     persisted = db.update_broker_order(
         {

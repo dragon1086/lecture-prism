@@ -169,6 +169,27 @@ class KISTradingFlowTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual([["submitting"]], adapter.submitting_snapshots)
         self.assertEqual("accepted", self._broker_rows()[0]["status"])
 
+    async def test_market_blocked_order_is_persisted_as_blocked_not_rejected(self):
+        adapter = _FakeKISAdapter(
+            order_result={
+                "success": False,
+                "status": "blocked",
+                "accepted": False,
+                "executed": False,
+                "terminal": True,
+                "order_no": None,
+                "branch_no": None,
+                "mode": "kis_demo",
+                "message": "현재 시장 상태에서는 주문하지 않습니다.",
+            }
+        )
+
+        result = await self._execute(_decision(), adapter)
+
+        self.assertEqual("blocked", result["status"])
+        self.assertFalse(result["executed"])
+        self.assertEqual("blocked", self._broker_rows()[0]["status"])
+
     async def test_buy_quantity_is_capped_by_orderable_and_account_cash(self):
         adapter = _FakeKISAdapter(
             account={"output1": [], "output2": [{"dnca_tot_amt": "30000"}]},
