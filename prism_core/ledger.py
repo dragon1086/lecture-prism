@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS broker_orders (
 CREATE TABLE IF NOT EXISTS order_events (
     id INTEGER PRIMARY KEY AUTOINCREMENT, client_order_id TEXT NOT NULL,
     status TEXT NOT NULL, occurred_at TEXT NOT NULL,
+    -- First observation of each status; fills is the per-execution audit log.
     UNIQUE(client_order_id, status)
 );
 CREATE TABLE IF NOT EXISTS fills (
@@ -67,10 +68,12 @@ class Ledger:
             conn.executescript(_SCHEMA)
 
     @contextmanager
-    def _connect(self):
+    def _connect(self, *, immediate: bool = False):
         conn = sqlite3.connect(self.path)
         conn.row_factory = sqlite3.Row
         try:
+            if immediate:
+                conn.execute("BEGIN IMMEDIATE")
             yield conn
             conn.commit()
         except Exception:
@@ -116,6 +119,67 @@ class Ledger:
             strategy_id=row["strategy_id"],
         )
 
+    @staticmethod
+    def _order_payload_matches(row: sqlite3.Row, intent: OrderIntent) -> bool:
+        stored_limit = (
+            Decimal(row["limit_price"]) if row["limit_price"] is not None else None
+        )
+        return (
+            row["client_order_id"] == intent.client_order_id
+            and row["market"] == intent.market.value
+            and row["symbol"] == intent.symbol
+            and row["side"] == intent.side.value
+            and row["order_type"] == intent.order_type.value
+            and Decimal(row["quantity"]) == intent.quantity
+            and stored_limit == intent.limit_price
+            and row["currency"] == intent.currency
+            and row["strategy_id"] == intent.strategy_id
+            and row["reason"] == intent.reason
+        )
+
+    @staticmethod
+    def _validate_fill(fill: Fill) -> str:
+        for name in ("fill_id", "client_order_id", "symbol"):
+            value = getattr(fill, name)
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError(f"fill {name} is required")
+        if not isinstance(fill.market, Market):
+            raise ValueError("fill market must be a Market")
+        if not isinstance(fill.side, OrderSide):
+            raise ValueError("fill side must be an OrderSide")
+        for name in ("quantity", "price"):
+            value = getattr(fill, name)
+            if (
+                not isinstance(value, Decimal)
+                or not value.is_finite()
+                or value <= 0
+            ):
+                raise ValueError(f"fill {name} must be a finite positive Decimal")
+        if not isinstance(fill.currency, str):
+            raise ValueError("fill currency is required")
+        currency = fill.currency.strip().upper()
+        expected_currency = "KRW" if fill.market is Market.KR else "USD"
+        if currency != expected_currency:
+            raise ValueError(
+                f"{fill.market.value} fill currency must be {expected_currency}"
+            )
+        return currency
+
+    @staticmethod
+    def _fill_payload_matches(
+        row: sqlite3.Row, fill: Fill, normalized_currency: str
+    ) -> bool:
+        return (
+            row["fill_id"] == fill.fill_id
+            and row["client_order_id"] == fill.client_order_id
+            and row["market"] == fill.market.value
+            and row["symbol"] == fill.symbol
+            and row["side"] == fill.side.value
+            and Decimal(row["quantity"]) == fill.quantity
+            and Decimal(row["price"]) == fill.price
+            and row["currency"] == normalized_currency
+        )
+
     def create_order(self, intent: OrderIntent) -> OrderRecord:
         now = _now()
         with self._connect() as conn:
@@ -144,6 +208,15 @@ class Ledger:
                     "INSERT INTO order_events (client_order_id,status,occurred_at) VALUES (?,?,?)",
                     (intent.client_order_id, OrderStatus.CREATED.value, now),
                 )
+            else:
+                row = conn.execute(
+                    "SELECT * FROM broker_orders WHERE client_order_id=?",
+                    (intent.client_order_id,),
+                ).fetchone()
+                if row is None or not self._order_payload_matches(row, intent):
+                    raise ValueError(
+                        f"order id collision: {intent.client_order_id}"
+                    )
         return self.get_order(intent.client_order_id)
 
     def get_order(self, client_order_id: str) -> OrderRecord:
@@ -159,7 +232,7 @@ class Ledger:
     def transition_order(
         self, client_order_id: str, target: OrderStatus
     ) -> OrderRecord:
-        with self._connect() as conn:
+        with self._connect(immediate=True) as conn:
             row = conn.execute(
                 "SELECT * FROM broker_orders WHERE client_order_id=?",
                 (client_order_id,),
@@ -200,7 +273,17 @@ class Ledger:
     def update_high_water(
         self, market: Market, symbol: str, price: Decimal
     ) -> Position:
-        with self._connect() as conn:
+        if not isinstance(market, Market):
+            raise ValueError("market must be a Market")
+        if not isinstance(symbol, str) or not symbol.strip():
+            raise ValueError("symbol is required")
+        if (
+            not isinstance(price, Decimal)
+            or not price.is_finite()
+            or price <= 0
+        ):
+            raise ValueError("price must be a finite positive Decimal")
+        with self._connect(immediate=True) as conn:
             row = conn.execute(
                 "SELECT * FROM positions WHERE market=? AND symbol=?",
                 (market.value, symbol),
@@ -208,17 +291,19 @@ class Ledger:
             if row is None:
                 raise KeyError((market.value, symbol))
             high = max(Decimal(row["high_since_entry"]), price)
-            conn.execute(
-                "UPDATE positions SET high_since_entry=?,updated_at=? WHERE market=? AND symbol=?",
-                (str(high), _now(), market.value, symbol),
-            )
-        return next(
-            position
-            for position in self.list_positions()
-            if position.market is market and position.symbol == symbol
-        )
+            if high != Decimal(row["high_since_entry"]):
+                conn.execute(
+                    "UPDATE positions SET high_since_entry=?,updated_at=? WHERE market=? AND symbol=?",
+                    (str(high), _now(), market.value, symbol),
+                )
+                row = conn.execute(
+                    "SELECT * FROM positions WHERE market=? AND symbol=?",
+                    (market.value, symbol),
+                ).fetchone()
+            return self._row_to_position(row)
 
     def record_fill(self, fill: Fill) -> Position | None:
+        normalized_currency = self._validate_fill(fill)
         conn = sqlite3.connect(self.path)
         conn.row_factory = sqlite3.Row
         try:
@@ -234,21 +319,27 @@ class Ledger:
                     fill.side.value,
                     str(fill.quantity),
                     str(fill.price),
-                    fill.currency,
+                    normalized_currency,
                     _now(),
                 ),
             )
             if not inserted.rowcount:
+                existing_fill = conn.execute(
+                    "SELECT * FROM fills WHERE fill_id=?", (fill.fill_id,)
+                ).fetchone()
+                if existing_fill is None or not self._fill_payload_matches(
+                    existing_fill, fill, normalized_currency
+                ):
+                    raise ValueError(f"fill id collision: {fill.fill_id}")
+                position_row = conn.execute(
+                    "SELECT * FROM positions WHERE market=? AND symbol=?",
+                    (fill.market.value, fill.symbol),
+                ).fetchone()
                 conn.commit()
-                positions = self.list_positions()
-                return next(
-                    (
-                        position
-                        for position in positions
-                        if position.market is fill.market
-                        and position.symbol == fill.symbol
-                    ),
-                    None,
+                return (
+                    self._row_to_position(position_row)
+                    if position_row is not None
+                    else None
                 )
 
             order_row = conn.execute(
@@ -263,7 +354,7 @@ class Ledger:
                 order.intent.symbol,
                 order.intent.side,
                 order.intent.currency,
-            ) != (fill.market, fill.symbol, fill.side, fill.currency):
+            ) != (fill.market, fill.symbol, fill.side, normalized_currency):
                 raise ValueError("fill does not match order")
 
             cumulative = order.filled_quantity + fill.quantity
@@ -305,7 +396,7 @@ class Ledger:
                         fill.symbol,
                         str(new_qty),
                         str(new_avg),
-                        fill.currency,
+                        normalized_currency,
                         str(max(old_high, fill.price)),
                         order.intent.strategy_id,
                         now,
@@ -329,7 +420,7 @@ class Ledger:
                         str(old_avg),
                         str(fill.price),
                         str((fill.price - old_avg) * fill.quantity),
-                        fill.currency,
+                        normalized_currency,
                         position_row["strategy_id"],
                         now,
                     ),
@@ -356,7 +447,9 @@ class Ledger:
                 if cumulative == order.intent.quantity
                 else OrderStatus.PARTIALLY_FILLED
             )
-            if not validate_transition(order.status, target):
+            if order.status is not target and not validate_transition(
+                order.status, target
+            ):
                 raise ValueError(
                     f"invalid order transition: {order.status.value} -> {target.value}"
                 )
@@ -370,10 +463,11 @@ class Ledger:
                     fill.client_order_id,
                 ),
             )
-            conn.execute(
-                "INSERT OR IGNORE INTO order_events (client_order_id,status,occurred_at) VALUES (?,?,?)",
-                (fill.client_order_id, target.value, now),
-            )
+            if order.status is not target:
+                conn.execute(
+                    "INSERT OR IGNORE INTO order_events (client_order_id,status,occurred_at) VALUES (?,?,?)",
+                    (fill.client_order_id, target.value, now),
+                )
             conn.commit()
         except Exception:
             conn.rollback()
