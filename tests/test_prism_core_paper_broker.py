@@ -2,7 +2,9 @@ from decimal import Decimal
 from pathlib import Path
 import sqlite3
 import tempfile
+import threading
 import unittest
+from unittest.mock import patch
 
 from prism_core.domain import (
     Market,
@@ -154,11 +156,17 @@ class PaperBrokerTest(unittest.TestCase):
         self.broker.submit_order(intent)
 
         partial = self.broker.fill_order(
-            intent.client_order_id, Decimal("1.25"), Decimal("180.10")
+            intent.client_order_id,
+            "execution-1",
+            Decimal("1.25"),
+            Decimal("180.10"),
         )
         restarted = PaperBroker(Ledger(self.path))
         full = restarted.fill_order(
-            intent.client_order_id, Decimal("0.75"), Decimal("181.10")
+            intent.client_order_id,
+            "execution-2",
+            Decimal("0.75"),
+            Decimal("181.10"),
         )
 
         self.assertEqual(partial.status, OrderStatus.PARTIALLY_FILLED)
@@ -174,9 +182,166 @@ class PaperBrokerTest(unittest.TestCase):
                 (intent.client_order_id,),
             ),
             [
-                (f"{intent.client_order_id}:1.25",),
-                (f"{intent.client_order_id}:2",),
+                (f"paper:{len(intent.client_order_id)}:{intent.client_order_id}:execution-1",),
+                (f"paper:{len(intent.client_order_id)}:{intent.client_order_id}:execution-2",),
             ],
+        )
+
+    def test_lost_response_replay_keeps_one_partial_fill_after_restart(self):
+        intent = self._us_order("lost-response:AAPL:BUY", Decimal("2"))
+        self.broker.submit_order(intent)
+        first = self.broker.fill_order(
+            intent.client_order_id,
+            "execution-1",
+            Decimal("1"),
+            Decimal("180"),
+        )
+        first_position = self.broker.get_positions()[0]
+
+        restarted = PaperBroker(Ledger(self.path))
+        replay = restarted.fill_order(
+            intent.client_order_id,
+            "execution-1",
+            Decimal("1.0"),
+            Decimal("180.00"),
+        )
+
+        self.assertEqual(replay, first)
+        self.assertEqual(restarted.get_positions(), [first_position])
+        self.assertEqual(
+            self._rows(
+                "SELECT COUNT(*) FROM fills WHERE client_order_id=?",
+                (intent.client_order_id,),
+            ),
+            [(1,)],
+        )
+
+    def test_same_execution_key_with_conflicting_payload_is_rejected(self):
+        intent = self._us_order("collision:AAPL:BUY", Decimal("3"))
+        self.broker.submit_order(intent)
+        self.broker.fill_order(
+            intent.client_order_id,
+            "execution-1",
+            Decimal("1"),
+            Decimal("180"),
+        )
+        before_order = self.ledger.get_order(intent.client_order_id)
+        before_position = self.broker.get_positions()[0]
+
+        for label, quantity, price in (
+            ("quantity", Decimal("2"), Decimal("180")),
+            ("price", Decimal("1"), Decimal("181")),
+        ):
+            with self.subTest(label=label):
+                with self.assertRaisesRegex(ValueError, "fill id collision"):
+                    self.broker.fill_order(
+                        intent.client_order_id,
+                        "execution-1",
+                        quantity,
+                        price,
+                    )
+                self.assertEqual(
+                    self.ledger.get_order(intent.client_order_id), before_order
+                )
+                self.assertEqual(self.broker.get_positions(), [before_position])
+                self.assertEqual(
+                    self._rows("SELECT COUNT(*) FROM fills"), [(1,)]
+                )
+
+    def test_distinct_execution_keys_allow_identical_fills(self):
+        intent = self._us_order("two-executions:AAPL:BUY", Decimal("2"))
+        self.broker.submit_order(intent)
+
+        self.broker.fill_order(
+            intent.client_order_id,
+            "execution-1",
+            Decimal("1"),
+            Decimal("180"),
+        )
+        record = self.broker.fill_order(
+            intent.client_order_id,
+            "execution-2",
+            Decimal("1"),
+            Decimal("180"),
+        )
+
+        self.assertEqual(record.status, OrderStatus.FILLED)
+        self.assertEqual(record.filled_quantity, Decimal("2"))
+        self.assertEqual(self.broker.get_positions()[0].quantity, Decimal("2"))
+        self.assertEqual(self._rows("SELECT COUNT(*) FROM fills"), [(2,)])
+
+    def test_final_fill_replay_is_idempotent_after_order_is_filled(self):
+        intent = self._us_order("final-replay:AAPL:BUY", Decimal("1"))
+        self.broker.submit_order(intent)
+        first = self.broker.fill_order(
+            intent.client_order_id,
+            "execution-final",
+            Decimal("1"),
+            Decimal("180"),
+        )
+
+        restarted = PaperBroker(Ledger(self.path))
+        replay = restarted.fill_order(
+            intent.client_order_id,
+            "execution-final",
+            Decimal("1.00"),
+            Decimal("180.00"),
+        )
+
+        self.assertEqual(replay, first)
+        self.assertEqual(restarted.get_positions()[0].quantity, Decimal("1"))
+        self.assertEqual(self._rows("SELECT COUNT(*) FROM fills"), [(1,)])
+
+    def test_new_execution_cannot_cross_concurrent_unknown_transition(self):
+        intent = self._us_order("unknown-race:AAPL:BUY", Decimal("2"))
+        self.broker.submit_order(intent)
+        read_accepted = threading.Event()
+        unknown_committed = threading.Event()
+        result = {}
+        real_get_order = self.ledger.get_order
+
+        def pause_after_accepted_read(client_order_id):
+            record = real_get_order(client_order_id)
+            if not read_accepted.is_set():
+                read_accepted.set()
+                if not unknown_committed.wait(2):
+                    raise TimeoutError("UNKNOWN transition did not commit")
+            return record
+
+        def attempt_fill():
+            try:
+                result["value"] = self.broker.fill_order(
+                    intent.client_order_id,
+                    "execution-racing",
+                    Decimal("1"),
+                    Decimal("180"),
+                )
+            except Exception as exc:
+                result["error"] = exc
+
+        with patch.object(
+            self.ledger, "get_order", side_effect=pause_after_accepted_read
+        ):
+            worker = threading.Thread(target=attempt_fill)
+            worker.start()
+            self.assertTrue(read_accepted.wait(2), "broker did not read ACCEPTED")
+            Ledger(self.path).transition_order(
+                intent.client_order_id, OrderStatus.UNKNOWN
+            )
+            unknown_committed.set()
+            worker.join(2)
+            self.assertFalse(worker.is_alive(), "fill attempt did not finish")
+
+        self.assertIsInstance(result.get("error"), ValueError)
+        self.assertRegex(
+            str(result["error"]), "order cannot be filled from UNKNOWN"
+        )
+        self.assertNotIn("value", result)
+        self.assertEqual(self._rows("SELECT COUNT(*) FROM fills"), [(0,)])
+        self.assertEqual(self.broker.get_positions(), [])
+        self.assertEqual(
+            self.ledger.get_order(intent.client_order_id).status,
+            OrderStatus.UNKNOWN,
         )
 
     def test_kr_full_fill_creates_position_only_through_ledger(self):
@@ -184,7 +349,10 @@ class PaperBrokerTest(unittest.TestCase):
         self.broker.submit_order(intent)
 
         record = self.broker.fill_order(
-            intent.client_order_id, Decimal("3"), Decimal("69900")
+            intent.client_order_id,
+            "execution-full",
+            Decimal("3"),
+            Decimal("69900"),
         )
 
         self.assertEqual(record.status, OrderStatus.FILLED)
@@ -224,6 +392,7 @@ class PaperBrokerTest(unittest.TestCase):
                     else:
                         self.broker.fill_order(
                             intent.client_order_id,
+                            "execution-original",
                             Decimal("1"),
                             Decimal("180"),
                         )
@@ -233,7 +402,10 @@ class PaperBrokerTest(unittest.TestCase):
                     ValueError, f"order cannot be filled from {status.value}"
                 ):
                     self.broker.fill_order(
-                        intent.client_order_id, Decimal("1"), Decimal("180")
+                        intent.client_order_id,
+                        "execution-new",
+                        Decimal("1"),
+                        Decimal("180"),
                     )
 
                 self.assertEqual(
@@ -246,7 +418,10 @@ class PaperBrokerTest(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "fill quantity exceeds order quantity"):
             self.broker.fill_order(
-                intent.client_order_id, Decimal("2.01"), Decimal("180")
+                intent.client_order_id,
+                "execution-overfill",
+                Decimal("2.01"),
+                Decimal("180"),
             )
 
         self.assertEqual(self.ledger.get_order(intent.client_order_id), accepted)
@@ -272,7 +447,12 @@ class PaperBrokerTest(unittest.TestCase):
                 intent = self._kr_order(f"kr-{label}:005930:BUY")
                 self.broker.submit_order(intent)
                 with self.assertRaisesRegex(ValueError, message):
-                    self.broker.fill_order(intent.client_order_id, quantity, price)
+                    self.broker.fill_order(
+                        intent.client_order_id,
+                        f"execution-{label}",
+                        quantity,
+                        price,
+                    )
                 self.assertEqual(
                     self.ledger.get_order(intent.client_order_id).status,
                     OrderStatus.ACCEPTED,
@@ -289,7 +469,10 @@ class PaperBrokerTest(unittest.TestCase):
         partial_intent = self._us_order("cancel-partial:AAPL:BUY")
         self.broker.submit_order(partial_intent)
         self.broker.fill_order(
-            partial_intent.client_order_id, Decimal("1"), Decimal("180")
+            partial_intent.client_order_id,
+            "execution-partial",
+            Decimal("1"),
+            Decimal("180"),
         )
         self.assertEqual(
             self.broker.cancel_order(partial_intent.client_order_id).status,
@@ -336,7 +519,10 @@ class PaperBrokerTest(unittest.TestCase):
         intent = self._us_order(quantity=Decimal("1.5"))
         self.broker.submit_order(intent)
         self.broker.fill_order(
-            intent.client_order_id, Decimal("1.5"), Decimal("180.125")
+            intent.client_order_id,
+            "execution-full",
+            Decimal("1.5"),
+            Decimal("180.125"),
         )
 
         restarted = PaperBroker(Ledger(self.path))

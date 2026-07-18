@@ -309,32 +309,22 @@ class Ledger:
                 ).fetchone()
             return self._row_to_position(row)
 
-    def record_fill(self, fill: Fill) -> Position | None:
+    def record_fill(
+        self,
+        fill: Fill,
+        *,
+        allowed_statuses: frozenset[OrderStatus] | None = None,
+    ) -> Position | None:
         normalized_currency = self._validate_fill(fill)
         conn = sqlite3.connect(self.path)
         conn.row_factory = sqlite3.Row
         try:
             conn.execute("BEGIN IMMEDIATE")
-            inserted = conn.execute(
-                "INSERT OR IGNORE INTO fills (fill_id,client_order_id,market,symbol,side,quantity,price,currency,occurred_at) "
-                "VALUES (?,?,?,?,?,?,?,?,?)",
-                (
-                    fill.fill_id,
-                    fill.client_order_id,
-                    fill.market.value,
-                    fill.symbol,
-                    fill.side.value,
-                    str(fill.quantity),
-                    str(fill.price),
-                    normalized_currency,
-                    _now(),
-                ),
-            )
-            if not inserted.rowcount:
-                existing_fill = conn.execute(
-                    "SELECT * FROM fills WHERE fill_id=?", (fill.fill_id,)
-                ).fetchone()
-                if existing_fill is None or not self._fill_payload_matches(
+            existing_fill = conn.execute(
+                "SELECT * FROM fills WHERE fill_id=?", (fill.fill_id,)
+            ).fetchone()
+            if existing_fill is not None:
+                if not self._fill_payload_matches(
                     existing_fill, fill, normalized_currency
                 ):
                     raise ValueError(f"fill id collision: {fill.fill_id}")
@@ -363,10 +353,33 @@ class Ledger:
                 order.intent.currency,
             ) != (fill.market, fill.symbol, fill.side, normalized_currency):
                 raise ValueError("fill does not match order")
+            if (
+                allowed_statuses is not None
+                and order.status not in allowed_statuses
+            ):
+                raise ValueError(
+                    f"order cannot be filled from {order.status.value}"
+                )
 
             cumulative = order.filled_quantity + fill.quantity
             if fill.quantity <= 0 or cumulative > order.intent.quantity:
                 raise ValueError("fill quantity exceeds order quantity")
+
+            conn.execute(
+                "INSERT INTO fills (fill_id,client_order_id,market,symbol,side,quantity,price,currency,occurred_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?)",
+                (
+                    fill.fill_id,
+                    fill.client_order_id,
+                    fill.market.value,
+                    fill.symbol,
+                    fill.side.value,
+                    str(fill.quantity),
+                    str(fill.price),
+                    normalized_currency,
+                    _now(),
+                ),
+            )
 
             position_row = conn.execute(
                 "SELECT * FROM positions WHERE market=? AND symbol=?",

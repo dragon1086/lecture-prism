@@ -11,12 +11,16 @@ _SUBMIT_PROGRESS = {
     OrderStatus.PREVIEWED: OrderStatus.SUBMITTED,
     OrderStatus.SUBMITTED: OrderStatus.ACCEPTED,
 }
-_FILLABLE = {OrderStatus.ACCEPTED, OrderStatus.PARTIALLY_FILLED}
+_FILLABLE = frozenset(
+    {OrderStatus.ACCEPTED, OrderStatus.PARTIALLY_FILLED}
+)
 _CANCELABLE = {OrderStatus.ACCEPTED, OrderStatus.PARTIALLY_FILLED}
 
 
-def _decimal_key(value: Decimal) -> str:
-    return format(value.normalize(), "f")
+def _fill_id(client_order_id: str, execution_key: str) -> str:
+    if not isinstance(execution_key, str) or not execution_key.strip():
+        raise ValueError("execution_key is required")
+    return f"paper:{len(client_order_id)}:{client_order_id}:{execution_key}"
 
 
 class PaperBroker:
@@ -38,21 +42,20 @@ class PaperBroker:
         return record
 
     def fill_order(
-        self, client_order_id: str, quantity: Decimal, price: Decimal
+        self,
+        client_order_id: str,
+        execution_key: str,
+        quantity: Decimal,
+        price: Decimal,
     ) -> OrderRecord:
         record = self.ledger.get_order(client_order_id)
-        if record.status not in _FILLABLE:
-            raise ValueError(
-                f"order cannot be filled from {record.status.value}"
-            )
         if not isinstance(quantity, Decimal) or not quantity.is_finite():
             raise ValueError("fill quantity must be a finite Decimal")
         if not isinstance(price, Decimal) or not price.is_finite():
             raise ValueError("fill price must be a finite Decimal")
 
-        cumulative = record.filled_quantity + quantity
         fill = Fill(
-            fill_id=f"{client_order_id}:{_decimal_key(cumulative)}",
+            fill_id=_fill_id(client_order_id, execution_key),
             client_order_id=client_order_id,
             market=record.intent.market,
             symbol=record.intent.symbol,
@@ -61,7 +64,7 @@ class PaperBroker:
             price=price,
             currency=record.intent.currency,
         )
-        self.ledger.record_fill(fill)
+        self.ledger.record_fill(fill, allowed_statuses=_FILLABLE)
         return self.ledger.get_order(client_order_id)
 
     def cancel_order(self, client_order_id: str) -> OrderRecord:
