@@ -63,6 +63,18 @@ class OrderIntent:
     reason: str = ""
 
     def __post_init__(self) -> None:
+        if not isinstance(self.market, Market):
+            raise ValueError("market must be a Market")
+        if not isinstance(self.side, OrderSide):
+            raise ValueError("side must be an OrderSide")
+        if not isinstance(self.order_type, OrderType):
+            raise ValueError("order_type must be an OrderType")
+        if not isinstance(self.quantity, Decimal) or not self.quantity.is_finite():
+            raise ValueError("quantity must be a finite Decimal")
+        if self.limit_price is not None and (
+            not isinstance(self.limit_price, Decimal) or not self.limit_price.is_finite()
+        ):
+            raise ValueError("limit_price must be a finite Decimal")
         if not self.client_order_id.strip():
             raise ValueError("client_order_id is required")
         if not self.symbol.strip():
