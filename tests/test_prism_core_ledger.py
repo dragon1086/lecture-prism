@@ -40,6 +40,19 @@ def sell_intent(order_id="run-1:AAPL:SELL", quantity=Decimal("2")):
     )
 
 
+def kr_buy_intent(order_id="run-1:005930:BUY"):
+    return OrderIntent(
+        order_id,
+        Market.KR,
+        "005930",
+        OrderSide.BUY,
+        OrderType.LIMIT,
+        Decimal("2"),
+        Decimal("70000"),
+        "KRW",
+    )
+
+
 class _CursorAfterFetch:
     def __init__(self, cursor, ready, release):
         self._cursor = cursor
@@ -353,7 +366,11 @@ class PrismCoreLedgerTest(unittest.TestCase):
 
         collisions = {
             "order id": {"client_order_id": "another-order"},
-            "market and currency": {"market": Market.KR, "currency": "KRW"},
+            "market and currency": {
+                "market": Market.KR,
+                "currency": "KRW",
+                "price": Decimal("180"),
+            },
             "symbol": {"symbol": "MSFT"},
             "side": {"side": OrderSide.SELL},
             "quantity": {"quantity": Decimal("1.5")},
@@ -438,6 +455,54 @@ class PrismCoreLedgerTest(unittest.TestCase):
                     self.ledger.get_order(intent.client_order_id).status,
                     OrderStatus.SUBMITTED,
                 )
+
+    def test_kr_fill_rejects_fractional_quantity_without_writes(self):
+        intent = kr_buy_intent()
+        self._advance(intent, accepted=True)
+        before_order = self.ledger.get_order(intent.client_order_id)
+
+        with self.assertRaisesRegex(
+            ValueError, "KR fill quantity must be a whole number"
+        ):
+            self.ledger.record_fill(
+                self._fill(
+                    "fractional-kr-quantity",
+                    intent,
+                    Decimal("0.5"),
+                    Decimal("69999"),
+                )
+            )
+
+        self.assertEqual(self._table_count("fills"), 0)
+        self.assertEqual(
+            self.ledger.get_order(intent.client_order_id), before_order
+        )
+        self.assertEqual(self.ledger.list_positions(), [])
+        self.assertEqual(self.ledger.count_realized_trades(), 0)
+
+    def test_kr_fill_rejects_fractional_price_without_writes(self):
+        intent = kr_buy_intent()
+        self._advance(intent, accepted=True)
+        before_order = self.ledger.get_order(intent.client_order_id)
+
+        with self.assertRaisesRegex(
+            ValueError, "KR fill price must be a whole number"
+        ):
+            self.ledger.record_fill(
+                self._fill(
+                    "fractional-kr-price",
+                    intent,
+                    Decimal("2"),
+                    Decimal("69999.5"),
+                )
+            )
+
+        self.assertEqual(self._table_count("fills"), 0)
+        self.assertEqual(
+            self.ledger.get_order(intent.client_order_id), before_order
+        )
+        self.assertEqual(self.ledger.list_positions(), [])
+        self.assertEqual(self.ledger.count_realized_trades(), 0)
 
     def test_decimal_columns_are_text_and_round_trip_exactly(self):
         intent = buy_intent(

@@ -155,6 +155,13 @@ class Ledger:
                 or value <= 0
             ):
                 raise ValueError(f"fill {name} must be a finite positive Decimal")
+        if fill.market is Market.KR:
+            for name in ("quantity", "price"):
+                value = getattr(fill, name)
+                if value != value.to_integral_value():
+                    raise ValueError(
+                        f"KR fill {name} must be a whole number"
+                    )
         if not isinstance(fill.currency, str):
             raise ValueError("fill currency is required")
         currency = fill.currency.strip().upper()
