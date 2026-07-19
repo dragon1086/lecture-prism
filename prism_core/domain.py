@@ -48,6 +48,58 @@ class PositionFillConflict(ValueError):
         super().__init__(message)
 
 
+class PositionEntryConflict(ValueError):
+    """A BUY fill is not owned by the position's original entry order."""
+
+
+def validate_market_contract(
+    market: Market,
+    symbol: str,
+    *,
+    currency: str | None = None,
+    quantity: Decimal | None = None,
+    price: Decimal | None = None,
+    quantity_name: str = "quantity",
+    price_name: str = "price",
+) -> str | None:
+    """Validate values without guessing a market from the symbol."""
+
+    if not isinstance(market, Market):
+        raise ValueError("market must be a Market")
+    if not isinstance(symbol, str):
+        raise ValueError("symbol is required")
+    if market is Market.KR:
+        if len(symbol) != 6 or not symbol.isascii() or not symbol.isdigit():
+            raise ValueError("KR symbol must be exactly six ASCII digits")
+    elif (
+        not symbol
+        or not symbol.isascii()
+        or not symbol.isalpha()
+        or not symbol.isupper()
+    ):
+        raise ValueError("US symbol must contain uppercase ASCII letters only")
+
+    normalized_currency = None
+    if currency is not None:
+        if not isinstance(currency, str):
+            raise ValueError("currency is required")
+        normalized_currency = currency.strip().upper()
+        expected_currency = "KRW" if market is Market.KR else "USD"
+        if normalized_currency != expected_currency:
+            raise ValueError(
+                f"{market.value} order currency must be {expected_currency}"
+            )
+
+    for name, value in ((quantity_name, quantity), (price_name, price)):
+        if value is None:
+            continue
+        if not isinstance(value, Decimal) or not value.is_finite():
+            raise ValueError(f"{name} must be a finite Decimal")
+        if market is Market.KR and value != value.to_integral_value():
+            raise ValueError(f"KR {name} must be a whole number")
+    return normalized_currency
+
+
 _TRANSITIONS = {
     OrderStatus.CREATED: {OrderStatus.PREVIEWED, OrderStatus.REJECTED},
     OrderStatus.PREVIEWED: {OrderStatus.SUBMITTED, OrderStatus.REJECTED},
@@ -93,21 +145,21 @@ class OrderIntent:
             raise ValueError("limit_price must be a finite Decimal")
         if not self.client_order_id.strip():
             raise ValueError("client_order_id is required")
-        if not self.symbol.strip():
-            raise ValueError("symbol is required")
         if self.quantity <= 0:
             raise ValueError("quantity must be positive")
-        currency = self.currency.strip().upper()
+        currency = validate_market_contract(
+            self.market,
+            self.symbol,
+            currency=self.currency,
+            quantity=self.quantity,
+            price=self.limit_price,
+            price_name="limit_price",
+        )
         object.__setattr__(self, "currency", currency)
-        if self.market is Market.KR:
-            if currency != "KRW":
-                raise ValueError("KR order currency must be KRW")
-            if self.quantity != self.quantity.to_integral_value():
-                raise ValueError("KR quantity must be a whole number")
-        if self.market is Market.US and currency != "USD":
-            raise ValueError("US order currency must be USD")
         if self.order_type is OrderType.LIMIT and (self.limit_price is None or self.limit_price <= 0):
             raise ValueError("limit order requires a positive limit_price")
+        if self.order_type is OrderType.MARKET and self.limit_price is not None:
+            raise ValueError("market order requires limit_price=None")
 
 
 @dataclass(frozen=True)
@@ -139,3 +191,4 @@ class Position:
     currency: str
     high_since_entry: Decimal
     strategy_id: str
+    entry_client_order_id: str | None = None

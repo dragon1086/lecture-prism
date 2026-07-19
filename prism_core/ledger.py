@@ -18,56 +18,180 @@ from .domain import (
     OrderStatus,
     OrderType,
     Position,
+    PositionEntryConflict,
     PositionFillConflict,
+    validate_market_contract,
     validate_transition,
 )
 
+CURRENT_SCHEMA_VERSION = 4
 
-_SCHEMA = """
-CREATE TABLE IF NOT EXISTS prism_core_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
-INSERT OR IGNORE INTO prism_core_meta (key, value) VALUES ('schema_version', '1');
-CREATE TABLE IF NOT EXISTS broker_orders (
+
+class IncompatibleLedgerSchema(RuntimeError):
+    """The database cannot safely satisfy the owned ledger contract."""
+
+
+_VERSION_ONE_SCHEMA = (
+    "CREATE TABLE IF NOT EXISTS prism_core_meta "
+    "(key TEXT PRIMARY KEY, value TEXT NOT NULL)",
+    """CREATE TABLE IF NOT EXISTS broker_orders (
     client_order_id TEXT PRIMARY KEY, market TEXT NOT NULL, symbol TEXT NOT NULL,
     side TEXT NOT NULL, order_type TEXT NOT NULL, quantity TEXT NOT NULL,
     limit_price TEXT, currency TEXT NOT NULL, strategy_id TEXT NOT NULL,
     reason TEXT NOT NULL, status TEXT NOT NULL,
     filled_quantity TEXT NOT NULL DEFAULT '0', average_fill_price TEXT,
     created_at TEXT NOT NULL, updated_at TEXT NOT NULL
-);
-CREATE TABLE IF NOT EXISTS order_events (
+)
+""",
+    """CREATE TABLE IF NOT EXISTS order_events (
     id INTEGER PRIMARY KEY AUTOINCREMENT, client_order_id TEXT NOT NULL,
     status TEXT NOT NULL, occurred_at TEXT NOT NULL,
-    -- First observation of each status; fills is the per-execution audit log.
     UNIQUE(client_order_id, status)
-);
-CREATE TABLE IF NOT EXISTS fills (
+)""",
+    """CREATE TABLE IF NOT EXISTS fills (
     fill_id TEXT PRIMARY KEY, client_order_id TEXT NOT NULL, market TEXT NOT NULL,
     symbol TEXT NOT NULL, side TEXT NOT NULL, quantity TEXT NOT NULL,
     price TEXT NOT NULL, currency TEXT NOT NULL, occurred_at TEXT NOT NULL
-);
-CREATE TABLE IF NOT EXISTS positions (
+)""",
+    """CREATE TABLE IF NOT EXISTS positions (
     market TEXT NOT NULL, symbol TEXT NOT NULL, quantity TEXT NOT NULL,
     average_price TEXT NOT NULL, currency TEXT NOT NULL,
     high_since_entry TEXT NOT NULL, strategy_id TEXT NOT NULL,
     updated_at TEXT NOT NULL, PRIMARY KEY(market, symbol)
-);
-CREATE TABLE IF NOT EXISTS realized_trades (
+)""",
+    """CREATE TABLE IF NOT EXISTS realized_trades (
     id INTEGER PRIMARY KEY AUTOINCREMENT, market TEXT NOT NULL,
     symbol TEXT NOT NULL, quantity TEXT NOT NULL, entry_price TEXT NOT NULL,
     exit_price TEXT NOT NULL, pnl_amount TEXT NOT NULL, currency TEXT NOT NULL,
-    strategy_id TEXT NOT NULL, closed_at TEXT NOT NULL,
-    exit_client_order_id TEXT, exit_fill_id TEXT
-);
-CREATE TABLE IF NOT EXISTS classroom_replays (
+    strategy_id TEXT NOT NULL, closed_at TEXT NOT NULL
+)""",
+    """CREATE TABLE IF NOT EXISTS classroom_replays (
     sequence INTEGER PRIMARY KEY AUTOINCREMENT,
     session_id TEXT NOT NULL UNIQUE, strategy_id TEXT NOT NULL UNIQUE,
     status TEXT NOT NULL, owner_token TEXT, lease_expires_at REAL,
-    phase INTEGER NOT NULL DEFAULT 1,
     realized_trades INTEGER NOT NULL DEFAULT 0,
-    created_at TEXT NOT NULL, updated_at TEXT NOT NULL, completed_at TEXT,
-    abort_reason TEXT, aborted_at TEXT
-);
-"""
+    created_at TEXT NOT NULL, updated_at TEXT NOT NULL, completed_at TEXT
+)""",
+)
+
+_VERSION_ONE_COLUMNS = {
+    "prism_core_meta": {"key", "value"},
+    "broker_orders": {
+        "client_order_id", "market", "symbol", "side", "order_type",
+        "quantity", "limit_price", "currency", "strategy_id", "reason",
+        "status", "filled_quantity", "average_fill_price", "created_at",
+        "updated_at",
+    },
+    "order_events": {"id", "client_order_id", "status", "occurred_at"},
+    "fills": {
+        "fill_id", "client_order_id", "market", "symbol", "side",
+        "quantity", "price", "currency", "occurred_at",
+    },
+    "positions": {
+        "market", "symbol", "quantity", "average_price", "currency",
+        "high_since_entry", "strategy_id", "updated_at",
+    },
+    "realized_trades": {
+        "id", "market", "symbol", "quantity", "entry_price", "exit_price",
+        "pnl_amount", "currency", "strategy_id", "closed_at",
+    },
+    "classroom_replays": {
+        "sequence", "session_id", "strategy_id", "status", "owner_token",
+        "lease_expires_at", "realized_trades", "created_at", "updated_at",
+        "completed_at",
+    },
+}
+_CURRENT_COLUMNS = {
+    **_VERSION_ONE_COLUMNS,
+    "positions": _VERSION_ONE_COLUMNS["positions"] | {"entry_client_order_id"},
+    "realized_trades": _VERSION_ONE_COLUMNS["realized_trades"]
+    | {"exit_client_order_id", "exit_fill_id"},
+    "classroom_replays": _VERSION_ONE_COLUMNS["classroom_replays"]
+    | {"phase", "abort_reason", "aborted_at"},
+}
+_PRIMARY_KEYS = {
+    "prism_core_meta": ("key",),
+    "broker_orders": ("client_order_id",),
+    "order_events": ("id",),
+    "fills": ("fill_id",),
+    "positions": ("market", "symbol"),
+    "realized_trades": ("id",),
+    "classroom_replays": ("sequence",),
+}
+_REQUIRED_UNIQUE_KEYS = {
+    "order_events": {("client_order_id", "status")},
+    "classroom_replays": {("session_id",), ("strategy_id",)},
+}
+
+
+def _text_contract(
+    columns: set[str],
+    *,
+    nullable: set[str] = frozenset(),
+    types: dict[str, str] | None = None,
+    defaults: dict[str, str] | None = None,
+) -> dict[str, tuple[str, bool, str | None]]:
+    types = types or {}
+    defaults = defaults or {}
+    return {
+        name: (
+            types.get(name, "TEXT"),
+            name not in nullable,
+            defaults.get(name),
+        )
+        for name in columns
+    }
+
+
+_COLUMN_CONTRACTS = {
+    "prism_core_meta": _text_contract(
+        _CURRENT_COLUMNS["prism_core_meta"], nullable={"key"}
+    ),
+    "broker_orders": _text_contract(
+        _CURRENT_COLUMNS["broker_orders"],
+        nullable={
+            "client_order_id",
+            "limit_price",
+            "average_fill_price",
+        },
+        defaults={"filled_quantity": "'0'"},
+    ),
+    "order_events": _text_contract(
+        _CURRENT_COLUMNS["order_events"],
+        nullable={"id"},
+        types={"id": "INTEGER"},
+    ),
+    "fills": _text_contract(
+        _CURRENT_COLUMNS["fills"], nullable={"fill_id"}
+    ),
+    "positions": _text_contract(
+        _CURRENT_COLUMNS["positions"],
+        nullable={"entry_client_order_id"},
+    ),
+    "realized_trades": _text_contract(
+        _CURRENT_COLUMNS["realized_trades"],
+        nullable={"id", "exit_client_order_id", "exit_fill_id"},
+        types={"id": "INTEGER"},
+    ),
+    "classroom_replays": _text_contract(
+        _CURRENT_COLUMNS["classroom_replays"],
+        nullable={
+            "sequence",
+            "owner_token",
+            "lease_expires_at",
+            "completed_at",
+            "abort_reason",
+            "aborted_at",
+        },
+        types={
+            "sequence": "INTEGER",
+            "lease_expires_at": "REAL",
+            "phase": "INTEGER",
+            "realized_trades": "INTEGER",
+        },
+        defaults={"phase": "1", "realized_trades": "0"},
+    ),
+}
 
 _UNRESOLVED_ORDER_STATUSES = (
     OrderStatus.CREATED,
@@ -105,19 +229,119 @@ class Ledger:
     def __init__(self, path: Path):
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        with self._connect() as conn:
-            conn.executescript(_SCHEMA)
-            columns = {
-                row[1]
-                for row in conn.execute(
-                    "PRAGMA table_info(classroom_replays)"
+        self._initialize_schema()
+
+    @staticmethod
+    def _table_columns(conn: sqlite3.Connection, table: str) -> set[str]:
+        return {
+            row[1]
+            for row in conn.execute(f'PRAGMA table_info("{table}")').fetchall()
+        }
+
+    @staticmethod
+    def _primary_key(conn: sqlite3.Connection, table: str) -> tuple[str, ...]:
+        rows = conn.execute(f'PRAGMA table_info("{table}")').fetchall()
+        return tuple(
+            row[1]
+            for row in sorted(rows, key=lambda item: item[5])
+            if row[5]
+        )
+
+    @staticmethod
+    def _unique_keys(
+        conn: sqlite3.Connection, table: str
+    ) -> set[tuple[str, ...]]:
+        keys = set()
+        for row in conn.execute(f'PRAGMA index_list("{table}")').fetchall():
+            if not row[2]:
+                continue
+            columns = tuple(
+                item[2]
+                for item in conn.execute(
+                    f'PRAGMA index_info("{row[1]}")'
                 ).fetchall()
-            }
-            if "phase" not in columns:
-                conn.execute(
-                    "ALTER TABLE classroom_replays "
-                    "ADD COLUMN phase INTEGER NOT NULL DEFAULT 1"
+            )
+            keys.add(columns)
+        return keys
+
+    @classmethod
+    def _validate_schema(
+        cls,
+        conn: sqlite3.Connection,
+        required_columns: dict[str, set[str]],
+    ) -> None:
+        for table, required in required_columns.items():
+            rows = conn.execute(
+                f'PRAGMA table_info("{table}")'
+            ).fetchall()
+            by_name = {row[1]: row for row in rows}
+            actual = set(by_name)
+            missing = sorted(required - actual)
+            if missing:
+                raise IncompatibleLedgerSchema(
+                    f"{table} missing required columns: {', '.join(missing)}"
                 )
+            for column in sorted(required):
+                row = by_name[column]
+                expected_type, expected_not_null, expected_default = (
+                    _COLUMN_CONTRACTS[table][column]
+                )
+                actual_type = str(row[2]).upper()
+                if actual_type != expected_type:
+                    raise IncompatibleLedgerSchema(
+                        f"{table}.{column} has incompatible type: "
+                        f"expected {expected_type}, got {actual_type or '<empty>'}"
+                    )
+                if bool(row[3]) is not expected_not_null:
+                    requirement = "NOT NULL" if expected_not_null else "nullable"
+                    raise IncompatibleLedgerSchema(
+                        f"{table}.{column} has incompatible NOT NULL shape: "
+                        f"expected {requirement}"
+                    )
+                if row[4] != expected_default:
+                    raise IncompatibleLedgerSchema(
+                        f"{table}.{column} has incompatible default: "
+                        f"expected {expected_default!r}, got {row[4]!r}"
+                    )
+            primary_key = cls._primary_key(conn, table)
+            if primary_key != _PRIMARY_KEYS[table]:
+                raise IncompatibleLedgerSchema(
+                    f"{table} has incompatible primary key: {primary_key!r}"
+                )
+            required_unique = _REQUIRED_UNIQUE_KEYS.get(table, set())
+            missing_unique = required_unique - cls._unique_keys(conn, table)
+            if missing_unique:
+                raise IncompatibleLedgerSchema(
+                    f"{table} missing required unique keys: "
+                    f"{sorted(missing_unique)!r}"
+                )
+
+    @classmethod
+    def _add_column(
+        cls, conn: sqlite3.Connection, table: str, definition: str
+    ) -> bool:
+        column = definition.split()[0]
+        if column not in cls._table_columns(conn, table):
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN {definition}")
+            return True
+        return False
+
+    @classmethod
+    def _run_migration(
+        cls, conn: sqlite3.Connection, target_version: int
+    ) -> None:
+        if target_version == 1:
+            for statement in _VERSION_ONE_SCHEMA:
+                conn.execute(statement)
+            cls._validate_schema(conn, _VERSION_ONE_COLUMNS)
+            return
+        if target_version == 2:
+            phase_added = cls._add_column(
+                conn,
+                "classroom_replays",
+                "phase INTEGER NOT NULL DEFAULT 1",
+            )
+            if phase_added:
                 conn.execute(
                     "UPDATE classroom_replays SET phase=3 "
                     "WHERE status='INCOMPLETE' AND EXISTS ("
@@ -126,31 +350,65 @@ class Ledger:
                     "classroom_replays.strategy_id "
                     "AND broker_orders.side='SELL')"
                 )
-            if "abort_reason" not in columns:
-                conn.execute(
-                    "ALTER TABLE classroom_replays "
-                    "ADD COLUMN abort_reason TEXT"
+            return
+        if target_version == 3:
+            cls._add_column(conn, "classroom_replays", "abort_reason TEXT")
+            cls._add_column(conn, "classroom_replays", "aborted_at TEXT")
+            cls._add_column(
+                conn, "realized_trades", "exit_client_order_id TEXT"
+            )
+            cls._add_column(conn, "realized_trades", "exit_fill_id TEXT")
+            return
+        if target_version == 4:
+            cls._add_column(
+                conn, "positions", "entry_client_order_id TEXT"
+            )
+            return
+        raise AssertionError(f"unknown schema migration: {target_version}")
+
+    def _initialize_schema(self) -> None:
+        conn = sqlite3.connect(self.path)
+        try:
+            conn.execute("BEGIN IMMEDIATE")
+            conn.execute(_VERSION_ONE_SCHEMA[0])
+            self._validate_schema(
+                conn, {"prism_core_meta": _VERSION_ONE_COLUMNS["prism_core_meta"]}
+            )
+            conn.execute(
+                "INSERT OR IGNORE INTO prism_core_meta (key,value) "
+                "VALUES ('schema_version','0')"
+            )
+            raw_version = conn.execute(
+                "SELECT value FROM prism_core_meta WHERE key='schema_version'"
+            ).fetchone()[0]
+            try:
+                version = int(raw_version)
+            except (TypeError, ValueError) as exc:
+                raise IncompatibleLedgerSchema(
+                    f"invalid ledger schema_version: {raw_version!r}"
+                ) from exc
+            if version < 0 or version > CURRENT_SCHEMA_VERSION:
+                raise IncompatibleLedgerSchema(
+                    f"unsupported ledger schema_version: {version}"
                 )
-            if "aborted_at" not in columns:
+            if version:
+                self._validate_schema(conn, _VERSION_ONE_COLUMNS)
+            for target in range(version + 1, CURRENT_SCHEMA_VERSION + 1):
+                self._run_migration(conn, target)
                 conn.execute(
-                    "ALTER TABLE classroom_replays "
-                    "ADD COLUMN aborted_at TEXT"
+                    "UPDATE prism_core_meta SET value=? "
+                    "WHERE key='schema_version'",
+                    (str(target),),
                 )
-            trade_columns = {
-                row[1]
-                for row in conn.execute(
-                    "PRAGMA table_info(realized_trades)"
-                ).fetchall()
-            }
-            if "exit_client_order_id" not in trade_columns:
-                conn.execute(
-                    "ALTER TABLE realized_trades "
-                    "ADD COLUMN exit_client_order_id TEXT"
-                )
-            if "exit_fill_id" not in trade_columns:
-                conn.execute(
-                    "ALTER TABLE realized_trades ADD COLUMN exit_fill_id TEXT"
-                )
+            for target in range(2, CURRENT_SCHEMA_VERSION + 1):
+                self._run_migration(conn, target)
+            self._validate_schema(conn, _CURRENT_COLUMNS)
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
 
     @contextmanager
     def _connect(self, *, immediate: bool = False):
@@ -1056,14 +1314,33 @@ class Ledger:
 
     @staticmethod
     def _row_to_position(row: sqlite3.Row) -> Position:
-        return Position(
-            market=Market(row["market"]),
-            symbol=row["symbol"],
-            quantity=Decimal(row["quantity"]),
-            average_price=Decimal(row["average_price"]),
+        market = Market(row["market"])
+        quantity = Decimal(row["quantity"])
+        average_price = Decimal(row["average_price"])
+        high_since_entry = Decimal(row["high_since_entry"])
+        validate_market_contract(
+            market,
+            row["symbol"],
             currency=row["currency"],
-            high_since_entry=Decimal(row["high_since_entry"]),
+            quantity=quantity,
+            price=average_price,
+            price_name="average_price",
+        )
+        validate_market_contract(
+            market,
+            row["symbol"],
+            price=high_since_entry,
+            price_name="high_since_entry",
+        )
+        return Position(
+            market=market,
+            symbol=row["symbol"],
+            quantity=quantity,
+            average_price=average_price,
+            currency=row["currency"],
+            high_since_entry=high_since_entry,
             strategy_id=row["strategy_id"],
+            entry_client_order_id=row["entry_client_order_id"],
         )
 
     @staticmethod
@@ -1102,13 +1379,14 @@ class Ledger:
                 or value <= 0
             ):
                 raise ValueError(f"fill {name} must be a finite positive Decimal")
-        if fill.market is Market.KR:
-            for name in ("quantity", "price"):
-                value = getattr(fill, name)
-                if value != value.to_integral_value():
-                    raise ValueError(
-                        f"KR fill {name} must be a whole number"
-                    )
+        validate_market_contract(
+            fill.market,
+            fill.symbol,
+            quantity=fill.quantity,
+            price=fill.price,
+            quantity_name="fill quantity",
+            price_name="fill price",
+        )
         if not isinstance(fill.currency, str):
             raise ValueError("fill currency is required")
         currency = fill.currency.strip().upper()
@@ -1135,6 +1413,9 @@ class Ledger:
         )
 
     def create_order(self, intent: OrderIntent) -> OrderRecord:
+        if not isinstance(intent, OrderIntent):
+            raise ValueError("intent must be an OrderIntent")
+        intent.__post_init__()
         now = _now()
         with self._connect() as conn:
             cursor = conn.execute(
@@ -1176,6 +1457,9 @@ class Ledger:
     def create_order_if_admissible(
         self, intent: OrderIntent
     ) -> OrderRecord | None:
+        if not isinstance(intent, OrderIntent):
+            raise ValueError("intent must be an OrderIntent")
+        intent.__post_init__()
         with self._connect(immediate=True) as conn:
             existing = conn.execute(
                 "SELECT * FROM broker_orders WHERE client_order_id=?",
@@ -1503,6 +1787,7 @@ class Ledger:
             or price <= 0
         ):
             raise ValueError("price must be a finite positive Decimal")
+        validate_market_contract(market, symbol, price=price)
         with self._connect(immediate=True) as conn:
             row = conn.execute(
                 "SELECT * FROM positions WHERE market=? AND symbol=?",
@@ -1594,6 +1879,22 @@ class Ledger:
                 "SELECT * FROM positions WHERE market=? AND symbol=?",
                 (fill.market.value, fill.symbol),
             ).fetchone()
+            if fill.side is OrderSide.BUY and position_row is not None:
+                entry_client_order_id = position_row[
+                    "entry_client_order_id"
+                ]
+                if entry_client_order_id is None:
+                    raise PositionEntryConflict(
+                        "position entry ownership is unknown; BUY fill rejected"
+                    )
+                if entry_client_order_id != fill.client_order_id:
+                    raise PositionEntryConflict(
+                        "BUY fill does not continue the position entry order"
+                    )
+                if order.intent.strategy_id != position_row["strategy_id"]:
+                    raise PositionEntryConflict(
+                        "BUY fill strategy does not own the position entry order"
+                    )
             if fill.side is OrderSide.SELL:
                 if position_row is None:
                     raise PositionFillConflict(
@@ -1646,10 +1947,10 @@ class Ledger:
                     else fill.price
                 )
                 conn.execute(
-                    "INSERT INTO positions (market,symbol,quantity,average_price,currency,high_since_entry,strategy_id,updated_at) "
-                    "VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(market,symbol) DO UPDATE SET "
+                    "INSERT INTO positions (market,symbol,quantity,average_price,currency,high_since_entry,strategy_id,entry_client_order_id,updated_at) "
+                    "VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(market,symbol) DO UPDATE SET "
                     "quantity=excluded.quantity,average_price=excluded.average_price,"
-                    "high_since_entry=excluded.high_since_entry,strategy_id=excluded.strategy_id,updated_at=excluded.updated_at",
+                    "high_since_entry=excluded.high_since_entry,updated_at=excluded.updated_at",
                     (
                         fill.market.value,
                         fill.symbol,
@@ -1658,6 +1959,7 @@ class Ledger:
                         normalized_currency,
                         str(max(old_high, fill.price)),
                         order.intent.strategy_id,
+                        fill.client_order_id,
                         now,
                     ),
                 )

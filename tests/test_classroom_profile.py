@@ -41,6 +41,18 @@ _HOSTILE_OVERRIDES = {
 }
 
 
+def _submit_unchecked(broker: PaperBroker, intent: OrderIntent) -> None:
+    """Seed an intentionally inadmissible state for recovery tests."""
+
+    broker.ledger.create_order(intent)
+    for status in (
+        OrderStatus.PREVIEWED,
+        OrderStatus.SUBMITTED,
+        OrderStatus.ACCEPTED,
+    ):
+        broker.ledger.transition_order(intent.client_order_id, status)
+
+
 class ClassroomReplayTest(unittest.TestCase):
     def test_replay_finishes_entry_hold_trailing_exit_for_kr_and_us(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -717,7 +729,7 @@ class ClassroomReplayTest(unittest.TestCase):
                 "USD",
                 strategy_id="user_strategy",
             )
-            broker.submit_order(unrelated)
+            _submit_unchecked(broker, unrelated)
 
             with self.assertRaisesRegex(
                 RuntimeError, "unrelated unresolved target order"
@@ -821,7 +833,7 @@ class ClassroomReplayTest(unittest.TestCase):
                 "USD",
                 strategy_id="user_strategy",
             )
-            broker.submit_order(unrelated)
+            _submit_unchecked(broker, unrelated)
 
             with self.assertRaisesRegex(
                 RuntimeError, "unrelated unresolved target order"
@@ -1130,7 +1142,7 @@ class ClassroomReplayTest(unittest.TestCase):
                         strategy_id=claim.strategy_id,
                     )
                     broker = PaperBroker(ledger)
-                    broker.submit_order(intent)
+                    _submit_unchecked(broker, intent)
                     broker.mark_unknown(intent.client_order_id)
                 return real_advance(
                     ledger,
@@ -1357,19 +1369,18 @@ class ClassroomReplayTest(unittest.TestCase):
             broker = PaperBroker(ledger)
             base = "classroom-000001-1:US:AAPL:BUY"
             for client_order_id in (base, f"{base}:retry-1"):
-                broker.submit_order(
-                    OrderIntent(
-                        client_order_id,
-                        Market.US,
-                        "AAPL",
-                        OrderSide.BUY,
-                        OrderType.LIMIT,
-                        Decimal("1"),
-                        Decimal("180"),
-                        "USD",
-                        strategy_id=claim.strategy_id,
-                    )
+                intent = OrderIntent(
+                    client_order_id,
+                    Market.US,
+                    "AAPL",
+                    OrderSide.BUY,
+                    OrderType.LIMIT,
+                    Decimal("1"),
+                    Decimal("180"),
+                    "USD",
+                    strategy_id=claim.strategy_id,
                 )
+                _submit_unchecked(broker, intent)
             ledger.release_classroom_replay(claim)
 
             with self.assertRaisesRegex(RuntimeError, "successor lineage"):

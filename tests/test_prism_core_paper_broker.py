@@ -9,6 +9,7 @@ from unittest.mock import patch
 from prism_core.domain import (
     Market,
     OrderIntent,
+    OrderRecord,
     OrderSide,
     OrderStatus,
     OrderType,
@@ -150,6 +151,162 @@ class PaperBrokerTest(unittest.TestCase):
             self.broker.submit_order(collision)
 
         self.assertEqual(self.ledger.get_order(intent.client_order_id), original)
+
+    def test_public_submit_revalidates_market_contract_without_writes(self):
+        for changes in (
+            {"market": Market.KR, "currency": "KRW"},
+            {
+                "market": Market.KR,
+                "symbol": "005930",
+                "currency": "KRW",
+                "limit_price": Decimal("70000.5"),
+            },
+        ):
+            intent = self._us_order("malformed:AAPL:BUY")
+            for name, value in changes.items():
+                object.__setattr__(intent, name, value)
+            with self.subTest(changes=changes):
+                with self.assertRaises(ValueError):
+                    self.broker.submit_order(intent)
+                self.assertEqual(self._rows("SELECT * FROM broker_orders"), [])
+                self.assertEqual(self._rows("SELECT * FROM order_events"), [])
+
+    def test_second_buy_is_rejected_for_same_and_cross_strategy_after_restart(self):
+        first = self._us_order("owner:AAPL:BUY", Decimal("1"))
+        self.broker.submit_order(first)
+        self.broker.fill_order(
+            first.client_order_id, "owner-fill", Decimal("1"), Decimal("180")
+        )
+
+        for order_id, strategy_id in (
+            ("same:AAPL:BUY", "default_oneil"),
+            ("cross:AAPL:BUY", "other-strategy"),
+        ):
+            intent = OrderIntent(
+                order_id,
+                Market.US,
+                "AAPL",
+                OrderSide.BUY,
+                OrderType.LIMIT,
+                Decimal("1"),
+                Decimal("181.25"),
+                "USD",
+                strategy_id=strategy_id,
+            )
+            restarted = PaperBroker(Ledger(self.path))
+            with self.subTest(strategy_id=strategy_id):
+                with self.assertRaisesRegex(ValueError, "not admissible"):
+                    restarted.submit_order(intent)
+
+        self.assertEqual(self._rows("SELECT COUNT(*) FROM broker_orders"), [(1,)])
+        position = self.broker.get_positions()[0]
+        self.assertEqual(position.quantity, Decimal("1"))
+        self.assertEqual(position.strategy_id, "default_oneil")
+
+    def test_concurrent_distinct_public_buy_submissions_admit_only_one(self):
+        intents = (
+            self._us_order("race-1:AAPL:BUY", Decimal("1")),
+            self._us_order("race-2:AAPL:BUY", Decimal("1")),
+        )
+        barrier = threading.Barrier(2)
+        outcomes = []
+
+        def submit(intent):
+            broker = PaperBroker(Ledger(self.path))
+            barrier.wait()
+            try:
+                outcomes.append(broker.submit_order(intent).status)
+            except Exception as exc:
+                outcomes.append(exc)
+
+        workers = [threading.Thread(target=submit, args=(intent,)) for intent in intents]
+        for worker in workers:
+            worker.start()
+        for worker in workers:
+            worker.join(2)
+
+        self.assertEqual(sum(item is OrderStatus.ACCEPTED for item in outcomes), 1)
+        self.assertEqual(sum(isinstance(item, ValueError) for item in outcomes), 1)
+        self.assertEqual(self._rows("SELECT COUNT(*) FROM broker_orders"), [(1,)])
+
+    def test_fill_boundary_defeats_pre_admitted_competing_buy(self):
+        first = self._us_order("pre-1:AAPL:BUY", Decimal("1"))
+        second = OrderIntent(
+            "pre-2:AAPL:BUY",
+            Market.US,
+            "AAPL",
+            OrderSide.BUY,
+            OrderType.LIMIT,
+            Decimal("1"),
+            Decimal("181.25"),
+            "USD",
+            strategy_id="other-strategy",
+        )
+        self._advance_to(first, OrderStatus.ACCEPTED)
+        self._advance_to(second, OrderStatus.ACCEPTED)
+        self.broker.fill_order(
+            first.client_order_id, "first", Decimal("1"), Decimal("180")
+        )
+        before_second = self.ledger.get_order(second.client_order_id)
+
+        with self.assertRaisesRegex(ValueError, "entry order"):
+            PaperBroker(Ledger(self.path)).fill_order(
+                second.client_order_id, "second", Decimal("1"), Decimal("180")
+            )
+
+        self.assertEqual(self.ledger.get_order(second.client_order_id), before_second)
+        self.assertEqual(self._rows("SELECT COUNT(*) FROM fills"), [(1,)])
+        position = self.broker.get_positions()[0]
+        self.assertEqual(position.quantity, Decimal("1"))
+        self.assertEqual(position.strategy_id, "default_oneil")
+
+    def test_concurrent_pre_admitted_buy_fills_create_only_one_position_owner(self):
+        intents = (
+            self._us_order("fill-race-1:AAPL:BUY", Decimal("1")),
+            OrderIntent(
+                "fill-race-2:AAPL:BUY",
+                Market.US,
+                "AAPL",
+                OrderSide.BUY,
+                OrderType.LIMIT,
+                Decimal("1"),
+                Decimal("181.25"),
+                "USD",
+                strategy_id="other-strategy",
+            ),
+        )
+        for intent in intents:
+            self._advance_to(intent, OrderStatus.ACCEPTED)
+
+        barrier = threading.Barrier(2)
+        outcomes = []
+
+        def fill(intent):
+            broker = PaperBroker(Ledger(self.path))
+            barrier.wait()
+            try:
+                outcomes.append(
+                    broker.fill_order(
+                        intent.client_order_id,
+                        "concurrent-fill",
+                        Decimal("1"),
+                        Decimal("180"),
+                    )
+                )
+            except Exception as exc:
+                outcomes.append(exc)
+
+        workers = [threading.Thread(target=fill, args=(intent,)) for intent in intents]
+        for worker in workers:
+            worker.start()
+        for worker in workers:
+            worker.join(2)
+
+        self.assertTrue(all(not worker.is_alive() for worker in workers))
+        self.assertEqual(sum(isinstance(item, OrderRecord) for item in outcomes), 1)
+        self.assertEqual(sum(isinstance(item, ValueError) for item in outcomes), 1)
+        self.assertEqual(self._rows("SELECT COUNT(*) FROM fills"), [(1,)])
+        self.assertEqual(self.broker.get_positions()[0].quantity, Decimal("1"))
 
     def test_us_partial_then_full_fill_is_cumulative_and_restartable(self):
         intent = self._us_order(quantity=Decimal("2.00"))
@@ -433,7 +590,7 @@ class PaperBrokerTest(unittest.TestCase):
                     self.ledger.create_order(intent)
                     self.ledger.transition_order(intent.client_order_id, status)
                 else:
-                    self.broker.submit_order(intent)
+                    self._advance_to(intent, OrderStatus.ACCEPTED)
                     if status is OrderStatus.UNKNOWN:
                         self.broker.mark_unknown(intent.client_order_id)
                     elif status is OrderStatus.CANCELED:
@@ -494,7 +651,7 @@ class PaperBrokerTest(unittest.TestCase):
         ):
             with self.subTest(label=label):
                 intent = self._kr_order(f"kr-{label}:005930:BUY")
-                self.broker.submit_order(intent)
+                self._advance_to(intent, OrderStatus.ACCEPTED)
                 with self.assertRaisesRegex(ValueError, message):
                     self.broker.fill_order(
                         intent.client_order_id,
@@ -541,10 +698,32 @@ class PaperBrokerTest(unittest.TestCase):
 
         for intent in (accepted_intent, partial_intent):
             with self.subTest(status=OrderStatus.CANCELED):
+                retried = PaperBroker(Ledger(self.path)).cancel_order(
+                    intent.client_order_id
+                )
+                self.assertEqual(retried.status, OrderStatus.CANCELED)
+
+    def test_cancel_retry_keeps_other_terminal_and_unknown_states_incompatible(self):
+        for index, status in enumerate(
+            (OrderStatus.REJECTED, OrderStatus.FILLED, OrderStatus.UNKNOWN)
+        ):
+            intent = self._us_order(f"cancel-terminal-{index}:AAPL:BUY", Decimal("1"))
+            if status is OrderStatus.REJECTED:
+                self.ledger.create_order(intent)
+                self.ledger.transition_order(intent.client_order_id, status)
+            else:
+                self._advance_to(intent, OrderStatus.ACCEPTED)
+                if status is OrderStatus.FILLED:
+                    self.broker.fill_order(
+                        intent.client_order_id, "terminal", Decimal("1"), Decimal("180")
+                    )
+                else:
+                    self.broker.mark_unknown(intent.client_order_id)
+            with self.subTest(status=status):
                 with self.assertRaisesRegex(
-                    ValueError, "order cannot be canceled from CANCELED"
+                    ValueError, f"order cannot be canceled from {status.value}"
                 ):
-                    self.broker.cancel_order(intent.client_order_id)
+                    PaperBroker(Ledger(self.path)).cancel_order(intent.client_order_id)
 
     def test_unknown_is_fail_closed_and_only_uses_domain_transitions(self):
         accepted_intent = self._us_order("unknown:AAPL:BUY")

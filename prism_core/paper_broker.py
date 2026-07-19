@@ -34,7 +34,16 @@ class PaperBroker:
         return intent
 
     def submit_order(self, intent: OrderIntent) -> OrderRecord:
-        record = self.ledger.create_order(intent)
+        try:
+            self.ledger.get_order(intent.client_order_id)
+        except KeyError:
+            record = self.ledger.create_order_if_admissible(intent)
+            if record is None:
+                raise ValueError(
+                    f"order is not admissible: {intent.client_order_id}"
+                )
+        else:
+            record = self.ledger.create_order(intent)
         while record.status in _SUBMIT_PROGRESS:
             record = self.ledger.transition_order(
                 intent.client_order_id, _SUBMIT_PROGRESS[record.status]
@@ -96,6 +105,8 @@ class PaperBroker:
 
     def cancel_order(self, client_order_id: str) -> OrderRecord:
         record = self.ledger.get_order(client_order_id)
+        if record.status is OrderStatus.CANCELED:
+            return record
         if record.status not in _CANCELABLE:
             raise ValueError(
                 f"order cannot be canceled from {record.status.value}"

@@ -140,6 +140,13 @@ class PrismCoreLedgerTest(unittest.TestCase):
         with sqlite3.connect(self.path) as conn:
             return conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
 
+    @staticmethod
+    def _unsafe_intent(**changes):
+        intent = buy_intent()
+        for name, value in changes.items():
+            object.__setattr__(intent, name, value)
+        return intent
+
     def _open_position(self, quantity=Decimal("5"), price=Decimal("100.00")):
         intent = buy_intent("seed:AAPL:BUY", quantity, price)
         self._advance(intent)
@@ -159,6 +166,23 @@ class PrismCoreLedgerTest(unittest.TestCase):
         self.assertEqual(position.quantity, Decimal("2"))
         self.assertEqual(position.average_price, Decimal("179.50"))
         self.assertEqual(Ledger(self.path).list_positions(), [position])
+
+    def test_order_persistence_revalidates_market_contract_without_writes(self):
+        invalid = (
+            self._unsafe_intent(market=Market.KR, currency="KRW"),
+            self._unsafe_intent(
+                market=Market.KR,
+                symbol="005930",
+                currency="KRW",
+                limit_price=Decimal("70000.5"),
+            ),
+        )
+        for intent in invalid:
+            with self.subTest(intent=intent):
+                with self.assertRaises(ValueError):
+                    self.ledger.create_order(intent)
+                self.assertEqual(self._table_count("broker_orders"), 0)
+                self.assertEqual(self._table_count("order_events"), 0)
 
     def test_three_nonterminal_buy_fills_then_full_fill_update_aggregate(self):
         intent = buy_intent(quantity=Decimal("4"))
@@ -190,6 +214,65 @@ class PrismCoreLedgerTest(unittest.TestCase):
         self.assertEqual(position.quantity, Decimal("4"))
         self.assertEqual(position.average_price, Decimal("179.25"))
         self.assertEqual(Ledger(self.path).list_positions(), [position])
+        with sqlite3.connect(self.path) as conn:
+            owner = conn.execute(
+                "SELECT entry_client_order_id,strategy_id FROM positions"
+            ).fetchone()
+        self.assertEqual(owner, (intent.client_order_id, intent.strategy_id))
+
+    def test_buy_fill_rejects_different_entry_order_and_rolls_back(self):
+        original = buy_intent("entry-1:AAPL:BUY", Decimal("2"))
+        competing = OrderIntent(
+            "entry-2:AAPL:BUY",
+            Market.US,
+            "AAPL",
+            OrderSide.BUY,
+            OrderType.LIMIT,
+            Decimal("1"),
+            Decimal("180.25"),
+            "USD",
+            strategy_id="other-strategy",
+        )
+        self._advance(original, accepted=True)
+        self._advance(competing, accepted=True)
+        self.ledger.record_fill(
+            self._fill("entry-1-fill", original, Decimal("1"), Decimal("180"))
+        )
+        before_order = self.ledger.get_order(competing.client_order_id)
+        before_position = self.ledger.list_positions()[0]
+
+        with self.assertRaisesRegex(ValueError, "entry order"):
+            self.ledger.record_fill(
+                self._fill(
+                    "entry-2-fill", competing, Decimal("1"), Decimal("180")
+                )
+            )
+
+        self.assertEqual(self.ledger.get_order(competing.client_order_id), before_order)
+        self.assertEqual(self.ledger.list_positions(), [before_position])
+        self.assertEqual(self._table_count("fills"), 1)
+        self.assertEqual(before_position.strategy_id, "default_oneil")
+
+    def test_legacy_position_without_entry_owner_fails_closed_for_buy(self):
+        intent = buy_intent("legacy-entry:AAPL:BUY", Decimal("2"))
+        self._advance(intent, accepted=True)
+        self.ledger.record_fill(
+            self._fill("legacy-first", intent, Decimal("1"), Decimal("180"))
+        )
+        with sqlite3.connect(self.path) as conn:
+            conn.execute(
+                "UPDATE positions SET entry_client_order_id=NULL "
+                "WHERE market='US' AND symbol='AAPL'"
+            )
+        before = self.ledger.get_order(intent.client_order_id)
+
+        with self.assertRaisesRegex(ValueError, "entry ownership is unknown"):
+            self.ledger.record_fill(
+                self._fill("legacy-second", intent, Decimal("1"), Decimal("180"))
+            )
+
+        self.assertEqual(self.ledger.get_order(intent.client_order_id), before)
+        self.assertEqual(self._table_count("fills"), 1)
 
     def test_three_nonterminal_sell_fills_then_full_fill_realize_each_fill(self):
         self._open_position(quantity=Decimal("6"))
@@ -346,7 +429,7 @@ class PrismCoreLedgerTest(unittest.TestCase):
                 OrderSide.BUY,
                 OrderType.LIMIT,
                 Decimal("2"),
-                Decimal("180.25"),
+                Decimal("180"),
                 "KRW",
             ),
             "symbol": OrderIntent(
@@ -435,6 +518,7 @@ class PrismCoreLedgerTest(unittest.TestCase):
             "order id": {"client_order_id": "another-order"},
             "market and currency": {
                 "market": Market.KR,
+                "symbol": "005930",
                 "currency": "KRW",
                 "price": Decimal("180"),
             },
@@ -571,6 +655,23 @@ class PrismCoreLedgerTest(unittest.TestCase):
         self.assertEqual(self.ledger.list_positions(), [])
         self.assertEqual(self.ledger.count_realized_trades(), 0)
 
+    def test_quote_boundary_rejects_wrong_market_symbol_and_fractional_kr_price(self):
+        intent = kr_buy_intent()
+        self._advance(intent, accepted=True)
+        self.ledger.record_fill(
+            self._fill("kr-open", intent, Decimal("2"), Decimal("69999"))
+        )
+        before = self.ledger.list_positions()[0]
+
+        for market, symbol, price in (
+            (Market.KR, "AAPL", Decimal("70000")),
+            (Market.KR, "005930", Decimal("70000.5")),
+        ):
+            with self.subTest(symbol=symbol, price=price):
+                with self.assertRaises(ValueError):
+                    self.ledger.update_high_water(market, symbol, price)
+                self.assertEqual(self.ledger.list_positions(), [before])
+
     def test_decimal_columns_are_text_and_round_trip_exactly(self):
         intent = buy_intent(
             quantity=Decimal("1.2500"), price=Decimal("180.2500")
@@ -628,7 +729,7 @@ class PrismCoreLedgerTest(unittest.TestCase):
                 conn.execute(
                     "SELECT value FROM prism_core_meta WHERE key='schema_version'"
                 ).fetchone(),
-                ("1",),
+                ("4",),
             )
 
     def test_order_events_record_first_status_observation_and_fills_audit_each_execution(self):

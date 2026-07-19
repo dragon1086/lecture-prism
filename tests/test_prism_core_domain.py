@@ -52,6 +52,58 @@ class PrismCoreDomainTest(unittest.TestCase):
                 currency="KRW",
             )
 
+    def test_market_specific_symbol_contract_is_exact(self):
+        invalid = (
+            (Market.KR, "AAPL", "KRW", "KR symbol"),
+            (Market.KR, "１２３４５６", "KRW", "KR symbol"),
+            (Market.US, "005930", "USD", "US symbol"),
+            (Market.US, "aapl", "USD", "US symbol"),
+            (Market.US, "BRK.B", "USD", "US symbol"),
+        )
+        for market, symbol, currency, message in invalid:
+            with self.subTest(market=market, symbol=symbol):
+                with self.assertRaisesRegex(ValueError, message):
+                    OrderIntent(
+                        client_order_id="bad-symbol",
+                        market=market,
+                        symbol=symbol,
+                        side=OrderSide.BUY,
+                        order_type=OrderType.LIMIT,
+                        quantity=Decimal("1"),
+                        limit_price=Decimal("100"),
+                        currency=currency,
+                    )
+
+    def test_kr_limit_price_must_be_integral(self):
+        with self.assertRaisesRegex(
+            ValueError, "KR limit_price must be a whole number"
+        ):
+            OrderIntent(
+                client_order_id="fractional-kr-limit",
+                market=Market.KR,
+                symbol="005930",
+                side=OrderSide.BUY,
+                order_type=OrderType.LIMIT,
+                quantity=Decimal("1"),
+                limit_price=Decimal("70000.5"),
+                currency="KRW",
+            )
+
+    def test_market_order_forbids_limit_price(self):
+        with self.assertRaisesRegex(
+            ValueError, "market order requires limit_price=None"
+        ):
+            OrderIntent(
+                client_order_id="market-with-limit",
+                market=Market.US,
+                symbol="AAPL",
+                side=OrderSide.BUY,
+                order_type=OrderType.MARKET,
+                quantity=Decimal("1"),
+                limit_price=Decimal("180"),
+                currency="USD",
+            )
+
     def test_runtime_market_string_cannot_bypass_currency_validation(self):
         with self.assertRaisesRegex(ValueError, "market must be a Market"):
             OrderIntent(

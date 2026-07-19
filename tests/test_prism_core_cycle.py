@@ -481,7 +481,15 @@ class TradingCycleTest(unittest.TestCase):
                     None,
                     "USD",
                 )
-                closer.submit_order(concurrent)
+                closer.ledger.create_order(concurrent)
+                for status in (
+                    OrderStatus.PREVIEWED,
+                    OrderStatus.SUBMITTED,
+                    OrderStatus.ACCEPTED,
+                ):
+                    closer.ledger.transition_order(
+                        concurrent.client_order_id, status
+                    )
                 closer.fill_order(
                     concurrent.client_order_id,
                     "concurrent-fill",

@@ -7,12 +7,16 @@ from .domain import (
     OrderStatus,
     OrderType,
     Position,
+    PositionEntryConflict,
     PositionFillConflict,
+    validate_market_contract,
     validate_transition,
 )
+from .ledger import IncompatibleLedgerSchema
 
 __all__ = [
     "Fill",
+    "IncompatibleLedgerSchema",
     "Market",
     "OrderIntent",
     "OrderRecord",
@@ -20,6 +24,8 @@ __all__ = [
     "OrderStatus",
     "OrderType",
     "Position",
+    "PositionEntryConflict",
     "PositionFillConflict",
+    "validate_market_contract",
     "validate_transition",
 ]
