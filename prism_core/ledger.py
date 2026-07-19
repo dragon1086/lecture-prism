@@ -55,6 +55,15 @@ CREATE TABLE IF NOT EXISTS realized_trades (
 );
 """
 
+_UNRESOLVED_ORDER_STATUSES = (
+    OrderStatus.CREATED,
+    OrderStatus.PREVIEWED,
+    OrderStatus.SUBMITTED,
+    OrderStatus.ACCEPTED,
+    OrderStatus.PARTIALLY_FILLED,
+    OrderStatus.UNKNOWN,
+)
+
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -226,6 +235,109 @@ class Ledger:
                     )
         return self.get_order(intent.client_order_id)
 
+    def create_order_if_admissible(
+        self, intent: OrderIntent
+    ) -> OrderRecord | None:
+        with self._connect(immediate=True) as conn:
+            existing = conn.execute(
+                "SELECT * FROM broker_orders WHERE client_order_id=?",
+                (intent.client_order_id,),
+            ).fetchone()
+            if existing is not None:
+                if not self._order_payload_matches(existing, intent):
+                    raise ValueError(
+                        f"order id collision: {intent.client_order_id}"
+                    )
+                status = OrderStatus(existing["status"])
+                if status is OrderStatus.UNKNOWN:
+                    return None
+                if status in _UNRESOLVED_ORDER_STATUSES:
+                    placeholders = ",".join(
+                        "?" for _ in _UNRESOLVED_ORDER_STATUSES
+                    )
+                    other = conn.execute(
+                        "SELECT 1 FROM broker_orders "
+                        f"WHERE market=? AND symbol=? AND client_order_id<>? "
+                        f"AND status IN ({placeholders}) LIMIT 1",
+                        (
+                            intent.market.value,
+                            intent.symbol,
+                            intent.client_order_id,
+                            *(
+                                item.value
+                                for item in _UNRESOLVED_ORDER_STATUSES
+                            ),
+                        ),
+                    ).fetchone()
+                    if other is not None:
+                        return None
+                return self._row_to_order(existing)
+
+            position = conn.execute(
+                "SELECT 1 FROM positions WHERE market=? AND symbol=?",
+                (intent.market.value, intent.symbol),
+            ).fetchone()
+            if intent.side is OrderSide.BUY and position is not None:
+                return None
+            if intent.side is OrderSide.SELL and position is None:
+                return None
+
+            placeholders = ",".join(
+                "?" for _ in _UNRESOLVED_ORDER_STATUSES
+            )
+            unresolved = conn.execute(
+                "SELECT 1 FROM broker_orders "
+                f"WHERE market=? AND symbol=? AND status IN ({placeholders}) "
+                "LIMIT 1",
+                (
+                    intent.market.value,
+                    intent.symbol,
+                    *(item.value for item in _UNRESOLVED_ORDER_STATUSES),
+                ),
+            ).fetchone()
+            if unresolved is not None:
+                return None
+
+            now = _now()
+            conn.execute(
+                "INSERT INTO broker_orders "
+                "(client_order_id,market,symbol,side,order_type,quantity,limit_price,currency,strategy_id,reason,status,created_at,updated_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (
+                    intent.client_order_id,
+                    intent.market.value,
+                    intent.symbol,
+                    intent.side.value,
+                    intent.order_type.value,
+                    str(intent.quantity),
+                    (
+                        str(intent.limit_price)
+                        if intent.limit_price is not None
+                        else None
+                    ),
+                    intent.currency,
+                    intent.strategy_id,
+                    intent.reason,
+                    OrderStatus.CREATED.value,
+                    now,
+                    now,
+                ),
+            )
+            conn.execute(
+                "INSERT INTO order_events "
+                "(client_order_id,status,occurred_at) VALUES (?,?,?)",
+                (
+                    intent.client_order_id,
+                    OrderStatus.CREATED.value,
+                    now,
+                ),
+            )
+            created = conn.execute(
+                "SELECT * FROM broker_orders WHERE client_order_id=?",
+                (intent.client_order_id,),
+            ).fetchone()
+            return self._row_to_order(created)
+
     def get_order(self, client_order_id: str) -> OrderRecord:
         with self._connect() as conn:
             row = conn.execute(
@@ -270,6 +382,25 @@ class Ledger:
                 "SELECT * FROM positions ORDER BY market,symbol"
             ).fetchall()
         return [self._row_to_position(row) for row in rows]
+
+    def has_unresolved_order(self, market: Market, symbol: str) -> bool:
+        if not isinstance(market, Market):
+            raise ValueError("market must be a Market")
+        if not isinstance(symbol, str) or not symbol.strip():
+            raise ValueError("symbol is required")
+        placeholders = ",".join("?" for _ in _UNRESOLVED_ORDER_STATUSES)
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT 1 FROM broker_orders "
+                f"WHERE market=? AND symbol=? AND status IN ({placeholders}) "
+                "LIMIT 1",
+                (
+                    market.value,
+                    symbol,
+                    *(status.value for status in _UNRESOLVED_ORDER_STATUSES),
+                ),
+            ).fetchone()
+        return row is not None
 
     def count_realized_trades(self) -> int:
         with self._connect() as conn:

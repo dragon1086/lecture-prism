@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from .domain import Fill, OrderIntent, OrderRecord, OrderStatus, Position
+from .domain import Fill, Market, OrderIntent, OrderRecord, OrderStatus, Position
 from .ledger import Ledger
 
 
@@ -35,6 +35,18 @@ class PaperBroker:
 
     def submit_order(self, intent: OrderIntent) -> OrderRecord:
         record = self.ledger.create_order(intent)
+        while record.status in _SUBMIT_PROGRESS:
+            record = self.ledger.transition_order(
+                intent.client_order_id, _SUBMIT_PROGRESS[record.status]
+            )
+        return record
+
+    def submit_order_if_admissible(
+        self, intent: OrderIntent
+    ) -> OrderRecord | None:
+        record = self.ledger.create_order_if_admissible(intent)
+        if record is None:
+            return None
         while record.status in _SUBMIT_PROGRESS:
             record = self.ledger.transition_order(
                 intent.client_order_id, _SUBMIT_PROGRESS[record.status]
@@ -84,6 +96,12 @@ class PaperBroker:
 
     def get_positions(self) -> list[Position]:
         return self.ledger.list_positions()
+
+    def get_order(self, client_order_id: str) -> OrderRecord:
+        return self.ledger.get_order(client_order_id)
+
+    def has_unresolved_order(self, market: Market, symbol: str) -> bool:
+        return self.ledger.has_unresolved_order(market, symbol)
 
     def reconcile(self) -> list[Position]:
         return self.ledger.list_positions()

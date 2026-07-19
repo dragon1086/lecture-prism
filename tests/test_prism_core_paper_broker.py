@@ -530,6 +530,17 @@ class PaperBrokerTest(unittest.TestCase):
         self.assertEqual(restarted.reconcile(), restarted.get_positions())
         self.assertEqual(restarted.reconcile(), self.broker.get_positions())
 
+    def test_unresolved_order_query_is_exposed_by_broker(self):
+        intent = self._us_order("unresolved:AAPL:BUY")
+        self.broker.submit_order(intent)
+        self.broker.mark_unknown(intent.client_order_id)
+
+        self.assertTrue(
+            PaperBroker(Ledger(self.path)).has_unresolved_order(
+                Market.US, "AAPL"
+            )
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

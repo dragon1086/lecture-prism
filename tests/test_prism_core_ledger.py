@@ -653,6 +653,52 @@ class PrismCoreLedgerTest(unittest.TestCase):
         self.assertEqual(raised.high_since_entry, Decimal("120.00"))
         self.assertEqual(lowered.high_since_entry, Decimal("120.00"))
 
+    def test_unresolved_order_query_includes_unknown_and_excludes_terminal(self):
+        intent = buy_intent("unresolved:AAPL:BUY")
+        self._advance(intent, accepted=True)
+
+        self.assertTrue(self.ledger.has_unresolved_order(Market.US, "AAPL"))
+        self.ledger.transition_order(
+            intent.client_order_id, OrderStatus.UNKNOWN
+        )
+        self.assertTrue(self.ledger.has_unresolved_order(Market.US, "AAPL"))
+        self.ledger.transition_order(
+            intent.client_order_id, OrderStatus.CANCELED
+        )
+        self.assertFalse(self.ledger.has_unresolved_order(Market.US, "AAPL"))
+
+    def test_concurrent_entry_admission_creates_only_one_symbol_order(self):
+        intents = (
+            buy_intent("concurrent-1:AAPL:BUY"),
+            buy_intent("concurrent-2:AAPL:BUY"),
+        )
+        ready = threading.Barrier(2)
+        results = []
+        errors = []
+
+        def admit(intent):
+            try:
+                ready.wait(2)
+                results.append(
+                    Ledger(self.path).create_order_if_admissible(intent)
+                )
+            except Exception as exc:
+                errors.append(exc)
+
+        workers = [
+            threading.Thread(target=admit, args=(intent,))
+            for intent in intents
+        ]
+        for worker in workers:
+            worker.start()
+        for worker in workers:
+            worker.join(2)
+
+        self.assertFalse(any(worker.is_alive() for worker in workers))
+        self.assertEqual(errors, [])
+        self.assertEqual(sum(result is not None for result in results), 1)
+        self.assertEqual(self._table_count("broker_orders"), 1)
+
     def _run_interleaved_writer(self, writer, select_prefix, operation):
         ready = threading.Event()
         release = threading.Event()
