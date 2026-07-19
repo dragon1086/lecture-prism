@@ -26,7 +26,12 @@ class DatabaseCoreSchemaTest(unittest.TestCase):
                 "WHERE type='index' AND tbl_name=? ORDER BY name",
                 (table,),
             ).fetchall()
-        return sql, rows, indexes
+            triggers = conn.execute(
+                "SELECT name,sql FROM sqlite_master "
+                "WHERE type='trigger' AND tbl_name=? ORDER BY name",
+                (table,),
+            ).fetchall()
+        return sql, rows, indexes, triggers
 
     def test_init_db_adds_core_ledger_without_breaking_legacy_tables(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -260,7 +265,7 @@ class DatabaseCoreSchemaTest(unittest.TestCase):
                 ):
                     Ledger(path)
 
-    def test_unknown_required_column_is_rejected_without_mutation(self):
+    def test_unknown_not_null_column_is_rejected_without_mutation(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "extra-required.db"
             Ledger(path)
@@ -280,13 +285,13 @@ class DatabaseCoreSchemaTest(unittest.TestCase):
 
             with self.assertRaisesRegex(
                 IncompatibleLedgerSchema,
-                "positions.rogue.*unknown NOT NULL.*usable default",
+                "positions.*unknown columns.*rogue",
             ):
                 Ledger(path)
 
             self.assertEqual(self._schema_snapshot(path, "positions"), before)
 
-    def test_unknown_required_column_with_unsafe_expression_default_is_rejected(self):
+    def test_unknown_expression_default_column_is_rejected_without_mutation(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "unsafe-default.db"
             ledger = Ledger(path)
@@ -326,7 +331,7 @@ class DatabaseCoreSchemaTest(unittest.TestCase):
 
             with self.assertRaisesRegex(
                 IncompatibleLedgerSchema,
-                "broker_orders.rogue.*without a usable default",
+                "broker_orders.*unknown columns.*rogue",
             ):
                 Ledger(path)
 
@@ -490,18 +495,370 @@ class DatabaseCoreSchemaTest(unittest.TestCase):
                 self._schema_snapshot(path, "order_events"), before
             )
 
-    def test_nullable_extra_column_and_nonunique_index_are_write_safe(self):
+    def test_nocase_primary_key_indexes_are_rejected_without_mutation(self):
+        cases = (
+            (
+                "prism_core_meta",
+                "key TEXT PRIMARY KEY",
+                "key TEXT COLLATE NOCASE PRIMARY KEY",
+            ),
+            (
+                "broker_orders",
+                "client_order_id TEXT PRIMARY KEY",
+                "client_order_id TEXT COLLATE NOCASE PRIMARY KEY",
+            ),
+            (
+                "fills",
+                "fill_id TEXT PRIMARY KEY",
+                "fill_id TEXT COLLATE NOCASE PRIMARY KEY",
+            ),
+            (
+                "positions",
+                "market TEXT NOT NULL",
+                "market TEXT COLLATE NOCASE NOT NULL",
+            ),
+        )
+        for table, original, replacement in cases:
+            with self.subTest(table=table), tempfile.TemporaryDirectory() as tmp:
+                path = Path(tmp) / f"{table}-nocase-pk.db"
+                broker = PaperBroker(Ledger(path))
+                intent = OrderIntent(
+                    "Case:AAPL:BUY",
+                    Market.US,
+                    "AAPL",
+                    OrderSide.BUY,
+                    OrderType.MARKET,
+                    Decimal("1"),
+                    None,
+                    "USD",
+                )
+                broker.submit_order(intent)
+                broker.fill_order(
+                    intent.client_order_id,
+                    "Case-Fill",
+                    Decimal("1"),
+                    Decimal("100"),
+                )
+                with sqlite3.connect(path) as conn:
+                    table_sql = conn.execute(
+                        "SELECT sql FROM sqlite_master "
+                        "WHERE type='table' AND name=?",
+                        (table,),
+                    ).fetchone()[0]
+                    self.assertIn(original, table_sql)
+                    columns = [
+                        row[1]
+                        for row in conn.execute(
+                            f'PRAGMA table_info("{table}")'
+                        ).fetchall()
+                    ]
+                    quoted = ",".join(f'"{column}"' for column in columns)
+                    old_table = f"old_{table}"
+                    conn.execute(
+                        f'ALTER TABLE "{table}" RENAME TO "{old_table}"'
+                    )
+                    conn.execute(table_sql.replace(original, replacement, 1))
+                    conn.execute(
+                        f'INSERT INTO "{table}" ({quoted}) '
+                        f'SELECT {quoted} FROM "{old_table}"'
+                    )
+                    conn.execute(f'DROP TABLE "{old_table}"')
+                before = self._schema_snapshot(path, table)
+
+                with self.assertRaisesRegex(
+                    IncompatibleLedgerSchema,
+                    f"{table}.*non-BINARY.*PRIMARY KEY",
+                ):
+                    Ledger(path)
+
+                self.assertEqual(self._schema_snapshot(path, table), before)
+
+    def test_integer_primary_key_must_remain_a_rowid_alias(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "non-rowid-integer-pk.db"
+            ledger = Ledger(path)
+            ledger.create_order(
+                OrderIntent(
+                    "existing:AAPL:BUY",
+                    Market.US,
+                    "AAPL",
+                    OrderSide.BUY,
+                    OrderType.MARKET,
+                    Decimal("1"),
+                    None,
+                    "USD",
+                )
+            )
+            with sqlite3.connect(path) as conn:
+                table_sql = conn.execute(
+                    "SELECT sql FROM sqlite_master "
+                    "WHERE type='table' AND name='order_events'"
+                ).fetchone()[0]
+                self.assertIn("id INTEGER PRIMARY KEY AUTOINCREMENT", table_sql)
+                conn.execute("ALTER TABLE order_events RENAME TO old_events")
+                conn.execute(
+                    table_sql.replace(
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT",
+                        "id INTEGER PRIMARY KEY DESC",
+                        1,
+                    )
+                )
+                conn.execute(
+                    "INSERT INTO order_events "
+                    "(id,client_order_id,status,occurred_at) "
+                    "SELECT id,client_order_id,status,occurred_at "
+                    "FROM old_events"
+                )
+                conn.execute("DROP TABLE old_events")
+            before = self._schema_snapshot(path, "order_events")
+
+            with self.assertRaisesRegex(
+                IncompatibleLedgerSchema,
+                "order_events.*INTEGER rowid PRIMARY KEY",
+            ):
+                Ledger(path)
+
+            self.assertEqual(
+                self._schema_snapshot(path, "order_events"), before
+            )
+
+    def test_unknown_columns_are_rejected_even_when_locally_omittable(self):
+        additions = (
+            ("classroom_note TEXT", "unknown columns"),
+            (
+                "classroom_tag TEXT NOT NULL DEFAULT 'safe'",
+                "unknown columns",
+            ),
+            (
+                "rogue_nullable TEXT CHECK(symbol='AAPL')",
+                "unexpected CHECK constraint",
+            ),
+            (
+                "rogue_defaulted TEXT NOT NULL DEFAULT 'safe' "
+                "CHECK(symbol='AAPL')",
+                "unexpected CHECK constraint",
+            ),
+            (
+                "rogue_generated TEXT GENERATED ALWAYS AS (symbol) VIRTUAL",
+                "unknown columns",
+            ),
+        )
+        for index, (definition, message) in enumerate(additions):
+            with self.subTest(definition=definition), tempfile.TemporaryDirectory() as tmp:
+                path = Path(tmp) / f"unknown-column-{index}.db"
+                ledger = Ledger(path)
+                ledger.create_order(
+                    OrderIntent(
+                        "existing:AAPL:BUY",
+                        Market.US,
+                        "AAPL",
+                        OrderSide.BUY,
+                        OrderType.MARKET,
+                        Decimal("1"),
+                        None,
+                        "USD",
+                    )
+                )
+                with sqlite3.connect(path) as conn:
+                    conn.execute(
+                        f"ALTER TABLE broker_orders ADD COLUMN {definition}"
+                    )
+                before = self._schema_snapshot(path, "broker_orders")
+
+                with self.assertRaisesRegex(
+                    IncompatibleLedgerSchema,
+                    f"broker_orders.*{message}",
+                ):
+                    Ledger(path)
+
+                self.assertEqual(
+                    self._schema_snapshot(path, "broker_orders"), before
+                )
+
+    def test_modeled_column_cannot_be_replaced_by_generated_semantics(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "generated-modeled-column.db"
+            broker = PaperBroker(Ledger(path))
+            intent = OrderIntent(
+                "generated:AAPL:BUY",
+                Market.US,
+                "AAPL",
+                OrderSide.BUY,
+                OrderType.MARKET,
+                Decimal("1"),
+                None,
+                "USD",
+            )
+            broker.submit_order(intent)
+            broker.fill_order(
+                intent.client_order_id,
+                "generated-fill",
+                Decimal("1"),
+                Decimal("100"),
+            )
+            with sqlite3.connect(path) as conn:
+                table_sql = conn.execute(
+                    "SELECT sql FROM sqlite_master "
+                    "WHERE type='table' AND name='positions'"
+                ).fetchone()[0]
+                self.assertIn("entry_client_order_id TEXT", table_sql)
+                conn.execute("ALTER TABLE positions RENAME TO old_positions")
+                conn.execute(
+                    table_sql.replace(
+                        "entry_client_order_id TEXT",
+                        "entry_client_order_id TEXT GENERATED ALWAYS AS "
+                        "(strategy_id) VIRTUAL",
+                        1,
+                    )
+                )
+                columns = (
+                    "market,symbol,quantity,average_price,currency,"
+                    "high_since_entry,strategy_id,updated_at"
+                )
+                conn.execute(
+                    f"INSERT INTO positions ({columns}) "
+                    f"SELECT {columns} FROM old_positions"
+                )
+                conn.execute("DROP TABLE old_positions")
+            before = self._schema_snapshot(path, "positions")
+
+            with self.assertRaisesRegex(
+                IncompatibleLedgerSchema,
+                "positions.entry_client_order_id.*generated",
+            ):
+                Ledger(path)
+
+            self.assertEqual(self._schema_snapshot(path, "positions"), before)
+
+    def test_check_on_modeled_column_is_rejected_without_mutation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "modeled-column-check.db"
+            ledger = Ledger(path)
+            ledger.create_order(
+                OrderIntent(
+                    "existing:AAPL:BUY",
+                    Market.US,
+                    "AAPL",
+                    OrderSide.BUY,
+                    OrderType.MARKET,
+                    Decimal("1"),
+                    None,
+                    "USD",
+                )
+            )
+            with sqlite3.connect(path) as conn:
+                table_sql = conn.execute(
+                    "SELECT sql FROM sqlite_master "
+                    "WHERE type='table' AND name='broker_orders'"
+                ).fetchone()[0]
+                self.assertIn("symbol TEXT NOT NULL", table_sql)
+                columns = [
+                    row[1]
+                    for row in conn.execute(
+                        "PRAGMA table_info(broker_orders)"
+                    ).fetchall()
+                ]
+                quoted = ",".join(f'"{column}"' for column in columns)
+                conn.execute(
+                    "ALTER TABLE broker_orders RENAME TO old_broker_orders"
+                )
+                conn.execute(
+                    table_sql.replace(
+                        "symbol TEXT NOT NULL",
+                        "symbol TEXT NOT NULL CHECK(symbol='AAPL')",
+                        1,
+                    )
+                )
+                conn.execute(
+                    f"INSERT INTO broker_orders ({quoted}) "
+                    f"SELECT {quoted} FROM old_broker_orders"
+                )
+                conn.execute("DROP TABLE old_broker_orders")
+            before = self._schema_snapshot(path, "broker_orders")
+
+            with self.assertRaisesRegex(
+                IncompatibleLedgerSchema,
+                "broker_orders.*unexpected CHECK constraint",
+            ):
+                Ledger(path)
+
+            self.assertEqual(
+                self._schema_snapshot(path, "broker_orders"), before
+            )
+
+    def test_trigger_on_owned_table_is_rejected_without_mutation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "hostile-trigger.db"
+            ledger = Ledger(path)
+            ledger.create_order(
+                OrderIntent(
+                    "existing:AAPL:BUY",
+                    Market.US,
+                    "AAPL",
+                    OrderSide.BUY,
+                    OrderType.MARKET,
+                    Decimal("1"),
+                    None,
+                    "USD",
+                )
+            )
+            with sqlite3.connect(path) as conn:
+                conn.execute(
+                    "CREATE TRIGGER reject_msft_order "
+                    "BEFORE INSERT ON broker_orders "
+                    "WHEN NEW.symbol='MSFT' BEGIN "
+                    "SELECT RAISE(ABORT,'blocked by hostile trigger'); END"
+                )
+            before = self._schema_snapshot(path, "broker_orders")
+
+            with self.assertRaisesRegex(
+                IncompatibleLedgerSchema,
+                "broker_orders.*unexpected triggers.*reject_msft_order",
+            ):
+                Ledger(path)
+
+            self.assertEqual(
+                self._schema_snapshot(path, "broker_orders"), before
+            )
+
+    def test_quoted_hostile_unique_name_raises_schema_error(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "quoted-hostile-unique.db"
+            ledger = Ledger(path)
+            ledger.create_order(
+                OrderIntent(
+                    "existing:AAPL:BUY",
+                    Market.US,
+                    "AAPL",
+                    OrderSide.BUY,
+                    OrderType.MARKET,
+                    Decimal("1"),
+                    None,
+                    "USD",
+                )
+            )
+            with sqlite3.connect(path) as conn:
+                conn.execute(
+                    'CREATE UNIQUE INDEX "rogue""quote" '
+                    "ON broker_orders(symbol)"
+                )
+            before = self._schema_snapshot(path, "broker_orders")
+
+            with self.assertRaisesRegex(
+                IncompatibleLedgerSchema,
+                "broker_orders.*unexpected UNIQUE.*symbol",
+            ):
+                Ledger(path)
+
+            self.assertEqual(
+                self._schema_snapshot(path, "broker_orders"), before
+            )
+
+    def test_nonunique_index_is_write_safe_on_canonical_columns(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "harmless-additions.db"
             Ledger(path)
             with sqlite3.connect(path) as conn:
-                conn.execute(
-                    "ALTER TABLE broker_orders ADD COLUMN classroom_note TEXT"
-                )
-                conn.execute(
-                    "ALTER TABLE broker_orders ADD COLUMN classroom_tag "
-                    "TEXT NOT NULL DEFAULT 'safe'"
-                )
                 conn.execute(
                     "CREATE INDEX ix_broker_orders_symbol "
                     "ON broker_orders(symbol)"
@@ -509,9 +866,9 @@ class DatabaseCoreSchemaTest(unittest.TestCase):
 
             broker = PaperBroker(Ledger(path))
             intent = OrderIntent(
-                "safe-extra:AAPL:BUY",
+                "safe-extra:MSFT:BUY",
                 Market.US,
-                "AAPL",
+                "MSFT",
                 OrderSide.BUY,
                 OrderType.MARKET,
                 Decimal("1"),
@@ -529,12 +886,6 @@ class DatabaseCoreSchemaTest(unittest.TestCase):
             self.assertEqual(filled.intent, intent)
             self.assertEqual(broker.get_positions()[0].quantity, Decimal("1"))
             with sqlite3.connect(path) as conn:
-                self.assertEqual(
-                    conn.execute(
-                        "SELECT classroom_note,classroom_tag FROM broker_orders"
-                    ).fetchone(),
-                    (None, "safe"),
-                )
                 self.assertEqual(
                     conn.execute(
                         "SELECT \"unique\" FROM pragma_index_list('broker_orders') "

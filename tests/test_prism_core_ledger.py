@@ -141,6 +141,20 @@ class PrismCoreLedgerTest(unittest.TestCase):
             return conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
 
     @staticmethod
+    def _fill_mutation_snapshot(path):
+        with sqlite3.connect(path) as conn:
+            return tuple(
+                conn.execute(f'SELECT * FROM "{table}" ORDER BY rowid').fetchall()
+                for table in (
+                    "broker_orders",
+                    "order_events",
+                    "fills",
+                    "positions",
+                    "realized_trades",
+                )
+            )
+
+    @staticmethod
     def _unsafe_intent(**changes):
         intent = buy_intent()
         for name, value in changes.items():
@@ -702,6 +716,89 @@ class PrismCoreLedgerTest(unittest.TestCase):
                     )
                 with self.assertRaisesRegex(ValueError, message):
                     Ledger(self.path).list_positions()
+
+    def test_buy_fill_validates_corrupt_position_before_any_mutation(self):
+        self._assert_corrupt_position_blocks_fill(OrderSide.BUY)
+
+    def test_sell_fill_validates_corrupt_position_before_any_mutation(self):
+        self._assert_corrupt_position_blocks_fill(OrderSide.SELL)
+
+    def _assert_corrupt_position_blocks_fill(self, side):
+        corruptions = (
+            ("quantity", "0", "quantity must be positive"),
+            ("average_price", "0", "average_price must be positive"),
+            ("high_since_entry", "0", "high_since_entry must be positive"),
+            (
+                "high_since_entry",
+                "99",
+                "high_since_entry cannot be below average_price",
+            ),
+        )
+        for column, value, message in corruptions:
+            with (
+                self.subTest(side=side, column=column, value=value),
+                tempfile.TemporaryDirectory() as tmp,
+            ):
+                path = Path(tmp) / f"corrupt-{side.value.lower()}-fill.db"
+                ledger = Ledger(path)
+                entry = buy_intent(
+                    "corrupt:AAPL:BUY", Decimal("2"), Decimal("100")
+                )
+                ledger.create_order(entry)
+                ledger.transition_order(
+                    entry.client_order_id, OrderStatus.PREVIEWED
+                )
+                ledger.transition_order(
+                    entry.client_order_id, OrderStatus.SUBMITTED
+                )
+                ledger.transition_order(
+                    entry.client_order_id, OrderStatus.ACCEPTED
+                )
+                ledger.record_fill(
+                    self._fill(
+                        "corrupt-open",
+                        entry,
+                        Decimal("1"),
+                        Decimal("100"),
+                    )
+                )
+                if side is OrderSide.BUY:
+                    intent = entry
+                    fill_id = "corrupt-buy-continuation"
+                else:
+                    intent = sell_intent(
+                        "corrupt:AAPL:SELL", Decimal("1")
+                    )
+                    ledger.create_order(intent)
+                    ledger.transition_order(
+                        intent.client_order_id, OrderStatus.PREVIEWED
+                    )
+                    ledger.transition_order(
+                        intent.client_order_id, OrderStatus.SUBMITTED
+                    )
+                    ledger.transition_order(
+                        intent.client_order_id, OrderStatus.ACCEPTED
+                    )
+                    fill_id = "corrupt-sell"
+                with sqlite3.connect(path) as conn:
+                    conn.execute(
+                        f'UPDATE positions SET "{column}"=? '
+                        "WHERE market='US' AND symbol='AAPL'",
+                        (value,),
+                    )
+                before = self._fill_mutation_snapshot(path)
+
+                with self.assertRaisesRegex(ValueError, message):
+                    ledger.record_fill(
+                        self._fill(
+                            fill_id,
+                            intent,
+                            Decimal("1"),
+                            Decimal("100"),
+                        )
+                    )
+
+                self.assertEqual(self._fill_mutation_snapshot(path), before)
 
     def test_decimal_columns_are_text_and_round_trip_exactly(self):
         intent = buy_intent(

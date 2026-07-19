@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 import sqlite3
 import time
 from collections import Counter
@@ -102,13 +101,27 @@ _VERSION_ONE_COLUMNS = {
         "completed_at",
     },
 }
-_CURRENT_COLUMNS = {
+_VERSION_TWO_COLUMNS = {
     **_VERSION_ONE_COLUMNS,
-    "positions": _VERSION_ONE_COLUMNS["positions"] | {"entry_client_order_id"},
+    "classroom_replays": _VERSION_ONE_COLUMNS["classroom_replays"]
+    | {"phase"},
+}
+_VERSION_THREE_COLUMNS = {
+    **_VERSION_TWO_COLUMNS,
     "realized_trades": _VERSION_ONE_COLUMNS["realized_trades"]
     | {"exit_client_order_id", "exit_fill_id"},
-    "classroom_replays": _VERSION_ONE_COLUMNS["classroom_replays"]
+    "classroom_replays": _VERSION_TWO_COLUMNS["classroom_replays"]
     | {"phase", "abort_reason", "aborted_at"},
+}
+_CURRENT_COLUMNS = {
+    **_VERSION_THREE_COLUMNS,
+    "positions": _VERSION_ONE_COLUMNS["positions"] | {"entry_client_order_id"},
+}
+_SCHEMA_COLUMNS_BY_VERSION = {
+    1: _VERSION_ONE_COLUMNS,
+    2: _VERSION_TWO_COLUMNS,
+    3: _VERSION_THREE_COLUMNS,
+    4: _CURRENT_COLUMNS,
 }
 _PRIMARY_KEYS = {
     "prism_core_meta": ("key",),
@@ -209,17 +222,55 @@ _CLEANUP_ELIGIBLE_ABORT_REASONS = (
     "noncanonical_realized_trade",
     "noncanonical_trade_provenance",
 )
-_SAFE_SQL_DEFAULT = re.compile(
-    r"^(?:"
-    r"[-+]?(?:(?:\d+(?:\.\d*)?)|(?:\.\d+))(?:[eE][-+]?\d+)?"
-    r"|X'[0-9A-Fa-f]*'"
-    r"|'(?:[^']|'')*'"
-    r")$"
-)
-
-
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def _sql_has_unquoted_keyword(sql: str, keyword: str) -> bool:
+    """Find a DDL keyword while ignoring SQLite quotes and comments."""
+
+    target = keyword.upper()
+    index = 0
+    while index < len(sql):
+        char = sql[index]
+        next_char = sql[index + 1] if index + 1 < len(sql) else ""
+        if char == "-" and next_char == "-":
+            newline = sql.find("\n", index + 2)
+            index = len(sql) if newline < 0 else newline + 1
+            continue
+        if char == "/" and next_char == "*":
+            closing = sql.find("*/", index + 2)
+            index = len(sql) if closing < 0 else closing + 2
+            continue
+        if char in {"'", '"', "`"}:
+            quote = char
+            index += 1
+            while index < len(sql):
+                if sql[index] != quote:
+                    index += 1
+                    continue
+                if index + 1 < len(sql) and sql[index + 1] == quote:
+                    index += 2
+                    continue
+                index += 1
+                break
+            continue
+        if char == "[":
+            closing = sql.find("]", index + 1)
+            index = len(sql) if closing < 0 else closing + 1
+            continue
+        if char.isalpha() or char == "_":
+            end = index + 1
+            while end < len(sql) and (
+                sql[end].isalnum() or sql[end] in {"_", "$"}
+            ):
+                end += 1
+            if sql[index:end].upper() == target:
+                return True
+            index = end
+            continue
+        index += 1
+    return False
 
 
 @dataclass(frozen=True)
@@ -243,7 +294,9 @@ class Ledger:
     def _table_columns(conn: sqlite3.Connection, table: str) -> set[str]:
         return {
             row[1]
-            for row in conn.execute(f'PRAGMA table_info("{table}")').fetchall()
+            for row in conn.execute(
+                f'PRAGMA table_xinfo("{table}")'
+            ).fetchall()
         }
 
     @staticmethod
@@ -272,7 +325,8 @@ class Ledger:
             key_rows = [
                 item
                 for item in conn.execute(
-                    f'PRAGMA index_xinfo("{name}")'
+                    "SELECT * FROM pragma_index_xinfo(?)",
+                    (name,),
                 ).fetchall()
                 if item[5]
             ]
@@ -306,38 +360,134 @@ class Ledger:
             )
 
     @staticmethod
-    def _has_usable_default(value: str | None) -> bool:
-        if value is None:
-            return False
-        normalized = value.strip()
-        while normalized.startswith("(") and normalized.endswith(")"):
-            normalized = normalized[1:-1].strip()
-        return _SAFE_SQL_DEFAULT.fullmatch(normalized) is not None
+    def _validate_primary_key_index(
+        conn: sqlite3.Connection,
+        table: str,
+        expected: tuple[str, ...],
+        columns: dict[str, sqlite3.Row | tuple],
+    ) -> None:
+        indexes = [
+            row
+            for row in conn.execute(
+                f'PRAGMA index_list("{table}")'
+            ).fetchall()
+            if row[3] == "pk"
+        ]
+        is_integer_rowid = (
+            len(expected) == 1
+            and str(columns[expected[0]][2]).upper() == "INTEGER"
+        )
+        if is_integer_rowid:
+            if indexes:
+                raise IncompatibleLedgerSchema(
+                    f"{table} must use an INTEGER rowid PRIMARY KEY"
+                )
+            return
+        if not indexes:
+            raise IncompatibleLedgerSchema(
+                f"{table} is missing its PRIMARY KEY backing index"
+            )
+        if len(indexes) != 1:
+            raise IncompatibleLedgerSchema(
+                f"{table} has incompatible PRIMARY KEY indexes"
+            )
+        index = indexes[0]
+        name = index[1]
+        if not bool(index[2]) or bool(index[4]):
+            raise IncompatibleLedgerSchema(
+                f"{table} has incompatible PRIMARY KEY index {name}"
+            )
+        key_rows = [
+            row
+            for row in conn.execute(
+                "SELECT * FROM pragma_index_xinfo(?)",
+                (name,),
+            ).fetchall()
+            if row[5]
+        ]
+        if any(row[1] < 0 or row[2] is None for row in key_rows):
+            raise IncompatibleLedgerSchema(
+                f"{table} has expression PRIMARY KEY index {name}"
+            )
+        actual = tuple(row[2] for row in key_rows)
+        if actual != expected:
+            raise IncompatibleLedgerSchema(
+                f"{table} has incompatible PRIMARY KEY index columns: "
+                f"{actual!r}"
+            )
+        for row in key_rows:
+            column = row[2]
+            if (
+                str(columns[column][2]).upper() == "TEXT"
+                and str(row[4]).upper() != "BINARY"
+            ):
+                raise IncompatibleLedgerSchema(
+                    f"{table} has non-BINARY collation in PRIMARY KEY "
+                    f"index {name}"
+                )
 
     @classmethod
     def _validate_schema(
         cls,
         conn: sqlite3.Connection,
         required_columns: dict[str, set[str]],
+        *,
+        allowed_columns: dict[str, set[str]] | None = None,
     ) -> None:
+        """Certify the versioned owned-table surface before public use.
+
+        SQLite exposes generated columns and triggers directly, but not every
+        column-level constraint as structured metadata. Unknown columns are
+        therefore rejected rather than guessed safe. Non-unique indexes stay
+        outside the write contract and remain permitted.
+        """
         for table, required in required_columns.items():
+            table_sql_row = conn.execute(
+                "SELECT sql FROM sqlite_master "
+                "WHERE type='table' AND name=?",
+                (table,),
+            ).fetchone()
+            table_sql = table_sql_row[0] if table_sql_row else ""
+            if _sql_has_unquoted_keyword(table_sql, "CHECK"):
+                raise IncompatibleLedgerSchema(
+                    f"{table} has an unexpected CHECK constraint"
+                )
+            triggers = [
+                row[0]
+                for row in conn.execute(
+                    "SELECT name FROM sqlite_master "
+                    "WHERE type='trigger' AND tbl_name=? ORDER BY name",
+                    (table,),
+                ).fetchall()
+            ]
+            if triggers:
+                raise IncompatibleLedgerSchema(
+                    f"{table} has unexpected triggers: {triggers!r}"
+                )
             rows = conn.execute(f'PRAGMA table_xinfo("{table}")').fetchall()
             by_name = {row[1]: row for row in rows}
             actual = set(by_name)
+            allowed = (
+                required
+                if allowed_columns is None
+                else allowed_columns[table]
+            )
             missing = sorted(required - actual)
             if missing:
                 raise IncompatibleLedgerSchema(
                     f"{table} missing required columns: {', '.join(missing)}"
                 )
-            for column in sorted(actual - required):
-                row = by_name[column]
-                if bool(row[3]) and not cls._has_usable_default(row[4]):
-                    raise IncompatibleLedgerSchema(
-                        f"{table}.{column} is an unknown NOT NULL column "
-                        "without a usable default"
-                    )
+            unknown = sorted(actual - allowed)
+            if unknown:
+                raise IncompatibleLedgerSchema(
+                    f"{table} has unknown columns: {', '.join(unknown)}"
+                )
             for column in sorted(required):
                 row = by_name[column]
+                if int(row[6]) != 0:
+                    raise IncompatibleLedgerSchema(
+                        f"{table}.{column} has unexpected generated semantics"
+                    )
                 expected_type, expected_not_null, expected_default = (
                     _COLUMN_CONTRACTS[table][column]
                 )
@@ -363,6 +513,12 @@ class Ledger:
                 raise IncompatibleLedgerSchema(
                     f"{table} has incompatible primary key: {primary_key!r}"
                 )
+            cls._validate_primary_key_index(
+                conn,
+                table,
+                _PRIMARY_KEYS[table],
+                by_name,
+            )
             required_unique = _REQUIRED_UNIQUE_KEYS.get(table, set())
             cls._validate_unique_keys(conn, table, required_unique)
 
@@ -442,7 +598,16 @@ class Ledger:
                     f"unsupported ledger schema_version: {version}"
                 )
             if version:
-                self._validate_schema(conn, _VERSION_ONE_COLUMNS)
+                if version == CURRENT_SCHEMA_VERSION:
+                    self._validate_schema(
+                        conn,
+                        _VERSION_ONE_COLUMNS,
+                        allowed_columns=_CURRENT_COLUMNS,
+                    )
+                else:
+                    self._validate_schema(
+                        conn, _SCHEMA_COLUMNS_BY_VERSION[version]
+                    )
             for target in range(version + 1, CURRENT_SCHEMA_VERSION + 1):
                 self._run_migration(conn, target)
                 conn.execute(
@@ -450,8 +615,16 @@ class Ledger:
                     "WHERE key='schema_version'",
                     (str(target),),
                 )
-            for target in range(2, CURRENT_SCHEMA_VERSION + 1):
-                self._run_migration(conn, target)
+                self._validate_schema(
+                    conn, _SCHEMA_COLUMNS_BY_VERSION[target]
+                )
+            if version == CURRENT_SCHEMA_VERSION:
+                # Older course builds sometimes stamped the current version
+                # before every modeled additive column existed. Repair only
+                # known migrations after the base/unknown/trigger/key safety
+                # preflight; final validation still requires the exact v4 set.
+                for target in range(2, CURRENT_SCHEMA_VERSION + 1):
+                    self._run_migration(conn, target)
             self._validate_schema(conn, _CURRENT_COLUMNS)
             conn.commit()
         except Exception:
@@ -1944,10 +2117,13 @@ class Ledger:
                 "SELECT * FROM positions WHERE market=? AND symbol=?",
                 (fill.market.value, fill.symbol),
             ).fetchone()
-            if fill.side is OrderSide.BUY and position_row is not None:
-                entry_client_order_id = position_row[
-                    "entry_client_order_id"
-                ]
+            position = (
+                self._row_to_position(position_row)
+                if position_row is not None
+                else None
+            )
+            if fill.side is OrderSide.BUY and position is not None:
+                entry_client_order_id = position.entry_client_order_id
                 if entry_client_order_id is None:
                     raise PositionEntryConflict(
                         "position entry ownership is unknown; BUY fill rejected"
@@ -1956,20 +2132,20 @@ class Ledger:
                     raise PositionEntryConflict(
                         "BUY fill does not continue the position entry order"
                     )
-                if order.intent.strategy_id != position_row["strategy_id"]:
+                if order.intent.strategy_id != position.strategy_id:
                     raise PositionEntryConflict(
                         "BUY fill strategy does not own the position entry order"
                     )
             if fill.side is OrderSide.SELL:
-                if position_row is None:
+                if position is None:
                     raise PositionFillConflict(
                         fill.market, fill.symbol, "missing"
                     )
-                if order.intent.strategy_id != position_row["strategy_id"]:
+                if order.intent.strategy_id != position.strategy_id:
                     raise PositionFillConflict(
                         fill.market, fill.symbol, "strategy_changed"
                     )
-                if fill.quantity > Decimal(position_row["quantity"]):
+                if fill.quantity > position.quantity:
                     raise PositionFillConflict(
                         fill.market, fill.symbol, "quantity_changed"
                     )
@@ -1992,25 +2168,15 @@ class Ledger:
 
             now = _now()
             if fill.side is OrderSide.BUY:
-                old_qty = (
-                    Decimal(position_row["quantity"])
-                    if position_row
-                    else Decimal("0")
-                )
+                old_qty = position.quantity if position else Decimal("0")
                 old_avg = (
-                    Decimal(position_row["average_price"])
-                    if position_row
-                    else Decimal("0")
+                    position.average_price if position else Decimal("0")
                 )
                 new_qty = old_qty + fill.quantity
                 new_avg = (
                     (old_qty * old_avg) + (fill.quantity * fill.price)
                 ) / new_qty
-                old_high = (
-                    Decimal(position_row["high_since_entry"])
-                    if position_row
-                    else fill.price
-                )
+                old_high = position.high_since_entry if position else fill.price
                 conn.execute(
                     "INSERT INTO positions (market,symbol,quantity,average_price,currency,high_since_entry,strategy_id,entry_client_order_id,updated_at) "
                     "VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(market,symbol) DO UPDATE SET "
@@ -2029,8 +2195,8 @@ class Ledger:
                     ),
                 )
             else:
-                old_qty = Decimal(position_row["quantity"])
-                old_avg = Decimal(position_row["average_price"])
+                old_qty = position.quantity
+                old_avg = position.average_price
                 remaining = old_qty - fill.quantity
                 conn.execute(
                     "INSERT INTO realized_trades "
@@ -2046,7 +2212,7 @@ class Ledger:
                         str(fill.price),
                         str((fill.price - old_avg) * fill.quantity),
                         normalized_currency,
-                        position_row["strategy_id"],
+                        position.strategy_id,
                         now,
                         fill.client_order_id,
                         fill.fill_id,
