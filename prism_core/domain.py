@@ -100,6 +100,45 @@ def validate_market_contract(
     return normalized_currency
 
 
+@dataclass(frozen=True)
+class Instrument:
+    """A tradeable instrument with an explicit market and settlement contract."""
+
+    symbol: str
+    market: Market
+    exchange: str
+    currency: str
+    name: str
+    sector: str
+    lot_size: Decimal
+    price_precision: int
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.lot_size, Decimal) or not self.lot_size.is_finite():
+            raise ValueError("lot_size must be a finite Decimal")
+        if self.lot_size <= 0:
+            raise ValueError("lot_size must be positive")
+        currency = validate_market_contract(
+            self.market,
+            self.symbol,
+            currency=self.currency,
+            quantity=self.lot_size,
+            quantity_name="lot_size",
+        )
+        for field_name in ("exchange", "name", "sector"):
+            value = getattr(self, field_name)
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError(f"{field_name} is required")
+            object.__setattr__(self, field_name, value.strip())
+        if not isinstance(self.price_precision, int) or isinstance(
+            self.price_precision, bool
+        ) or self.price_precision < 0:
+            raise ValueError("price_precision must be a non-negative integer")
+        if self.market is Market.KR and self.price_precision != 0:
+            raise ValueError("KR price_precision must be 0")
+        object.__setattr__(self, "currency", currency)
+
+
 _TRANSITIONS = {
     OrderStatus.CREATED: {OrderStatus.PREVIEWED, OrderStatus.REJECTED},
     OrderStatus.PREVIEWED: {OrderStatus.SUBMITTED, OrderStatus.REJECTED},

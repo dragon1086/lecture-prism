@@ -1,5 +1,6 @@
 from .domain import (
     Fill,
+    Instrument,
     Market,
     OrderIntent,
     OrderRecord,
@@ -13,11 +14,34 @@ from .domain import (
     validate_transition,
 )
 from .ledger import IncompatibleLedgerSchema
+from .market_data import (
+    DailyBar,
+    FixtureMarketDataProvider,
+    FixtureUniverseProvider,
+    IndexBundle,
+    InvalidMarketData,
+    MarketDataProvider,
+    MarketDataUnavailable,
+    MarketSeries,
+    UniverseMember,
+    UniverseProvider,
+    YFinanceMarketDataProvider,
+    validate_series_for_profile,
+)
 
 __all__ = [
+    "DailyBar",
     "Fill",
+    "FixtureMarketDataProvider",
+    "FixtureUniverseProvider",
     "IncompatibleLedgerSchema",
+    "IndexBundle",
+    "Instrument",
+    "InvalidMarketData",
     "Market",
+    "MarketDataProvider",
+    "MarketDataUnavailable",
+    "MarketSeries",
     "OrderIntent",
     "OrderRecord",
     "OrderSide",
@@ -26,6 +50,10 @@ __all__ = [
     "Position",
     "PositionEntryConflict",
     "PositionFillConflict",
+    "UniverseMember",
+    "UniverseProvider",
+    "YFinanceMarketDataProvider",
     "validate_market_contract",
+    "validate_series_for_profile",
     "validate_transition",
 ]
