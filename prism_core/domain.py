@@ -10,6 +10,14 @@ class Market(str, Enum):
     US = "US"
 
 
+class Regime(str, Enum):
+    STRONG_BULL = "strong_bull"
+    MODERATE_BULL = "moderate_bull"
+    SIDEWAYS = "sideways"
+    MODERATE_BEAR = "moderate_bear"
+    STRONG_BEAR = "strong_bear"
+
+
 class OrderSide(str, Enum):
     BUY = "BUY"
     SELL = "SELL"

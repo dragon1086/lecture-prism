@@ -2,6 +2,7 @@ from .domain import (
     Fill,
     Instrument,
     Market,
+    Regime,
     OrderIntent,
     OrderRecord,
     OrderSide,
@@ -28,6 +29,12 @@ from .market_data import (
     YFinanceMarketDataProvider,
     validate_series_for_profile,
 )
+from .regime import (
+    InsufficientMarketHistory,
+    PulseState,
+    RegimeResult,
+    classify_market_regime,
+)
 
 __all__ = [
     "DailyBar",
@@ -36,6 +43,7 @@ __all__ = [
     "FixtureUniverseProvider",
     "IncompatibleLedgerSchema",
     "IndexBundle",
+    "InsufficientMarketHistory",
     "Instrument",
     "InvalidMarketData",
     "Market",
@@ -50,9 +58,13 @@ __all__ = [
     "Position",
     "PositionEntryConflict",
     "PositionFillConflict",
+    "PulseState",
+    "Regime",
+    "RegimeResult",
     "UniverseMember",
     "UniverseProvider",
     "YFinanceMarketDataProvider",
+    "classify_market_regime",
     "validate_market_contract",
     "validate_series_for_profile",
     "validate_transition",
