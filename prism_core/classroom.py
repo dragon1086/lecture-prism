@@ -35,10 +35,14 @@ _EXPECTED_TRADES = (
 )
 
 
-def _entry_intents(session: str, strategy_id: str) -> list[OrderIntent]:
+def _entry_intents(
+    session: str, strategy_id: str, ledger: Ledger
+) -> list[OrderIntent]:
+    kr_base = f"{session}-1:KR:005930:BUY"
+    us_base = f"{session}-1:US:AAPL:BUY"
     return [
         OrderIntent(
-            f"{session}-1:KR:005930:BUY",
+            ledger.select_replay_order_id(kr_base),
             Market.KR,
             "005930",
             OrderSide.BUY,
@@ -49,7 +53,7 @@ def _entry_intents(session: str, strategy_id: str) -> list[OrderIntent]:
             strategy_id=strategy_id,
         ),
         OrderIntent(
-            f"{session}-1:US:AAPL:BUY",
+            ledger.select_replay_order_id(us_base),
             Market.US,
             "AAPL",
             OrderSide.BUY,
@@ -130,7 +134,9 @@ def _run_replay_under_fence(path: Path, ledger: Ledger) -> dict:
             _require_completed(
                 TradingCycle(PaperBroker(ledger), _ENTRY_QUOTES).run(
                     f"{claim.session_id}-1",
-                    _entry_intents(claim.session_id, claim.strategy_id),
+                    _entry_intents(
+                        claim.session_id, claim.strategy_id, ledger
+                    ),
                     auto_fill=True,
                 )
             )

@@ -251,14 +251,6 @@ class Ledger:
                     )
                     continue
 
-                cleanup_strategies = self._aborted_position_strategies(
-                    conn, targets
-                )
-                self._assert_no_unrelated_unresolved_targets(
-                    conn,
-                    targets,
-                    cleanup_strategies | {row["strategy_id"]},
-                )
                 phase = int(row["phase"])
                 if (
                     expected_trades
@@ -270,6 +262,17 @@ class Ledger:
                     phase = self._rederive_classroom_phase(
                         conn, row["strategy_id"]
                     )
+                cleanup_strategies = self._aborted_position_strategies(
+                    conn, targets
+                )
+                self._assert_replay_order_contract(
+                    conn,
+                    targets,
+                    session_id=row["session_id"],
+                    strategy_id=row["strategy_id"],
+                    phase=phase,
+                    cleanup_strategies=cleanup_strategies,
+                )
 
                 cursor = conn.execute(
                     "UPDATE classroom_replays "
@@ -298,8 +301,10 @@ class Ledger:
                 cleanup_strategies = self._aborted_position_strategies(
                     conn, targets
                 )
-                self._assert_no_unrelated_unresolved_targets(
-                    conn, targets, cleanup_strategies
+                self._assert_replay_order_contract(
+                    conn,
+                    targets,
+                    cleanup_strategies=cleanup_strategies,
                 )
                 sequence = int(
                     conn.execute(
@@ -380,10 +385,14 @@ class Ledger:
         return any(count > expected[trade] for trade, count in actual.items())
 
     @staticmethod
-    def _assert_no_unrelated_unresolved_targets(
+    def _assert_replay_order_contract(
         conn: sqlite3.Connection,
         targets: frozenset[tuple[Market, str]],
-        allowed_strategy_ids: frozenset[str] | set[str],
+        *,
+        session_id: str | None = None,
+        strategy_id: str | None = None,
+        phase: int | None = None,
+        cleanup_strategies: frozenset[str] = frozenset(),
     ) -> None:
         placeholders = ",".join("?" for _ in _UNRESOLVED_ORDER_STATUSES)
         for market, symbol in targets:
@@ -393,18 +402,115 @@ class Ledger:
                 *(status.value for status in _UNRESOLVED_ORDER_STATUSES),
             )
             rows = conn.execute(
-                "SELECT strategy_id FROM broker_orders "
+                "SELECT client_order_id,market,symbol,side,status,strategy_id "
+                "FROM broker_orders "
                 f"WHERE market=? AND symbol=? AND status IN ({placeholders})",
                 params,
             ).fetchall()
-            if any(
-                row["strategy_id"] not in allowed_strategy_ids
-                for row in rows
-            ):
+            for order in rows:
+                if OrderStatus(order["status"]) is OrderStatus.UNKNOWN:
+                    raise RuntimeError(
+                        "classroom replay blocked by UNKNOWN target order"
+                    )
+                if (
+                    strategy_id is not None
+                    and order["strategy_id"] == strategy_id
+                ):
+                    if not Ledger._is_canonical_replay_order(
+                        order, session_id, phase
+                    ):
+                        raise RuntimeError(
+                            "classroom replay blocked by noncanonical "
+                            "replay order"
+                        )
+                    continue
+                if order["strategy_id"] in cleanup_strategies:
+                    cleanup = conn.execute(
+                        "SELECT session_id FROM classroom_replays "
+                        "WHERE strategy_id=? AND status='ABORTED'",
+                        (order["strategy_id"],),
+                    ).fetchone()
+                    if (
+                        cleanup is not None
+                        and Ledger._is_canonical_replay_order(
+                            order, cleanup["session_id"], 3
+                        )
+                    ):
+                        continue
                 raise RuntimeError(
                     "classroom replay blocked by unrelated unresolved "
                     "target order"
                 )
+
+    @staticmethod
+    def _is_canonical_replay_order(
+        order: sqlite3.Row,
+        session_id: str | None,
+        phase: int | None,
+    ) -> bool:
+        if session_id is None or phase not in {1, 3}:
+            return False
+        expected_side = OrderSide.BUY if phase == 1 else OrderSide.SELL
+        if OrderSide(order["side"]) is not expected_side:
+            return False
+        base_id = (
+            f"{session_id}-{phase}:{order['market']}:"
+            f"{order['symbol']}:{expected_side.value}"
+        )
+        client_order_id = order["client_order_id"]
+        if client_order_id == base_id:
+            return True
+        prefix = f"{base_id}:retry-"
+        if not client_order_id.startswith(prefix):
+            return False
+        suffix = client_order_id[len(prefix) :]
+        return (
+            suffix.isdigit()
+            and suffix == str(int(suffix))
+            and int(suffix) >= 1
+        )
+
+    @staticmethod
+    def _select_replay_order_id(
+        conn: sqlite3.Connection,
+        base_id: str,
+        *,
+        retry_filled: bool = False,
+    ) -> str:
+        rows = conn.execute(
+            "SELECT client_order_id,status FROM broker_orders "
+            "WHERE client_order_id=? OR client_order_id LIKE ?",
+            (base_id, f"{base_id}:retry-%"),
+        ).fetchall()
+        canonical: list[tuple[int, sqlite3.Row]] = []
+        for row in rows:
+            client_order_id = row["client_order_id"]
+            if client_order_id == base_id:
+                canonical.append((0, row))
+                continue
+            suffix = client_order_id.removeprefix(f"{base_id}:retry-")
+            if (
+                suffix.isdigit()
+                and suffix == str(int(suffix))
+                and int(suffix) >= 1
+            ):
+                canonical.append((int(suffix), row))
+        if not canonical:
+            return base_id
+        retry_index, latest = max(canonical, key=lambda item: item[0])
+        latest_status = OrderStatus(latest["status"])
+        if latest_status in {
+            OrderStatus.CANCELED,
+            OrderStatus.REJECTED,
+        } or (retry_filled and latest_status is OrderStatus.FILLED):
+            return f"{base_id}:retry-{retry_index + 1}"
+        return latest["client_order_id"]
+
+    def select_replay_order_id(self, base_id: str) -> str:
+        """Return the persisted base or deterministic ``:retry-N`` successor."""
+
+        with self._connect() as conn:
+            return self._select_replay_order_id(conn, base_id)
 
     @staticmethod
     def _aborted_position_strategies(
@@ -485,8 +591,12 @@ class Ledger:
         if next_phase != expected_phase + 1:
             raise ValueError("classroom replay phase must advance by one")
         with self._connect(immediate=True) as conn:
-            self._assert_no_unrelated_unresolved_targets(
-                conn, claim.targets, {claim.strategy_id}
+            self._assert_replay_order_contract(
+                conn,
+                claim.targets,
+                session_id=claim.session_id,
+                strategy_id=claim.strategy_id,
+                phase=expected_phase,
             )
             cursor = conn.execute(
                 "UPDATE classroom_replays SET phase=?,updated_at=? "
@@ -865,14 +975,9 @@ class Ledger:
                 return self._row_to_order(sell_rows[0]), None
 
             base_id = f"{run_id}:{market.value}:{symbol}:SELL"
-            client_order_id = base_id
-            suffix = 1
-            while conn.execute(
-                "SELECT 1 FROM broker_orders WHERE client_order_id=?",
-                (client_order_id,),
-            ).fetchone() is not None:
-                suffix += 1
-                client_order_id = f"{base_id}:{suffix}"
+            client_order_id = self._select_replay_order_id(
+                conn, base_id, retry_filled=True
+            )
 
             intent = OrderIntent(
                 client_order_id=client_order_id,
