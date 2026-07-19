@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sqlite3
 import time
+from collections import Counter
 from contextlib import contextmanager
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
@@ -62,7 +63,8 @@ CREATE TABLE IF NOT EXISTS classroom_replays (
     status TEXT NOT NULL, owner_token TEXT, lease_expires_at REAL,
     phase INTEGER NOT NULL DEFAULT 1,
     realized_trades INTEGER NOT NULL DEFAULT 0,
-    created_at TEXT NOT NULL, updated_at TEXT NOT NULL, completed_at TEXT
+    created_at TEXT NOT NULL, updated_at TEXT NOT NULL, completed_at TEXT,
+    abort_reason TEXT, aborted_at TEXT
 );
 """
 
@@ -87,6 +89,8 @@ class ClassroomReplayClaim:
     strategy_id: str
     owner_token: str
     phase: int
+    targets: frozenset[tuple[Market, str]] = frozenset()
+    cleanup_strategies: frozenset[str] = frozenset()
 
 
 class Ledger:
@@ -113,6 +117,16 @@ class Ledger:
                     "WHERE broker_orders.strategy_id="
                     "classroom_replays.strategy_id "
                     "AND broker_orders.side='SELL')"
+                )
+            if "abort_reason" not in columns:
+                conn.execute(
+                    "ALTER TABLE classroom_replays "
+                    "ADD COLUMN abort_reason TEXT"
+                )
+            if "aborted_at" not in columns:
+                conn.execute(
+                    "ALTER TABLE classroom_replays "
+                    "ADD COLUMN aborted_at TEXT"
                 )
 
     @contextmanager
@@ -182,6 +196,10 @@ class Ledger:
         *,
         lease_seconds: float,
         now: float | None = None,
+        targets: frozenset[tuple[Market, str]] = frozenset(),
+        expected_trades: tuple[
+            tuple[Market, str, Decimal, Decimal, str], ...
+        ] = (),
     ) -> ClassroomReplayClaim | None:
         """Claim the sole incomplete replay or allocate its next sequence."""
 
@@ -192,11 +210,15 @@ class Ledger:
         claimed_at = time.time() if now is None else float(now)
         lease_expires_at = claimed_at + lease_seconds
         with self._connect(immediate=True) as conn:
-            row = conn.execute(
-                "SELECT * FROM classroom_replays "
-                "WHERE status='INCOMPLETE' ORDER BY sequence LIMIT 1"
-            ).fetchone()
-            if row is not None:
+            claimed_existing = False
+            while True:
+                row = conn.execute(
+                    "SELECT * FROM classroom_replays "
+                    "WHERE status='INCOMPLETE' ORDER BY sequence LIMIT 1"
+                ).fetchone()
+                if row is None:
+                    break
+
                 active_owner = row["owner_token"]
                 active_until = row["lease_expires_at"]
                 if (
@@ -205,15 +227,60 @@ class Ledger:
                     and float(active_until) > claimed_at
                 ):
                     return None
+
+                actual_trades = self._classroom_trade_contract(
+                    conn, row["strategy_id"]
+                )
+                if expected_trades and self._has_noncanonical_trade(
+                    actual_trades, expected_trades
+                ):
+                    aborted_at = _now()
+                    conn.execute(
+                        "UPDATE classroom_replays SET status='ABORTED',"
+                        "owner_token=NULL,lease_expires_at=NULL,"
+                        "realized_trades=?,abort_reason=?,aborted_at=?,"
+                        "updated_at=? WHERE sequence=? "
+                        "AND status='INCOMPLETE'",
+                        (
+                            len(actual_trades),
+                            "noncanonical_realized_trade",
+                            aborted_at,
+                            aborted_at,
+                            row["sequence"],
+                        ),
+                    )
+                    continue
+
+                cleanup_strategies = self._aborted_position_strategies(
+                    conn, targets
+                )
+                self._assert_no_unrelated_unresolved_targets(
+                    conn,
+                    targets,
+                    cleanup_strategies | {row["strategy_id"]},
+                )
+                phase = int(row["phase"])
+                if (
+                    expected_trades
+                    and phase == 4
+                    and Counter(actual_trades) != Counter(
+                        self._normalize_expected_trades(expected_trades)
+                    )
+                ):
+                    phase = self._rederive_classroom_phase(
+                        conn, row["strategy_id"]
+                    )
+
                 cursor = conn.execute(
                     "UPDATE classroom_replays "
-                    "SET owner_token=?,lease_expires_at=?,updated_at=? "
+                    "SET owner_token=?,lease_expires_at=?,phase=?,updated_at=? "
                     "WHERE sequence=? AND status='INCOMPLETE' "
                     "AND (owner_token IS NULL OR lease_expires_at IS NULL "
                     "OR lease_expires_at<=?)",
                     (
                         owner_token,
                         lease_expires_at,
+                        phase,
                         _now(),
                         row["sequence"],
                         claimed_at,
@@ -224,8 +291,16 @@ class Ledger:
                 sequence = int(row["sequence"])
                 session_id = row["session_id"]
                 strategy_id = row["strategy_id"]
-                phase = int(row["phase"])
-            else:
+                claimed_existing = True
+                break
+
+            if not claimed_existing:
+                cleanup_strategies = self._aborted_position_strategies(
+                    conn, targets
+                )
+                self._assert_no_unrelated_unresolved_targets(
+                    conn, targets, cleanup_strategies
+                )
                 sequence = int(
                     conn.execute(
                         "SELECT COALESCE(MAX(sequence),0)+1 "
@@ -252,8 +327,121 @@ class Ledger:
                     ),
                 )
         return ClassroomReplayClaim(
-            sequence, session_id, strategy_id, owner_token, phase
+            sequence,
+            session_id,
+            strategy_id,
+            owner_token,
+            phase,
+            targets,
+            cleanup_strategies,
         )
+
+    @staticmethod
+    def _normalize_expected_trades(
+        expected_trades: tuple[
+            tuple[Market, str, Decimal, Decimal, str], ...
+        ],
+    ) -> list[tuple[str, str, Decimal, Decimal, str]]:
+        return [
+            (market.value, symbol, quantity, exit_price, currency)
+            for market, symbol, quantity, exit_price, currency in expected_trades
+        ]
+
+    @staticmethod
+    def _classroom_trade_contract(
+        conn: sqlite3.Connection, strategy_id: str
+    ) -> list[tuple[str, str, Decimal, Decimal, str]]:
+        rows = conn.execute(
+            "SELECT market,symbol,quantity,exit_price,currency "
+            "FROM realized_trades WHERE strategy_id=?",
+            (strategy_id,),
+        ).fetchall()
+        return [
+            (
+                row["market"],
+                row["symbol"],
+                Decimal(row["quantity"]),
+                Decimal(row["exit_price"]),
+                row["currency"],
+            )
+            for row in rows
+        ]
+
+    @classmethod
+    def _has_noncanonical_trade(
+        cls,
+        actual_trades: list[tuple[str, str, Decimal, Decimal, str]],
+        expected_trades: tuple[
+            tuple[Market, str, Decimal, Decimal, str], ...
+        ],
+    ) -> bool:
+        actual = Counter(actual_trades)
+        expected = Counter(cls._normalize_expected_trades(expected_trades))
+        return any(count > expected[trade] for trade, count in actual.items())
+
+    @staticmethod
+    def _assert_no_unrelated_unresolved_targets(
+        conn: sqlite3.Connection,
+        targets: frozenset[tuple[Market, str]],
+        allowed_strategy_ids: frozenset[str] | set[str],
+    ) -> None:
+        placeholders = ",".join("?" for _ in _UNRESOLVED_ORDER_STATUSES)
+        for market, symbol in targets:
+            params = (
+                market.value,
+                symbol,
+                *(status.value for status in _UNRESOLVED_ORDER_STATUSES),
+            )
+            rows = conn.execute(
+                "SELECT strategy_id FROM broker_orders "
+                f"WHERE market=? AND symbol=? AND status IN ({placeholders})",
+                params,
+            ).fetchall()
+            if any(
+                row["strategy_id"] not in allowed_strategy_ids
+                for row in rows
+            ):
+                raise RuntimeError(
+                    "classroom replay blocked by unrelated unresolved "
+                    "target order"
+                )
+
+    @staticmethod
+    def _aborted_position_strategies(
+        conn: sqlite3.Connection,
+        targets: frozenset[tuple[Market, str]],
+    ) -> frozenset[str]:
+        strategies: set[str] = set()
+        for market, symbol in targets:
+            rows = conn.execute(
+                "SELECT positions.strategy_id FROM positions "
+                "JOIN classroom_replays ON "
+                "classroom_replays.strategy_id=positions.strategy_id "
+                "WHERE positions.market=? AND positions.symbol=? "
+                "AND classroom_replays.status='ABORTED'",
+                (market.value, symbol),
+            ).fetchall()
+            strategies.update(row["strategy_id"] for row in rows)
+        return frozenset(strategies)
+
+    @staticmethod
+    def _rederive_classroom_phase(
+        conn: sqlite3.Connection, strategy_id: str
+    ) -> int:
+        position = conn.execute(
+            "SELECT 1 FROM positions WHERE strategy_id=? LIMIT 1",
+            (strategy_id,),
+        ).fetchone()
+        placeholders = ",".join("?" for _ in _UNRESOLVED_ORDER_STATUSES)
+        pending_sell = conn.execute(
+            "SELECT 1 FROM broker_orders WHERE strategy_id=? AND side='SELL' "
+            f"AND status IN ({placeholders}) LIMIT 1",
+            (
+                strategy_id,
+                *(status.value for status in _UNRESOLVED_ORDER_STATUSES),
+            ),
+        ).fetchone()
+        return 3 if position is not None or pending_sell is not None else 1
 
     def renew_classroom_replay(
         self,
@@ -297,6 +485,9 @@ class Ledger:
         if next_phase != expected_phase + 1:
             raise ValueError("classroom replay phase must advance by one")
         with self._connect(immediate=True) as conn:
+            self._assert_no_unrelated_unresolved_targets(
+                conn, claim.targets, {claim.strategy_id}
+            )
             cursor = conn.execute(
                 "UPDATE classroom_replays SET phase=?,updated_at=? "
                 "WHERE sequence=? AND status='INCOMPLETE' "
@@ -333,30 +524,11 @@ class Ledger:
                 or int(row["phase"]) != 4
             ):
                 raise RuntimeError("classroom replay lease lost")
-            trade_rows = conn.execute(
-                "SELECT market,symbol,quantity,exit_price,currency "
-                "FROM realized_trades WHERE strategy_id=?",
-                (claim.strategy_id,),
-            ).fetchall()
             actual_trades = sorted(
-                (
-                    trade["market"],
-                    trade["symbol"],
-                    Decimal(trade["quantity"]),
-                    Decimal(trade["exit_price"]),
-                    trade["currency"],
-                )
-                for trade in trade_rows
+                self._classroom_trade_contract(conn, claim.strategy_id)
             )
             prescribed_trades = sorted(
-                (
-                    market.value,
-                    symbol,
-                    quantity,
-                    exit_price,
-                    currency,
-                )
-                for market, symbol, quantity, exit_price, currency in expected_trades
+                self._normalize_expected_trades(expected_trades)
             )
             realized = len(actual_trades)
             positions = int(

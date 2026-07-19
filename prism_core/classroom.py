@@ -9,7 +9,7 @@ import time
 
 from .cycle import CycleResult, TradingCycle
 from .domain import Market, OrderIntent, OrderSide, OrderType
-from .ledger import Ledger
+from .ledger import ClassroomReplayClaim, Ledger
 from .paper_broker import PaperBroker
 
 
@@ -72,7 +72,10 @@ def _claim_replay(ledger: Ledger, owner_token: str):
     deadline = time.monotonic() + _REPLAY_WAIT_SECONDS
     while True:
         claim = ledger.claim_classroom_replay(
-            owner_token, lease_seconds=_REPLAY_LEASE_SECONDS
+            owner_token,
+            lease_seconds=_REPLAY_LEASE_SECONDS,
+            targets=_TARGETS,
+            expected_trades=_EXPECTED_TRADES,
         )
         if claim is not None:
             return claim
@@ -92,10 +95,33 @@ def _assert_target_ownership(ledger: Ledger, strategy_id: str) -> None:
         raise RuntimeError("classroom replay blocked by unrelated position")
 
 
+def _settle_aborted_positions(
+    path: Path, ledger: Ledger, claim: ClassroomReplayClaim
+) -> None:
+    for strategy_id in claim.cleanup_strategies:
+        quotes = {
+            (position.market, position.symbol): _TRAILING_EXIT_QUOTES[
+                (position.market, position.symbol)
+            ]
+            for position in ledger.list_positions()
+            if position.strategy_id == strategy_id
+            and (position.market, position.symbol) in _TARGETS
+        }
+        if not quotes:
+            continue
+        session_id = strategy_id.removeprefix("classroom-replay:")
+        _require_completed(
+            TradingCycle(PaperBroker(Ledger(path)), quotes).run(
+                f"{session_id}-3", [], auto_fill=True
+            )
+        )
+
+
 def _run_replay_under_fence(path: Path, ledger: Ledger) -> dict:
     owner_token = secrets.token_hex(16)
     claim = _claim_replay(ledger, owner_token)
     try:
+        _settle_aborted_positions(path, ledger, claim)
         _assert_target_ownership(ledger, claim.strategy_id)
         if claim.phase == 1:
             ledger.renew_classroom_replay(

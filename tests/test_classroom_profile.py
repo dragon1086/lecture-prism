@@ -351,6 +351,370 @@ class ClassroomReplayTest(unittest.TestCase):
                 ).fetchone()
             self.assertEqual(replay, ("INCOMPLETE", 4, 0))
 
+    def test_legacy_wrong_trade_is_aborted_and_fresh_sessions_progress(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "classroom.db"
+            wrong_quotes = dict(classroom._TRAILING_EXIT_QUOTES)
+            wrong_quotes[(Market.KR, "005930")] = Decimal("68000")
+            old_strategy = "classroom-replay:classroom-000001"
+
+            with mock.patch.object(
+                classroom, "_TRAILING_EXIT_QUOTES", wrong_quotes
+            ):
+                with self.assertRaisesRegex(RuntimeError, "trade contract"):
+                    run_classroom_replay(path)
+
+            with sqlite3.connect(path) as conn:
+                conn.execute(
+                    "UPDATE realized_trades SET exit_price='70000' "
+                    "WHERE strategy_id=? AND market='KR'",
+                    (old_strategy,),
+                )
+                conn.execute("ALTER TABLE classroom_replays DROP COLUMN phase")
+                old_trades = conn.execute(
+                    "SELECT market,symbol,quantity,exit_price,currency "
+                    "FROM realized_trades WHERE strategy_id=? "
+                    "ORDER BY market,symbol",
+                    (old_strategy,),
+                ).fetchall()
+                old_orders = conn.execute(
+                    "SELECT client_order_id,status FROM broker_orders "
+                    "WHERE strategy_id=? ORDER BY client_order_id",
+                    (old_strategy,),
+                ).fetchall()
+
+            recovered = run_classroom_replay(path)
+            following = run_classroom_replay(path)
+
+            self.assertEqual(recovered["session"], "classroom-000002")
+            self.assertEqual(recovered["realized_trades"], 2)
+            self.assertEqual(recovered["final_positions"], 0)
+            self.assertEqual(following["session"], "classroom-000003")
+            with sqlite3.connect(path) as conn:
+                replays = conn.execute(
+                    "SELECT session_id,status,abort_reason,aborted_at "
+                    "FROM classroom_replays ORDER BY sequence"
+                ).fetchall()
+                preserved_trades = conn.execute(
+                    "SELECT market,symbol,quantity,exit_price,currency "
+                    "FROM realized_trades WHERE strategy_id=? "
+                    "ORDER BY market,symbol",
+                    (old_strategy,),
+                ).fetchall()
+                preserved_orders = conn.execute(
+                    "SELECT client_order_id,status FROM broker_orders "
+                    "WHERE strategy_id=? ORDER BY client_order_id",
+                    (old_strategy,),
+                ).fetchall()
+                canonical = conn.execute(
+                    "SELECT strategy_id,market,symbol,exit_price "
+                    "FROM realized_trades WHERE strategy_id<>? "
+                    "ORDER BY strategy_id,market,symbol",
+                    (old_strategy,),
+                ).fetchall()
+
+            self.assertEqual(
+                [(row[0], row[1]) for row in replays],
+                [
+                    ("classroom-000001", "ABORTED"),
+                    ("classroom-000002", "COMPLETED"),
+                    ("classroom-000003", "COMPLETED"),
+                ],
+            )
+            self.assertEqual(replays[0][2], "noncanonical_realized_trade")
+            self.assertIsNotNone(replays[0][3])
+            self.assertEqual(preserved_trades, old_trades)
+            self.assertEqual(preserved_orders, old_orders)
+            self.assertEqual(
+                canonical,
+                [
+                    (
+                        "classroom-replay:classroom-000002",
+                        "KR",
+                        "005930",
+                        "69000",
+                    ),
+                    (
+                        "classroom-replay:classroom-000002",
+                        "US",
+                        "AAPL",
+                        "175",
+                    ),
+                    (
+                        "classroom-replay:classroom-000003",
+                        "KR",
+                        "005930",
+                        "69000",
+                    ),
+                    (
+                        "classroom-replay:classroom-000003",
+                        "US",
+                        "AAPL",
+                        "175",
+                    ),
+                ],
+            )
+
+    def test_legacy_wrong_partial_exit_is_quarantined_without_history_rewrite(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "classroom.db"
+            real_fill = PaperBroker.fill_order
+            old_strategy = "classroom-replay:classroom-000001"
+            injected = False
+
+            def commit_legacy_wrong_kr_exit(
+                broker, client_order_id, execution_key, quantity, price
+            ):
+                nonlocal injected
+                order = broker.get_order(client_order_id)
+                if (
+                    not injected
+                    and order.intent.side is OrderSide.SELL
+                    and order.intent.market is Market.KR
+                ):
+                    injected = True
+                    real_fill(
+                        broker,
+                        client_order_id,
+                        execution_key,
+                        quantity,
+                        Decimal("70000"),
+                    )
+                    raise RuntimeError("legacy wrong partial exit")
+                return real_fill(
+                    broker,
+                    client_order_id,
+                    execution_key,
+                    quantity,
+                    price,
+                )
+
+            with mock.patch.object(
+                PaperBroker, "fill_order", new=commit_legacy_wrong_kr_exit
+            ):
+                with self.assertRaisesRegex(RuntimeError, "wrong partial"):
+                    run_classroom_replay(path)
+
+            with sqlite3.connect(path) as conn:
+                conn.execute("ALTER TABLE classroom_replays DROP COLUMN phase")
+                old_orders = conn.execute(
+                    "SELECT client_order_id,status FROM broker_orders "
+                    "WHERE strategy_id=? ORDER BY client_order_id",
+                    (old_strategy,),
+                ).fetchall()
+                old_trades = conn.execute(
+                    "SELECT market,symbol,exit_price FROM realized_trades "
+                    "WHERE strategy_id=? ORDER BY market,symbol",
+                    (old_strategy,),
+                ).fetchall()
+                old_positions = conn.execute(
+                    "SELECT market,symbol FROM positions "
+                    "WHERE strategy_id=? ORDER BY market,symbol",
+                    (old_strategy,),
+                ).fetchall()
+
+            self.assertEqual(old_trades, [("KR", "005930", "70000")])
+            self.assertEqual(old_positions, [("US", "AAPL")])
+
+            result = run_classroom_replay(path)
+
+            self.assertEqual(result["session"], "classroom-000002")
+            self.assertEqual(result["realized_trades"], 2)
+            self.assertEqual(result["final_positions"], 0)
+            with sqlite3.connect(path) as conn:
+                replay_rows = conn.execute(
+                    "SELECT session_id,status FROM classroom_replays "
+                    "ORDER BY sequence"
+                ).fetchall()
+                preserved_prefix = conn.execute(
+                    "SELECT client_order_id,status FROM broker_orders "
+                    "WHERE strategy_id=? AND client_order_id<>? "
+                    "ORDER BY client_order_id",
+                    (
+                        old_strategy,
+                        "classroom-000001-3:US:AAPL:SELL",
+                    ),
+                ).fetchall()
+                quarantined_trades = conn.execute(
+                    "SELECT market,symbol,exit_price FROM realized_trades "
+                    "WHERE strategy_id=? ORDER BY market,symbol",
+                    (old_strategy,),
+                ).fetchall()
+                positions = conn.execute(
+                    "SELECT COUNT(*) FROM positions"
+                ).fetchone()[0]
+
+            self.assertEqual(
+                replay_rows,
+                [
+                    ("classroom-000001", "ABORTED"),
+                    ("classroom-000002", "COMPLETED"),
+                ],
+            )
+            self.assertEqual(preserved_prefix, old_orders)
+            self.assertEqual(
+                quarantined_trades,
+                [
+                    ("KR", "005930", "70000"),
+                    ("US", "AAPL", "175"),
+                ],
+            )
+            self.assertEqual(positions, 0)
+
+    def test_unrelated_unresolved_target_order_blocks_before_replay_mutation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "classroom.db"
+            broker = PaperBroker(Ledger(path))
+            unrelated = OrderIntent(
+                "user:US:AAPL:BUY:pending",
+                Market.US,
+                "AAPL",
+                OrderSide.BUY,
+                OrderType.LIMIT,
+                Decimal("1"),
+                Decimal("180"),
+                "USD",
+                strategy_id="user_strategy",
+            )
+            broker.submit_order(unrelated)
+
+            with self.assertRaisesRegex(
+                RuntimeError, "unrelated unresolved target order"
+            ):
+                run_classroom_replay(path)
+
+            with sqlite3.connect(path) as conn:
+                replay_count = conn.execute(
+                    "SELECT COUNT(*) FROM classroom_replays"
+                ).fetchone()[0]
+                order_before_cancel = conn.execute(
+                    "SELECT status FROM broker_orders "
+                    "WHERE client_order_id=?",
+                    (unrelated.client_order_id,),
+                ).fetchone()
+                events_before_cancel = conn.execute(
+                    "SELECT status FROM order_events "
+                    "WHERE client_order_id=? ORDER BY id",
+                    (unrelated.client_order_id,),
+                ).fetchall()
+
+            self.assertEqual(replay_count, 0)
+            self.assertEqual(order_before_cancel, ("ACCEPTED",))
+            self.assertEqual(
+                events_before_cancel,
+                [
+                    ("CREATED",),
+                    ("PREVIEWED",),
+                    ("SUBMITTED",),
+                    ("ACCEPTED",),
+                ],
+            )
+
+            broker.cancel_order(unrelated.client_order_id)
+            result = run_classroom_replay(path)
+
+            self.assertEqual(result["session"], "classroom-000001")
+            self.assertEqual(result["realized_trades"], 2)
+            self.assertEqual(result["final_positions"], 0)
+            with sqlite3.connect(path) as conn:
+                user_order = conn.execute(
+                    "SELECT status FROM broker_orders "
+                    "WHERE client_order_id=?",
+                    (unrelated.client_order_id,),
+                ).fetchone()
+                canceled_event = conn.execute(
+                    "SELECT COUNT(*) FROM order_events "
+                    "WHERE client_order_id=? AND status='CANCELED'",
+                    (unrelated.client_order_id,),
+                ).fetchone()[0]
+            self.assertEqual(user_order, ("CANCELED",))
+            self.assertEqual(canceled_event, 1)
+
+    def test_existing_phase_four_replay_waits_for_conflict_then_rederives_phase(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "classroom.db"
+            real_fill = PaperBroker.fill_order
+            injected = False
+
+            def stop_after_kr_exit(
+                broker, client_order_id, execution_key, quantity, price
+            ):
+                nonlocal injected
+                record = real_fill(
+                    broker,
+                    client_order_id,
+                    execution_key,
+                    quantity,
+                    price,
+                )
+                if (
+                    not injected
+                    and record.intent.side is OrderSide.SELL
+                    and record.intent.market is Market.KR
+                ):
+                    injected = True
+                    raise RuntimeError("injected partial canonical replay")
+                return record
+
+            with mock.patch.object(
+                PaperBroker, "fill_order", new=stop_after_kr_exit
+            ):
+                with self.assertRaisesRegex(RuntimeError, "partial canonical"):
+                    run_classroom_replay(path)
+
+            with sqlite3.connect(path) as conn:
+                conn.execute(
+                    "UPDATE classroom_replays SET phase=4 "
+                    "WHERE session_id='classroom-000001'"
+                )
+
+            broker = PaperBroker(Ledger(path))
+            unrelated = OrderIntent(
+                "user:US:AAPL:BUY:late-conflict",
+                Market.US,
+                "AAPL",
+                OrderSide.BUY,
+                OrderType.LIMIT,
+                Decimal("1"),
+                Decimal("180"),
+                "USD",
+                strategy_id="user_strategy",
+            )
+            broker.submit_order(unrelated)
+
+            with self.assertRaisesRegex(
+                RuntimeError, "unrelated unresolved target order"
+            ):
+                run_classroom_replay(path)
+
+            with sqlite3.connect(path) as conn:
+                blocked = conn.execute(
+                    "SELECT status,phase,owner_token "
+                    "FROM classroom_replays"
+                ).fetchone()
+            self.assertEqual(blocked, ("INCOMPLETE", 4, None))
+
+            broker.cancel_order(unrelated.client_order_id)
+            result = run_classroom_replay(path)
+
+            self.assertEqual(result["session"], "classroom-000001")
+            self.assertEqual(result["realized_trades"], 2)
+            self.assertEqual(result["final_positions"], 0)
+            with sqlite3.connect(path) as conn:
+                replay = conn.execute(
+                    "SELECT status,phase FROM classroom_replays"
+                ).fetchone()
+                exits = conn.execute(
+                    "SELECT market,symbol,exit_price FROM realized_trades "
+                    "WHERE strategy_id='classroom-replay:classroom-000001' "
+                    "ORDER BY market,symbol"
+                ).fetchall()
+            self.assertEqual(replay, ("COMPLETED", 4))
+            self.assertEqual(
+                exits,
+                [("KR", "005930", "69000"), ("US", "AAPL", "175")],
+            )
+
     def test_unrelated_position_is_never_counted_or_deleted(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "classroom.db"

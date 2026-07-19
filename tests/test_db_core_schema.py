@@ -42,6 +42,8 @@ class DatabaseCoreSchemaTest(unittest.TestCase):
             }.issubset(tables)
         )
         self.assertIn("phase", replay_columns)
+        self.assertIn("abort_reason", replay_columns)
+        self.assertIn("aborted_at", replay_columns)
 
     def test_init_db_adds_replay_phase_to_existing_core_schema(self):
         with tempfile.TemporaryDirectory() as tmp:
