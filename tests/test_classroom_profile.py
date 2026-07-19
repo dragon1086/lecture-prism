@@ -1025,6 +1025,286 @@ class ClassroomReplayTest(unittest.TestCase):
             self.assertEqual(replay, (1, None))
             self.assertEqual((sells, trades), (0, 0))
 
+    def test_terminal_predicted_namespace_is_quarantined_not_adopted(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "classroom.db"
+            ledger = Ledger(path)
+            broker = PaperBroker(ledger)
+            strategy_id = "classroom-replay:classroom-000001"
+            buy = OrderIntent(
+                "classroom-000001-1:KR:005930:BUY",
+                Market.KR,
+                "005930",
+                OrderSide.BUY,
+                OrderType.LIMIT,
+                Decimal("1"),
+                Decimal("70000"),
+                "KRW",
+                strategy_id=strategy_id,
+            )
+            sell = OrderIntent(
+                "classroom-000001-3:KR:005930:SELL",
+                Market.KR,
+                "005930",
+                OrderSide.SELL,
+                OrderType.MARKET,
+                Decimal("1"),
+                None,
+                "KRW",
+                strategy_id=strategy_id,
+                reason="trailing_stop",
+            )
+            broker.submit_order(buy)
+            broker.fill_order(
+                buy.client_order_id,
+                "foreign-buy",
+                Decimal("1"),
+                Decimal("70000"),
+            )
+            broker.submit_order(sell)
+            broker.fill_order(
+                sell.client_order_id,
+                "foreign-sell",
+                Decimal("1"),
+                Decimal("69000"),
+            )
+            before = ledger.count_realized_trades(strategy_id)
+
+            result = run_classroom_replay(path)
+
+            self.assertEqual(result["session"], "classroom-000002")
+            self.assertEqual(result["realized_trades"], 2)
+            with sqlite3.connect(path) as conn:
+                replays = conn.execute(
+                    "SELECT session_id,status,abort_reason "
+                    "FROM classroom_replays ORDER BY sequence"
+                ).fetchall()
+                foreign = conn.execute(
+                    "SELECT client_order_id,status FROM broker_orders "
+                    "WHERE strategy_id=? ORDER BY client_order_id",
+                    (strategy_id,),
+                ).fetchall()
+            self.assertEqual(before, 1)
+            self.assertEqual(
+                replays,
+                [
+                    ("classroom-000001", "ABORTED", "namespace_collision"),
+                    ("classroom-000002", "COMPLETED", None),
+                ],
+            )
+            self.assertEqual(
+                foreign,
+                [
+                    (buy.client_order_id, "FILLED"),
+                    (sell.client_order_id, "FILLED"),
+                ],
+            )
+
+    def test_existing_terminal_noncanonical_history_is_aborted(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "classroom.db"
+            ledger = Ledger(path)
+            claim = ledger.claim_classroom_replay(
+                "setup-owner", lease_seconds=60
+            )
+            broker = PaperBroker(ledger)
+            for market, symbol, price, currency, exit_price in (
+                (Market.KR, "005930", "70000", "KRW", "69000"),
+                (Market.US, "AAPL", "180", "USD", "175"),
+            ):
+                buy = OrderIntent(
+                    f"spoof:{market.value}:{symbol}:BUY",
+                    market,
+                    symbol,
+                    OrderSide.BUY,
+                    OrderType.LIMIT,
+                    Decimal("1"),
+                    Decimal(price),
+                    currency,
+                    strategy_id=claim.strategy_id,
+                )
+                sell = OrderIntent(
+                    f"spoof:{market.value}:{symbol}:SELL",
+                    market,
+                    symbol,
+                    OrderSide.SELL,
+                    OrderType.MARKET,
+                    Decimal("1"),
+                    None,
+                    currency,
+                    strategy_id=claim.strategy_id,
+                    reason="trailing_stop",
+                )
+                broker.submit_order(buy)
+                broker.fill_order(
+                    buy.client_order_id,
+                    f"spoof-{symbol}-buy",
+                    Decimal("1"),
+                    Decimal(price),
+                )
+                broker.submit_order(sell)
+                broker.fill_order(
+                    sell.client_order_id,
+                    f"spoof-{symbol}-sell",
+                    Decimal("1"),
+                    Decimal(exit_price),
+                )
+            ledger.release_classroom_replay(claim)
+
+            result = run_classroom_replay(path)
+
+            self.assertEqual(result["session"], "classroom-000002")
+            with sqlite3.connect(path) as conn:
+                replays = conn.execute(
+                    "SELECT session_id,status,abort_reason "
+                    "FROM classroom_replays ORDER BY sequence"
+                ).fetchall()
+                spoof_orders = conn.execute(
+                    "SELECT COUNT(*) FROM broker_orders "
+                    "WHERE strategy_id=? AND client_order_id LIKE 'spoof:%'",
+                    (claim.strategy_id,),
+                ).fetchone()[0]
+            self.assertEqual(
+                replays,
+                [
+                    (
+                        "classroom-000001",
+                        "ABORTED",
+                        "noncanonical_order_history",
+                    ),
+                    ("classroom-000002", "COMPLETED", None),
+                ],
+            )
+            self.assertEqual(spoof_orders, 4)
+
+    def test_retry_chain_requires_contiguous_terminal_predecessors(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "classroom.db"
+            ledger = Ledger(path)
+            claim = ledger.claim_classroom_replay(
+                "setup-owner", lease_seconds=60
+            )
+            forged = OrderIntent(
+                "classroom-000001-1:US:AAPL:BUY:retry-999",
+                Market.US,
+                "AAPL",
+                OrderSide.BUY,
+                OrderType.LIMIT,
+                Decimal("1"),
+                Decimal("180"),
+                "USD",
+                strategy_id=claim.strategy_id,
+            )
+            PaperBroker(ledger).submit_order(forged)
+            ledger.release_classroom_replay(claim)
+
+            with self.assertRaisesRegex(RuntimeError, "successor lineage"):
+                run_classroom_replay(path)
+
+            with sqlite3.connect(path) as conn:
+                replay = conn.execute(
+                    "SELECT phase,owner_token FROM classroom_replays"
+                ).fetchone()
+                order = conn.execute(
+                    "SELECT status FROM broker_orders WHERE client_order_id=?",
+                    (forged.client_order_id,),
+                ).fetchone()
+            self.assertEqual(replay, (1, None))
+            self.assertEqual(order, ("ACCEPTED",))
+
+    def test_retry_chain_rejects_two_simultaneous_active_members(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "classroom.db"
+            ledger = Ledger(path)
+            claim = ledger.claim_classroom_replay(
+                "setup-owner", lease_seconds=60
+            )
+            broker = PaperBroker(ledger)
+            base = "classroom-000001-1:US:AAPL:BUY"
+            for client_order_id in (base, f"{base}:retry-1"):
+                broker.submit_order(
+                    OrderIntent(
+                        client_order_id,
+                        Market.US,
+                        "AAPL",
+                        OrderSide.BUY,
+                        OrderType.LIMIT,
+                        Decimal("1"),
+                        Decimal("180"),
+                        "USD",
+                        strategy_id=claim.strategy_id,
+                    )
+                )
+            ledger.release_classroom_replay(claim)
+
+            with self.assertRaisesRegex(RuntimeError, "successor lineage"):
+                run_classroom_replay(path)
+
+            with sqlite3.connect(path) as conn:
+                replay = conn.execute(
+                    "SELECT phase,owner_token FROM classroom_replays"
+                ).fetchone()
+                statuses = conn.execute(
+                    "SELECT status FROM broker_orders "
+                    "WHERE client_order_id IN (?,?) ORDER BY client_order_id",
+                    (base, f"{base}:retry-1"),
+                ).fetchall()
+            self.assertEqual(replay, (1, None))
+            self.assertEqual(statuses, [("ACCEPTED",), ("ACCEPTED",)])
+
+    def test_unknown_inserted_at_completion_prevents_certification(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "classroom.db"
+            real_complete = Ledger.complete_classroom_replay
+            unknown_id = "foreign:US:AAPL:BUY:completion-race"
+            injected = False
+
+            def inject_unknown(ledger, claim, *, expected_trades):
+                nonlocal injected
+                if not injected:
+                    injected = True
+                    broker = PaperBroker(ledger)
+                    intent = OrderIntent(
+                        unknown_id,
+                        Market.US,
+                        "AAPL",
+                        OrderSide.BUY,
+                        OrderType.LIMIT,
+                        Decimal("1"),
+                        Decimal("180"),
+                        "USD",
+                        strategy_id="foreign_strategy",
+                    )
+                    broker.submit_order(intent)
+                    broker.mark_unknown(unknown_id)
+                return real_complete(
+                    ledger, claim, expected_trades=expected_trades
+                )
+
+            with mock.patch.object(
+                Ledger, "complete_classroom_replay", new=inject_unknown
+            ):
+                with self.assertRaisesRegex(
+                    RuntimeError, "UNKNOWN target order"
+                ):
+                    run_classroom_replay(path)
+
+            with sqlite3.connect(path) as conn:
+                replay = conn.execute(
+                    "SELECT status,phase,owner_token FROM classroom_replays"
+                ).fetchone()
+                trades = conn.execute(
+                    "SELECT COUNT(*) FROM realized_trades"
+                ).fetchone()[0]
+            self.assertEqual(replay, ("INCOMPLETE", 4, None))
+            self.assertEqual(trades, 2)
+
+            ledger = Ledger(path)
+            ledger.transition_order(unknown_id, OrderStatus.CANCELED)
+            result = run_classroom_replay(path)
+            self.assertEqual(result["session"], "classroom-000001")
+            self.assertEqual(result["realized_trades"], 2)
+
     def test_unrelated_position_is_never_counted_or_deleted(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "classroom.db"

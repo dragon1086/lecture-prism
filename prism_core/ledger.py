@@ -76,6 +76,9 @@ _UNRESOLVED_ORDER_STATUSES = (
     OrderStatus.PARTIALLY_FILLED,
     OrderStatus.UNKNOWN,
 )
+_TERMINAL_ORDER_STATUSES = frozenset(
+    {OrderStatus.FILLED, OrderStatus.REJECTED, OrderStatus.CANCELED}
+)
 
 
 def _now() -> str:
@@ -234,20 +237,11 @@ class Ledger:
                 if expected_trades and self._has_noncanonical_trade(
                     actual_trades, expected_trades
                 ):
-                    aborted_at = _now()
-                    conn.execute(
-                        "UPDATE classroom_replays SET status='ABORTED',"
-                        "owner_token=NULL,lease_expires_at=NULL,"
-                        "realized_trades=?,abort_reason=?,aborted_at=?,"
-                        "updated_at=? WHERE sequence=? "
-                        "AND status='INCOMPLETE'",
-                        (
-                            len(actual_trades),
-                            "noncanonical_realized_trade",
-                            aborted_at,
-                            aborted_at,
-                            row["sequence"],
-                        ),
+                    self._abort_classroom_replay(
+                        conn,
+                        row["sequence"],
+                        "noncanonical_realized_trade",
+                        len(actual_trades),
                     )
                     continue
 
@@ -265,7 +259,7 @@ class Ledger:
                 cleanup_strategies = self._aborted_position_strategies(
                     conn, targets
                 )
-                self._assert_replay_order_contract(
+                order_history_reason = self._assert_replay_order_contract(
                     conn,
                     targets,
                     session_id=row["session_id"],
@@ -273,6 +267,14 @@ class Ledger:
                     phase=phase,
                     cleanup_strategies=cleanup_strategies,
                 )
+                if order_history_reason is not None:
+                    self._abort_classroom_replay(
+                        conn,
+                        row["sequence"],
+                        order_history_reason,
+                        len(actual_trades),
+                    )
+                    continue
 
                 cursor = conn.execute(
                     "UPDATE classroom_replays "
@@ -306,14 +308,37 @@ class Ledger:
                     targets,
                     cleanup_strategies=cleanup_strategies,
                 )
-                sequence = int(
+                while True:
+                    sequence = int(
+                        conn.execute(
+                            "SELECT COALESCE(MAX(sequence),0)+1 "
+                            "FROM classroom_replays"
+                        ).fetchone()[0]
+                    )
+                    session_id = f"classroom-{sequence:06d}"
+                    strategy_id = f"classroom-replay:{session_id}"
+                    occupied, namespace_trades = self._namespace_occupied(
+                        conn, session_id, strategy_id
+                    )
+                    if not occupied:
+                        break
+                    timestamp = _now()
                     conn.execute(
-                        "SELECT COALESCE(MAX(sequence),0)+1 "
-                        "FROM classroom_replays"
-                    ).fetchone()[0]
-                )
-                session_id = f"classroom-{sequence:06d}"
-                strategy_id = f"classroom-replay:{session_id}"
+                        "INSERT INTO classroom_replays "
+                        "(sequence,session_id,strategy_id,status,phase,"
+                        "realized_trades,created_at,updated_at,abort_reason,"
+                        "aborted_at) VALUES (?,?,?,'ABORTED',1,?,?,?,?,?)",
+                        (
+                            sequence,
+                            session_id,
+                            strategy_id,
+                            namespace_trades,
+                            timestamp,
+                            timestamp,
+                            "namespace_collision",
+                            timestamp,
+                        ),
+                    )
                 phase = 1
                 timestamp = _now()
                 conn.execute(
@@ -340,6 +365,57 @@ class Ledger:
             targets,
             cleanup_strategies,
         )
+
+    @staticmethod
+    def _abort_classroom_replay(
+        conn: sqlite3.Connection,
+        sequence: int,
+        reason: str,
+        realized_trades: int,
+    ) -> None:
+        aborted_at = _now()
+        conn.execute(
+            "UPDATE classroom_replays SET status='ABORTED',"
+            "owner_token=NULL,lease_expires_at=NULL,realized_trades=?,"
+            "abort_reason=?,aborted_at=?,updated_at=? WHERE sequence=? "
+            "AND status='INCOMPLETE'",
+            (
+                realized_trades,
+                reason,
+                aborted_at,
+                aborted_at,
+                sequence,
+            ),
+        )
+
+    @staticmethod
+    def _namespace_occupied(
+        conn: sqlite3.Connection, session_id: str, strategy_id: str
+    ) -> tuple[bool, int]:
+        order = conn.execute(
+            "SELECT 1 FROM broker_orders WHERE strategy_id=? "
+            "OR client_order_id LIKE ? LIMIT 1",
+            (strategy_id, f"{session_id}-%"),
+        ).fetchone()
+        fill = conn.execute(
+            "SELECT 1 FROM fills JOIN broker_orders USING(client_order_id) "
+            "WHERE broker_orders.strategy_id=? "
+            "OR broker_orders.client_order_id LIKE ? LIMIT 1",
+            (strategy_id, f"{session_id}-%"),
+        ).fetchone()
+        position = conn.execute(
+            "SELECT 1 FROM positions WHERE strategy_id=? LIMIT 1",
+            (strategy_id,),
+        ).fetchone()
+        realized = int(
+            conn.execute(
+                "SELECT COUNT(*) FROM realized_trades WHERE strategy_id=?",
+                (strategy_id,),
+            ).fetchone()[0]
+        )
+        return any(item is not None for item in (order, fill, position)) or bool(
+            realized
+        ), realized
 
     @staticmethod
     def _normalize_expected_trades(
@@ -393,7 +469,7 @@ class Ledger:
         strategy_id: str | None = None,
         phase: int | None = None,
         cleanup_strategies: frozenset[str] = frozenset(),
-    ) -> None:
+    ) -> str | None:
         placeholders = ",".join("?" for _ in _UNRESOLVED_ORDER_STATUSES)
         for market, symbol in targets:
             params = (
@@ -416,13 +492,6 @@ class Ledger:
                     strategy_id is not None
                     and order["strategy_id"] == strategy_id
                 ):
-                    if not Ledger._is_canonical_replay_order(
-                        order, session_id, phase
-                    ):
-                        raise RuntimeError(
-                            "classroom replay blocked by noncanonical "
-                            "replay order"
-                        )
                     continue
                 if order["strategy_id"] in cleanup_strategies:
                     cleanup = conn.execute(
@@ -441,6 +510,117 @@ class Ledger:
                     "classroom replay blocked by unrelated unresolved "
                     "target order"
                 )
+        if strategy_id is None:
+            return None
+        return Ledger._replay_order_history_reason(
+            conn, targets, session_id, strategy_id, phase
+        )
+
+    @staticmethod
+    def _replay_order_history_reason(
+        conn: sqlite3.Connection,
+        targets: frozenset[tuple[Market, str]],
+        session_id: str | None,
+        strategy_id: str,
+        active_phase: int | None,
+    ) -> str | None:
+        rows = conn.execute(
+            "SELECT client_order_id,market,symbol,side,status,strategy_id "
+            "FROM broker_orders WHERE strategy_id=? "
+            "ORDER BY client_order_id",
+            (strategy_id,),
+        ).fetchall()
+        chains: dict[
+            tuple[int, Market, str, OrderSide], list[tuple[int, sqlite3.Row]]
+        ] = {}
+        for order in rows:
+            status = OrderStatus(order["status"])
+            if status is OrderStatus.UNKNOWN:
+                raise RuntimeError(
+                    "classroom replay blocked by UNKNOWN target order"
+                )
+            identity = Ledger._replay_order_identity(
+                order, targets, session_id
+            )
+            if identity is None:
+                if status in _TERMINAL_ORDER_STATUSES:
+                    return "noncanonical_order_history"
+                raise RuntimeError(
+                    "classroom replay blocked by noncanonical replay order"
+                )
+            chain_key, retry_index = identity
+            chains.setdefault(chain_key, []).append((retry_index, order))
+
+        predecessor_statuses = {
+            OrderStatus.CANCELED,
+            OrderStatus.REJECTED,
+        }
+        for (order_phase, _, _, _), members in chains.items():
+            members.sort(key=lambda item: item[0])
+            indices = [retry_index for retry_index, _ in members]
+            if indices != list(range(len(indices))):
+                if any(
+                    OrderStatus(order["status"])
+                    not in _TERMINAL_ORDER_STATUSES
+                    for _, order in members
+                ):
+                    raise RuntimeError(
+                        "classroom replay blocked by invalid successor lineage"
+                    )
+                return "noncanonical_order_history"
+            for _, predecessor in members[:-1]:
+                predecessor_status = OrderStatus(predecessor["status"])
+                if predecessor_status in predecessor_statuses:
+                    continue
+                if predecessor_status in _TERMINAL_ORDER_STATUSES:
+                    return "noncanonical_order_history"
+                raise RuntimeError(
+                    "classroom replay blocked by invalid successor lineage"
+                )
+            highest_status = OrderStatus(members[-1][1]["status"])
+            if (
+                highest_status not in _TERMINAL_ORDER_STATUSES
+                and order_phase != active_phase
+            ):
+                raise RuntimeError(
+                    "classroom replay blocked by noncanonical replay order"
+                )
+        return None
+
+    @staticmethod
+    def _replay_order_identity(
+        order: sqlite3.Row,
+        targets: frozenset[tuple[Market, str]],
+        session_id: str | None,
+    ) -> tuple[tuple[int, Market, str, OrderSide], int] | None:
+        if session_id is None:
+            return None
+        try:
+            market = Market(order["market"])
+            side = OrderSide(order["side"])
+        except ValueError:
+            return None
+        symbol = order["symbol"]
+        if (market, symbol) not in targets:
+            return None
+        phase = 1 if side is OrderSide.BUY else 3
+        base_id = (
+            f"{session_id}-{phase}:{market.value}:{symbol}:{side.value}"
+        )
+        client_order_id = order["client_order_id"]
+        if client_order_id == base_id:
+            return (phase, market, symbol, side), 0
+        prefix = f"{base_id}:retry-"
+        if not client_order_id.startswith(prefix):
+            return None
+        suffix = client_order_id[len(prefix) :]
+        if not (
+            suffix.isdigit()
+            and suffix == str(int(suffix))
+            and int(suffix) >= 1
+        ):
+            return None
+        return (phase, market, symbol, side), int(suffix)
 
     @staticmethod
     def _is_canonical_replay_order(
@@ -448,27 +628,13 @@ class Ledger:
         session_id: str | None,
         phase: int | None,
     ) -> bool:
-        if session_id is None or phase not in {1, 3}:
+        if phase not in {1, 3}:
             return False
-        expected_side = OrderSide.BUY if phase == 1 else OrderSide.SELL
-        if OrderSide(order["side"]) is not expected_side:
-            return False
-        base_id = (
-            f"{session_id}-{phase}:{order['market']}:"
-            f"{order['symbol']}:{expected_side.value}"
+        targets = frozenset(
+            {(Market(order["market"]), order["symbol"])}
         )
-        client_order_id = order["client_order_id"]
-        if client_order_id == base_id:
-            return True
-        prefix = f"{base_id}:retry-"
-        if not client_order_id.startswith(prefix):
-            return False
-        suffix = client_order_id[len(prefix) :]
-        return (
-            suffix.isdigit()
-            and suffix == str(int(suffix))
-            and int(suffix) >= 1
-        )
+        identity = Ledger._replay_order_identity(order, targets, session_id)
+        return identity is not None and identity[0][0] == phase
 
     @staticmethod
     def _select_replay_order_id(
@@ -591,13 +757,17 @@ class Ledger:
         if next_phase != expected_phase + 1:
             raise ValueError("classroom replay phase must advance by one")
         with self._connect(immediate=True) as conn:
-            self._assert_replay_order_contract(
+            history_reason = self._assert_replay_order_contract(
                 conn,
                 claim.targets,
                 session_id=claim.session_id,
                 strategy_id=claim.strategy_id,
                 phase=expected_phase,
             )
+            if history_reason is not None:
+                raise RuntimeError(
+                    "classroom replay order history mismatch"
+                )
             cursor = conn.execute(
                 "UPDATE classroom_replays SET phase=?,updated_at=? "
                 "WHERE sequence=? AND status='INCOMPLETE' "
@@ -634,6 +804,17 @@ class Ledger:
                 or int(row["phase"]) != 4
             ):
                 raise RuntimeError("classroom replay lease lost")
+            history_reason = self._assert_replay_order_contract(
+                conn,
+                claim.targets,
+                session_id=claim.session_id,
+                strategy_id=claim.strategy_id,
+                phase=4,
+            )
+            if history_reason is not None:
+                raise RuntimeError(
+                    "classroom replay order history mismatch"
+                )
             actual_trades = sorted(
                 self._classroom_trade_contract(conn, claim.strategy_id)
             )
