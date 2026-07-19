@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 import time
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS classroom_replays (
     sequence INTEGER PRIMARY KEY AUTOINCREMENT,
     session_id TEXT NOT NULL UNIQUE, strategy_id TEXT NOT NULL UNIQUE,
     status TEXT NOT NULL, owner_token TEXT, lease_expires_at REAL,
+    phase INTEGER NOT NULL DEFAULT 1,
     realized_trades INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL, updated_at TEXT NOT NULL, completed_at TEXT
 );
@@ -85,6 +86,7 @@ class ClassroomReplayClaim:
     session_id: str
     strategy_id: str
     owner_token: str
+    phase: int
 
 
 class Ledger:
@@ -93,6 +95,25 @@ class Ledger:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self._connect() as conn:
             conn.executescript(_SCHEMA)
+            columns = {
+                row[1]
+                for row in conn.execute(
+                    "PRAGMA table_info(classroom_replays)"
+                ).fetchall()
+            }
+            if "phase" not in columns:
+                conn.execute(
+                    "ALTER TABLE classroom_replays "
+                    "ADD COLUMN phase INTEGER NOT NULL DEFAULT 1"
+                )
+                conn.execute(
+                    "UPDATE classroom_replays SET phase=3 "
+                    "WHERE status='INCOMPLETE' AND EXISTS ("
+                    "SELECT 1 FROM broker_orders "
+                    "WHERE broker_orders.strategy_id="
+                    "classroom_replays.strategy_id "
+                    "AND broker_orders.side='SELL')"
+                )
 
     @contextmanager
     def _connect(self, *, immediate: bool = False):
@@ -203,6 +224,7 @@ class Ledger:
                 sequence = int(row["sequence"])
                 session_id = row["session_id"]
                 strategy_id = row["strategy_id"]
+                phase = int(row["phase"])
             else:
                 sequence = int(
                     conn.execute(
@@ -212,6 +234,7 @@ class Ledger:
                 )
                 session_id = f"classroom-{sequence:06d}"
                 strategy_id = f"classroom-replay:{session_id}"
+                phase = 1
                 timestamp = _now()
                 conn.execute(
                     "INSERT INTO classroom_replays "
@@ -229,7 +252,7 @@ class Ledger:
                     ),
                 )
         return ClassroomReplayClaim(
-            sequence, session_id, strategy_id, owner_token
+            sequence, session_id, strategy_id, owner_token, phase
         )
 
     def renew_classroom_replay(
@@ -264,11 +287,39 @@ class Ledger:
                 (_now(), claim.sequence, claim.owner_token),
             )
 
+    def advance_classroom_replay_phase(
+        self,
+        claim: ClassroomReplayClaim,
+        *,
+        expected_phase: int,
+        next_phase: int,
+    ) -> ClassroomReplayClaim:
+        if next_phase != expected_phase + 1:
+            raise ValueError("classroom replay phase must advance by one")
+        with self._connect(immediate=True) as conn:
+            cursor = conn.execute(
+                "UPDATE classroom_replays SET phase=?,updated_at=? "
+                "WHERE sequence=? AND status='INCOMPLETE' "
+                "AND owner_token=? AND phase=?",
+                (
+                    next_phase,
+                    _now(),
+                    claim.sequence,
+                    claim.owner_token,
+                    expected_phase,
+                ),
+            )
+            if not cursor.rowcount:
+                raise RuntimeError("classroom replay phase or lease lost")
+        return replace(claim, phase=next_phase)
+
     def complete_classroom_replay(
         self,
         claim: ClassroomReplayClaim,
         *,
-        expected_realized_trades: int,
+        expected_trades: tuple[
+            tuple[Market, str, Decimal, Decimal, str], ...
+        ],
     ) -> dict:
         with self._connect(immediate=True) as conn:
             row = conn.execute(
@@ -279,21 +330,44 @@ class Ledger:
                 row is None
                 or row["status"] != "INCOMPLETE"
                 or row["owner_token"] != claim.owner_token
+                or int(row["phase"]) != 4
             ):
                 raise RuntimeError("classroom replay lease lost")
-            realized = int(
-                conn.execute(
-                    "SELECT COUNT(*) FROM realized_trades WHERE strategy_id=?",
-                    (claim.strategy_id,),
-                ).fetchone()[0]
+            trade_rows = conn.execute(
+                "SELECT market,symbol,quantity,exit_price,currency "
+                "FROM realized_trades WHERE strategy_id=?",
+                (claim.strategy_id,),
+            ).fetchall()
+            actual_trades = sorted(
+                (
+                    trade["market"],
+                    trade["symbol"],
+                    Decimal(trade["quantity"]),
+                    Decimal(trade["exit_price"]),
+                    trade["currency"],
+                )
+                for trade in trade_rows
             )
+            prescribed_trades = sorted(
+                (
+                    market.value,
+                    symbol,
+                    quantity,
+                    exit_price,
+                    currency,
+                )
+                for market, symbol, quantity, exit_price, currency in expected_trades
+            )
+            realized = len(actual_trades)
             positions = int(
                 conn.execute(
                     "SELECT COUNT(*) FROM positions WHERE strategy_id=?",
                     (claim.strategy_id,),
                 ).fetchone()[0]
             )
-            if realized != expected_realized_trades or positions != 0:
+            if actual_trades != prescribed_trades:
+                raise RuntimeError("classroom replay trade contract mismatch")
+            if positions != 0:
                 raise RuntimeError(
                     "classroom replay incomplete: "
                     f"realized={realized}, positions={positions}"

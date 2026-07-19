@@ -29,6 +29,10 @@ _REPLAY_LEASE_SECONDS = 60.0
 _REPLAY_WAIT_SECONDS = 5.0
 _REPLAY_POLL_SECONDS = 0.01
 _TARGETS = frozenset(_ENTRY_QUOTES)
+_EXPECTED_TRADES = (
+    (Market.KR, "005930", Decimal("1"), Decimal("69000"), "KRW"),
+    (Market.US, "AAPL", Decimal("1"), Decimal("175"), "USD"),
+)
 
 
 def _entry_intents(session: str, strategy_id: str) -> list[OrderIntent]:
@@ -93,37 +97,50 @@ def _run_replay_under_fence(path: Path, ledger: Ledger) -> dict:
     claim = _claim_replay(ledger, owner_token)
     try:
         _assert_target_ownership(ledger, claim.strategy_id)
-        ledger.renew_classroom_replay(
-            claim, lease_seconds=_REPLAY_LEASE_SECONDS
-        )
-        _require_completed(
-            TradingCycle(PaperBroker(ledger), _ENTRY_QUOTES).run(
-                f"{claim.session_id}-1",
-                _entry_intents(claim.session_id, claim.strategy_id),
-                auto_fill=True,
+        if claim.phase == 1:
+            ledger.renew_classroom_replay(
+                claim, lease_seconds=_REPLAY_LEASE_SECONDS
             )
-        )
-        _assert_target_ownership(ledger, claim.strategy_id)
-        ledger.renew_classroom_replay(
-            claim, lease_seconds=_REPLAY_LEASE_SECONDS
-        )
-        _require_completed(
-            TradingCycle(
-                PaperBroker(Ledger(path)), _HIGH_WATER_QUOTES
-            ).run(f"{claim.session_id}-2", [], auto_fill=True)
-        )
-        _assert_target_ownership(ledger, claim.strategy_id)
-        ledger.renew_classroom_replay(
-            claim, lease_seconds=_REPLAY_LEASE_SECONDS
-        )
-        _require_completed(
-            TradingCycle(
-                PaperBroker(Ledger(path)), _TRAILING_EXIT_QUOTES
-            ).run(f"{claim.session_id}-3", [], auto_fill=True)
-        )
+            _require_completed(
+                TradingCycle(PaperBroker(ledger), _ENTRY_QUOTES).run(
+                    f"{claim.session_id}-1",
+                    _entry_intents(claim.session_id, claim.strategy_id),
+                    auto_fill=True,
+                )
+            )
+            _assert_target_ownership(ledger, claim.strategy_id)
+            claim = ledger.advance_classroom_replay_phase(
+                claim, expected_phase=1, next_phase=2
+            )
+        if claim.phase == 2:
+            ledger.renew_classroom_replay(
+                claim, lease_seconds=_REPLAY_LEASE_SECONDS
+            )
+            _require_completed(
+                TradingCycle(
+                    PaperBroker(Ledger(path)), _HIGH_WATER_QUOTES
+                ).run(f"{claim.session_id}-2", [], auto_fill=True)
+            )
+            _assert_target_ownership(ledger, claim.strategy_id)
+            claim = ledger.advance_classroom_replay_phase(
+                claim, expected_phase=2, next_phase=3
+            )
+        if claim.phase == 3:
+            ledger.renew_classroom_replay(
+                claim, lease_seconds=_REPLAY_LEASE_SECONDS
+            )
+            _require_completed(
+                TradingCycle(
+                    PaperBroker(Ledger(path)), _TRAILING_EXIT_QUOTES
+                ).run(f"{claim.session_id}-3", [], auto_fill=True)
+            )
+            _assert_target_ownership(ledger, claim.strategy_id)
+            claim = ledger.advance_classroom_replay_phase(
+                claim, expected_phase=3, next_phase=4
+            )
         _assert_target_ownership(ledger, claim.strategy_id)
         persisted = ledger.complete_classroom_replay(
-            claim, expected_realized_trades=2
+            claim, expected_trades=_EXPECTED_TRADES
         )
         return {
             "cycles": 3,

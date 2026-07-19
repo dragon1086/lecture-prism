@@ -195,6 +195,162 @@ class ClassroomReplayTest(unittest.TestCase):
                 [("classroom-000001", "COMPLETED", None, 2)],
             )
 
+    def test_accepted_exit_retry_resumes_at_trailing_quote_after_expired_lease(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "classroom.db"
+            real_fill = PaperBroker.fill_order
+            injected = False
+
+            def fail_before_first_exit_fill(
+                broker, client_order_id, execution_key, quantity, price
+            ):
+                nonlocal injected
+                order = broker.get_order(client_order_id)
+                if (
+                    not injected
+                    and order.intent.side is OrderSide.SELL
+                    and order.intent.market is Market.KR
+                ):
+                    injected = True
+                    self.assertEqual(order.status.value, "ACCEPTED")
+                    raise RuntimeError("injected before accepted KR exit fill")
+                return real_fill(
+                    broker,
+                    client_order_id,
+                    execution_key,
+                    quantity,
+                    price,
+                )
+
+            with mock.patch.object(
+                PaperBroker, "fill_order", new=fail_before_first_exit_fill
+            ):
+                with self.assertRaisesRegex(RuntimeError, "accepted KR exit"):
+                    run_classroom_replay(path)
+
+            with sqlite3.connect(path) as conn:
+                before_retry = conn.execute(
+                    "SELECT status FROM classroom_replays"
+                ).fetchone()
+                accepted = conn.execute(
+                    "SELECT status FROM broker_orders "
+                    "WHERE client_order_id=?",
+                    ("classroom-000001-3:KR:005930:SELL",),
+                ).fetchone()
+                conn.execute(
+                    "UPDATE classroom_replays SET owner_token='dead-owner',"
+                    "lease_expires_at=0 WHERE session_id='classroom-000001'"
+                )
+
+            self.assertEqual(before_retry, ("INCOMPLETE",))
+            self.assertEqual(accepted, ("ACCEPTED",))
+
+            retry = run_classroom_replay(path)
+
+            self.assertEqual(retry["session"], "classroom-000001")
+            with sqlite3.connect(path) as conn:
+                trades = conn.execute(
+                    "SELECT market,symbol,quantity,exit_price,currency "
+                    "FROM realized_trades ORDER BY market,symbol"
+                ).fetchall()
+            self.assertEqual(
+                trades,
+                [
+                    ("KR", "005930", "1", "69000", "KRW"),
+                    ("US", "AAPL", "1", "175", "USD"),
+                ],
+            )
+            with sqlite3.connect(path) as conn:
+                replay = conn.execute(
+                    "SELECT status,phase,owner_token,realized_trades "
+                    "FROM classroom_replays"
+                ).fetchone()
+            self.assertEqual(replay, ("COMPLETED", 4, None, 2))
+
+    def test_checkpoint_failures_before_and_after_write_are_idempotent(self):
+        real_advance = Ledger.advance_classroom_replay_phase
+        cases = ((3, False), (1, True))
+
+        for failed_phase, fail_after_write in cases:
+            with self.subTest(
+                failed_phase=failed_phase,
+                fail_after_write=fail_after_write,
+            ), tempfile.TemporaryDirectory() as tmp:
+                path = Path(tmp) / "classroom.db"
+                injected = False
+
+                def fail_once(
+                    ledger,
+                    claim,
+                    *,
+                    expected_phase,
+                    next_phase,
+                ):
+                    nonlocal injected
+                    if not injected and expected_phase == failed_phase:
+                        injected = True
+                        if fail_after_write:
+                            real_advance(
+                                ledger,
+                                claim,
+                                expected_phase=expected_phase,
+                                next_phase=next_phase,
+                            )
+                        raise RuntimeError("injected checkpoint failure")
+                    return real_advance(
+                        ledger,
+                        claim,
+                        expected_phase=expected_phase,
+                        next_phase=next_phase,
+                    )
+
+                with mock.patch.object(
+                    Ledger,
+                    "advance_classroom_replay_phase",
+                    new=fail_once,
+                ):
+                    with self.assertRaisesRegex(
+                        RuntimeError, "checkpoint failure"
+                    ):
+                        run_classroom_replay(path)
+
+                retry = run_classroom_replay(path)
+
+                self.assertEqual(retry["session"], "classroom-000001")
+                with sqlite3.connect(path) as conn:
+                    replay = conn.execute(
+                        "SELECT status,phase,realized_trades "
+                        "FROM classroom_replays"
+                    ).fetchone()
+                    trades = conn.execute(
+                        "SELECT market,symbol,exit_price "
+                        "FROM realized_trades ORDER BY market,symbol"
+                    ).fetchall()
+                self.assertEqual(replay, ("COMPLETED", 4, 2))
+                self.assertEqual(
+                    trades,
+                    [("KR", "005930", "69000"), ("US", "AAPL", "175")],
+                )
+
+    def test_completion_rejects_wrong_attributed_exit_contract(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "classroom.db"
+            wrong_quotes = dict(classroom._TRAILING_EXIT_QUOTES)
+            wrong_quotes[(Market.KR, "005930")] = Decimal("68000")
+
+            with mock.patch.object(
+                classroom, "_TRAILING_EXIT_QUOTES", wrong_quotes
+            ):
+                with self.assertRaisesRegex(RuntimeError, "trade contract"):
+                    run_classroom_replay(path)
+
+            with sqlite3.connect(path) as conn:
+                replay = conn.execute(
+                    "SELECT status,phase,realized_trades "
+                    "FROM classroom_replays"
+                ).fetchone()
+            self.assertEqual(replay, ("INCOMPLETE", 4, 0))
+
     def test_unrelated_position_is_never_counted_or_deleted(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "classroom.db"
