@@ -168,7 +168,9 @@ class TradingCycle:
 
             try:
                 record = self._maybe_auto_fill(record, quote, auto_fill)
-            except PositionFillConflict:
+            except PositionFillConflict as exc:
+                if exc.reason == "strategy_changed":
+                    return records, "foreign_exit_strategy"
                 current = self.broker.get_order(
                     record.intent.client_order_id
                 )

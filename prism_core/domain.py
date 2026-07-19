@@ -33,17 +33,18 @@ class OrderStatus(str, Enum):
 
 
 class PositionFillConflict(ValueError):
-    """A SELL fill raced with a position quantity change."""
+    """A SELL fill conflicts with the persisted position."""
 
     def __init__(self, market: Market, symbol: str, reason: str):
         self.market = market
         self.symbol = symbol
         self.reason = reason
-        message = (
-            "cannot sell a missing position"
-            if reason == "missing"
-            else "sell quantity exceeds position"
-        )
+        messages = {
+            "missing": "cannot sell a missing position",
+            "quantity_changed": "sell quantity exceeds position",
+            "strategy_changed": "sell strategy does not own position",
+        }
+        message = messages.get(reason, "sell conflicts with position")
         super().__init__(message)
 
 

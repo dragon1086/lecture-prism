@@ -55,7 +55,8 @@ CREATE TABLE IF NOT EXISTS realized_trades (
     id INTEGER PRIMARY KEY AUTOINCREMENT, market TEXT NOT NULL,
     symbol TEXT NOT NULL, quantity TEXT NOT NULL, entry_price TEXT NOT NULL,
     exit_price TEXT NOT NULL, pnl_amount TEXT NOT NULL, currency TEXT NOT NULL,
-    strategy_id TEXT NOT NULL, closed_at TEXT NOT NULL
+    strategy_id TEXT NOT NULL, closed_at TEXT NOT NULL,
+    exit_client_order_id TEXT, exit_fill_id TEXT
 );
 CREATE TABLE IF NOT EXISTS classroom_replays (
     sequence INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -130,6 +131,21 @@ class Ledger:
                 conn.execute(
                     "ALTER TABLE classroom_replays "
                     "ADD COLUMN aborted_at TEXT"
+                )
+            trade_columns = {
+                row[1]
+                for row in conn.execute(
+                    "PRAGMA table_info(realized_trades)"
+                ).fetchall()
+            }
+            if "exit_client_order_id" not in trade_columns:
+                conn.execute(
+                    "ALTER TABLE realized_trades "
+                    "ADD COLUMN exit_client_order_id TEXT"
+                )
+            if "exit_fill_id" not in trade_columns:
+                conn.execute(
+                    "ALTER TABLE realized_trades ADD COLUMN exit_fill_id TEXT"
                 )
 
     @contextmanager
@@ -512,8 +528,13 @@ class Ledger:
                 )
         if strategy_id is None:
             return None
-        return Ledger._replay_order_history_reason(
+        history_reason = Ledger._replay_order_history_reason(
             conn, targets, session_id, strategy_id, phase
+        )
+        if history_reason is not None:
+            return history_reason
+        return Ledger._replay_trade_provenance_reason(
+            conn, targets, session_id, strategy_id
         )
 
     @staticmethod
@@ -524,11 +545,14 @@ class Ledger:
         strategy_id: str,
         active_phase: int | None,
     ) -> str | None:
+        namespace_pattern = f"{session_id}-%"
         rows = conn.execute(
-            "SELECT client_order_id,market,symbol,side,status,strategy_id "
+            "SELECT client_order_id,market,symbol,side,status,strategy_id,"
+            "quantity,filled_quantity,currency "
             "FROM broker_orders WHERE strategy_id=? "
+            "OR client_order_id LIKE ? "
             "ORDER BY client_order_id",
-            (strategy_id,),
+            (strategy_id, namespace_pattern),
         ).fetchall()
         chains: dict[
             tuple[int, Market, str, OrderSide], list[tuple[int, sqlite3.Row]]
@@ -548,8 +572,32 @@ class Ledger:
                 raise RuntimeError(
                     "classroom replay blocked by noncanonical replay order"
                 )
+            fills = conn.execute(
+                "SELECT fill_id,client_order_id,market,symbol,side,quantity,"
+                "price,currency FROM fills WHERE client_order_id=? "
+                "ORDER BY fill_id",
+                (order["client_order_id"],),
+            ).fetchall()
+            if Ledger._order_fill_history_mismatch(order, fills):
+                return "noncanonical_order_history"
+            if order["strategy_id"] != strategy_id:
+                if fills or status not in {
+                    OrderStatus.CANCELED,
+                    OrderStatus.REJECTED,
+                }:
+                    return "noncanonical_order_history"
             chain_key, retry_index = identity
             chains.setdefault(chain_key, []).append((retry_index, order))
+
+        orphan = conn.execute(
+            "SELECT 1 FROM fills "
+            "LEFT JOIN broker_orders USING(client_order_id) "
+            "WHERE fills.client_order_id LIKE ? "
+            "AND broker_orders.client_order_id IS NULL LIMIT 1",
+            (namespace_pattern,),
+        ).fetchone()
+        if orphan is not None:
+            return "noncanonical_order_history"
 
         predecessor_statuses = {
             OrderStatus.CANCELED,
@@ -585,6 +633,115 @@ class Ledger:
                 raise RuntimeError(
                     "classroom replay blocked by noncanonical replay order"
                 )
+        return None
+
+    @staticmethod
+    def _order_fill_history_mismatch(
+        order: sqlite3.Row, fills: list[sqlite3.Row]
+    ) -> bool:
+        try:
+            order_quantity = Decimal(order["quantity"])
+            filled_quantity = Decimal(order["filled_quantity"])
+            fill_quantities = [Decimal(fill["quantity"]) for fill in fills]
+        except Exception:
+            return True
+        if any(quantity <= 0 for quantity in fill_quantities):
+            return True
+        if sum(fill_quantities, Decimal("0")) != filled_quantity:
+            return True
+        status = OrderStatus(order["status"])
+        if status is OrderStatus.FILLED and filled_quantity != order_quantity:
+            return True
+        if status is OrderStatus.REJECTED and filled_quantity != 0:
+            return True
+        return any(
+            (
+                fill["client_order_id"],
+                fill["market"],
+                fill["symbol"],
+                fill["side"],
+                fill["currency"],
+            )
+            != (
+                order["client_order_id"],
+                order["market"],
+                order["symbol"],
+                order["side"],
+                order["currency"],
+            )
+            for fill in fills
+        )
+
+    @staticmethod
+    def _replay_trade_provenance_reason(
+        conn: sqlite3.Connection,
+        targets: frozenset[tuple[Market, str]],
+        session_id: str | None,
+        strategy_id: str,
+    ) -> str | None:
+        trades = conn.execute(
+            "SELECT id,market,symbol,quantity,exit_price,currency,"
+            "exit_client_order_id,exit_fill_id FROM realized_trades "
+            "WHERE strategy_id=? ORDER BY id",
+            (strategy_id,),
+        ).fetchall()
+        linked_fill_ids: set[str] = set()
+        for trade in trades:
+            order_id = trade["exit_client_order_id"]
+            fill_id = trade["exit_fill_id"]
+            if not order_id or not fill_id or fill_id in linked_fill_ids:
+                return "noncanonical_trade_provenance"
+            linked = conn.execute(
+                "SELECT broker_orders.client_order_id,"
+                "broker_orders.market,broker_orders.symbol,"
+                "broker_orders.side,broker_orders.status,"
+                "broker_orders.strategy_id,fills.fill_id,"
+                "fills.quantity AS fill_quantity,"
+                "fills.price AS fill_price,fills.currency AS fill_currency "
+                "FROM broker_orders JOIN fills "
+                "ON fills.client_order_id=broker_orders.client_order_id "
+                "WHERE broker_orders.client_order_id=? AND fills.fill_id=?",
+                (order_id, fill_id),
+            ).fetchone()
+            if linked is None:
+                return "noncanonical_trade_provenance"
+            identity = Ledger._replay_order_identity(
+                linked, targets, session_id
+            )
+            if (
+                linked["strategy_id"] != strategy_id
+                or OrderStatus(linked["status"]) is not OrderStatus.FILLED
+                or identity is None
+                or identity[0][0] != 3
+                or (
+                    trade["market"],
+                    trade["symbol"],
+                    Decimal(trade["quantity"]),
+                    Decimal(trade["exit_price"]),
+                    trade["currency"],
+                )
+                != (
+                    linked["market"],
+                    linked["symbol"],
+                    Decimal(linked["fill_quantity"]),
+                    Decimal(linked["fill_price"]),
+                    linked["fill_currency"],
+                )
+            ):
+                return "noncanonical_trade_provenance"
+            linked_fill_ids.add(fill_id)
+
+        sell_fill_ids = {
+            row["fill_id"]
+            for row in conn.execute(
+                "SELECT fills.fill_id FROM fills JOIN broker_orders "
+                "USING(client_order_id) WHERE broker_orders.strategy_id=? "
+                "AND broker_orders.side='SELL'",
+                (strategy_id,),
+            ).fetchall()
+        }
+        if linked_fill_ids != sell_fill_ids:
+            return "noncanonical_trade_provenance"
         return None
 
     @staticmethod
@@ -690,7 +847,9 @@ class Ledger:
                 "JOIN classroom_replays ON "
                 "classroom_replays.strategy_id=positions.strategy_id "
                 "WHERE positions.market=? AND positions.symbol=? "
-                "AND classroom_replays.status='ABORTED'",
+                "AND classroom_replays.status='ABORTED' "
+                "AND classroom_replays.abort_reason="
+                "'noncanonical_realized_trade'",
                 (market.value, symbol),
             ).fetchall()
             strategies.update(row["strategy_id"] for row in rows)
@@ -765,9 +924,12 @@ class Ledger:
                 phase=expected_phase,
             )
             if history_reason is not None:
-                raise RuntimeError(
-                    "classroom replay order history mismatch"
+                mismatch = (
+                    "trade provenance"
+                    if history_reason == "noncanonical_trade_provenance"
+                    else "order history"
                 )
+                raise RuntimeError(f"classroom replay {mismatch} mismatch")
             cursor = conn.execute(
                 "UPDATE classroom_replays SET phase=?,updated_at=? "
                 "WHERE sequence=? AND status='INCOMPLETE' "
@@ -812,9 +974,12 @@ class Ledger:
                 phase=4,
             )
             if history_reason is not None:
-                raise RuntimeError(
-                    "classroom replay order history mismatch"
+                mismatch = (
+                    "trade provenance"
+                    if history_reason == "noncanonical_trade_provenance"
+                    else "order history"
                 )
+                raise RuntimeError(f"classroom replay {mismatch} mismatch")
             actual_trades = sorted(
                 self._classroom_trade_contract(conn, claim.strategy_id)
             )
@@ -1414,6 +1579,24 @@ class Ledger:
             if fill.quantity <= 0 or cumulative > order.intent.quantity:
                 raise ValueError("fill quantity exceeds order quantity")
 
+            position_row = conn.execute(
+                "SELECT * FROM positions WHERE market=? AND symbol=?",
+                (fill.market.value, fill.symbol),
+            ).fetchone()
+            if fill.side is OrderSide.SELL:
+                if position_row is None:
+                    raise PositionFillConflict(
+                        fill.market, fill.symbol, "missing"
+                    )
+                if order.intent.strategy_id != position_row["strategy_id"]:
+                    raise PositionFillConflict(
+                        fill.market, fill.symbol, "strategy_changed"
+                    )
+                if fill.quantity > Decimal(position_row["quantity"]):
+                    raise PositionFillConflict(
+                        fill.market, fill.symbol, "quantity_changed"
+                    )
+
             conn.execute(
                 "INSERT INTO fills (fill_id,client_order_id,market,symbol,side,quantity,price,currency,occurred_at) "
                 "VALUES (?,?,?,?,?,?,?,?,?)",
@@ -1430,10 +1613,6 @@ class Ledger:
                 ),
             )
 
-            position_row = conn.execute(
-                "SELECT * FROM positions WHERE market=? AND symbol=?",
-                (fill.market.value, fill.symbol),
-            ).fetchone()
             now = _now()
             if fill.side is OrderSide.BUY:
                 old_qty = (
@@ -1472,20 +1651,15 @@ class Ledger:
                     ),
                 )
             else:
-                if position_row is None:
-                    raise PositionFillConflict(
-                        fill.market, fill.symbol, "missing"
-                    )
                 old_qty = Decimal(position_row["quantity"])
                 old_avg = Decimal(position_row["average_price"])
-                if fill.quantity > old_qty:
-                    raise PositionFillConflict(
-                        fill.market, fill.symbol, "quantity_changed"
-                    )
                 remaining = old_qty - fill.quantity
                 conn.execute(
-                    "INSERT INTO realized_trades (market,symbol,quantity,entry_price,exit_price,pnl_amount,currency,strategy_id,closed_at) "
-                    "VALUES (?,?,?,?,?,?,?,?,?)",
+                    "INSERT INTO realized_trades "
+                    "(market,symbol,quantity,entry_price,exit_price,"
+                    "pnl_amount,currency,strategy_id,closed_at,"
+                    "exit_client_order_id,exit_fill_id) "
+                    "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
                     (
                         fill.market.value,
                         fill.symbol,
@@ -1496,6 +1670,8 @@ class Ledger:
                         normalized_currency,
                         position_row["strategy_id"],
                         now,
+                        fill.client_order_id,
+                        fill.fill_id,
                     ),
                 )
                 if remaining == 0:

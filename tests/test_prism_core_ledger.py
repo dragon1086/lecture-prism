@@ -249,6 +249,63 @@ class PrismCoreLedgerTest(unittest.TestCase):
         self.assertEqual(self.ledger.list_positions(), [])
         self.assertEqual(self.ledger.count_realized_trades(), 1)
 
+    def test_foreign_strategy_sell_fill_rolls_back_all_mutation(self):
+        self._open_position(quantity=Decimal("2"))
+        intent = OrderIntent(
+            "foreign:AAPL:SELL",
+            Market.US,
+            "AAPL",
+            OrderSide.SELL,
+            OrderType.MARKET,
+            Decimal("2"),
+            None,
+            "USD",
+            strategy_id="foreign_strategy",
+        )
+        self._advance(intent, accepted=True)
+
+        with self.assertRaisesRegex(PositionFillConflict, "strategy"):
+            self.ledger.record_fill(
+                self._fill(
+                    "foreign-sell-fill",
+                    intent,
+                    Decimal("2"),
+                    Decimal("110.00"),
+                )
+            )
+
+        order = self.ledger.get_order(intent.client_order_id)
+        position = self.ledger.list_positions()[0]
+        self.assertEqual(order.status, OrderStatus.ACCEPTED)
+        self.assertEqual(order.filled_quantity, Decimal("0"))
+        self.assertEqual(position.quantity, Decimal("2"))
+        self.assertEqual(position.strategy_id, "default_oneil")
+        self.assertEqual(self._table_count("fills"), 1)
+        self.assertEqual(self.ledger.count_realized_trades(), 0)
+
+    def test_sell_trade_records_closing_order_and_fill_provenance(self):
+        self._open_position(quantity=Decimal("2"))
+        intent = sell_intent(quantity=Decimal("2"))
+        self._advance(intent, accepted=True)
+        fill = self._fill(
+            "owned-sell-fill",
+            intent,
+            Decimal("2"),
+            Decimal("110.00"),
+        )
+
+        self.ledger.record_fill(fill)
+
+        with sqlite3.connect(self.path) as conn:
+            provenance = conn.execute(
+                "SELECT exit_client_order_id,exit_fill_id "
+                "FROM realized_trades"
+            ).fetchone()
+        self.assertEqual(
+            provenance,
+            (intent.client_order_id, fill.fill_id),
+        )
+
     def test_sell_exceeding_position_rolls_back_fill_order_and_realized_trade(self):
         self._open_position(quantity=Decimal("2"))
         intent = sell_intent(quantity=Decimal("3"))

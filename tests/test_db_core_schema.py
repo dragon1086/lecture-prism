@@ -5,6 +5,7 @@ import unittest
 from unittest import mock
 
 import db
+from prism_core.ledger import Ledger
 
 
 class DatabaseCoreSchemaTest(unittest.TestCase):
@@ -28,6 +29,12 @@ class DatabaseCoreSchemaTest(unittest.TestCase):
                         "PRAGMA table_info(classroom_replays)"
                     ).fetchall()
                 }
+                trade_columns = {
+                    row[1]
+                    for row in conn.execute(
+                        "PRAGMA table_info(realized_trades)"
+                    ).fetchall()
+                }
 
         self.assertTrue(
             {
@@ -44,6 +51,49 @@ class DatabaseCoreSchemaTest(unittest.TestCase):
         self.assertIn("phase", replay_columns)
         self.assertIn("abort_reason", replay_columns)
         self.assertIn("aborted_at", replay_columns)
+        self.assertIn("exit_client_order_id", trade_columns)
+        self.assertIn("exit_fill_id", trade_columns)
+
+    def test_init_db_adds_nullable_exit_provenance_without_guessing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "combined.db"
+            with sqlite3.connect(path) as conn:
+                conn.execute(
+                    "CREATE TABLE realized_trades ("
+                    "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                    "market TEXT NOT NULL,symbol TEXT NOT NULL,"
+                    "quantity TEXT NOT NULL,entry_price TEXT NOT NULL,"
+                    "exit_price TEXT NOT NULL,pnl_amount TEXT NOT NULL,"
+                    "currency TEXT NOT NULL,strategy_id TEXT NOT NULL,"
+                    "closed_at TEXT NOT NULL)"
+                )
+                conn.execute(
+                    "INSERT INTO realized_trades "
+                    "(market,symbol,quantity,entry_price,exit_price,"
+                    "pnl_amount,currency,strategy_id,closed_at) "
+                    "VALUES ('US','AAPL','1','100','110','10','USD',"
+                    "'legacy','old')"
+                )
+
+            Ledger(path)
+            Ledger(path)
+
+            with sqlite3.connect(path) as conn:
+                columns = {
+                    row[1]
+                    for row in conn.execute(
+                        "PRAGMA table_info(realized_trades)"
+                    ).fetchall()
+                }
+                self.assertTrue(
+                    {"exit_client_order_id", "exit_fill_id"}.issubset(columns)
+                )
+                provenance = conn.execute(
+                    "SELECT exit_client_order_id,exit_fill_id "
+                    "FROM realized_trades WHERE strategy_id='legacy'"
+                ).fetchone()
+
+            self.assertEqual(provenance, (None, None))
 
     def test_init_db_adds_replay_phase_to_existing_core_schema(self):
         with tempfile.TemporaryDirectory() as tmp:

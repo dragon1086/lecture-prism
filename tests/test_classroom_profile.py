@@ -1305,6 +1305,211 @@ class ClassroomReplayTest(unittest.TestCase):
             self.assertEqual(result["session"], "classroom-000001")
             self.assertEqual(result["realized_trades"], 2)
 
+    def test_completion_rejects_missing_closing_provenance(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "classroom.db"
+            real_complete = Ledger.complete_classroom_replay
+            stripped = False
+
+            def strip_closing_provenance(
+                ledger,
+                claim,
+                *,
+                expected_trades,
+            ):
+                nonlocal stripped
+                if not stripped:
+                    stripped = True
+                    with sqlite3.connect(path) as conn:
+                        conn.execute(
+                            "UPDATE realized_trades SET "
+                            "exit_client_order_id=NULL,exit_fill_id=NULL "
+                            "WHERE strategy_id=? AND market='KR'",
+                            (claim.strategy_id,),
+                        )
+                return real_complete(
+                    ledger,
+                    claim,
+                    expected_trades=expected_trades,
+                )
+
+            with mock.patch.object(
+                Ledger,
+                "complete_classroom_replay",
+                new=strip_closing_provenance,
+            ):
+                with self.assertRaisesRegex(RuntimeError, "provenance"):
+                    run_classroom_replay(path)
+
+            with sqlite3.connect(path) as conn:
+                replay = conn.execute(
+                    "SELECT status,phase,owner_token FROM classroom_replays"
+                ).fetchone()
+            self.assertEqual(replay, ("INCOMPLETE", 4, None))
+
+    def test_foreign_session_exit_cannot_fill_or_certify_replay(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "classroom.db"
+            real_advance = Ledger.advance_classroom_replay_phase
+            foreign_id = "classroom-000001-3:KR:005930:SELL"
+            injected = False
+
+            def inject_foreign_exit(
+                ledger,
+                claim,
+                *,
+                expected_phase,
+                next_phase,
+            ):
+                nonlocal injected
+                advanced = real_advance(
+                    ledger,
+                    claim,
+                    expected_phase=expected_phase,
+                    next_phase=next_phase,
+                )
+                if not injected and expected_phase == 2:
+                    injected = True
+                    PaperBroker(ledger).submit_order(
+                        OrderIntent(
+                            foreign_id,
+                            Market.KR,
+                            "005930",
+                            OrderSide.SELL,
+                            OrderType.MARKET,
+                            Decimal("1"),
+                            None,
+                            "KRW",
+                            strategy_id="foreign_strategy",
+                            reason="foreign_exit",
+                        )
+                    )
+                return advanced
+
+            with mock.patch.object(
+                Ledger,
+                "advance_classroom_replay_phase",
+                new=inject_foreign_exit,
+            ):
+                with self.assertRaisesRegex(
+                    RuntimeError, "foreign_exit_strategy"
+                ):
+                    run_classroom_replay(path)
+
+            with sqlite3.connect(path) as conn:
+                replay = conn.execute(
+                    "SELECT status,phase,owner_token FROM classroom_replays"
+                ).fetchone()
+                foreign = conn.execute(
+                    "SELECT status,filled_quantity,strategy_id "
+                    "FROM broker_orders WHERE client_order_id=?",
+                    (foreign_id,),
+                ).fetchone()
+                foreign_fills = conn.execute(
+                    "SELECT COUNT(*) FROM fills WHERE client_order_id=?",
+                    (foreign_id,),
+                ).fetchone()[0]
+                trades = conn.execute(
+                    "SELECT COUNT(*) FROM realized_trades"
+                ).fetchone()[0]
+            self.assertEqual(replay, ("INCOMPLETE", 3, None))
+            self.assertEqual(foreign, ("ACCEPTED", "0", "foreign_strategy"))
+            self.assertEqual((foreign_fills, trades), (0, 1))
+
+            Ledger(path).transition_order(foreign_id, OrderStatus.CANCELED)
+            result = run_classroom_replay(path)
+
+            self.assertEqual(result["session"], "classroom-000001")
+            self.assertEqual(result["realized_trades"], 2)
+            with sqlite3.connect(path) as conn:
+                exits = conn.execute(
+                    "SELECT client_order_id,status,strategy_id "
+                    "FROM broker_orders WHERE market='KR' AND side='SELL' "
+                    "ORDER BY client_order_id"
+                ).fetchall()
+            self.assertEqual(
+                exits,
+                [
+                    (foreign_id, "CANCELED", "foreign_strategy"),
+                    (
+                        f"{foreign_id}:retry-1",
+                        "FILLED",
+                        "classroom-replay:classroom-000001",
+                    ),
+                ],
+            )
+
+    def test_namespace_collision_position_is_never_auto_settled(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "classroom.db"
+            ledger = Ledger(path)
+            broker = PaperBroker(ledger)
+            strategy_id = "classroom-replay:classroom-000001"
+            buy = OrderIntent(
+                "classroom-000001-1:KR:005930:BUY",
+                Market.KR,
+                "005930",
+                OrderSide.BUY,
+                OrderType.LIMIT,
+                Decimal("1"),
+                Decimal("70000"),
+                "KRW",
+                strategy_id=strategy_id,
+            )
+            broker.submit_order(buy)
+            broker.fill_order(
+                buy.client_order_id,
+                "foreign-buy",
+                Decimal("1"),
+                Decimal("70000"),
+            )
+            ledger.update_high_water(Market.KR, "005930", Decimal("76000"))
+
+            for _ in range(2):
+                with self.assertRaisesRegex(
+                    RuntimeError, "unrelated position"
+                ):
+                    run_classroom_replay(path)
+
+            with sqlite3.connect(path) as conn:
+                position = conn.execute(
+                    "SELECT quantity,strategy_id FROM positions "
+                    "WHERE market='KR' AND symbol='005930'"
+                ).fetchone()
+                collision_writes = conn.execute(
+                    "SELECT COUNT(*) FROM broker_orders "
+                    "WHERE strategy_id=? AND side='SELL'",
+                    (strategy_id,),
+                ).fetchone()[0]
+                collision_fills = conn.execute(
+                    "SELECT COUNT(*) FROM fills "
+                    "JOIN broker_orders USING(client_order_id) "
+                    "WHERE broker_orders.strategy_id=? "
+                    "AND broker_orders.side='SELL'",
+                    (strategy_id,),
+                ).fetchone()[0]
+                collision_trades = conn.execute(
+                    "SELECT COUNT(*) FROM realized_trades "
+                    "WHERE strategy_id=?",
+                    (strategy_id,),
+                ).fetchone()[0]
+                replays = conn.execute(
+                    "SELECT session_id,status,abort_reason "
+                    "FROM classroom_replays ORDER BY sequence"
+                ).fetchall()
+            self.assertEqual(position, ("1", strategy_id))
+            self.assertEqual(
+                (collision_writes, collision_fills, collision_trades),
+                (0, 0, 0),
+            )
+            self.assertEqual(
+                replays,
+                [
+                    ("classroom-000001", "ABORTED", "namespace_collision"),
+                    ("classroom-000002", "INCOMPLETE", None),
+                ],
+            )
+
     def test_unrelated_position_is_never_counted_or_deleted(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "classroom.db"
