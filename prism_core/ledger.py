@@ -15,6 +15,7 @@ from .domain import (
     OrderStatus,
     OrderType,
     Position,
+    PositionFillConflict,
     validate_transition,
 )
 
@@ -90,6 +91,27 @@ class Ledger:
             raise
         finally:
             conn.close()
+
+    @contextmanager
+    def cycle_fence(self):
+        lock_path = Path(f"{self.path}.cycle-lock")
+        conn = sqlite3.connect(lock_path, timeout=0)
+        try:
+            try:
+                conn.execute("BEGIN EXCLUSIVE")
+            except sqlite3.OperationalError:
+                conn.close()
+                yield False
+                return
+            try:
+                yield True
+            finally:
+                conn.rollback()
+        finally:
+            try:
+                conn.close()
+            except sqlite3.ProgrammingError:
+                pass
 
     @staticmethod
     def _row_to_order(row: sqlite3.Row) -> OrderRecord:
@@ -338,6 +360,119 @@ class Ledger:
             ).fetchone()
             return self._row_to_order(created)
 
+    def create_or_resume_exit(
+        self,
+        run_id: str,
+        market: Market,
+        symbol: str,
+        reason: str,
+    ) -> tuple[OrderRecord | None, str | None]:
+        placeholders = ",".join("?" for _ in _UNRESOLVED_ORDER_STATUSES)
+        with self._connect(immediate=True) as conn:
+            position_row = conn.execute(
+                "SELECT * FROM positions WHERE market=? AND symbol=?",
+                (market.value, symbol),
+            ).fetchone()
+            if position_row is None:
+                return None, None
+
+            unresolved = conn.execute(
+                "SELECT * FROM broker_orders "
+                f"WHERE market=? AND symbol=? AND status IN ({placeholders}) "
+                "ORDER BY created_at,client_order_id",
+                (
+                    market.value,
+                    symbol,
+                    *(status.value for status in _UNRESOLVED_ORDER_STATUSES),
+                ),
+            ).fetchall()
+            buy_rows = [
+                row for row in unresolved if OrderSide(row["side"]) is OrderSide.BUY
+            ]
+            if buy_rows:
+                reason_code = (
+                    "unknown_buy_order"
+                    if any(
+                        OrderStatus(row["status"]) is OrderStatus.UNKNOWN
+                        for row in buy_rows
+                    )
+                    else "unresolved_buy_order"
+                )
+                return None, reason_code
+
+            sell_rows = [
+                row
+                for row in unresolved
+                if OrderSide(row["side"]) is OrderSide.SELL
+            ]
+            if any(
+                OrderStatus(row["status"]) is OrderStatus.UNKNOWN
+                for row in sell_rows
+            ):
+                return None, "unknown_exit_order"
+            if len(sell_rows) > 1:
+                return None, "multiple_exit_orders"
+            if sell_rows:
+                return self._row_to_order(sell_rows[0]), None
+
+            base_id = f"{run_id}:{market.value}:{symbol}:SELL"
+            client_order_id = base_id
+            suffix = 1
+            while conn.execute(
+                "SELECT 1 FROM broker_orders WHERE client_order_id=?",
+                (client_order_id,),
+            ).fetchone() is not None:
+                suffix += 1
+                client_order_id = f"{base_id}:{suffix}"
+
+            intent = OrderIntent(
+                client_order_id=client_order_id,
+                market=market,
+                symbol=symbol,
+                side=OrderSide.SELL,
+                order_type=OrderType.MARKET,
+                quantity=Decimal(position_row["quantity"]),
+                limit_price=None,
+                currency=position_row["currency"],
+                strategy_id=position_row["strategy_id"],
+                reason=reason,
+            )
+            now = _now()
+            conn.execute(
+                "INSERT INTO broker_orders "
+                "(client_order_id,market,symbol,side,order_type,quantity,limit_price,currency,strategy_id,reason,status,created_at,updated_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (
+                    intent.client_order_id,
+                    intent.market.value,
+                    intent.symbol,
+                    intent.side.value,
+                    intent.order_type.value,
+                    str(intent.quantity),
+                    None,
+                    intent.currency,
+                    intent.strategy_id,
+                    intent.reason,
+                    OrderStatus.CREATED.value,
+                    now,
+                    now,
+                ),
+            )
+            conn.execute(
+                "INSERT INTO order_events "
+                "(client_order_id,status,occurred_at) VALUES (?,?,?)",
+                (
+                    intent.client_order_id,
+                    OrderStatus.CREATED.value,
+                    now,
+                ),
+            )
+            created = conn.execute(
+                "SELECT * FROM broker_orders WHERE client_order_id=?",
+                (intent.client_order_id,),
+            ).fetchone()
+            return self._row_to_order(created), None
+
     def get_order(self, client_order_id: str) -> OrderRecord:
         with self._connect() as conn:
             row = conn.execute(
@@ -401,6 +536,23 @@ class Ledger:
                 ),
             ).fetchone()
         return row is not None
+
+    def list_unresolved_orders(
+        self, market: Market, symbol: str
+    ) -> list[OrderRecord]:
+        placeholders = ",".join("?" for _ in _UNRESOLVED_ORDER_STATUSES)
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT * FROM broker_orders "
+                f"WHERE market=? AND symbol=? AND status IN ({placeholders}) "
+                "ORDER BY created_at,client_order_id",
+                (
+                    market.value,
+                    symbol,
+                    *(status.value for status in _UNRESOLVED_ORDER_STATUSES),
+                ),
+            ).fetchall()
+        return [self._row_to_order(row) for row in rows]
 
     def count_realized_trades(self) -> int:
         with self._connect() as conn:
@@ -491,6 +643,18 @@ class Ledger:
                 raise ValueError(
                     f"order cannot be filled from {order.status.value}"
                 )
+            if order.intent.order_type is OrderType.LIMIT:
+                limit_price = order.intent.limit_price
+                if (
+                    order.intent.side is OrderSide.BUY
+                    and fill.price > limit_price
+                ):
+                    raise ValueError("BUY fill price exceeds limit")
+                if (
+                    order.intent.side is OrderSide.SELL
+                    and fill.price < limit_price
+                ):
+                    raise ValueError("SELL fill price below limit")
 
             cumulative = order.filled_quantity + fill.quantity
             if fill.quantity <= 0 or cumulative > order.intent.quantity:
@@ -555,11 +719,15 @@ class Ledger:
                 )
             else:
                 if position_row is None:
-                    raise ValueError("cannot sell a missing position")
+                    raise PositionFillConflict(
+                        fill.market, fill.symbol, "missing"
+                    )
                 old_qty = Decimal(position_row["quantity"])
                 old_avg = Decimal(position_row["average_price"])
                 if fill.quantity > old_qty:
-                    raise ValueError("sell quantity exceeds position")
+                    raise PositionFillConflict(
+                        fill.market, fill.symbol, "quantity_changed"
+                    )
                 remaining = old_qty - fill.quantity
                 conn.execute(
                     "INSERT INTO realized_trades (market,symbol,quantity,entry_price,exit_price,pnl_amount,currency,strategy_id,closed_at) "

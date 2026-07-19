@@ -1,4 +1,15 @@
-from .domain import Fill, Market, OrderIntent, OrderRecord, OrderSide, OrderStatus, OrderType, Position, validate_transition
+from .domain import (
+    Fill,
+    Market,
+    OrderIntent,
+    OrderRecord,
+    OrderSide,
+    OrderStatus,
+    OrderType,
+    Position,
+    PositionFillConflict,
+    validate_transition,
+)
 
 __all__ = [
     "Fill",
@@ -9,5 +20,6 @@ __all__ = [
     "OrderStatus",
     "OrderType",
     "Position",
+    "PositionFillConflict",
     "validate_transition",
 ]

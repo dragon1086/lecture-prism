@@ -32,6 +32,21 @@ class OrderStatus(str, Enum):
     UNKNOWN = "UNKNOWN"
 
 
+class PositionFillConflict(ValueError):
+    """A SELL fill raced with a position quantity change."""
+
+    def __init__(self, market: Market, symbol: str, reason: str):
+        self.market = market
+        self.symbol = symbol
+        self.reason = reason
+        message = (
+            "cannot sell a missing position"
+            if reason == "missing"
+            else "sell quantity exceeds position"
+        )
+        super().__init__(message)
+
+
 _TRANSITIONS = {
     OrderStatus.CREATED: {OrderStatus.PREVIEWED, OrderStatus.REJECTED},
     OrderStatus.PREVIEWED: {OrderStatus.SUBMITTED, OrderStatus.REJECTED},

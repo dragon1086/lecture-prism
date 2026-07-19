@@ -30,6 +30,7 @@ lecture/slides/assets/
 # ─────────────────────────────────────────────────────────────
 prism.db
 *.db
+*.cycle-lock
 *.log
 reports/
 trading/**/*.log

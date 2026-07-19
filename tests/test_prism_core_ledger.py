@@ -6,7 +6,15 @@ import threading
 import unittest
 from unittest.mock import patch
 
-from prism_core.domain import Fill, Market, OrderIntent, OrderSide, OrderStatus, OrderType
+from prism_core.domain import (
+    Fill,
+    Market,
+    OrderIntent,
+    OrderSide,
+    OrderStatus,
+    OrderType,
+    PositionFillConflict,
+)
 from prism_core.ledger import Ledger
 
 
@@ -33,9 +41,9 @@ def sell_intent(order_id="run-1:AAPL:SELL", quantity=Decimal("2")):
         Market.US,
         "AAPL",
         OrderSide.SELL,
-        OrderType.LIMIT,
+        OrderType.MARKET,
         quantity,
-        Decimal("190.25"),
+        None,
         "USD",
     )
 
@@ -246,7 +254,9 @@ class PrismCoreLedgerTest(unittest.TestCase):
         intent = sell_intent(quantity=Decimal("3"))
         self._advance(intent)
 
-        with self.assertRaisesRegex(ValueError, "sell quantity exceeds position"):
+        with self.assertRaisesRegex(
+            PositionFillConflict, "sell quantity exceeds position"
+        ):
             self.ledger.record_fill(
                 self._fill("oversell", intent, Decimal("3"), Decimal("110.00"))
             )

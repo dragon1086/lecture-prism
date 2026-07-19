@@ -53,6 +53,21 @@ class PaperBroker:
             )
         return record
 
+    def submit_exit_order(
+        self, run_id: str, market: Market, symbol: str, reason: str
+    ) -> tuple[OrderRecord | None, str | None]:
+        record, blocked_reason = self.ledger.create_or_resume_exit(
+            run_id, market, symbol, reason
+        )
+        if record is None:
+            return None, blocked_reason
+        while record.status in _SUBMIT_PROGRESS:
+            record = self.ledger.transition_order(
+                record.intent.client_order_id,
+                _SUBMIT_PROGRESS[record.status],
+            )
+        return record, None
+
     def fill_order(
         self,
         client_order_id: str,
@@ -99,6 +114,19 @@ class PaperBroker:
 
     def get_order(self, client_order_id: str) -> OrderRecord:
         return self.ledger.get_order(client_order_id)
+
+    def list_unresolved_orders(
+        self, market: Market, symbol: str
+    ) -> list[OrderRecord]:
+        return self.ledger.list_unresolved_orders(market, symbol)
+
+    def update_high_water(
+        self, market: Market, symbol: str, price: Decimal
+    ) -> Position:
+        return self.ledger.update_high_water(market, symbol, price)
+
+    def cycle_fence(self):
+        return self.ledger.cycle_fence()
 
     def has_unresolved_order(self, market: Market, symbol: str) -> bool:
         return self.ledger.has_unresolved_order(market, symbol)

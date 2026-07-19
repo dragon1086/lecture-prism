@@ -361,6 +361,55 @@ class PaperBrokerTest(unittest.TestCase):
         self.assertEqual(position.quantity, Decimal("3"))
         self.assertEqual(position.average_price, Decimal("69900"))
 
+    def test_limit_fill_prices_are_enforced_without_side_effects(self):
+        buy = self._us_order("limit-buy:AAPL:BUY", Decimal("1"))
+        accepted_buy = self.broker.submit_order(buy)
+
+        with self.assertRaisesRegex(ValueError, "BUY fill price exceeds limit"):
+            self.broker.fill_order(
+                buy.client_order_id,
+                "above-buy-limit",
+                Decimal("1"),
+                Decimal("182"),
+            )
+
+        self.assertEqual(self.ledger.get_order(buy.client_order_id), accepted_buy)
+        self.assertEqual(self.broker.get_positions(), [])
+        self.assertEqual(self._rows("SELECT COUNT(*) FROM fills"), [(0,)])
+
+        self.broker.fill_order(
+            buy.client_order_id,
+            "at-buy-limit",
+            Decimal("1"),
+            buy.limit_price,
+        )
+        sell = OrderIntent(
+            "limit-sell:AAPL:SELL",
+            Market.US,
+            "AAPL",
+            OrderSide.SELL,
+            OrderType.LIMIT,
+            Decimal("1"),
+            Decimal("190"),
+            "USD",
+        )
+        accepted_sell = self.broker.submit_order(sell)
+        position = self.broker.get_positions()[0]
+
+        with self.assertRaisesRegex(ValueError, "SELL fill price below limit"):
+            self.broker.fill_order(
+                sell.client_order_id,
+                "below-sell-limit",
+                Decimal("1"),
+                Decimal("189"),
+            )
+
+        self.assertEqual(
+            self.ledger.get_order(sell.client_order_id), accepted_sell
+        )
+        self.assertEqual(self.broker.get_positions(), [position])
+        self.assertEqual(self._rows("SELECT COUNT(*) FROM fills"), [(1,)])
+
     def test_fill_is_rejected_from_every_nonfillable_state(self):
         states = (
             OrderStatus.CREATED,
