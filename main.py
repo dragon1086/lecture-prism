@@ -75,7 +75,7 @@ def _resolve_runtime_options(args) -> dict:
 
     from runtime_config import load_runtime_config, resolve_trade_dry_run
 
-    cfg = load_runtime_config()
+    cfg = load_runtime_config(getattr(args, "profile", None))
     return {
         "config": cfg,
         "dry_run": resolve_trade_dry_run(
@@ -83,23 +83,37 @@ def _resolve_runtime_options(args) -> dict:
             explicit_dry_run=bool(getattr(args, "dry_run", False)),
             config=cfg,
         ),
-        "use_real_data": bool(getattr(args, "real", False) or cfg.screening_mode == "real"),
+        "use_real_data": bool(
+            cfg.profile not in {"classroom", "backtest"}
+            and (getattr(args, "real", False) or cfg.screening_mode == "real")
+        ),
     }
 
 
 async def run_pipeline(dry_run: bool = True, target_ticker: Optional[str] = None,
-                       use_real_data: bool = False):
+                       use_real_data: bool = False, config=None):
     proxy_started = False
     saved_openai_env: dict[str, str | None] = {}
 
     from runtime_config import load_runtime_config
-    cfg = load_runtime_config()
+    cfg = config or load_runtime_config()
+    if cfg.profile in {"classroom", "backtest"}:
+        dry_run = True
+        use_real_data = False
 
     log.info("=" * 60)
     log.info("lecture-prism 파이프라인 시작")
     log.info(f"모드: {'시뮬레이션(dry-run)' if dry_run else '실거래'}")
     log.info(f"런타임 설정: {cfg.summary()}")
     log.info("=" * 60)
+
+    if cfg.profile == "classroom":
+        from db import DB_PATH
+        from prism_core.classroom import run_classroom_replay
+
+        summary = await asyncio.to_thread(run_classroom_replay, DB_PATH)
+        log.info("classroom replay 완료: %s", summary)
+        return summary
 
     try:
         proxy_started, saved_openai_env = await _maybe_start_chatgpt_oauth_proxy()
@@ -156,13 +170,24 @@ async def run_pipeline(dry_run: bool = True, target_ticker: Optional[str] = None
                 _restore_openai_env(saved_openai_env)
 
 
-if __name__ == "__main__":
+def _build_arg_parser() -> argparse.ArgumentParser:
+    from runtime_config import PROFILE_CHOICES
+
     parser = argparse.ArgumentParser(description="lecture-prism 자동매매 시스템")
+    parser.add_argument(
+        "--profile",
+        choices=PROFILE_CHOICES,
+        help="런타임 프로필 (환경변수 LECTURE_PROFILE보다 우선)",
+    )
     parser.add_argument("--dry-run", action="store_true", help="시뮬레이션 모드로 강제 실행")
     parser.add_argument("--live", action="store_true", help="실거래 모드 (KIS API 필요)")
     parser.add_argument("--ticker", type=str, help="특정 종목 코드 (예: 005930)")
     parser.add_argument("--real", action="store_true", help="스크리닝에 yfinance 실데이터 사용 (기본: 데모값)")
-    args = parser.parse_args()
+    return parser
+
+
+if __name__ == "__main__":
+    args = _build_arg_parser().parse_args()
 
     options = _resolve_runtime_options(args)
     asyncio.run(
@@ -170,5 +195,6 @@ if __name__ == "__main__":
             dry_run=options["dry_run"],
             target_ticker=args.ticker,
             use_real_data=options["use_real_data"],
+            config=options["config"],
         )
     )

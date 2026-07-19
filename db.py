@@ -79,6 +79,10 @@ def init_db() -> None:
         except sqlite3.OperationalError:
             pass  # 이미 존재
 
+    from prism_core.ledger import Ledger
+
+    Ledger(DB_PATH)
+
 
 def _now() -> str:
     return datetime.now().isoformat(timespec="seconds")

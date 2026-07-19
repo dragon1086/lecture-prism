@@ -22,6 +22,14 @@ _PROFILE_DEFAULTS = {
         "research_tools": "",
         "trade_mode": "simulation",
     },
+    "classroom": {
+        "data_mode": "mock",
+        "screening_mode": "mock",
+        "llm_mode": "mock",
+        "report_mode": "lite",
+        "research_tools": "",
+        "trade_mode": "simulation",
+    },
     "real_data": {
         "data_mode": "auto",
         "screening_mode": "mock",
@@ -54,12 +62,22 @@ _PROFILE_DEFAULTS = {
         "research_tools": "perplexity,firecrawl",
         "trade_mode": "real",
     },
+    "backtest": {
+        "data_mode": "mock",
+        "screening_mode": "mock",
+        "llm_mode": "mock",
+        "report_mode": "lite",
+        "research_tools": "",
+        "trade_mode": "simulation",
+    },
 }
 
 _PROFILE_ALIASES = {
     "dummy": "mock",
     "demo": "mock",
     "basic": "mock",
+    "class": "classroom",
+    "replay": "classroom",
     "realdata": "real_data",
     "real-data": "real_data",
     "advanced": "research",
@@ -71,7 +89,11 @@ _PROFILE_ALIASES = {
     "broker-demo": "paper",
     "real": "live",
     "prod": "live",
+    "walk_forward": "backtest",
 }
+
+PROFILE_CHOICES = tuple(sorted(set(_PROFILE_DEFAULTS) | set(_PROFILE_ALIASES)))
+_FIXED_SIMULATION_PROFILES = frozenset({"classroom", "backtest"})
 
 _DATA_ALIASES = {
     "dummy": "mock",
@@ -145,8 +167,10 @@ def _normalize(value: str | None, *, default: str, aliases: dict[str, str],
     return text if text in allowed else default
 
 
-def _profile() -> str:
-    raw = os.getenv("LECTURE_PROFILE") or os.getenv("PRISM_PROFILE")
+def _profile(explicit: str | None = None) -> str:
+    raw = explicit
+    if raw is None:
+        raw = os.getenv("LECTURE_PROFILE") or os.getenv("PRISM_PROFILE")
     return _normalize(
         raw,
         default="mock",
@@ -188,12 +212,30 @@ def _llm_enabled(llm_mode: str) -> tuple[bool, bool]:
     return bool(api_ready or oauth_requested), oauth_requested
 
 
-def load_runtime_config() -> RuntimeConfig:
+def load_runtime_config(profile: str | None = None) -> RuntimeConfig:
     """Load `.env` and return normalized runtime settings."""
 
     load_dotenv_once()
-    profile = _profile()
+    profile = _profile(profile)
     defaults = _PROFILE_DEFAULTS[profile]
+
+    if profile in _FIXED_SIMULATION_PROFILES:
+        return RuntimeConfig(
+            profile=profile,
+            data_mode=defaults["data_mode"],
+            screening_mode=defaults["screening_mode"],
+            llm_mode=defaults["llm_mode"],
+            report_mode=defaults["report_mode"],
+            research_tools=(),
+            trade_mode=defaults["trade_mode"],
+            broker="paper",
+            broker_mode="paper",
+            llm_enabled=False,
+            chatgpt_oauth_requested=False,
+            tool_ready={},
+            live_broker_enabled=False,
+            real_broker_allowed=False,
+        )
 
     data_mode = _normalize(
         os.getenv("LECTURE_DATA_MODE") or os.getenv("PRISM_DATA_MODE") or defaults["data_mode"],
@@ -277,9 +319,11 @@ def resolve_trade_dry_run(explicit_live: bool, explicit_dry_run: bool,
                           config: RuntimeConfig | None = None) -> bool:
     """Resolve whether `main.py` should stay in simulation mode."""
 
+    cfg = config or load_runtime_config()
+    if cfg.profile in _FIXED_SIMULATION_PROFILES:
+        return True
     if explicit_live:
         return False
     if explicit_dry_run:
         return True
-    cfg = config or load_runtime_config()
     return cfg.trade_mode == "simulation"
