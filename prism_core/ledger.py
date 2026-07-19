@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import sqlite3
 import time
 from collections import Counter
@@ -208,6 +209,13 @@ _CLEANUP_ELIGIBLE_ABORT_REASONS = (
     "noncanonical_realized_trade",
     "noncanonical_trade_provenance",
 )
+_SAFE_SQL_DEFAULT = re.compile(
+    r"^(?:"
+    r"[-+]?(?:(?:\d+(?:\.\d*)?)|(?:\.\d+))(?:[eE][-+]?\d+)?"
+    r"|X'[0-9A-Fa-f]*'"
+    r"|'(?:[^']|'')*'"
+    r")$"
+)
 
 
 def _now() -> str:
@@ -248,21 +256,63 @@ class Ledger:
         )
 
     @staticmethod
-    def _unique_keys(
-        conn: sqlite3.Connection, table: str
-    ) -> set[tuple[str, ...]]:
-        keys = set()
+    def _validate_unique_keys(
+        conn: sqlite3.Connection,
+        table: str,
+        required: set[tuple[str, ...]],
+    ) -> None:
+        valid = set()
         for row in conn.execute(f'PRAGMA index_list("{table}")').fetchall():
-            if not row[2]:
+            name = row[1]
+            is_unique = bool(row[2])
+            origin = row[3]
+            is_partial = bool(row[4])
+            if not is_unique or origin == "pk":
                 continue
-            columns = tuple(
-                item[2]
+            key_rows = [
+                item
                 for item in conn.execute(
-                    f'PRAGMA index_info("{row[1]}")'
+                    f'PRAGMA index_xinfo("{name}")'
                 ).fetchall()
+                if item[5]
+            ]
+            has_expression = any(
+                item[1] < 0 or item[2] is None for item in key_rows
             )
-            keys.add(columns)
-        return keys
+            columns = tuple(item[2] for item in key_rows)
+            if is_partial:
+                raise IncompatibleLedgerSchema(
+                    f"{table} has partial UNIQUE index {name}: {columns!r}"
+                )
+            if has_expression:
+                raise IncompatibleLedgerSchema(
+                    f"{table} has expression UNIQUE index {name}"
+                )
+            if any(str(item[4]).upper() != "BINARY" for item in key_rows):
+                raise IncompatibleLedgerSchema(
+                    f"{table} has non-BINARY collation in UNIQUE index "
+                    f"{name}"
+                )
+            if columns not in required:
+                raise IncompatibleLedgerSchema(
+                    f"{table} has unexpected UNIQUE key: {columns!r}"
+                )
+            valid.add(columns)
+        missing = required - valid
+        if missing:
+            raise IncompatibleLedgerSchema(
+                f"{table} missing required full UNIQUE keys: "
+                f"{sorted(missing)!r}"
+            )
+
+    @staticmethod
+    def _has_usable_default(value: str | None) -> bool:
+        if value is None:
+            return False
+        normalized = value.strip()
+        while normalized.startswith("(") and normalized.endswith(")"):
+            normalized = normalized[1:-1].strip()
+        return _SAFE_SQL_DEFAULT.fullmatch(normalized) is not None
 
     @classmethod
     def _validate_schema(
@@ -271,9 +321,7 @@ class Ledger:
         required_columns: dict[str, set[str]],
     ) -> None:
         for table, required in required_columns.items():
-            rows = conn.execute(
-                f'PRAGMA table_info("{table}")'
-            ).fetchall()
+            rows = conn.execute(f'PRAGMA table_xinfo("{table}")').fetchall()
             by_name = {row[1]: row for row in rows}
             actual = set(by_name)
             missing = sorted(required - actual)
@@ -281,6 +329,13 @@ class Ledger:
                 raise IncompatibleLedgerSchema(
                     f"{table} missing required columns: {', '.join(missing)}"
                 )
+            for column in sorted(actual - required):
+                row = by_name[column]
+                if bool(row[3]) and not cls._has_usable_default(row[4]):
+                    raise IncompatibleLedgerSchema(
+                        f"{table}.{column} is an unknown NOT NULL column "
+                        "without a usable default"
+                    )
             for column in sorted(required):
                 row = by_name[column]
                 expected_type, expected_not_null, expected_default = (
@@ -309,12 +364,7 @@ class Ledger:
                     f"{table} has incompatible primary key: {primary_key!r}"
                 )
             required_unique = _REQUIRED_UNIQUE_KEYS.get(table, set())
-            missing_unique = required_unique - cls._unique_keys(conn, table)
-            if missing_unique:
-                raise IncompatibleLedgerSchema(
-                    f"{table} missing required unique keys: "
-                    f"{sorted(missing_unique)!r}"
-                )
+            cls._validate_unique_keys(conn, table, required_unique)
 
     @classmethod
     def _add_column(
@@ -1332,6 +1382,21 @@ class Ledger:
             price=high_since_entry,
             price_name="high_since_entry",
         )
+        if quantity <= 0:
+            raise ValueError("persisted position quantity must be positive")
+        if average_price <= 0:
+            raise ValueError(
+                "persisted position average_price must be positive"
+            )
+        if high_since_entry <= 0:
+            raise ValueError(
+                "persisted position high_since_entry must be positive"
+            )
+        if high_since_entry < average_price:
+            raise ValueError(
+                "persisted position high_since_entry cannot be below "
+                "average_price"
+            )
         return Position(
             market=market,
             symbol=row["symbol"],

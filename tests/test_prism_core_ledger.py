@@ -672,6 +672,37 @@ class PrismCoreLedgerTest(unittest.TestCase):
                     self.ledger.update_high_water(market, symbol, price)
                 self.assertEqual(self.ledger.list_positions(), [before])
 
+    def test_corrupt_persisted_position_economics_fail_closed(self):
+        intent = buy_intent("corrupt:AAPL:BUY", Decimal("1"), Decimal("100"))
+        self._advance(intent, accepted=True)
+        self.ledger.record_fill(
+            self._fill("corrupt-open", intent, Decimal("1"), Decimal("100"))
+        )
+        corruptions = (
+            ("quantity", "0", "quantity must be positive"),
+            ("average_price", "0", "average_price must be positive"),
+            ("high_since_entry", "0", "high_since_entry must be positive"),
+            (
+                "high_since_entry",
+                "99",
+                "high_since_entry cannot be below average_price",
+            ),
+        )
+        for column, value, message in corruptions:
+            with self.subTest(column=column, value=value):
+                with sqlite3.connect(self.path) as conn:
+                    conn.execute(
+                        "UPDATE positions SET quantity='1',average_price='100',"
+                        "high_since_entry='100' WHERE market='US' AND symbol='AAPL'"
+                    )
+                    conn.execute(
+                        f'UPDATE positions SET "{column}"=? '
+                        "WHERE market='US' AND symbol='AAPL'",
+                        (value,),
+                    )
+                with self.assertRaisesRegex(ValueError, message):
+                    Ledger(self.path).list_positions()
+
     def test_decimal_columns_are_text_and_round_trip_exactly(self):
         intent = buy_intent(
             quantity=Decimal("1.2500"), price=Decimal("180.2500")
