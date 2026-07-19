@@ -84,3 +84,30 @@ lecture-prism은 PRISM 본 시스템의 축소판입니다.
 - [`run_full_pipeline` 전체 아키텍처](prism-insight/run-full-pipeline-architecture.md)
 - [원본 매매·시황·비중 제어 구조](prism-insight/trading-and-regime-architecture.md)
 - [원본 구조 기반 강의 질문 은행](prism-insight/lecture-question-bank.md)
+
+## 10. 지금 연결된 상태형 paper 코어
+
+기본 `mock`은 처음 성공을 위한 기존 경로입니다. API 키 없이 `screening.py` → `analysis.py` → `trading.py` → `feedback.py`를 지나며, 기존 강의용 테이블에 분석·매매·교훈을 남깁니다. 반면 `classroom`은 같은 기본 데모의 별칭이 아니라, `prism_core/`를 실제로 호출하는 **고정 offline 상태 재생**입니다. 삼성전자(KR)와 AAPL(US)을 진입하고, 고점을 갱신한 다음, 트레일링 스탑으로 청산하는 세 사이클을 재현합니다.
+
+| 구성요소 | 현재 구현된 역할 |
+|---|---|
+| `prism_core/domain.py` | 주문 상태와 시장별 계약을 정의합니다. KR은 KRW, US는 USD이며 한국 주식 수량은 정수여야 합니다. |
+| `prism_core/paper_broker.py` | 주문을 `CREATED` → `PREVIEWED` → `SUBMITTED` → `ACCEPTED`로 진행합니다. `ACCEPTED`만으로는 포지션을 만들지 않고, 별도의 fill이 기록되어야 체결됩니다. |
+| `prism_core/ledger.py` | SQLite에 주문 이벤트, fills, positions, realized trades, classroom replay 상태를 저장합니다. 프로세스를 재시작해도 이어지며, 청산 거래에는 주문·fill provenance를 함께 남깁니다. |
+| `prism_core/cycle.py` | 먼저 포트폴리오 전체 high-water를 저장하고, 청산 판단과 주문을 처리한 뒤 새 진입을 봅니다. 즉 **청산 우선**입니다. |
+| `prism_core/classroom.py` | KR/US 진입 → 고점 갱신 → 트레일링 청산을 결정론적으로 실행하고, 중단된 세션은 SQLite 증거에 맞춰 재개합니다. |
+
+`UNKNOWN` 주문은 성공이나 실패를 추측하지 않습니다. 해당 종목의 중복 주문·체결·청산을 막고, 저장된 상태가 명시적으로 조정될 때까지 fail-closed로 멈춥니다. 이 규칙은 네트워크 응답을 잃어버렸을 때 같은 주문을 두 번 내는 문제를 피하기 위한 안전장치입니다.
+
+## 11. 아직 연결 완료로 말하면 안 되는 것
+
+아래 항목은 **후속 과제**입니다. 현재 상태형 paper 코어의 완료 범위에 포함되지 않습니다.
+
+- paper/live용 market provider fail-closed: 실데이터를 못 얻었을 때 mock으로 거래 판단을 계속하지 않고 주문 경로를 닫는 연결
+- 시장 regime과 screening 결합
+- 분석 evidence와 OAuth 응답의 end-to-end 출처 연결
+- KIS 주문·조회·정정·취소·체결 확인·재시작 reconcile을 포함한 full lifecycle
+- Toss WTS 어댑터와 같은 수준의 lifecycle 검증
+- `dashboard.py`에서 `broker_orders`, `order_events`, `fills`, `positions`, `realized_trades`, `classroom_replays`를 직접 시각화하는 화면
+
+현재 대시보드는 기존 `trade_history`, `analysis_decisions`, `feedback_lessons`만 읽습니다. 따라서 classroom 실행 증거는 SQLite 조회로 확인해야 하며, 대시보드에 core table이 보인다고 설명하면 안 됩니다. KIS는 기존 강의용 부분 어댑터가 있고 OAuth 프록시 기본형도 있지만, 위 lifecycle·evidence 연결까지 완료됐다는 뜻은 아닙니다. Toss 역시 완료된 브로커 경로로 취급하지 않습니다.

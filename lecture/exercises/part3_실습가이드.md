@@ -42,11 +42,11 @@ main.py 전체 흐름을 API 키 없이 데모 모드로 실행해줘.
 
 ---
 
-## 선택 실습 — 강의용 ChatGPT 어댑터 연동 (CH1 라이브 데모)
+## 선택 실습 — 강의용 ChatGPT 어댑터 구조 확인 (CH1 라이브 데모 · 후속 과제)
 
-**목표**: 구독 계정을 어댑터에 붙여 최신 GPT 모델을 파이썬에서 연동하는 구조 이해 (실무 운영은 정식 API 키 권장)
+**목표**: 번들된 OAuth 프록시 기본형과 실제 LLM 선택 연결 구조 이해 (foundation의 end-to-end evidence 연결 완료 범위는 아님)
 
-> 이 단계는 초보 수강생이 반드시 혼자 완성해야 하는 첫 실습이 아니라, 강사 라이브 데모 또는 선택 실습입니다. 기본 흐름은 OAuth 없이도 더미 데이터 모드로 먼저 체험할 수 있습니다. 프록시 기본형은 이미 `cores/chatgpt_proxy`에 들어 있으므로 새로 만들지 않습니다.
+> 이 단계는 초보 수강생이 반드시 혼자 완성해야 하는 첫 실습이 아니라, 강사 라이브 데모 또는 선택 실습입니다. 기본 흐름은 OAuth 없이도 더미 데이터 모드로 먼저 체험할 수 있습니다. 프록시 기본형은 이미 `cores/chatgpt_proxy`에 들어 있으므로 새로 만들지 않습니다. 로그인부터 분석 evidence provenance까지의 OAuth end-to-end 경로는 후속 과제이며, 연결 성공을 상태형 paper foundation의 완료 조건으로 말하지 않습니다.
 
 ### 코딩 에이전트에 입력
 
@@ -169,6 +169,74 @@ main.py를 한 번 실행해서 매매·분석·교훈이 prism.db에 저장되�
 - 대시보드 상단에 시뮬레이션 데이터 상태가 보입니다.
 - 매매현황, AI 분석 근거, 축적된 교훈 표가 보입니다.
 - `feedback.py`의 `get_recent_lessons()`가 DB 교훈을 읽어 다음 매매 판단 재료로 쓸 수 있음을 확인합니다.
+
+> 현재 대시보드는 기존 `trade_history`, `analysis_decisions`, `feedback_lessons`만 보여줍니다. 아래 classroom 실습의 core table은 아직 직접 시각화하지 않습니다. 이것이 지금 대시보드의 한계이며, core table 화면은 후속 과제입니다.
+
+---
+
+## 실습 6 — classroom 상태형 paper 코어 (CH4~5 연결 · 15분)
+
+**목표**: “주문을 받았다”와 “실제로 체결됐다”를 구분하고, 재시작 가능한 KR/US 진입·청산 증거 확인
+
+기본 `mock`은 API 키 없는 첫 성공을 위한 기존 4단계 파이프라인입니다. `classroom`은 별도의 고정 offline replay로, 삼성전자(KR/KRW)와 AAPL(US/USD)의 진입 → 고점 갱신 → 트레일링 청산을 SQLite에 남깁니다. `classroom`과 `backtest`는 환경변수로 실데이터·LLM·외부 broker를 켤 수 없습니다.
+
+### classroom 전체 사이클 실행
+
+```text
+lecture-prism의 classroom 전체 사이클을 실행해줘.
+
+조건:
+1. 기존 prism.db는 건드리지 말고 임시 SQLite 파일을 만든 뒤, 프로그램 안에서 db.DB_PATH를 그 경로로 바꿔 main.py classroom 프로필을 실행해줘.
+2. KR/US 진입 → 포트폴리오 전체 high-water 갱신 → 청산 우선 트레일링 스탑의 세 사이클을 설명해줘.
+3. CREATED → PREVIEWED → SUBMITTED → ACCEPTED는 주문 접수 과정이고, ACCEPTED는 체결이 아니라는 점을 확인해줘.
+4. 별도 fill 뒤에만 FILLED, positions, realized_trades가 바뀌는지 증거로 보여줘.
+5. KR은 KRW와 정수 수량, US는 USD 계약을 지켰는지 확인해줘.
+6. 같은 임시 DB를 새 Ledger 인스턴스로 다시 열어 재시작 후에도 기록을 읽을 수 있는지 확인해줘.
+```
+
+### 미체결 → 체결 → 청산 증거 읽기
+
+```text
+방금 classroom 실행에 쓴 임시 DB를 읽기 전용으로 조사해줘.
+
+- broker_orders: 주문 ID, 시장, 매수/매도, 최종 상태
+- order_events: CREATED, PREVIEWED, SUBMITTED, ACCEPTED, FILLED의 최초 관찰 순서
+- fills: 실제 체결 ID, 수량, 가격, 통화
+- positions: 보유 상태와 high_since_entry
+- realized_trades: 진입가, 청산가, 손익, exit_client_order_id, exit_fill_id
+- classroom_replays: 세션, phase, 완료 상태
+
+결과를 미체결 → 체결 → 청산 순서로 표로 정리해줘.
+최종 positions가 0이고 KR/US realized_trades가 각각 한 건인지 확인해줘.
+재시작 provenance를 추측하지 말고 SQLite에 실제로 저장된 값만 설명해줘.
+```
+
+### UNKNOWN 안전 규칙 확인
+
+```text
+prism_core의 UNKNOWN 주문 처리 규칙을 코드와 테스트로 설명해줘.
+실제 DB를 수정하는 장애 주입은 하지 말고 기존 테스트를 실행해,
+체결 여부를 알 수 없는 주문에서 중복 진입·중복 청산을 만들지 않고 fail-closed로 막는지 확인해줘.
+```
+
+### 대시보드의 한계 설명
+
+```text
+dashboard.py의 /api/data가 읽는 테이블을 확인해줘.
+classroom의 broker_orders, order_events, fills, positions, realized_trades, classroom_replays를 현재 화면에서 직접 볼 수 있는지 설명해줘.
+아직 보이지 않는다면 구현됐다고 말하지 말고, SQLite 조회로 확인할 수 있는 증거와 대시보드의 한계를 나눠 알려줘.
+core table 시각화는 후속 과제로 표시해줘.
+```
+
+### live 기본 차단 확인
+
+```text
+실계좌 키나 계좌 파일을 열거나 바꾸지 말고 lecture-prism의 live 기본 차단을 검증해줘.
+trading.py의 live 요청 결과가 live_blocked인지 확인하고,
+외부 broker 주문이나 core 주문·fill·position·realized_trades mutation이 없었다는 근거를 함께 보여줘.
+```
+
+> 상태형 foundation의 완료 범위는 offline paper 코어까지입니다. paper/live market-provider fail-closed, 시장 regime, 분석 evidence와 OAuth 연결, KIS full lifecycle, Toss WTS adapter, dashboard core-table 시각화는 후속 과제입니다. KIS나 Toss가 완성됐다고 설명하지 않습니다.
 
 ---
 
