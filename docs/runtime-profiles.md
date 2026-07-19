@@ -23,7 +23,7 @@ lecture-prism은 한 저장소 안에서 초급자용 더미 데모부터 상태
 | `research` | 실데이터 | LLM + Perplexity/Firecrawl 선택 리서치 | 가상 매매 | 원본 PRISM에 가까운 분석을 원하는 수강생 |
 | `paper` | 현재 `auto` | research 보고서 | 증권사 모의투자 설정 경로 | **후속 과제**, 운영 준비 완료 아님 |
 | `live` | 현재 `auto` | research 보고서 | 이중 잠금된 실전 설정 경로 | **후속 과제**, 기본 차단 유지 |
-| `backtest` | 고정 mock | LLM 없음 | offline simulation | 외부 연동을 고정 차단한 호환 프로필 |
+| `backtest` | 고정 mock | LLM 없음 | legacy stateless simulation | 외부 연동을 고정 차단한 호환 프로필 |
 
 ```text
 내 .env를 lecture-prism 런타임 프로필 방식으로 점검해줘.
@@ -50,13 +50,15 @@ lecture-prism은 한 저장소 안에서 초급자용 더미 데모부터 상태
 
 다만 이 폴백 정책을 주문 경로까지 확대하면 안 됩니다. 목표 계약은 **paper/live에서는 mock 데이터로 주문 판단을 계속하지 않고 market provider 실패를 fail-closed로 막는 것**입니다. 이 market-provider slice는 아직 후속 과제이므로, 현재 `paper`와 `live`를 완성된 운영 프로필로 사용하거나 설명하지 않습니다.
 
-`classroom`과 `backtest`는 환경변수로 data/LLM/broker 설정을 덮어쓸 수 없는 고정 offline simulation 프로필입니다. 둘 다 paper broker와 mock 데이터만 사용하고 live 플래그를 무시합니다. `classroom`은 여기에 상태형 KR/US replay가 연결되어 있고, `backtest`는 전체 백테스트 엔진 완성을 뜻하지 않습니다.
+`classroom`과 `backtest`는 환경변수로 data/LLM/외부 broker 설정을 덮어쓸 수 없는 고정 offline simulation 프로필이며 live 플래그를 무시합니다. 두 프로필의 서로 다른 실행 코어는 다음 절에서 구분합니다.
 
 ## 3. mock 첫 실행과 classroom 상태 재생
 
 `mock`은 기존 강의 파이프라인입니다. API 키 없이 스크리닝, 6섹션 mock 분석, 가상 매매, 피드백 저장을 한 번에 경험하는 것이 목적입니다.
 
 `classroom`은 주문 원장을 배우기 위한 별도 경로입니다. 삼성전자(KR/KRW)와 AAPL(US/USD)을 대상으로 아래 세 사이클을 결정론적으로 실행합니다.
+
+`classroom`만 SQLite 상태와 `PaperBroker`를 사용합니다. `backtest`는 고정 offline이지만 legacy stateless `_simulate_trade` 경로를 유지하며, 상태형 paper broker나 완성된 백테스트 엔진이 아닙니다.
 
 1. 지정가 진입 주문과 fill 기록
 2. 두 시장 포지션의 high-water 갱신
@@ -66,9 +68,9 @@ lecture-prism은 한 저장소 안에서 초급자용 더미 데모부터 상태
 
 모든 증거는 같은 SQLite 파일의 `broker_orders`, `order_events`, `fills`, `positions`, `realized_trades`, `classroom_replays`에 저장됩니다. 새 프로세스가 같은 DB를 열면 주문·포지션·replay phase를 다시 읽어 이어갑니다. `realized_trades`의 `exit_client_order_id`와 `exit_fill_id`는 어떤 청산 주문과 체결이 손익을 만들었는지 보여주는 provenance입니다.
 
-시장 계약도 DB 쓰기 전에 검증합니다. KR 주문은 `KRW`, US 주문은 `USD`여야 하고, 한국 주식 수량은 정수여야 합니다. 상태가 `UNKNOWN`이면 체결 여부를 추측하지 않고 해당 대상의 다음 쓰기를 막습니다. 운영자가 저장된 증거를 조정하기 전까지 fail-closed로 유지됩니다.
+시장 계약도 DB 쓰기 전에 검증합니다. KR 주문은 `KRW`, US 주문은 `USD`여야 하고, 한국 주식 수량은 정수여야 합니다. 상태가 `UNKNOWN`이면 체결 여부를 추측하지 않고 해당 대상의 새 주문·replay 주문, fill, 청산 mutation을 막습니다. 유효한 quote를 관찰하는 포트폴리오 pass가 먼저 실행되므로 high-water 관찰은 저장될 수 있습니다. 명시적인 관찰 증거에 따른 **evidence-based reconciliation** 전까지 주문 계열 mutation은 fail-closed입니다.
 
-사이클은 각 종목을 하나씩 청산하는 방식이 아닙니다. 먼저 **포트폴리오 전체 high-water**를 저장한 다음 청산 대상을 처리하며, 새 진입보다 **청산 우선** 순서를 지킵니다. 한 청산 응답을 잃어도 다른 포지션의 고점 기록이 먼저 남도록 한 구조입니다.
+사이클은 각 종목을 하나씩 청산하는 방식이 아닙니다. **포트폴리오 전체 관찰 pass**에서 유효한 유한 quote가 있는 모든 포지션의 high-water를 청산 write 전에 저장한 다음, 청산 대상을 처리하고 새 진입을 봅니다. quote가 누락됐거나 잘못된 quote이면 그 포지션은 관찰 갱신과 주문 mutation을 건너뛰어 fail-closed로 남습니다. 한 청산 응답을 잃어도 valid quote가 있던 다른 포지션의 고점 기록이 먼저 남는 **청산 우선** 구조입니다.
 
 ## 4. 추천 조합
 
@@ -87,8 +89,8 @@ LECTURE_SAVE_REPORTS=1
 ```text
 lecture-prism의 classroom 전체 사이클을 안전한 임시 SQLite DB로 실행해줘.
 기존 prism.db는 수정하지 말고, 프로그램 안에서 db.DB_PATH를 임시 경로로 바꾼 뒤 main.py의 classroom 프로필을 실행해줘.
-KR/US 진입 → 포트폴리오 전체 high-water 갱신 → 청산 우선 트레일링 스탑이 어떻게 이어졌는지 설명해줘.
-classroom과 backtest가 외부 환경변수로 data/LLM/broker를 바꿀 수 없는 고정 offline 프로필인지도 검증해줘.
+KR/US fixture의 유효한 유한 quote를 관찰해 두 포지션의 high-water를 청산 write 전에 갱신하고, 청산 우선 트레일링 스탑으로 이어지는 과정을 설명해줘.
+classroom과 backtest가 외부 환경변수로 data/LLM/broker를 바꿀 수 없는 고정 offline 프로필인지 확인하되, classroom만 상태형 PaperBroker이고 backtest는 legacy _simulate_trade 경로라고 구분해줘.
 ```
 
 ### 중급자: 실제 가격·거래량만 켜기
@@ -189,8 +191,10 @@ classroom core의 broker_orders, fills, positions, realized_trades가 현재 대
 
 ```text
 lecture-prism의 실거래 기본 차단을 검증해줘.
-내 환경의 실제 broker 설정이나 계좌 파일은 열거나 바꾸지 말고 trading.py의 live 요청을 실행해 live_blocked가 반환되는지 확인해줘.
-주문·fill·position·실현손익 테이블에 외부 브로커 mutation이 생기지 않았는지도 안전한 임시 DB나 전후 건수 비교로 증명해줘.
+live CLI나 main 파이프라인은 실행하지 말고, 격리 단위 테스트 tests.test_broker_adapters.BrokerAdapterTest.test_live_gate_isolated_test_never_reads_config_or_calls_adapter만 실행해줘.
+테스트가 모든 LECTURE_* enable/allow 변수를 모두 0으로 고정하는지 확인해줘.
+broker factory와 adapter place_order를 mock으로 감싸 호출되면 실패하게 하고, 계좌·config 파일을 읽지 않는지도 검증해줘.
+그 조건에서 결과가 live_blocked이고 adapter 호출이 0회라는 테스트 증거만 설명해줘.
 ```
 
 OAuth 프록시 기본형과 KIS 부분 어댑터가 존재하더라도, 분석 evidence provenance, market regime, market-provider fail-closed, KIS full lifecycle, Toss WTS adapter는 모두 후속 과제입니다. 완료된 기능으로 설명하지 않습니다.

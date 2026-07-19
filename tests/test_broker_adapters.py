@@ -3,6 +3,7 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import AsyncMock, patch
 
 from brokers.base import BrokerOrder
 from brokers.config import load_env_file
@@ -16,10 +17,16 @@ _ENV_KEYS = {
     "LECTURE_BROKER_MODE",
     "LECTURE_ENABLE_LIVE_BROKER",
     "LECTURE_ALLOW_REAL_BROKER",
+    "LECTURE_ENABLE_LIVE_KIS",
+    "LECTURE_ALLOW_REAL_KIS",
     "LECTURE_KIS_MODE",
     "KIS_MODE",
     "LECTURE_ENABLE_LIVE_KIWOOM",
     "LECTURE_ALLOW_REAL_KIWOOM",
+    "LECTURE_ENABLE_LIVE_TOSS",
+    "LECTURE_ALLOW_REAL_TOSS",
+    "LECTURE_ENABLE_LIVE_CUSTOM",
+    "LECTURE_ALLOW_REAL_CUSTOM",
     "KIWOOM_MODE",
     "KIWOOM_APP_KEY",
     "KIWOOM_APPKEY",
@@ -122,6 +129,59 @@ class BrokerAdapterTest(unittest.TestCase):
         self.assertFalse(result["executed"])
         self.assertEqual(result["mode"], "live_blocked")
         self.assertEqual(result["broker"], "kiwoom")
+
+    def test_live_gate_isolated_test_never_reads_config_or_calls_adapter(self):
+        live_keys = {
+            key
+            for key in os.environ
+            if key.startswith("LECTURE_")
+            and ("ENABLE_LIVE" in key or "ALLOW_REAL" in key)
+        } | {
+            "LECTURE_ENABLE_LIVE_BROKER",
+            "LECTURE_ALLOW_REAL_BROKER",
+            "LECTURE_ENABLE_LIVE_KIS",
+            "LECTURE_ALLOW_REAL_KIS",
+            "LECTURE_ENABLE_LIVE_KIWOOM",
+            "LECTURE_ALLOW_REAL_KIWOOM",
+            "LECTURE_ENABLE_LIVE_TOSS",
+            "LECTURE_ALLOW_REAL_TOSS",
+            "LECTURE_ENABLE_LIVE_CUSTOM",
+            "LECTURE_ALLOW_REAL_CUSTOM",
+        }
+        sanitized = {key: "0" for key in live_keys}
+        sanitized["LECTURE_KIS_MODE"] = "demo"
+        forbidden_place_order = AsyncMock(
+            side_effect=AssertionError("broker place_order must not run")
+        )
+        forbidden_adapter = type(
+            "ForbiddenAdapter",
+            (),
+            {"place_order": forbidden_place_order},
+        )()
+
+        with patch.dict(os.environ, sanitized, clear=False):
+            with (
+                patch(
+                    "brokers.kis._yaml_default_mode",
+                    side_effect=AssertionError("KIS config must not be read"),
+                ) as read_config,
+                patch(
+                    "brokers.factory.get_broker_adapter",
+                    side_effect=AssertionError(
+                        "broker factory must not run"
+                    ),
+                ) as get_adapter,
+            ):
+                result = asyncio.run(
+                    _execute_broker_order(_decision(), broker_name="kis")
+                )
+
+        self.assertFalse(result["executed"])
+        self.assertEqual(result["mode"], "live_blocked")
+        self.assertEqual(result["broker"], "kis")
+        read_config.assert_not_called()
+        get_adapter.assert_not_called()
+        forbidden_place_order.assert_not_awaited()
 
     def test_toss_adapter_is_safe_unsupported_template(self):
         os.environ["LECTURE_ENABLE_LIVE_BROKER"] = "1"

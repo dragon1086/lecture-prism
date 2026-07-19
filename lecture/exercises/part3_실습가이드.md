@@ -178,7 +178,7 @@ main.py를 한 번 실행해서 매매·분석·교훈이 prism.db에 저장되�
 
 **목표**: “주문을 받았다”와 “실제로 체결됐다”를 구분하고, 재시작 가능한 KR/US 진입·청산 증거 확인
 
-기본 `mock`은 API 키 없는 첫 성공을 위한 기존 4단계 파이프라인입니다. `classroom`은 별도의 고정 offline replay로, 삼성전자(KR/KRW)와 AAPL(US/USD)의 진입 → 고점 갱신 → 트레일링 청산을 SQLite에 남깁니다. `classroom`과 `backtest`는 환경변수로 실데이터·LLM·외부 broker를 켤 수 없습니다.
+기본 `mock`은 API 키 없는 첫 성공을 위한 기존 4단계 파이프라인입니다. `classroom`은 별도의 고정 offline replay로, 삼성전자(KR/KRW)와 AAPL(US/USD)의 진입 → 고점 갱신 → 트레일링 청산을 SQLite에 남깁니다. `classroom`과 `backtest`는 환경변수로 실데이터·LLM·외부 broker를 켤 수 없지만 실행 코어는 다릅니다. classroom만 상태형 `PaperBroker`를 쓰고, backtest는 legacy stateless `_simulate_trade` 경로입니다.
 
 ### classroom 전체 사이클 실행
 
@@ -187,7 +187,7 @@ lecture-prism의 classroom 전체 사이클을 실행해줘.
 
 조건:
 1. 기존 prism.db는 건드리지 말고 임시 SQLite 파일을 만든 뒤, 프로그램 안에서 db.DB_PATH를 그 경로로 바꿔 main.py classroom 프로필을 실행해줘.
-2. KR/US 진입 → 포트폴리오 전체 high-water 갱신 → 청산 우선 트레일링 스탑의 세 사이클을 설명해줘.
+2. KR/US fixture의 유효한 유한 quote를 관찰해 두 포지션의 high-water를 청산 write 전에 갱신하고, 청산 우선 트레일링 스탑으로 이어지는 세 사이클을 설명해줘.
 3. CREATED → PREVIEWED → SUBMITTED → ACCEPTED는 주문 접수 과정이고, ACCEPTED는 체결이 아니라는 점을 확인해줘.
 4. 별도 fill 뒤에만 FILLED, positions, realized_trades가 바뀌는지 증거로 보여줘.
 5. KR은 KRW와 정수 수량, US는 USD 계약을 지켰는지 확인해줘.
@@ -216,7 +216,8 @@ lecture-prism의 classroom 전체 사이클을 실행해줘.
 ```text
 prism_core의 UNKNOWN 주문 처리 규칙을 코드와 테스트로 설명해줘.
 실제 DB를 수정하는 장애 주입은 하지 말고 기존 테스트를 실행해,
-체결 여부를 알 수 없는 주문에서 중복 진입·중복 청산을 만들지 않고 fail-closed로 막는지 확인해줘.
+체결 여부를 알 수 없는 주문에서 새 주문·replay 주문, fill, 청산 mutation을 fail-closed로 막는지 확인해줘.
+단, 유효한 quote의 high-water 관찰은 먼저 저장될 수 있음을 구분하고, 명시적인 evidence-based reconciliation 전에는 주문 mutation을 재개하지 않는다고 설명해줘.
 ```
 
 ### 대시보드의 한계 설명
@@ -231,9 +232,11 @@ core table 시각화는 후속 과제로 표시해줘.
 ### live 기본 차단 확인
 
 ```text
-실계좌 키나 계좌 파일을 열거나 바꾸지 말고 lecture-prism의 live 기본 차단을 검증해줘.
-trading.py의 live 요청 결과가 live_blocked인지 확인하고,
-외부 broker 주문이나 core 주문·fill·position·realized_trades mutation이 없었다는 근거를 함께 보여줘.
+live CLI나 main 파이프라인을 실행하지 말고 lecture-prism의 live 기본 차단 격리 단위 테스트만 실행해줘.
+대상은 tests.test_broker_adapters.BrokerAdapterTest.test_live_gate_isolated_test_never_reads_config_or_calls_adapter야.
+테스트 안에서 모든 LECTURE_* enable/allow 변수를 모두 0으로 고정하고,
+broker factory와 adapter place_order를 mock으로 감싸 호출되면 실패하는지 확인해줘.
+실제 계좌·config 파일을 읽지 않고 결과가 live_blocked이며 adapter 호출이 0회라는 증거만 설명해줘.
 ```
 
 > 상태형 foundation의 완료 범위는 offline paper 코어까지입니다. paper/live market-provider fail-closed, 시장 regime, 분석 evidence와 OAuth 연결, KIS full lifecycle, Toss WTS adapter, dashboard core-table 시각화는 후속 과제입니다. KIS나 Toss가 완성됐다고 설명하지 않습니다.
