@@ -567,6 +567,141 @@ class ClassroomReplayTest(unittest.TestCase):
             )
             self.assertEqual(positions, 0)
 
+    def test_legacy_null_provenance_partial_exit_cleans_residual_once(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "classroom.db"
+            real_fill = PaperBroker.fill_order
+            old_strategy = "classroom-replay:classroom-000001"
+            interrupted = False
+
+            def interrupt_after_kr_exit(
+                broker, client_order_id, execution_key, quantity, price
+            ):
+                nonlocal interrupted
+                order = broker.get_order(client_order_id)
+                result = real_fill(
+                    broker,
+                    client_order_id,
+                    execution_key,
+                    quantity,
+                    price,
+                )
+                if (
+                    not interrupted
+                    and order.intent.side is OrderSide.SELL
+                    and order.intent.market is Market.KR
+                ):
+                    interrupted = True
+                    raise RuntimeError("pre-R7 partial replay")
+                return result
+
+            with mock.patch.object(
+                PaperBroker,
+                "fill_order",
+                new=interrupt_after_kr_exit,
+            ):
+                with self.assertRaisesRegex(RuntimeError, "pre-R7"):
+                    run_classroom_replay(path)
+
+            with sqlite3.connect(path) as conn:
+                conn.execute(
+                    "UPDATE realized_trades SET "
+                    "exit_client_order_id=NULL,exit_fill_id=NULL "
+                    "WHERE strategy_id=? AND market='KR'",
+                    (old_strategy,),
+                )
+                preserved_kr_trade = conn.execute(
+                    "SELECT id,market,symbol,quantity,entry_price,"
+                    "exit_price,pnl_amount,currency,strategy_id,closed_at "
+                    "FROM realized_trades WHERE strategy_id=? "
+                    "AND market='KR'",
+                    (old_strategy,),
+                ).fetchone()
+                residual = conn.execute(
+                    "SELECT market,symbol,strategy_id FROM positions"
+                ).fetchall()
+            self.assertEqual(
+                residual,
+                [("US", "AAPL", old_strategy)],
+            )
+
+            try:
+                recovered = run_classroom_replay(path)
+            except RuntimeError as exc:
+                self.fail(f"legacy residual cleanup remained blocked: {exc}")
+            following = run_classroom_replay(path)
+
+            self.assertEqual(
+                (recovered["session"], recovered["realized_trades"]),
+                ("classroom-000002", 2),
+            )
+            self.assertEqual(recovered["final_positions"], 0)
+            self.assertEqual(
+                (following["session"], following["realized_trades"]),
+                ("classroom-000003", 2),
+            )
+            self.assertEqual(following["final_positions"], 0)
+            with sqlite3.connect(path) as conn:
+                replays = conn.execute(
+                    "SELECT session_id,status,abort_reason,realized_trades "
+                    "FROM classroom_replays ORDER BY sequence"
+                ).fetchall()
+                current_kr_trade = conn.execute(
+                    "SELECT id,market,symbol,quantity,entry_price,"
+                    "exit_price,pnl_amount,currency,strategy_id,closed_at "
+                    "FROM realized_trades WHERE strategy_id=? "
+                    "AND market='KR'",
+                    (old_strategy,),
+                ).fetchone()
+                old_trades = conn.execute(
+                    "SELECT market,exit_price,exit_client_order_id,"
+                    "exit_fill_id FROM realized_trades WHERE strategy_id=? "
+                    "ORDER BY market",
+                    (old_strategy,),
+                ).fetchall()
+                old_exits = conn.execute(
+                    "SELECT client_order_id,status FROM broker_orders "
+                    "WHERE strategy_id=? AND side='SELL' "
+                    "ORDER BY client_order_id",
+                    (old_strategy,),
+                ).fetchall()
+                positions = conn.execute(
+                    "SELECT COUNT(*) FROM positions"
+                ).fetchone()[0]
+
+            self.assertEqual(
+                replays,
+                [
+                    (
+                        "classroom-000001",
+                        "ABORTED",
+                        "noncanonical_trade_provenance",
+                        1,
+                    ),
+                    ("classroom-000002", "COMPLETED", None, 2),
+                    ("classroom-000003", "COMPLETED", None, 2),
+                ],
+            )
+            self.assertEqual(current_kr_trade, preserved_kr_trade)
+            self.assertEqual(old_trades[0], ("KR", "69000", None, None))
+            self.assertEqual(
+                old_trades[1][0:3],
+                (
+                    "US",
+                    "175",
+                    "classroom-000001-3:US:AAPL:SELL",
+                ),
+            )
+            self.assertIsNotNone(old_trades[1][3])
+            self.assertEqual(
+                old_exits,
+                [
+                    ("classroom-000001-3:KR:005930:SELL", "FILLED"),
+                    ("classroom-000001-3:US:AAPL:SELL", "FILLED"),
+                ],
+            )
+            self.assertEqual(positions, 0)
+
     def test_unrelated_unresolved_target_order_blocks_before_replay_mutation(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "classroom.db"

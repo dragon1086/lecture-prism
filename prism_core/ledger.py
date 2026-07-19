@@ -80,6 +80,10 @@ _UNRESOLVED_ORDER_STATUSES = (
 _TERMINAL_ORDER_STATUSES = frozenset(
     {OrderStatus.FILLED, OrderStatus.REJECTED, OrderStatus.CANCELED}
 )
+_CLEANUP_ELIGIBLE_ABORT_REASONS = (
+    "noncanonical_realized_trade",
+    "noncanonical_trade_provenance",
+)
 
 
 def _now() -> str:
@@ -841,6 +845,9 @@ class Ledger:
         targets: frozenset[tuple[Market, str]],
     ) -> frozenset[str]:
         strategies: set[str] = set()
+        reason_placeholders = ",".join(
+            "?" for _ in _CLEANUP_ELIGIBLE_ABORT_REASONS
+        )
         for market, symbol in targets:
             rows = conn.execute(
                 "SELECT positions.strategy_id FROM positions "
@@ -848,9 +855,13 @@ class Ledger:
                 "classroom_replays.strategy_id=positions.strategy_id "
                 "WHERE positions.market=? AND positions.symbol=? "
                 "AND classroom_replays.status='ABORTED' "
-                "AND classroom_replays.abort_reason="
-                "'noncanonical_realized_trade'",
-                (market.value, symbol),
+                "AND classroom_replays.abort_reason "
+                f"IN ({reason_placeholders})",
+                (
+                    market.value,
+                    symbol,
+                    *_CLEANUP_ELIGIBLE_ABORT_REASONS,
+                ),
             ).fetchall()
             strategies.update(row["strategy_id"] for row in rows)
         return frozenset(strategies)
