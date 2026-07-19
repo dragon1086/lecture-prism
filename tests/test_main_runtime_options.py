@@ -157,6 +157,50 @@ class MainRuntimeOptionsTest(unittest.TestCase):
         self.assertFalse(screening.await_args.kwargs["use_real"])
         self.assertTrue(trading.await_args.kwargs["dry_run"])
 
+    def test_explicit_backtest_config_reaches_real_downstream_readers(self):
+        hostile = {
+            "LECTURE_PROFILE": "live",
+            "LECTURE_DATA_MODE": "yfinance",
+            "LECTURE_LLM_MODE": "openai",
+            "LECTURE_REPORT_MODE": "research",
+            "LECTURE_RESEARCH_TOOLS": "perplexity,firecrawl",
+            "LECTURE_TRADE_MODE": "real",
+            "OPENAI_API_KEY": "must-not-be-used",
+            "PRISM_OPENAI_AUTH_MODE": "chatgpt_oauth",
+            "PERPLEXITY_API_KEY": "must-not-be-used",
+            "FIRECRAWL_API_KEY": "must-not-be-used",
+        }
+        cfg = runtime_config.load_runtime_config("backtest")
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "backtest.db"
+            with mock.patch.dict(os.environ, hostile, clear=False), mock.patch(
+                "db.DB_PATH", path
+            ), mock.patch(
+                "data_source._fetch_real",
+                side_effect=AssertionError("real data path"),
+            ), mock.patch(
+                "analysis._llm_complete",
+                new=mock.AsyncMock(side_effect=AssertionError("LLM path")),
+            ), mock.patch(
+                "research_tools.build_research_context",
+                side_effect=AssertionError("research path"),
+            ), mock.patch(
+                "cores.chatgpt_proxy.start_proxy",
+                new=mock.AsyncMock(side_effect=AssertionError("OAuth path")),
+            ), mock.patch(
+                "report_writer.write_reports", return_value=[]
+            ):
+                result = asyncio.run(
+                    main.run_pipeline(
+                        target_ticker="005930",
+                        config=cfg,
+                    )
+                )
+                downstream = runtime_config.load_runtime_config()
+
+        self.assertIsNone(result)
+        self.assertEqual(downstream.profile, "live")
+
 
 if __name__ == "__main__":
     unittest.main()

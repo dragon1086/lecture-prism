@@ -7,7 +7,10 @@ the project from `.env` without installing extra configuration packages.
 from __future__ import annotations
 
 import os
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
+from typing import Iterator
 
 from brokers.config import load_dotenv_once, normalize_mode, truthy
 from brokers.factory import selected_broker_name
@@ -160,6 +163,22 @@ class RuntimeConfig:
         )
 
 
+_CURRENT_RUNTIME_CONFIG: ContextVar[RuntimeConfig | None] = ContextVar(
+    "lecture_prism_runtime_config", default=None
+)
+
+
+@contextmanager
+def runtime_config_scope(config: RuntimeConfig) -> Iterator[RuntimeConfig]:
+    """Expose one normalized config to all readers in this execution context."""
+
+    token = _CURRENT_RUNTIME_CONFIG.set(config)
+    try:
+        yield config
+    finally:
+        _CURRENT_RUNTIME_CONFIG.reset(token)
+
+
 def _normalize(value: str | None, *, default: str, aliases: dict[str, str],
                allowed: set[str]) -> str:
     text = str(value or default).strip().lower().replace(" ", "_")
@@ -214,6 +233,10 @@ def _llm_enabled(llm_mode: str) -> tuple[bool, bool]:
 
 def load_runtime_config(profile: str | None = None) -> RuntimeConfig:
     """Load `.env` and return normalized runtime settings."""
+
+    scoped = _CURRENT_RUNTIME_CONFIG.get()
+    if profile is None and scoped is not None:
+        return scoped
 
     load_dotenv_once()
     profile = _profile(profile)

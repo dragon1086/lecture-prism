@@ -32,6 +32,7 @@ class DatabaseCoreSchemaTest(unittest.TestCase):
                 "fills",
                 "positions",
                 "realized_trades",
+                "classroom_replays",
             }.issubset(tables)
         )
 

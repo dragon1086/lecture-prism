@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import sqlite3
+import time
 from contextlib import contextmanager
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
@@ -54,6 +56,13 @@ CREATE TABLE IF NOT EXISTS realized_trades (
     exit_price TEXT NOT NULL, pnl_amount TEXT NOT NULL, currency TEXT NOT NULL,
     strategy_id TEXT NOT NULL, closed_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS classroom_replays (
+    sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id TEXT NOT NULL UNIQUE, strategy_id TEXT NOT NULL UNIQUE,
+    status TEXT NOT NULL, owner_token TEXT, lease_expires_at REAL,
+    realized_trades INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL, updated_at TEXT NOT NULL, completed_at TEXT
+);
 """
 
 _UNRESOLVED_ORDER_STATUSES = (
@@ -68,6 +77,14 @@ _UNRESOLVED_ORDER_STATUSES = (
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+@dataclass(frozen=True)
+class ClassroomReplayClaim:
+    sequence: int
+    session_id: str
+    strategy_id: str
+    owner_token: str
 
 
 class Ledger:
@@ -112,6 +129,192 @@ class Ledger:
                 conn.close()
             except sqlite3.ProgrammingError:
                 pass
+
+    @contextmanager
+    def classroom_replay_fence(self, *, wait_seconds: float):
+        """Serialize complete classroom replay invocations across processes."""
+
+        if wait_seconds < 0:
+            raise ValueError("wait_seconds cannot be negative")
+        lock_path = Path(f"{self.path}.classroom-replay-lock")
+        conn = sqlite3.connect(lock_path, timeout=wait_seconds)
+        try:
+            try:
+                conn.execute("BEGIN EXCLUSIVE")
+            except sqlite3.OperationalError:
+                conn.close()
+                yield False
+                return
+            try:
+                yield True
+            finally:
+                conn.rollback()
+        finally:
+            try:
+                conn.close()
+            except sqlite3.ProgrammingError:
+                pass
+
+    def claim_classroom_replay(
+        self,
+        owner_token: str,
+        *,
+        lease_seconds: float,
+        now: float | None = None,
+    ) -> ClassroomReplayClaim | None:
+        """Claim the sole incomplete replay or allocate its next sequence."""
+
+        if not isinstance(owner_token, str) or not owner_token.strip():
+            raise ValueError("owner_token is required")
+        if lease_seconds <= 0:
+            raise ValueError("lease_seconds must be positive")
+        claimed_at = time.time() if now is None else float(now)
+        lease_expires_at = claimed_at + lease_seconds
+        with self._connect(immediate=True) as conn:
+            row = conn.execute(
+                "SELECT * FROM classroom_replays "
+                "WHERE status='INCOMPLETE' ORDER BY sequence LIMIT 1"
+            ).fetchone()
+            if row is not None:
+                active_owner = row["owner_token"]
+                active_until = row["lease_expires_at"]
+                if (
+                    active_owner is not None
+                    and active_until is not None
+                    and float(active_until) > claimed_at
+                ):
+                    return None
+                cursor = conn.execute(
+                    "UPDATE classroom_replays "
+                    "SET owner_token=?,lease_expires_at=?,updated_at=? "
+                    "WHERE sequence=? AND status='INCOMPLETE' "
+                    "AND (owner_token IS NULL OR lease_expires_at IS NULL "
+                    "OR lease_expires_at<=?)",
+                    (
+                        owner_token,
+                        lease_expires_at,
+                        _now(),
+                        row["sequence"],
+                        claimed_at,
+                    ),
+                )
+                if not cursor.rowcount:
+                    return None
+                sequence = int(row["sequence"])
+                session_id = row["session_id"]
+                strategy_id = row["strategy_id"]
+            else:
+                sequence = int(
+                    conn.execute(
+                        "SELECT COALESCE(MAX(sequence),0)+1 "
+                        "FROM classroom_replays"
+                    ).fetchone()[0]
+                )
+                session_id = f"classroom-{sequence:06d}"
+                strategy_id = f"classroom-replay:{session_id}"
+                timestamp = _now()
+                conn.execute(
+                    "INSERT INTO classroom_replays "
+                    "(sequence,session_id,strategy_id,status,owner_token,"
+                    "lease_expires_at,created_at,updated_at) "
+                    "VALUES (?,?,?,'INCOMPLETE',?,?,?,?)",
+                    (
+                        sequence,
+                        session_id,
+                        strategy_id,
+                        owner_token,
+                        lease_expires_at,
+                        timestamp,
+                        timestamp,
+                    ),
+                )
+        return ClassroomReplayClaim(
+            sequence, session_id, strategy_id, owner_token
+        )
+
+    def renew_classroom_replay(
+        self,
+        claim: ClassroomReplayClaim,
+        *,
+        lease_seconds: float,
+        now: float | None = None,
+    ) -> None:
+        renewed_at = time.time() if now is None else float(now)
+        with self._connect(immediate=True) as conn:
+            cursor = conn.execute(
+                "UPDATE classroom_replays "
+                "SET lease_expires_at=?,updated_at=? "
+                "WHERE sequence=? AND status='INCOMPLETE' AND owner_token=?",
+                (
+                    renewed_at + lease_seconds,
+                    _now(),
+                    claim.sequence,
+                    claim.owner_token,
+                ),
+            )
+            if not cursor.rowcount:
+                raise RuntimeError("classroom replay lease lost")
+
+    def release_classroom_replay(self, claim: ClassroomReplayClaim) -> None:
+        with self._connect(immediate=True) as conn:
+            conn.execute(
+                "UPDATE classroom_replays "
+                "SET owner_token=NULL,lease_expires_at=NULL,updated_at=? "
+                "WHERE sequence=? AND status='INCOMPLETE' AND owner_token=?",
+                (_now(), claim.sequence, claim.owner_token),
+            )
+
+    def complete_classroom_replay(
+        self,
+        claim: ClassroomReplayClaim,
+        *,
+        expected_realized_trades: int,
+    ) -> dict:
+        with self._connect(immediate=True) as conn:
+            row = conn.execute(
+                "SELECT * FROM classroom_replays WHERE sequence=?",
+                (claim.sequence,),
+            ).fetchone()
+            if (
+                row is None
+                or row["status"] != "INCOMPLETE"
+                or row["owner_token"] != claim.owner_token
+            ):
+                raise RuntimeError("classroom replay lease lost")
+            realized = int(
+                conn.execute(
+                    "SELECT COUNT(*) FROM realized_trades WHERE strategy_id=?",
+                    (claim.strategy_id,),
+                ).fetchone()[0]
+            )
+            positions = int(
+                conn.execute(
+                    "SELECT COUNT(*) FROM positions WHERE strategy_id=?",
+                    (claim.strategy_id,),
+                ).fetchone()[0]
+            )
+            if realized != expected_realized_trades or positions != 0:
+                raise RuntimeError(
+                    "classroom replay incomplete: "
+                    f"realized={realized}, positions={positions}"
+                )
+            completed_at = _now()
+            conn.execute(
+                "UPDATE classroom_replays SET status='COMPLETED',"
+                "owner_token=NULL,lease_expires_at=NULL,realized_trades=?,"
+                "updated_at=?,completed_at=? WHERE sequence=?",
+                (
+                    realized,
+                    completed_at,
+                    completed_at,
+                    claim.sequence,
+                ),
+            )
+        return {
+            "session": claim.session_id,
+            "final_positions": positions,
+            "realized_trades": realized,
+        }
 
     @staticmethod
     def _row_to_order(row: sqlite3.Row) -> OrderRecord:
@@ -554,11 +757,30 @@ class Ledger:
             ).fetchall()
         return [self._row_to_order(row) for row in rows]
 
-    def count_realized_trades(self) -> int:
+    def count_realized_trades(self, strategy_id: str | None = None) -> int:
         with self._connect() as conn:
+            if strategy_id is not None:
+                return int(
+                    conn.execute(
+                        "SELECT COUNT(*) FROM realized_trades "
+                        "WHERE strategy_id=?",
+                        (strategy_id,),
+                    ).fetchone()[0]
+                )
             return int(
                 conn.execute("SELECT COUNT(*) FROM realized_trades").fetchone()[0]
             )
+
+    def count_positions(self, strategy_id: str | None = None) -> int:
+        with self._connect() as conn:
+            if strategy_id is not None:
+                return int(
+                    conn.execute(
+                        "SELECT COUNT(*) FROM positions WHERE strategy_id=?",
+                        (strategy_id,),
+                    ).fetchone()[0]
+                )
+            return int(conn.execute("SELECT COUNT(*) FROM positions").fetchone()[0])
 
     def update_high_water(
         self, market: Market, symbol: str, price: Decimal

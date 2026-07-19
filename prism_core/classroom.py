@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from decimal import Decimal
 from pathlib import Path
+import secrets
+import time
 
 from .cycle import CycleResult, TradingCycle
 from .domain import Market, OrderIntent, OrderSide, OrderType
@@ -23,9 +25,13 @@ _TRAILING_EXIT_QUOTES = {
     (Market.KR, "005930"): Decimal("69000"),
     (Market.US, "AAPL"): Decimal("175"),
 }
+_REPLAY_LEASE_SECONDS = 60.0
+_REPLAY_WAIT_SECONDS = 5.0
+_REPLAY_POLL_SECONDS = 0.01
+_TARGETS = frozenset(_ENTRY_QUOTES)
 
 
-def _entry_intents(session: str) -> list[OrderIntent]:
+def _entry_intents(session: str, strategy_id: str) -> list[OrderIntent]:
     return [
         OrderIntent(
             f"{session}-1:KR:005930:BUY",
@@ -36,7 +42,7 @@ def _entry_intents(session: str) -> list[OrderIntent]:
             Decimal("1"),
             _ENTRY_QUOTES[(Market.KR, "005930")],
             "KRW",
-            strategy_id="classroom_oneil",
+            strategy_id=strategy_id,
         ),
         OrderIntent(
             f"{session}-1:US:AAPL:BUY",
@@ -47,7 +53,7 @@ def _entry_intents(session: str) -> list[OrderIntent]:
             Decimal("1"),
             _ENTRY_QUOTES[(Market.US, "AAPL")],
             "USD",
-            strategy_id="classroom_oneil",
+            strategy_id=strategy_id,
         ),
     ]
 
@@ -58,36 +64,84 @@ def _require_completed(result: CycleResult) -> None:
         raise RuntimeError(f"classroom replay blocked: {reasons}")
 
 
+def _claim_replay(ledger: Ledger, owner_token: str):
+    deadline = time.monotonic() + _REPLAY_WAIT_SECONDS
+    while True:
+        claim = ledger.claim_classroom_replay(
+            owner_token, lease_seconds=_REPLAY_LEASE_SECONDS
+        )
+        if claim is not None:
+            return claim
+        if time.monotonic() >= deadline:
+            raise RuntimeError("classroom replay lease unavailable")
+        time.sleep(_REPLAY_POLL_SECONDS)
+
+
+def _assert_target_ownership(ledger: Ledger, strategy_id: str) -> None:
+    conflicts = [
+        position
+        for position in ledger.list_positions()
+        if (position.market, position.symbol) in _TARGETS
+        and position.strategy_id != strategy_id
+    ]
+    if conflicts:
+        raise RuntimeError("classroom replay blocked by unrelated position")
+
+
+def _run_replay_under_fence(path: Path, ledger: Ledger) -> dict:
+    owner_token = secrets.token_hex(16)
+    claim = _claim_replay(ledger, owner_token)
+    try:
+        _assert_target_ownership(ledger, claim.strategy_id)
+        ledger.renew_classroom_replay(
+            claim, lease_seconds=_REPLAY_LEASE_SECONDS
+        )
+        _require_completed(
+            TradingCycle(PaperBroker(ledger), _ENTRY_QUOTES).run(
+                f"{claim.session_id}-1",
+                _entry_intents(claim.session_id, claim.strategy_id),
+                auto_fill=True,
+            )
+        )
+        _assert_target_ownership(ledger, claim.strategy_id)
+        ledger.renew_classroom_replay(
+            claim, lease_seconds=_REPLAY_LEASE_SECONDS
+        )
+        _require_completed(
+            TradingCycle(
+                PaperBroker(Ledger(path)), _HIGH_WATER_QUOTES
+            ).run(f"{claim.session_id}-2", [], auto_fill=True)
+        )
+        _assert_target_ownership(ledger, claim.strategy_id)
+        ledger.renew_classroom_replay(
+            claim, lease_seconds=_REPLAY_LEASE_SECONDS
+        )
+        _require_completed(
+            TradingCycle(
+                PaperBroker(Ledger(path)), _TRAILING_EXIT_QUOTES
+            ).run(f"{claim.session_id}-3", [], auto_fill=True)
+        )
+        _assert_target_ownership(ledger, claim.strategy_id)
+        persisted = ledger.complete_classroom_replay(
+            claim, expected_realized_trades=2
+        )
+        return {
+            "cycles": 3,
+            **persisted,
+            "markets": [Market.KR.value, Market.US.value],
+        }
+    finally:
+        ledger.release_classroom_replay(claim)
+
+
 def run_classroom_replay(db_path: Path) -> dict:
     """Run BUY, high-water HOLD, and trailing-exit cycles on ``db_path``."""
 
     path = Path(db_path)
     ledger = Ledger(path)
-    realized_before = ledger.count_realized_trades()
-    session = f"classroom-{(realized_before // 2) + 1:06d}"
-
-    _require_completed(
-        TradingCycle(PaperBroker(ledger), _ENTRY_QUOTES).run(
-            f"{session}-1", _entry_intents(session), auto_fill=True
-        )
-    )
-    _require_completed(
-        TradingCycle(
-            PaperBroker(Ledger(path)), _HIGH_WATER_QUOTES
-        ).run(f"{session}-2", [], auto_fill=True)
-    )
-    final_broker = PaperBroker(Ledger(path))
-    _require_completed(
-        TradingCycle(final_broker, _TRAILING_EXIT_QUOTES).run(
-            f"{session}-3", [], auto_fill=True
-        )
-    )
-
-    return {
-        "cycles": 3,
-        "final_positions": len(final_broker.get_positions()),
-        "realized_trades": (
-            final_broker.ledger.count_realized_trades() - realized_before
-        ),
-        "markets": [Market.KR.value, Market.US.value],
-    }
+    with ledger.classroom_replay_fence(
+        wait_seconds=_REPLAY_WAIT_SECONDS
+    ) as acquired:
+        if not acquired:
+            raise RuntimeError("classroom replay fence unavailable")
+        return _run_replay_under_fence(path, ledger)

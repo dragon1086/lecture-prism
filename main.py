@@ -37,7 +37,7 @@ def _restore_openai_env(saved: dict[str, str | None]) -> None:
             os.environ[key] = value
 
 
-async def _maybe_start_chatgpt_oauth_proxy() -> tuple[bool, dict[str, str | None]]:
+async def _maybe_start_chatgpt_oauth_proxy(config=None) -> tuple[bool, dict[str, str | None]]:
     """
     Mirror the full PRISM pattern in a teaching-safe way.
 
@@ -49,7 +49,7 @@ async def _maybe_start_chatgpt_oauth_proxy() -> tuple[bool, dict[str, str | None
     saved = {key: os.environ.get(key) for key in _OPENAI_ENV_KEYS}
     from runtime_config import load_runtime_config
 
-    cfg = load_runtime_config()
+    cfg = config or load_runtime_config()
     if not cfg.llm_enabled or not cfg.chatgpt_oauth_requested or os.getenv("OPENAI_BASE_URL"):
         return False, saved
 
@@ -92,6 +92,24 @@ def _resolve_runtime_options(args) -> dict:
 
 async def run_pipeline(dry_run: bool = True, target_ticker: Optional[str] = None,
                        use_real_data: bool = False, config=None):
+    from runtime_config import load_runtime_config, runtime_config_scope
+
+    cfg = config or load_runtime_config()
+    with runtime_config_scope(cfg):
+        return await _run_pipeline_scoped(
+            dry_run=dry_run,
+            target_ticker=target_ticker,
+            use_real_data=use_real_data,
+            config=cfg,
+        )
+
+
+async def _run_pipeline_scoped(
+    dry_run: bool = True,
+    target_ticker: Optional[str] = None,
+    use_real_data: bool = False,
+    config=None,
+):
     proxy_started = False
     saved_openai_env: dict[str, str | None] = {}
 
@@ -116,7 +134,7 @@ async def run_pipeline(dry_run: bool = True, target_ticker: Optional[str] = None
         return summary
 
     try:
-        proxy_started, saved_openai_env = await _maybe_start_chatgpt_oauth_proxy()
+        proxy_started, saved_openai_env = await _maybe_start_chatgpt_oauth_proxy(cfg)
 
         # Step 1: 스크리닝
         log.info("[1/4] 스크리닝 시작 — 전종목 필터링")
