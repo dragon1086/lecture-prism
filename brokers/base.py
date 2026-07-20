@@ -20,6 +20,7 @@ class BrokerOrder:
     quantity: int
     price: int | float | None = None
     reason: str = ""
+    client_order_id: str | None = None
 
     @property
     def side(self) -> str:

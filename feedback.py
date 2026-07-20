@@ -44,6 +44,17 @@ async def run_feedback(trade_results: list[dict], analyses: list[dict]) -> None:
     analysis_by_ticker = {a["ticker"]: a for a in analyses}
 
     for result in trade_results:
+        if not (
+            result.get("status") == "filled"
+            and result.get("executed") is True
+            and int(result.get("filled_qty") or 0) > 0
+        ):
+            log.info(
+                "  [%s] 미체결/진행 중 주문은 매매일지와 교훈에서 제외: %s",
+                result.get("ticker", "?"),
+                result.get("status", "unknown"),
+            )
+            continue
         analysis = analysis_by_ticker.get(result["ticker"], {})
 
         # 매매 내역 저장

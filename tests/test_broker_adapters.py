@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime
 import os
 import tempfile
 import unittest
@@ -7,9 +8,10 @@ from unittest.mock import AsyncMock, patch
 
 from brokers.base import BrokerOrder
 from brokers.config import load_env_file
-from brokers.kis import selected_kis_mode
+from brokers.kis import KISBrokerAdapter, selected_kis_mode
 from brokers.kiwoom import KiwoomBrokerAdapter
 from trading import _execute_broker_order
+from market_calendar import KST, MarketStatus
 
 
 _ENV_KEYS = {
@@ -121,6 +123,168 @@ class BrokerAdapterTest(unittest.TestCase):
 
             self.assertEqual(selected_kis_mode(config_path=config_path), "real")
 
+    def test_kis_adapter_maps_buy_and_sell_to_injected_client(self):
+        calls = []
+
+        class Client:
+            def place_cash_order(self, ticker, side, quantity, price):
+                calls.append((ticker, side, quantity, price))
+                return {
+                    "status": "accepted",
+                    "accepted": True,
+                    "executed": False,
+                    "terminal": False,
+                    "order_no": str(len(calls)),
+                    "message": "accepted",
+                }
+
+        class Gate:
+            def check(self, now):
+                return MarketStatus(
+                    now, "20260720", True, True, True, "open", "cache"
+                )
+
+        adapter = KISBrokerAdapter(
+            mode="demo",
+            client=Client(),
+            gate=Gate(),
+            clock=lambda: datetime(2026, 7, 20, 10, 0, tzinfo=KST),
+        )
+
+        buy = asyncio.run(
+            adapter.place_order(BrokerOrder("BUY", "005930", 3, 70000))
+        )
+        sell = asyncio.run(
+            adapter.place_order(BrokerOrder("SELL", "005930", 2, 71000))
+        )
+
+        self.assertEqual(
+            calls,
+            [("005930", "BUY", 3, 70000), ("005930", "SELL", 2, 71000)],
+        )
+        self.assertTrue(buy["accepted"])
+        self.assertFalse(buy["executed"])
+        self.assertEqual(sell["order_no"], "2")
+
+    def test_kis_adapter_market_block_happens_before_order_post(self):
+        class Client:
+            def place_cash_order(self, *args):
+                raise AssertionError("order POST must not run")
+
+        class Gate:
+            def check(self, now):
+                return MarketStatus(
+                    now,
+                    "20260718",
+                    False,
+                    False,
+                    False,
+                    "weekend",
+                    "deterministic",
+                )
+
+        adapter = KISBrokerAdapter(
+            mode="demo",
+            client=Client(),
+            gate=Gate(),
+            clock=lambda: datetime(2026, 7, 18, 10, 0, tzinfo=KST),
+        )
+
+        result = asyncio.run(
+            adapter.place_order(BrokerOrder("BUY", "005930", 1, 70000))
+        )
+
+        self.assertFalse(result["success"])
+        self.assertEqual(result["status"], "blocked")
+        self.assertEqual(result["mode"], "kis_demo_weekend")
+        self.assertTrue(result["terminal"])
+
+    def test_kis_adapter_treats_post_boundary_exception_as_unknown(self):
+        class Client:
+            def place_cash_order(self, *args):
+                raise ConnectionError("connection reset after write")
+
+        class Gate:
+            def check(self, now):
+                return MarketStatus(
+                    now, "20260720", True, True, True, "open", "cache"
+                )
+
+        adapter = KISBrokerAdapter(
+            mode="demo",
+            client=Client(),
+            gate=Gate(),
+            clock=lambda: datetime(2026, 7, 20, 10, 0, tzinfo=KST),
+        )
+
+        result = asyncio.run(
+            adapter.place_order(BrokerOrder("BUY", "005930", 1, 70000))
+        )
+
+        self.assertEqual(result["status"], "unknown")
+        self.assertFalse(result["accepted"])
+        self.assertFalse(result["executed"])
+        self.assertFalse(result["terminal"])
+
+    def test_kis_order_status_default_date_uses_kst_calendar_day(self):
+        calls = []
+
+        class Client:
+            def get_order_status(self, order_no, *, business_date):
+                calls.append((order_no, business_date))
+                return {"rows": []}
+
+        adapter = KISBrokerAdapter(
+            mode="demo",
+            client=Client(),
+            gate=object(),
+            clock=lambda: datetime.fromisoformat("2026-07-19T15:30:00+00:00"),
+        )
+
+        asyncio.run(adapter.get_order_status("1001"))
+
+        self.assertEqual(calls, [("1001", "20260720")])
+
+    def test_kis_accepted_order_is_not_reported_as_executed_by_trading(self):
+        os.environ["LECTURE_ENABLE_LIVE_BROKER"] = "1"
+        os.environ["LECTURE_KIS_MODE"] = "demo"
+        adapter = type(
+            "AcceptedAdapter",
+            (),
+            {
+                "get_orderable_quantity": AsyncMock(return_value=2),
+                "place_order": AsyncMock(
+                    return_value={
+                        "success": True,
+                        "status": "accepted",
+                        "accepted": True,
+                        "executed": False,
+                        "terminal": False,
+                        "order_no": "1001",
+                        "org_no": "91252",
+                        "message": "accepted",
+                    }
+                )
+            },
+        )()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            with (
+                patch("brokers.factory.get_broker_adapter", return_value=adapter),
+                patch("db.DB_PATH", Path(tmp) / "accepted.db"),
+            ):
+                result = asyncio.run(
+                    _execute_broker_order(_decision(), broker_name="kis")
+                )
+
+        self.assertEqual(result["status"], "accepted")
+        self.assertTrue(result["accepted"])
+        self.assertFalse(result["executed"])
+        self.assertFalse(result["terminal"])
+        self.assertEqual(result["requested_qty"], 2)
+        self.assertEqual(result["filled_qty"], 0)
+        self.assertEqual(result["remaining_qty"], 2)
+
     def test_trading_blocks_live_broker_until_explicitly_enabled(self):
         os.environ["LECTURE_BROKER"] = "kiwoom"
 
@@ -149,7 +313,6 @@ class BrokerAdapterTest(unittest.TestCase):
             "LECTURE_ALLOW_REAL_CUSTOM",
         }
         sanitized = {key: "0" for key in live_keys}
-        sanitized["LECTURE_KIS_MODE"] = "demo"
         forbidden_place_order = AsyncMock(
             side_effect=AssertionError("broker place_order must not run")
         )

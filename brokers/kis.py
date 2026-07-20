@@ -1,9 +1,11 @@
-"""KIS adapter wrapping the existing PRISM/Korea Investment bridge."""
+"""KIS domestic-stock adapter with injected client and market gate."""
 
 from __future__ import annotations
 
+import asyncio
 import os
-import sys
+from dataclasses import asdict
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -48,55 +50,130 @@ def selected_kis_mode(mode: str | None = None, *,
 class KISBrokerAdapter:
     name = "kis"
 
-    def __init__(self, *, mode: str | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        mode: str | None = None,
+        client=None,
+        gate=None,
+        clock=None,
+    ) -> None:
         self.mode = selected_kis_mode(mode)
+        self._client = client
+        self._gate = gate
+        self._clock = clock or (lambda: datetime.now(timezone.utc))
+
+    def _dependencies(self):
+        if self._client is None:
+            from .kis_client import KISClient, KISConfig
+
+            config_mode = "paper" if self.mode == "demo" else "real"
+            self._client = KISClient(KISConfig.from_env(config_mode))
+        if self._gate is None:
+            import db
+            from market_calendar import MarketGate
+
+            self._gate = MarketGate(
+                self._client,
+                cache_get=db.get_market_day,
+                cache_save=db.save_market_day,
+                mode=self.mode,
+            )
+        return self._client, self._gate
+
+    @staticmethod
+    def _blocked(status) -> dict[str, Any]:
+        return {
+            "success": False,
+            "accepted": False,
+            "executed": False,
+            "terminal": True,
+            "status": "blocked",
+            "order_no": None,
+            "message": f"KIS 주문 차단: {status.reason}",
+            "market_status": asdict(status),
+        }
 
     async def place_order(self, order: BrokerOrder) -> dict[str, Any]:
-        if order.side != "BUY":
-            return {
-                "success": False,
-                "mode": f"kis_{self.mode}_unsupported_side",
-                "order_no": None,
-                "message": "lecture-prism KIS bridge currently exposes buy-only teaching flow.",
-            }
-
         try:
-            module_dir = Path(__file__).resolve().parents[1] / "trading" / "trading"
-            if str(module_dir) not in sys.path:
-                sys.path.insert(0, str(module_dir))
-            import domestic_stock_trading as domestic  # type: ignore[import-not-found]
-
-            AsyncTradingContext = domestic.AsyncTradingContext
-        except Exception as exc:  # noqa: BLE001 - teaching adapter returns beginner-readable failure
+            client, gate = self._dependencies()
+            market_status = await asyncio.to_thread(
+                gate.check, self._clock()
+            )
+        except Exception as exc:  # credentials/calendar uncertainty blocks orders
             return {
                 "success": False,
-                "mode": "kis_import_failed",
+                "accepted": False,
+                "executed": False,
+                "terminal": True,
+                "status": "blocked",
+                "mode": f"kis_{self.mode}_calendar_unavailable",
                 "order_no": None,
-                "message": f"KIS 모듈 로드 실패: {exc}",
+                "message": f"KIS 주문 준비 실패: {exc}",
             }
-
+        if not market_status.order_allowed:
+            blocked = self._blocked(market_status)
+            blocked["mode"] = f"kis_{self.mode}_{market_status.reason}"
+            return blocked
         price = int(order.price or 0)
-        buy_amount = int(order.quantity * price)
         try:
-            async with AsyncTradingContext(mode=self.mode, buy_amount=buy_amount) as trader:
-                result = await trader.async_buy_stock(
-                    stock_code=order.ticker,
-                    buy_amount=buy_amount,
-                    limit_price=price or None,
-                )
-        except Exception as exc:  # noqa: BLE001
+            result = await asyncio.to_thread(
+                client.place_cash_order,
+                order.ticker,
+                order.side,
+                int(order.quantity),
+                price,
+            )
+        except Exception as exc:  # normalized beginner-readable boundary
             return {
                 "success": False,
+                "accepted": False,
+                "executed": False,
+                "terminal": False,
+                "status": "unknown",
                 "mode": f"kis_{self.mode}_failed",
                 "order_no": None,
-                "message": f"KIS 주문 실패: {exc}",
+                "message": f"KIS 주문 결과 불명(재주문 금지): {exc}",
             }
-
         return {
-            "success": bool(result.get("success")),
+            **result,
+            "success": bool(result.get("accepted")),
             "mode": f"kis_{self.mode}",
-            "order_no": result.get("order_no"),
-            "current_price": result.get("current_price") or price,
-            "message": result.get("message", ""),
-            "raw": result,
+            "current_price": price,
+            "market_status": asdict(market_status),
         }
+
+    async def get_account(self) -> dict[str, Any]:
+        client, _ = self._dependencies()
+        return await asyncio.to_thread(client.get_balance)
+
+    async def get_orderable_quantity(self, ticker: str, price: int) -> int:
+        client, _ = self._dependencies()
+        return await asyncio.to_thread(
+            client.get_orderable_quantity, ticker, int(price)
+        )
+
+    async def get_order_status(
+        self, order_no: str, *, business_date: str | None = None
+    ) -> dict[str, Any]:
+        client, _ = self._dependencies()
+        from market_calendar import KST
+
+        selected_date = business_date or self._clock().astimezone(KST).strftime(
+            "%Y%m%d"
+        )
+        return await asyncio.to_thread(
+            client.get_order_status,
+            order_no,
+            business_date=selected_date,
+        )
+
+    async def cancel_order(self, order_no: str, **details) -> dict[str, Any]:
+        client, _ = self._dependencies()
+        return await asyncio.to_thread(
+            client.cancel_order, order_no, **details
+        )
+
+    async def is_market_open(self):
+        _, gate = self._dependencies()
+        return await asyncio.to_thread(gate.check, self._clock())

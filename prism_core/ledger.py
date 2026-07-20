@@ -2623,6 +2623,87 @@ class Ledger:
             raise KeyError(client_order_id)
         return self._row_to_broker_order_state(row)
 
+    def admit_broker_order(
+        self,
+        intent: OrderIntent,
+        *,
+        broker: str,
+        broker_mode: str,
+    ) -> tuple[BrokerOrderState | None, BrokerOrderState | None]:
+        """Atomically admit one order or return the unresolved blocker.
+
+        An identity-less UNKNOWN blocks the whole broker account because its
+        symbol/order identity cannot be proven after a lost POST response.
+        Other unresolved orders block another order for the same symbol.
+        """
+        if not isinstance(intent, OrderIntent):
+            raise ValueError("intent must be an OrderIntent")
+        intent.__post_init__()
+        normalized_broker = self._normalized_broker_value(broker, "broker")
+        normalized_mode = self._normalized_broker_value(
+            broker_mode, "broker_mode"
+        )
+        placeholders = ",".join("?" for _ in _UNRESOLVED_ORDER_STATUSES)
+        with self._connect(immediate=True) as conn:
+            blocker = conn.execute(
+                "SELECT * FROM broker_orders WHERE broker=? AND broker_mode=? "
+                f"AND status IN ({placeholders}) AND ("
+                "(status=? AND broker_order_no IS NULL) OR "
+                "(market=? AND symbol=?)) "
+                "ORDER BY updated_at,client_order_id LIMIT 1",
+                (
+                    normalized_broker,
+                    normalized_mode,
+                    *(status.value for status in _UNRESOLVED_ORDER_STATUSES),
+                    OrderStatus.UNKNOWN.value,
+                    intent.market.value,
+                    intent.symbol,
+                ),
+            ).fetchone()
+            if blocker is not None:
+                return None, self._row_to_broker_order_state(blocker)
+
+            now = _now()
+            conn.execute(
+                "INSERT INTO broker_orders "
+                "(client_order_id,market,symbol,side,order_type,quantity,"
+                "limit_price,currency,strategy_id,reason,status,"
+                "remaining_quantity,broker,broker_mode,created_at,updated_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (
+                    intent.client_order_id,
+                    intent.market.value,
+                    intent.symbol,
+                    intent.side.value,
+                    intent.order_type.value,
+                    str(intent.quantity),
+                    str(intent.limit_price) if intent.limit_price is not None else None,
+                    intent.currency,
+                    intent.strategy_id,
+                    intent.reason,
+                    OrderStatus.CREATED.value,
+                    str(intent.quantity),
+                    normalized_broker,
+                    normalized_mode,
+                    now,
+                    now,
+                ),
+            )
+            conn.execute(
+                "INSERT INTO order_events "
+                "(client_order_id,status,occurred_at) VALUES (?,?,?)",
+                (
+                    intent.client_order_id,
+                    OrderStatus.CREATED.value,
+                    now,
+                ),
+            )
+            created = conn.execute(
+                "SELECT * FROM broker_orders WHERE client_order_id=?",
+                (intent.client_order_id,),
+            ).fetchone()
+            return self._row_to_broker_order_state(created), None
+
     def bind_broker_identity(
         self,
         client_order_id: str,

@@ -14,7 +14,10 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+from datetime import datetime
+from decimal import Decimal
 from typing import Optional
+from uuid import uuid4
 
 log = logging.getLogger(__name__)
 
@@ -142,7 +145,13 @@ def _decide_exit(holding: dict, current_price: float) -> Optional[dict]:
 
 
 def _exit(holding: dict, price: float, reason: str) -> dict:
-    return {"action": "SELL", "ticker": holding["ticker"], "price": price, "reason": reason}
+    return {
+        "action": "SELL",
+        "ticker": holding["ticker"],
+        "quantity": int(holding.get("quantity", 0)),
+        "price": price,
+        "reason": reason,
+    }
 
 
 async def run_exit_check(holdings: list[dict], price_map: dict) -> list[dict]:
@@ -161,9 +170,16 @@ async def run_exit_check(holdings: list[dict], price_map: dict) -> list[dict]:
 
 def _simulate_trade(decision: dict) -> dict:
     """시뮬레이션 체결 (dry-run 모드)."""
+    quantity = int(decision["quantity"])
     return {
         **decision,
+        "status": "filled",
+        "accepted": True,
         "executed": True,
+        "terminal": True,
+        "requested_qty": quantity,
+        "filled_qty": quantity,
+        "remaining_qty": 0,
         "executed_price": decision["price"],
         "mode": "simulation",
         "pnl": None,
@@ -234,13 +250,20 @@ async def _execute_broker_order(decision: dict, broker_name: str | None = None) 
     from brokers.factory import get_broker_adapter, selected_broker_name
 
     broker = (broker_name or selected_broker_name(default="kis")).strip().lower()
-    mode = _selected_broker_mode(broker)
-    log.warning("  실거래 요청 감지: 기본 강의 모드에서는 브로커 주문을 차단합니다. broker=%s mode=%s", broker, mode)
-
     if not _live_broker_enabled(broker):
+        log.warning(
+            "  실거래 요청 차단: broker=%s (모드/인증 설정은 읽지 않음)",
+            broker,
+        )
         return {
             **decision,
+            "status": "blocked",
+            "accepted": False,
             "executed": False,
+            "terminal": True,
+            "requested_qty": int(decision.get("quantity", 0)),
+            "filled_qty": 0,
+            "remaining_qty": int(decision.get("quantity", 0)),
             "executed_price": None,
             "mode": "live_blocked",
             "pnl": None,
@@ -250,6 +273,11 @@ async def _execute_broker_order(decision: dict, broker_name: str | None = None) 
                 f"또는 LECTURE_ENABLE_LIVE_{broker.upper()}=1 없이는 주문하지 않습니다."
             ),
         }
+
+    mode = _selected_broker_mode(broker)
+    log.warning(
+        "  실거래 요청 감지: broker=%s mode=%s", broker, mode
+    )
 
     if mode == "real" and not _real_broker_allowed(broker):
         return {
@@ -278,38 +306,484 @@ async def _execute_broker_order(decision: dict, broker_name: str | None = None) 
             "message": f"{broker} 어댑터 로드 실패: {e}",
         }
 
+    selected_decision = dict(decision)
+    if broker == "kis":
+        try:
+            selected_decision["quantity"] = await _kis_safe_quantity(
+                adapter, selected_decision
+            )
+        except Exception as e:  # account uncertainty must not increase exposure
+            return {
+                **selected_decision,
+                "status": "blocked",
+                "accepted": False,
+                "executed": False,
+                "terminal": True,
+                "requested_qty": 0,
+                "filled_qty": 0,
+                "remaining_qty": 0,
+                "executed_price": None,
+                "mode": f"{broker}_{mode}_account_unavailable",
+                "pnl": None,
+                "broker": broker,
+                "message": f"KIS 주문 가능 수량 확인 실패: {e}",
+            }
+        if selected_decision["quantity"] <= 0:
+            return {
+                **selected_decision,
+                "status": "blocked",
+                "accepted": False,
+                "executed": False,
+                "terminal": True,
+                "requested_qty": 0,
+                "filled_qty": 0,
+                "remaining_qty": 0,
+                "executed_price": None,
+                "mode": f"{broker}_{mode}_quantity_blocked",
+                "pnl": None,
+                "broker": broker,
+                "message": "KIS 주문 가능/보유 수량이 0주입니다.",
+            }
+
+    client_order_id = f"lecture-{uuid4().hex}"
+    if broker == "kis":
+        blocker = _admit_pending_kis_order(
+            selected_decision,
+            client_order_id=client_order_id,
+            broker_mode=mode,
+        )
+        if blocker is not None:
+            requested = int(selected_decision["quantity"])
+            return {
+                **selected_decision,
+                "status": "blocked",
+                "accepted": False,
+                "executed": False,
+                "terminal": True,
+                "requested_qty": requested,
+                "filled_qty": 0,
+                "remaining_qty": requested,
+                "executed_price": None,
+                "mode": f"kis_{mode}_pending_order",
+                "pnl": None,
+                "broker": "kis",
+                "message": (
+                    "미결 KIS 주문이 있어 중복 주문을 차단합니다: "
+                    f"{blocker.order.intent.client_order_id} "
+                    f"({blocker.status.value})"
+                ),
+            }
+
     try:
         broker_result = await adapter.place_order(
             BrokerOrder(
-                action=decision["action"],
-                ticker=decision["ticker"],
-                quantity=int(decision["quantity"]),
-                price=int(decision["price"]),
-                reason=decision.get("reason", ""),
+                action=selected_decision["action"],
+                ticker=selected_decision["ticker"],
+                quantity=int(selected_decision["quantity"]),
+                price=int(selected_decision["price"]),
+                reason=selected_decision.get("reason", ""),
+                client_order_id=client_order_id,
             )
         )
     except Exception as e:  # noqa: BLE001 — 인증/네트워크 실패도 초보자에게 설명 가능해야 함
+        if broker == "kis":
+            import db
+            from prism_core.domain import OrderStatus
+
+            requested = Decimal(str(selected_decision["quantity"]))
+            db.update_broker_order(
+                client_order_id,
+                status=OrderStatus.UNKNOWN,
+                filled_quantity=Decimal("0"),
+                remaining_quantity=requested,
+                average_fill_price=None,
+            )
         return {
-            **decision,
+            **selected_decision,
+            "status": "unknown" if broker == "kis" else "rejected",
+            "accepted": False,
             "executed": False,
+            "terminal": broker != "kis",
+            "requested_qty": int(selected_decision["quantity"]),
+            "filled_qty": 0,
+            "remaining_qty": int(selected_decision["quantity"]),
             "executed_price": None,
             "mode": f"{broker}_{mode}_failed",
             "pnl": None,
             "broker": broker,
+            "client_order_id": client_order_id,
             "message": f"{broker} 주문 실패: {e}",
         }
 
+    if broker == "kis":
+        broker_result = await _reconcile_kis_order(
+            adapter,
+            broker_result,
+            selected_decision,
+            client_order_id=client_order_id,
+        )
+
+    status = str(broker_result.get("status") or "unknown").lower()
+    requested_qty = int(selected_decision["quantity"])
+    filled_qty = int(broker_result.get("filled_qty") or 0)
+    remaining_qty = int(
+        broker_result.get("remaining_qty", requested_qty - filled_qty)
+    )
+    executed = bool(broker_result.get("executed", status == "filled"))
     return {
-        **decision,
-        "executed": bool(broker_result.get("success")),
-        "executed_price": broker_result.get("current_price") or decision["price"],
+        **selected_decision,
+        "status": status,
+        "accepted": bool(broker_result.get("accepted", False)),
+        "executed": executed,
+        "terminal": bool(broker_result.get("terminal", executed)),
+        "requested_qty": requested_qty,
+        "filled_qty": filled_qty,
+        "remaining_qty": remaining_qty,
+        "executed_price": (
+            broker_result.get("executed_price")
+            or broker_result.get("average_fill_price")
+            or (selected_decision["price"] if executed else None)
+        ),
         "mode": broker_result.get("mode") or f"{broker}_{mode}",
         "pnl": None,
         "broker": broker,
         "order_no": broker_result.get("order_no"),
+        "client_order_id": client_order_id,
         "message": broker_result.get("message", ""),
         "broker_result": broker_result,
     }
+
+
+async def _kis_safe_quantity(adapter, decision: dict) -> int:
+    requested = int(decision["quantity"])
+    if requested <= 0:
+        return 0
+    if str(decision["action"]).upper() == "BUY":
+        method = getattr(adapter, "get_orderable_quantity", None)
+        if method is None:
+            raise RuntimeError("adapter does not expose orderable quantity")
+        orderable = int(await method(decision["ticker"], int(decision["price"])))
+        return min(requested, max(orderable, 0))
+
+    account = await adapter.get_account()
+    held = 0
+    for position in account.get("positions", []):
+        ticker = str(position.get("pdno") or position.get("ticker") or "")
+        if ticker == str(decision["ticker"]):
+            raw = position.get("hldg_qty", position.get("quantity", 0))
+            held += max(int(str(raw)), 0)
+    return min(requested, held)
+
+
+def _admit_pending_kis_order(
+    decision: dict, *, client_order_id: str, broker_mode: str
+):
+    import db
+    from prism_core.domain import (
+        Market,
+        OrderIntent,
+        OrderSide,
+        OrderStatus,
+        OrderType,
+    )
+
+    quantity = Decimal(str(decision["quantity"]))
+    intent = OrderIntent(
+        client_order_id=client_order_id,
+        market=Market.KR,
+        symbol=str(decision["ticker"]),
+        side=OrderSide(str(decision["action"]).upper()),
+        order_type=OrderType.LIMIT,
+        quantity=quantity,
+        limit_price=Decimal(str(decision["price"])),
+        currency="KRW",
+        reason=str(decision.get("reason", "")),
+    )
+    admitted, blocker = db.admit_broker_order(
+        intent, broker="kis", broker_mode=broker_mode
+    )
+    if blocker is not None:
+        return blocker
+    if admitted is None:
+        raise RuntimeError("KIS order admission returned no state")
+    for status in (OrderStatus.PREVIEWED, OrderStatus.SUBMITTED):
+        db.update_broker_order(
+            client_order_id,
+            status=status,
+            filled_quantity=Decimal("0"),
+            remaining_quantity=quantity,
+            average_fill_price=None,
+        )
+    return None
+
+
+def _row_value(row: dict, *names: str):
+    lower = {str(key).lower(): value for key, value in row.items()}
+    for name in names:
+        if name.lower() in lower:
+            return lower[name.lower()]
+    return None
+
+
+def _kis_inquiry_snapshot(
+    inquiry: dict, *, order_no: str, requested_qty: int
+) -> dict | None:
+    rows = inquiry.get("rows", []) if isinstance(inquiry, dict) else []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        row_order_no = str(_row_value(row, "odno", "order_no") or "")
+        if row_order_no != str(order_no):
+            continue
+        requested = int(
+            str(_row_value(row, "ord_qty", "requested_qty") or requested_qty)
+        )
+        filled = int(
+            str(_row_value(row, "tot_ccld_qty", "ccld_qty", "filled_qty") or 0)
+        )
+        remaining_value = _row_value(row, "rmn_qty", "remaining_qty")
+        remaining = (
+            int(str(remaining_value))
+            if remaining_value not in (None, "")
+            else max(requested - filled, 0)
+        )
+        average_value = _row_value(
+            row, "avg_prvs", "avg_ccld_unpr", "average_fill_price"
+        )
+        average = int(Decimal(str(average_value))) if filled and average_value else None
+        if filled >= requested and remaining == 0:
+            status = "filled"
+        elif filled > 0:
+            status = "partial"
+        else:
+            status = "accepted"
+        return {
+            "status": status,
+            "accepted": True,
+            "executed": status == "filled",
+            "terminal": status == "filled",
+            "order_no": str(order_no),
+            "filled_qty": filled,
+            "remaining_qty": remaining,
+            "average_fill_price": average,
+        }
+    return None
+
+
+async def _reconcile_kis_order(
+    adapter,
+    broker_result: dict,
+    decision: dict,
+    *,
+    client_order_id: str,
+) -> dict:
+    import db
+    from market_calendar import KST
+    from prism_core.domain import OrderStatus
+
+    requested = int(decision["quantity"])
+    status = str(broker_result.get("status") or "unknown").lower()
+    order_no = broker_result.get("order_no")
+    org_no = broker_result.get("org_no")
+    incomplete_identity = status == "accepted" and not (order_no and org_no)
+    ledger_status = {
+        "accepted": OrderStatus.ACCEPTED,
+        "unknown": OrderStatus.UNKNOWN,
+        "rejected": OrderStatus.REJECTED,
+        "blocked": OrderStatus.REJECTED,
+    }.get(status, OrderStatus.UNKNOWN)
+    if incomplete_identity:
+        ledger_status = OrderStatus.UNKNOWN
+    db.update_broker_order(
+        client_order_id,
+        status=ledger_status,
+        filled_quantity=Decimal("0"),
+        remaining_quantity=Decimal(str(requested)),
+        average_fill_price=None,
+    )
+
+    order_date = datetime.now(KST).strftime("%Y%m%d")
+    if order_no and org_no:
+        db.bind_broker_identity(
+            client_order_id,
+            broker_order_date=order_date,
+            broker_org_no=str(org_no),
+            broker_order_no=str(order_no),
+        )
+    if incomplete_identity:
+        return {
+            **broker_result,
+            "status": "unknown",
+            "accepted": False,
+            "executed": False,
+            "terminal": False,
+            "filled_qty": 0,
+            "remaining_qty": requested,
+            "message": "KIS 접수 응답의 주문 식별자가 불완전하여 재주문을 금지합니다.",
+        }
+    if status != "accepted" or not order_no:
+        return {
+            **broker_result,
+            "filled_qty": 0,
+            "remaining_qty": requested,
+        }
+
+    try:
+        inquiry = await adapter.get_order_status(
+            str(order_no), business_date=order_date
+        )
+    except Exception as exc:
+        return {
+            **broker_result,
+            "filled_qty": 0,
+            "remaining_qty": requested,
+            "reconciliation_message": str(exc),
+        }
+    snapshot = _kis_inquiry_snapshot(
+        inquiry, order_no=str(order_no), requested_qty=requested
+    )
+    if snapshot is None:
+        return {
+            **broker_result,
+            "filled_qty": 0,
+            "remaining_qty": requested,
+        }
+    snapshot_status = {
+        "accepted": OrderStatus.ACCEPTED,
+        "partial": OrderStatus.PARTIALLY_FILLED,
+        "filled": OrderStatus.FILLED,
+    }[snapshot["status"]]
+    db.update_broker_order(
+        client_order_id,
+        status=snapshot_status,
+        filled_quantity=Decimal(str(snapshot["filled_qty"])),
+        remaining_quantity=Decimal(str(snapshot["remaining_qty"])),
+        average_fill_price=(
+            Decimal(str(snapshot["average_fill_price"]))
+            if snapshot["average_fill_price"] is not None
+            else None
+        ),
+    )
+    return {**broker_result, **snapshot}
+
+
+async def reconcile_pending_kis_orders(
+    *, adapter=None, mode: str | None = None
+) -> list[dict]:
+    """Re-query restartable KIS orders without ever submitting a new order."""
+    import db
+    from brokers.factory import get_broker_adapter
+    from prism_core.domain import OrderStatus
+
+    selected_mode = mode or _selected_broker_mode("kis")
+    selected_adapter = adapter or get_broker_adapter("kis")
+    pending = db.get_pending_broker_orders(
+        broker="kis", broker_mode=selected_mode
+    )
+    results = []
+    for state in pending:
+        order_no = state.broker_order_no
+        order_date = state.broker_order_date
+        requested = int(state.order.intent.quantity)
+        if not order_no or not order_date:
+            results.append(
+                {
+                    "client_order_id": state.order.intent.client_order_id,
+                    "order_no": order_no,
+                    "status": state.status.value.lower(),
+                    "accepted": state.status is not OrderStatus.UNKNOWN,
+                    "executed": False,
+                    "terminal": False,
+                    "requested_qty": requested,
+                    "filled_qty": int(state.filled_quantity),
+                    "remaining_qty": int(state.remaining_quantity),
+                    "message": "브로커 주문 식별자가 없어 자동 조회를 보류합니다.",
+                }
+            )
+            continue
+        try:
+            inquiry = await selected_adapter.get_order_status(
+                order_no, business_date=order_date
+            )
+            snapshot = _kis_inquiry_snapshot(
+                inquiry, order_no=order_no, requested_qty=requested
+            )
+        except Exception as exc:
+            snapshot = None
+            message = str(exc)
+        else:
+            message = ""
+        if snapshot is None:
+            results.append(
+                {
+                    "client_order_id": state.order.intent.client_order_id,
+                    "order_no": order_no,
+                    "status": (
+                        "partial"
+                        if state.status is OrderStatus.PARTIALLY_FILLED
+                        else state.status.value.lower()
+                    ),
+                    "accepted": state.status is not OrderStatus.UNKNOWN,
+                    "executed": False,
+                    "terminal": False,
+                    "requested_qty": requested,
+                    "filled_qty": int(state.filled_quantity),
+                    "remaining_qty": int(state.remaining_quantity),
+                    "message": message or "일치하는 KIS 주문 조회 행이 없습니다.",
+                }
+            )
+            continue
+        if Decimal(str(snapshot["filled_qty"])) < state.filled_quantity:
+            results.append(
+                {
+                    **snapshot,
+                    "client_order_id": state.order.intent.client_order_id,
+                    "status": "unknown",
+                    "accepted": True,
+                    "executed": False,
+                    "terminal": False,
+                    "message": "KIS 누적 체결 수량이 원장보다 작아 갱신을 보류합니다.",
+                }
+            )
+            continue
+        target = {
+            "accepted": OrderStatus.ACCEPTED,
+            "partial": OrderStatus.PARTIALLY_FILLED,
+            "filled": OrderStatus.FILLED,
+        }[snapshot["status"]]
+        if target is OrderStatus.ACCEPTED and state.status is OrderStatus.PARTIALLY_FILLED:
+            target = OrderStatus.PARTIALLY_FILLED
+            snapshot = {
+                **snapshot,
+                "status": "partial",
+                "filled_qty": int(state.filled_quantity),
+                "remaining_qty": int(state.remaining_quantity),
+                "average_fill_price": (
+                    int(state.average_fill_price)
+                    if state.average_fill_price is not None
+                    else None
+                ),
+            }
+        db.update_broker_order(
+            state.order.intent.client_order_id,
+            status=target,
+            filled_quantity=Decimal(str(snapshot["filled_qty"])),
+            remaining_quantity=Decimal(str(snapshot["remaining_qty"])),
+            average_fill_price=(
+                Decimal(str(snapshot["average_fill_price"]))
+                if snapshot.get("average_fill_price") is not None
+                else None
+            ),
+        )
+        results.append(
+            {
+                **snapshot,
+                "client_order_id": state.order.intent.client_order_id,
+                "requested_qty": requested,
+                "message": "KIS 미결 주문 상태를 재조회했습니다.",
+            }
+        )
+    return results
 
 
 async def _execute_kis_order(decision: dict) -> dict:

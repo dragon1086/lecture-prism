@@ -167,6 +167,20 @@ def save_broker_order(intent, *, broker: str, broker_mode: str):
     )
 
 
+def get_broker_order_state(client_order_id: str):
+    return _ledger().get_broker_order_state(client_order_id)
+
+
+def admit_broker_order(intent, *, broker: str, broker_mode: str):
+    return _ledger().admit_broker_order(
+        intent, broker=broker, broker_mode=broker_mode
+    )
+
+
+def bind_broker_identity(client_order_id: str, **identity):
+    return _ledger().bind_broker_identity(client_order_id, **identity)
+
+
 def update_broker_order(client_order_id: str, **snapshot):
     return _ledger().update_broker_order(client_order_id, **snapshot)
 
