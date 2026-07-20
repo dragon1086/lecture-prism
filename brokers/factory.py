@@ -4,7 +4,7 @@ Students can switch brokers with `.env`:
 
     LECTURE_BROKER=kis      # existing bridge
     LECTURE_BROKER=kiwoom   # Kiwoom REST API teaching adapter
-    LECTURE_BROKER=toss     # Toss template/unsupported-safe adapter
+    LECTURE_BROKER=toss     # optional pinned tossctl WTS adapter
 """
 
 from __future__ import annotations

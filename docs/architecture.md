@@ -113,7 +113,7 @@ lecture-prism은 PRISM 본 시스템의 축소판입니다.
 - 완료 — 공식 Codex 구독 호출, 종목당 단일 구조화 분석, 실패 시 규칙 폴백
 - 완료 — KIS 매수·매도, 주문가능수량·보유수량 제한, 체결 조회, 취소, 재시작 reconcile, UNKNOWN 중복주문 차단
 - 남은 선택 확장 — KIS 정정은 취소 후 재주문으로 처리하며 별도 정정 API 명령은 제공하지 않음
-- 미완료 — Toss WTS 어댑터와 같은 수준의 lifecycle 검증
+- 완료 — Toss WTS 선택 어댑터의 매수·매도, 수량 제한, 체결 조회, 취소, 재시작 reconcile, 인증 만료·UNKNOWN 차단 fixture 검증
 - 미완료 — `dashboard.py`에서 `broker_orders`, `order_events`, `fills`, `positions`, `realized_trades`, `classroom_replays`를 직접 시각화하는 화면
 
-현재 대시보드는 기존 `trade_history`, `analysis_decisions`, `feedback_lessons`만 읽으며 **core table 시각화는 미완료**입니다. 따라서 classroom 실행 증거는 SQLite 조회로 확인해야 하며, 대시보드에 core table이 보인다고 설명하면 안 됩니다. OAuth는 공식 Codex 경로로 연결됐지만, LLM 서술은 진입 정량 게이트를 우회할 수 없습니다. Toss는 아직 완료된 브로커 경로로 취급하지 않습니다.
+현재 대시보드는 기존 `trade_history`, `analysis_decisions`, `feedback_lessons`만 읽으며 **core table 시각화는 미완료**입니다. 따라서 classroom 실행 증거는 SQLite 조회로 확인해야 하며, 대시보드에 core table이 보인다고 설명하면 안 됩니다. OAuth는 공식 Codex 경로로 연결됐지만, LLM 서술은 진입 정량 게이트를 우회할 수 없습니다. Toss는 비공식 WTS 선택 경로이며 fixture 수명주기만 검증됐고 실제 계좌 E2E 완료를 뜻하지 않습니다.

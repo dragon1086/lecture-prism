@@ -56,12 +56,16 @@ class PrismCoreFoundationContractTest(unittest.TestCase):
         self.assertIn("fail-closed", options)
 
         follow_ons = self._section(text, "## 11. 완료 증거와 남은 연결 범위")
-        for completed_item in ("공식 Codex", "KIS 매수·매도"):
+        for completed_item in (
+            "공식 Codex",
+            "KIS 매수·매도",
+            "Toss WTS 선택 어댑터",
+        ):
             self.assertRegex(
                 follow_ons,
                 rf"- 완료 — [^\n]*{re.escape(completed_item)}",
             )
-        for incomplete_item in ("Toss WTS", "dashboard.py"):
+        for incomplete_item in ("dashboard.py",):
             self.assertRegex(
                 follow_ons,
                 rf"- 미완료 — [^\n]*{re.escape(incomplete_item)}",

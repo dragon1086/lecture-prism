@@ -41,6 +41,8 @@ _ENV_KEYS = {
     "TOSS_SECURITIES_BASE_URL",
     "TOSS_SECURITIES_API_KEY",
     "TOSS_SECURITIES_ACCOUNT_ID",
+    "TOSSCTL_PATH",
+    "TOSSCTL_TIMEOUT_SECONDS",
 }
 
 
@@ -63,10 +65,11 @@ class BrokerAdapterTest(unittest.TestCase):
 
     def tearDown(self):
         for key in _ENV_KEYS:
-            if self._saved[key] is None:
+            saved = self._saved[key]
+            if saved is None:
                 os.environ.pop(key, None)
             else:
-                os.environ[key] = self._saved[key]
+                os.environ[key] = saved
 
     def test_load_env_file_does_not_override_existing_env_by_default(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -346,15 +349,22 @@ class BrokerAdapterTest(unittest.TestCase):
         get_adapter.assert_not_called()
         forbidden_place_order.assert_not_awaited()
 
-    def test_toss_adapter_is_safe_unsupported_template(self):
+    def test_toss_demo_mode_is_blocked_before_wts_access(self):
         os.environ["LECTURE_ENABLE_LIVE_BROKER"] = "1"
 
-        result = asyncio.run(_execute_broker_order(_decision(), broker_name="toss"))
+        with patch(
+            "brokers.factory.get_broker_adapter",
+            side_effect=AssertionError("demo mode must not load Toss adapter"),
+        ) as get_adapter:
+            result = asyncio.run(
+                _execute_broker_order(_decision(), broker_name="toss")
+            )
 
         self.assertFalse(result["executed"])
-        self.assertEqual(result["mode"], "toss_unsupported")
+        self.assertEqual(result["mode"], "toss_demo_unavailable")
         self.assertEqual(result["broker"], "toss")
-        self.assertIn("공개 주문 API", result["message"])
+        self.assertIn("모의투자", result["message"])
+        get_adapter.assert_not_called()
 
 
 if __name__ == "__main__":

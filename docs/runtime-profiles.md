@@ -126,7 +126,8 @@ lecture-prism의 KIS 관련 코드를 읽기 전용으로 점검해줘.
 정정이 취소 후 재주문 정책인 점과 UNKNOWN이 새 주문을 막는 조건도 설명해줘.
 paper/live market provider fail-closed는 현재 코드·테스트 근거로 확인하고,
 실계좌 주문이나 외부 API 호출은 절대 실행하지 마.
-Toss도 완료된 어댑터라고 가정하지 말고 같은 기준으로 빈칸만 설명해줘.
+Toss WTS 선택 어댑터도 같은 기준으로 매수·매도·조회·취소·재시작 reconcile과 UNKNOWN 차단을 설명해줘.
+다만 비공식 WTS 세션이며 실제 모의투자 backend가 없고, 실제 계좌 E2E는 수행하지 않았다고 명시해줘.
 ```
 
 ```env
@@ -197,7 +198,7 @@ broker factory와 adapter place_order를 mock으로 감싸 호출되면 실패�
 그 조건에서 결과가 live_blocked이고 adapter 호출이 0회라는 테스트 증거만 설명해줘.
 ```
 
-market regime·screening·provider fail-closed, 공식 Codex OAuth 단일 분석 호출, KIS 매수·매도·체결 조회·취소·재시작 reconcile은 현재 구현 범위입니다. Toss WTS adapter와 dashboard core-table 시각화는 후속 과제이며 완료된 기능으로 설명하지 않습니다.
+market regime·screening·provider fail-closed, 공식 Codex OAuth 단일 분석 호출, KIS와 Toss WTS의 매수·매도·체결 조회·취소·재시작 reconcile은 현재 구현 범위입니다. Toss는 고정 `tossctl` JSON fixture로 검증했으며 실제 계좌 E2E는 수행하지 않았습니다. dashboard core-table 시각화는 후속 과제입니다.
 
 ### 기존 프로필 설정 점검 프롬프트
 

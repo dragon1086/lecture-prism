@@ -253,7 +253,7 @@ broker factory와 adapter place_order를 mock으로 감싸 호출되면 실패�
 실제 계좌·config 파일을 읽지 않고 결과가 live_blocked이며 adapter 호출이 0회라는 증거만 설명해줘.
 ```
 
-> regime·screening·paper/live market-provider fail-closed, 공식 Codex OAuth 단일 분석 호출, KIS 매수·매도·체결 조회·취소·재시작 reconcile은 현재 구현 범위입니다. Toss WTS adapter와 dashboard core-table 시각화는 후속 과제입니다.
+> regime·screening·paper/live market-provider fail-closed, 공식 Codex OAuth 단일 분석 호출, KIS와 Toss WTS의 매수·매도·체결 조회·취소·재시작 reconcile은 현재 구현 범위입니다. Toss는 비공식 WTS 선택 연동이며 실제 계좌 E2E는 수행하지 않았습니다. dashboard core-table 시각화는 후속 과제입니다.
 
 ---
 

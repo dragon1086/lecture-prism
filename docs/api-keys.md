@@ -62,7 +62,7 @@ Perplexity와 Firecrawl은 `LECTURE_REPORT_MODE=research`이고 해당 키가 �
 |---|---|---|
 | KIS 모의투자 조회·주문 구조 | 한국투자증권 모의투자 App Key, App Secret, HTS ID, 계좌번호 앞 8자리, 상품코드 2자리 | 심화 |
 | Kiwoom 모의투자/REST 구조 | 키움증권 REST API App Key, Secret Key 또는 Access Token | 심화 |
-| Toss Securities | 2026년 6월 28일 기준 공개 공식 주문 API 문서 확인 불가. 파트너/비공개 문서가 있을 때만 템플릿 확장 | 선택 |
+| Toss Securities | `tossctl 0.24.1`과 사용자가 직접 승인한 WTS 로그인 세션. API 키는 lecture-prism이 보관하지 않음 | 선택 |
 | 실전투자 | 각 증권사 실전투자 키와 실제 계좌 정보 | 강의 기본 실습에서는 금지 |
 
 `trading.py`는 실거래 요청을 기본으로 차단합니다. KIS만 고정으로 쓰지 않고 `.env`의 `LECTURE_BROKER` 값으로 브로커 어댑터를 바꿀 수 있습니다.
@@ -71,7 +71,7 @@ Perplexity와 Firecrawl은 `LECTURE_REPORT_MODE=research`이고 해당 키가 �
 |---|---|---|
 | 한국투자증권 | `LECTURE_BROKER=kis` | 기존 PRISM KIS 브리지 wrapping |
 | 키움증권 | `LECTURE_BROKER=kiwoom` | 공식 REST API의 `/oauth2/token`, `/api/dostk/ordr`, `kt10000/kt10001` 구조 반영 |
-| 토스증권 | `LECTURE_BROKER=toss` | 공개 주문 API 미확인으로 기본 차단 템플릿 제공 |
+| 토스증권 | `LECTURE_BROKER=toss` | 비공식 WTS 선택 어댑터. 매수·매도·조회·취소·재시작 reconcile, 인증 만료·UNKNOWN 차단 |
 | 기타 증권사 | `LECTURE_BROKER=custom` | `LECTURE_BROKER_ADAPTER=module:Class`로 수강생 전용 어댑터 연결 |
 
 자세한 확장 방식은 [`docs/broker-adapters.md`](broker-adapters.md)를 참고하세요.
