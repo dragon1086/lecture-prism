@@ -27,7 +27,7 @@ _PROFILE_DEFAULTS = {
     },
     "classroom": {
         "data_mode": "mock",
-        "screening_mode": "mock",
+        "screening_mode": "fixture",
         "llm_mode": "mock",
         "report_mode": "lite",
         "research_tools": "",
@@ -50,16 +50,16 @@ _PROFILE_DEFAULTS = {
         "trade_mode": "simulation",
     },
     "paper": {
-        "data_mode": "auto",
-        "screening_mode": "mock",
+        "data_mode": "yfinance",
+        "screening_mode": "real",
         "llm_mode": "auto",
         "report_mode": "research",
         "research_tools": "perplexity,firecrawl",
         "trade_mode": "demo",
     },
     "live": {
-        "data_mode": "auto",
-        "screening_mode": "mock",
+        "data_mode": "yfinance",
+        "screening_mode": "real",
         "llm_mode": "auto",
         "report_mode": "research",
         "research_tools": "perplexity,firecrawl",
@@ -67,7 +67,7 @@ _PROFILE_DEFAULTS = {
     },
     "backtest": {
         "data_mode": "mock",
-        "screening_mode": "mock",
+        "screening_mode": "fixture",
         "llm_mode": "mock",
         "report_mode": "lite",
         "research_tools": "",
@@ -270,8 +270,13 @@ def load_runtime_config(profile: str | None = None) -> RuntimeConfig:
         os.getenv("LECTURE_SCREENING_MODE") or defaults["screening_mode"],
         default=defaults["screening_mode"],
         aliases={"demo": "mock", "pykrx": "real", "yfinance": "real"},
-        allowed={"mock", "real"},
+        allowed={"mock", "fixture", "real"},
     )
+    if profile in {"paper", "live"}:
+        # Operating profiles may not be weakened into fixture/demo decisions
+        # through ambient configuration. Provider errors must stay fail-closed.
+        data_mode = "yfinance"
+        screening_mode = "real"
     llm_mode = _normalize(
         os.getenv("LECTURE_LLM_MODE") or os.getenv("PRISM_LLM_MODE") or defaults["llm_mode"],
         default=defaults["llm_mode"],

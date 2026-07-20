@@ -4,7 +4,7 @@ from decimal import Decimal
 import sys
 import unittest
 
-from prism_core.domain import Instrument, Market
+from prism_core.domain import Instrument, Market, Position
 from prism_core.market_data import (
     FIXTURE_AS_OF,
     DailyBar,
@@ -472,6 +472,31 @@ class MarketDataProviderTest(unittest.TestCase):
                 for bar in kr_series.bars
                 for price in (bar.open, bar.high, bar.low, bar.close)
             )
+        )
+
+    def test_yfinance_held_kr_position_resolves_ks_then_kq_without_context(self):
+        fake = _FakeYFinance({"035420.KQ": _fake_history(integral=True)})
+        provider = YFinanceMarketDataProvider(
+            import_module=lambda _: fake,
+            clock=lambda: FIXTURE_AS_OF,
+        )
+        position = Position(
+            Market.KR,
+            "035420",
+            Decimal("1"),
+            Decimal("200000"),
+            "KRW",
+            Decimal("210000"),
+            "legacy",
+            "legacy:KR:035420:BUY",
+        )
+
+        series = provider.held_position_series(position, as_of=FIXTURE_AS_OF)
+
+        self.assertEqual(fake.ticker_calls, ["035420.KS", "035420.KQ"])
+        self.assertEqual(
+            (series.market, series.symbol, series.currency),
+            (Market.KR, "035420", "KRW"),
         )
 
     def test_yfinance_kr_indices_allow_explicit_fractional_price_precision(self):

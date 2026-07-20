@@ -1,4 +1,5 @@
 from decimal import Decimal
+from contextlib import contextmanager
 from pathlib import Path
 import sqlite3
 import tempfile
@@ -124,6 +125,112 @@ class TradingCycleTest(unittest.TestCase):
         self.assertEqual(result.event_order, ["RECONCILE", "EXIT", "ENTRY"])
         self.assertEqual(result.exit_orders[0].intent.symbol, "AAPL")
         self.assertEqual(result.entry_orders[0].intent.symbol, "MSFT")
+
+    def test_staged_supplier_runs_once_after_exit_and_cannot_reenter_initial_symbol(self):
+        broker = self._broker()
+        self._fill(broker, us_order("seed:AAPL:BUY"), "seed-fill")
+        calls = []
+
+        def supplier():
+            calls.append(tuple(position.symbol for position in broker.get_positions()))
+            return [
+                us_order("run-2:AAPL:BUY"),
+                us_order("run-2:MSFT:BUY", "MSFT", price=Decimal("300")),
+            ]
+
+        result = TradingCycle(
+            broker,
+            {
+                (Market.US, "AAPL"): Decimal("160"),
+                (Market.US, "MSFT"): Decimal("300"),
+            },
+        ).run_staged("run-2", supplier, auto_fill=True)
+
+        self.assertEqual(calls, [()])
+        self.assertEqual(
+            result.event_order, ["RECONCILE", "EXIT", "SCREEN", "ENTRY"]
+        )
+        self.assertEqual([order.intent.symbol for order in result.entry_orders], ["MSFT"])
+
+    def test_staged_supplier_is_not_called_when_cycle_fence_is_unavailable(self):
+        broker = self._broker()
+        calls = []
+
+        @contextmanager
+        def unavailable_fence():
+            yield False
+
+        with patch.object(broker, "cycle_fence", side_effect=unavailable_fence):
+            result = TradingCycle(broker, {}).run_staged(
+                "run-1", lambda: calls.append("called") or []
+            )
+
+        self.assertEqual(calls, [])
+        self.assertEqual(result.blocked[0].reason, "cycle_overlap")
+
+    def test_staged_supplier_failure_preserves_completed_exit(self):
+        broker = self._broker()
+        self._fill(broker, us_order("seed:AAPL:BUY"), "seed-fill")
+
+        def supplier():
+            raise RuntimeError("preparation failed")
+
+        result = TradingCycle(
+            broker, {(Market.US, "AAPL"): Decimal("160")}
+        ).run_staged("run-2", supplier, auto_fill=True)
+
+        self.assertEqual(result.exit_orders[0].status, OrderStatus.FILLED)
+        self.assertEqual(result.entry_orders, [])
+        self.assertEqual(result.blocked[-1].reason, "entry_preparation_failed")
+        self.assertEqual(result.event_order, ["RECONCILE", "EXIT", "BLOCKED"])
+        self.assertEqual(broker.get_positions(), [])
+
+    def test_staged_exit_policy_is_additive_to_default_exit_rules(self):
+        broker = self._broker()
+        self._fill(broker, us_order("seed:AAPL:BUY"), "seed-fill")
+        observed = []
+
+        def provider(position):
+            observed.append(position.symbol)
+            return "adaptive_exit"
+
+        result = TradingCycle(
+            broker, {(Market.US, "AAPL"): Decimal("180")}
+        ).run_staged(
+            "run-2", lambda: [], exit_policy_provider=provider, auto_fill=True
+        )
+
+        self.assertEqual(observed, ["AAPL"])
+        self.assertEqual(result.exit_orders[0].intent.reason, "adaptive_exit")
+
+    def test_staged_policy_precedes_absolute_stop_and_none_disables_legacy_trailing(self):
+        broker = self._broker()
+        self._fill(broker, us_order("seed:AAPL:BUY"), "seed-fill")
+
+        scenario = TradingCycle(
+            broker, {(Market.US, "AAPL"): Decimal("160")}
+        ).run_staged(
+            "run-2",
+            lambda: [],
+            exit_policy_provider=lambda position: "scenario_stop",
+            auto_fill=False,
+        )
+        self.assertEqual(scenario.exit_orders[0].intent.reason, "scenario_stop")
+
+        broker.cancel_order(scenario.exit_orders[0].intent.client_order_id)
+        TradingCycle(
+            broker, {(Market.US, "AAPL"): Decimal("195")}
+        ).run("run-3", [], auto_fill=False)
+        held = TradingCycle(
+            broker, {(Market.US, "AAPL"): Decimal("175")}
+        ).run_staged(
+            "run-4",
+            lambda: [],
+            exit_policy_provider=lambda position: None,
+            auto_fill=True,
+        )
+        self.assertEqual(held.exit_orders, [])
+        self.assertEqual(len(broker.get_positions()), 1)
 
     def test_unknown_order_without_position_blocks_new_entry(self):
         broker = self._broker()

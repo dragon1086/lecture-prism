@@ -4,14 +4,18 @@ from pathlib import Path
 import tempfile
 import unittest
 from argparse import Namespace
+from types import SimpleNamespace
 from unittest import mock
 
 import main
 import runtime_config
+import screening
+from prism_core.market_data import MarketDataUnavailable
 
 
 _ENV_KEYS = {
     "LECTURE_PROFILE",
+    "LECTURE_DATA_MODE",
     "LECTURE_TRADE_MODE",
     "LECTURE_SCREENING_MODE",
 }
@@ -36,8 +40,119 @@ class MainRuntimeOptionsTest(unittest.TestCase):
         opts = main._resolve_runtime_options(Namespace(live=False, dry_run=False, real=False))
 
         self.assertFalse(opts["dry_run"])
-        self.assertFalse(opts["use_real_data"])
+        self.assertTrue(opts["use_real_data"])
         self.assertEqual(opts["config"].trade_mode, "demo")
+
+    def test_operating_profiles_explicitly_select_detailed_screening_source(self):
+        expected = {
+            "classroom": ("fixture", "mock"),
+            "backtest": ("fixture", "mock"),
+            "paper": ("real", "yfinance"),
+            "live": ("real", "yfinance"),
+        }
+        for profile, (screening_mode, data_mode) in expected.items():
+            with self.subTest(profile=profile):
+                config = runtime_config.load_runtime_config(profile)
+                self.assertEqual(config.screening_mode, screening_mode)
+                self.assertEqual(config.data_mode, data_mode)
+
+    def test_paper_and_live_cannot_be_overridden_to_mock_screening(self):
+        with mock.patch.dict(
+            os.environ,
+            {"LECTURE_DATA_MODE": "mock", "LECTURE_SCREENING_MODE": "mock"},
+        ):
+            for profile in ("paper", "live"):
+                with self.subTest(profile=profile):
+                    config = runtime_config.load_runtime_config(profile)
+                    self.assertEqual(config.screening_mode, "real")
+                    self.assertEqual(config.data_mode, "yfinance")
+
+    def test_target_ticker_infers_market_by_shape_and_uses_shared_validation(self):
+        for symbol in ("005930", "AAPL"):
+            with self.subTest(symbol=symbol):
+                self.assertEqual(
+                    asyncio.run(screening.run_screening(target_ticker=symbol)),
+                    [symbol],
+                )
+        for invalid in ("5930", "aapl", "005930.KS", " AAPL"):
+            with self.subTest(invalid=invalid):
+                with self.assertRaises(ValueError):
+                    asyncio.run(screening.run_screening(target_ticker=invalid))
+
+    def test_legacy_mock_screening_still_returns_symbol_strings(self):
+        symbols = asyncio.run(screening.run_screening(use_real=False))
+        self.assertTrue(symbols)
+        self.assertTrue(all(isinstance(symbol, str) for symbol in symbols))
+
+    def test_paper_detailed_screening_failure_never_uses_demo_fallback(self):
+        config = runtime_config.load_runtime_config("paper")
+        failure = MarketDataUnavailable("stale market snapshot")
+        with runtime_config.runtime_config_scope(config), mock.patch.object(
+            screening,
+            "run_detailed_screening",
+            new=mock.AsyncMock(side_effect=failure),
+            create=True,
+        ) as detailed, mock.patch.object(
+            screening,
+            "_filter_candidates",
+            new=mock.AsyncMock(side_effect=AssertionError("legacy fallback")),
+        ):
+            with self.assertRaises(MarketDataUnavailable):
+                asyncio.run(screening.run_screening(use_real=True))
+
+        detailed.assert_awaited_once()
+
+    def test_paper_detailed_screening_adapts_candidates_to_legacy_symbols(self):
+        config = runtime_config.load_runtime_config("paper")
+        detailed_candidates = [
+            SimpleNamespace(instrument=SimpleNamespace(symbol="AAPL"))
+        ]
+        with runtime_config.runtime_config_scope(config), mock.patch.object(
+            screening,
+            "run_detailed_screening",
+            new=mock.AsyncMock(return_value=detailed_candidates),
+            create=True,
+        ):
+            result = asyncio.run(screening.run_screening(use_real=True))
+
+        self.assertEqual(result, ["AAPL"])
+
+    def test_all_detailed_profiles_route_through_candidate_facade(self):
+        detailed_candidates = [
+            SimpleNamespace(instrument=SimpleNamespace(symbol="AAPL"))
+        ]
+        for profile in ("classroom", "backtest", "paper", "live"):
+            with self.subTest(profile=profile):
+                config = runtime_config.load_runtime_config(profile)
+                with runtime_config.runtime_config_scope(config), mock.patch.object(
+                    screening,
+                    "run_detailed_screening",
+                    new=mock.AsyncMock(return_value=detailed_candidates),
+                ) as detailed:
+                    result = asyncio.run(screening.run_screening())
+
+                self.assertEqual(result, ["AAPL"])
+                detailed.assert_awaited_once_with(
+                    profile=profile,
+                    target_ticker=None,
+                )
+
+    def test_paper_target_ticker_filters_detailed_path_without_bypassing_it(self):
+        config = runtime_config.load_runtime_config("paper")
+        detailed_candidates = [
+            SimpleNamespace(instrument=SimpleNamespace(symbol="AAPL"))
+        ]
+        with runtime_config.runtime_config_scope(config), mock.patch.object(
+            screening,
+            "run_detailed_screening",
+            new=mock.AsyncMock(return_value=detailed_candidates),
+        ) as detailed:
+            result = asyncio.run(
+                screening.run_screening(target_ticker="AAPL", use_real=True)
+            )
+
+        self.assertEqual(result, ["AAPL"])
+        detailed.assert_awaited_once_with(profile="paper", target_ticker="AAPL")
 
     def test_cli_dry_run_overrides_env_trade_mode(self):
         os.environ["LECTURE_TRADE_MODE"] = "real"

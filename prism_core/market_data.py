@@ -6,7 +6,7 @@ from decimal import Decimal, ROUND_HALF_UP
 import importlib
 from typing import Any, Callable, Mapping, Protocol
 
-from .domain import Instrument, Market
+from .domain import Instrument, Market, Position
 
 
 FIXTURE_AS_OF = datetime(2026, 6, 30, 15, 0, tzinfo=timezone.utc)
@@ -159,6 +159,7 @@ class UniverseMember:
 class MarketDataProvider(Protocol):
     def index_bundle(self, market: Market, *, as_of: datetime) -> IndexBundle: ...
     def stock_series(self, instrument: Instrument, *, as_of: datetime) -> MarketSeries: ...
+    def held_position_series(self, position: Position, *, as_of: datetime) -> MarketSeries: ...
 
 
 class UniverseProvider(Protocol):
@@ -443,6 +444,23 @@ class FixtureMarketDataProvider:
             raise InvalidMarketData("instrument and series currencies must match")
         return _slice_fixture_series(series, as_of)
 
+    def held_position_series(
+        self, position: Position, *, as_of: datetime
+    ) -> MarketSeries:
+        if not isinstance(position, Position):
+            raise InvalidMarketData("position must be a Position")
+        _require_aware(as_of, "as_of")
+        try:
+            series = self.stocks[(position.market, position.symbol)]
+        except KeyError as exc:
+            raise MarketDataUnavailable(
+                f"no fixture series for held position "
+                f"{position.market.value}:{position.symbol}"
+            ) from exc
+        if series.currency != position.currency:
+            raise InvalidMarketData("position and series currencies must match")
+        return _slice_fixture_series(series, as_of)
+
 
 class YFinanceMarketDataProvider:
     def __init__(
@@ -537,6 +555,36 @@ class YFinanceMarketDataProvider:
             fetched_at=fetched_at,
             price_precision=instrument.price_precision,
         )
+
+    def held_position_series(
+        self, position: Position, *, as_of: datetime
+    ) -> MarketSeries:
+        if not isinstance(position, Position):
+            raise InvalidMarketData("position must be a Position")
+        _require_aware(as_of, "as_of")
+        fetched_at = self._fetch_time()
+        provider_symbols = (
+            (position.symbol,)
+            if position.market is Market.US
+            else (f"{position.symbol}.KS", f"{position.symbol}.KQ")
+        )
+        failures = []
+        for provider_symbol in provider_symbols:
+            try:
+                return self._load_series(
+                    market=position.market,
+                    symbol=position.symbol,
+                    provider_symbol=provider_symbol,
+                    as_of=as_of,
+                    fetched_at=fetched_at,
+                    price_precision=0 if position.market is Market.KR else 2,
+                )
+            except MarketDataUnavailable as exc:
+                failures.append(exc)
+        raise MarketDataUnavailable(
+            f"yfinance could not resolve held position "
+            f"{position.market.value}:{position.symbol}"
+        ) from failures[-1]
 
     def _load_series(
         self,

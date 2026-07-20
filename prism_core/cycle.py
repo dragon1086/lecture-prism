@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal
+from typing import Callable, Iterable, Optional
 
 from .domain import (
     Market,
@@ -10,6 +11,7 @@ from .domain import (
     OrderSide,
     OrderStatus,
     OrderType,
+    Position,
     PositionFillConflict,
 )
 from .paper_broker import PaperBroker
@@ -25,6 +27,9 @@ _CANCELABLE = frozenset(
 _SUBMITTING = frozenset(
     {OrderStatus.CREATED, OrderStatus.PREVIEWED, OrderStatus.SUBMITTED}
 )
+
+EntrySupplier = Callable[[], Iterable[OrderIntent]]
+ExitPolicyProvider = Callable[[Position], Optional[str]]
 
 
 @dataclass(frozen=True)
@@ -196,7 +201,9 @@ class TradingCycle:
     def _run_locked(
         self,
         run_id: str,
-        entry_intents: list[OrderIntent],
+        entry_supplier: EntrySupplier,
+        exit_policy_provider: ExitPolicyProvider | None,
+        record_preparation_event: bool,
         auto_fill: bool,
     ) -> CycleResult:
         event_order = ["RECONCILE"]
@@ -231,14 +238,28 @@ class TradingCycle:
                 >= position.average_price * Decimal("1.05")
             )
             trail_hit = quote <= position.high_since_entry * Decimal("0.92")
-            if not (pending_exit or stop_hit or (trail_armed and trail_hit)):
-                continue
-
-            reason = "resume_exit"
-            if stop_hit:
+            adaptive_reason = None
+            if exit_policy_provider is not None:
+                adaptive_reason = exit_policy_provider(position)
+                if adaptive_reason is not None and (
+                    not isinstance(adaptive_reason, str)
+                    or not adaptive_reason.strip()
+                ):
+                    raise ValueError(
+                        "exit_policy_provider must return a non-empty reason or None"
+                    )
+                if adaptive_reason is not None:
+                    adaptive_reason = adaptive_reason.strip()
+            if adaptive_reason is not None:
+                reason = adaptive_reason
+            elif pending_exit:
+                reason = "stop" if stop_hit else "resume_exit"
+            elif stop_hit:
                 reason = "stop"
-            elif trail_armed and trail_hit:
+            elif exit_policy_provider is None and trail_armed and trail_hit:
                 reason = "trailing_stop"
+            else:
+                continue
 
             exit_decisions.append(_ExitDecision(*key, quote, reason))
 
@@ -266,6 +287,22 @@ class TradingCycle:
             event_order.append("EXIT")
         if blocked:
             event_order.append("BLOCKED")
+
+        try:
+            entry_intents = list(entry_supplier())
+        except Exception:
+            blocked.append(CycleBlock(None, None, "entry_preparation_failed"))
+            if "BLOCKED" not in event_order:
+                event_order.append("BLOCKED")
+            return CycleResult(
+                run_id=run_id,
+                exit_orders=exit_orders,
+                entry_orders=[],
+                event_order=event_order,
+                blocked=blocked,
+            )
+        if record_preparation_event:
+            event_order.append("SCREEN")
 
         entry_orders: list[OrderRecord] = []
         for intent in entry_intents:
@@ -297,6 +334,51 @@ class TradingCycle:
         *,
         auto_fill: bool = False,
     ) -> CycleResult:
+        return self._run_staged_with_event_policy(
+            run_id,
+            lambda: entry_intents,
+            exit_policy_provider=None,
+            record_preparation_event=False,
+            auto_fill=auto_fill,
+        )
+
+    def run_staged(
+        self,
+        run_id: str,
+        entry_supplier: EntrySupplier,
+        *,
+        exit_policy_provider: ExitPolicyProvider | None = None,
+        auto_fill: bool = False,
+    ) -> CycleResult:
+        """Run exits before one lazy entry preparation under one cycle fence.
+
+        ``exit_policy_provider(position)`` returns an optional adaptive exit
+        reason before the absolute 7% hard stop. When present it owns adaptive
+        trailing/target behavior; when absent the legacy 8% trailing rule is
+        preserved unchanged.
+        """
+
+        return self._run_staged_with_event_policy(
+            run_id,
+            entry_supplier,
+            exit_policy_provider=exit_policy_provider,
+            record_preparation_event=True,
+            auto_fill=auto_fill,
+        )
+
+    def _run_staged_with_event_policy(
+        self,
+        run_id: str,
+        entry_supplier: EntrySupplier,
+        *,
+        exit_policy_provider: ExitPolicyProvider | None,
+        record_preparation_event: bool,
+        auto_fill: bool,
+    ) -> CycleResult:
+        if not callable(entry_supplier):
+            raise ValueError("entry_supplier must be callable")
+        if exit_policy_provider is not None and not callable(exit_policy_provider):
+            raise ValueError("exit_policy_provider must be callable or None")
         with self.broker.cycle_fence() as acquired:
             if not acquired:
                 return CycleResult(
@@ -306,4 +388,10 @@ class TradingCycle:
                     event_order=["BLOCKED"],
                     blocked=[CycleBlock(None, None, "cycle_overlap")],
                 )
-            return self._run_locked(run_id, entry_intents, auto_fill)
+            return self._run_locked(
+                run_id,
+                entry_supplier,
+                exit_policy_provider,
+                record_preparation_event,
+                auto_fill,
+            )

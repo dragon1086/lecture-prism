@@ -78,6 +78,76 @@ class ClassroomReplayTest(unittest.TestCase):
                 ],
             )
 
+    def test_replay_summary_adds_preparation_and_execution_evidence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "classroom.db"
+
+            result = run_classroom_replay(path)
+
+            preparation = result["preparation"]
+            self.assertEqual(
+                preparation["run_id"], "classroom-000001-preparation"
+            )
+            self.assertEqual(set(preparation["regimes"]), {"KR", "US"})
+            self.assertNotEqual(
+                preparation["regimes"]["KR"],
+                preparation["regimes"]["US"],
+            )
+            self.assertTrue(preparation["candidates"])
+            self.assertTrue(all(
+                item["trigger"] == "oversold_rebound"
+                and item["score"] == "10"
+                for item in preparation["candidates"]
+            ))
+            self.assertEqual(preparation["rejected_reasons"], [])
+            self.assertTrue(preparation["order_ids"])
+            with sqlite3.connect(path) as conn:
+                evidence_orders = conn.execute(
+                    "SELECT COUNT(*) FROM broker_orders WHERE client_order_id "
+                    f"IN ({','.join('?' for _ in preparation['order_ids'])})",
+                    preparation["order_ids"],
+                ).fetchone()[0]
+            self.assertEqual(evidence_orders, 0)
+            self.assertEqual(len(result["fills"]), 4)
+            self.assertEqual(len(result["realized_exits"]), 2)
+            self.assertTrue(all(
+                item["exit_client_order_id"] and item["exit_fill_id"]
+                for item in result["realized_exits"]
+            ))
+
+    def test_preparation_evidence_ignores_unrelated_existing_positions(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            occupied_path = Path(tmp) / "occupied.db"
+            clean_path = Path(tmp) / "clean.db"
+            broker = PaperBroker(Ledger(occupied_path))
+            unrelated = OrderIntent(
+                "foreign:MSFT:BUY",
+                Market.US,
+                "MSFT",
+                OrderSide.BUY,
+                OrderType.LIMIT,
+                Decimal("1"),
+                Decimal("300"),
+                "USD",
+                strategy_id="foreign",
+            )
+            broker.submit_order(unrelated)
+            broker.fill_order(
+                unrelated.client_order_id,
+                "foreign-fill",
+                Decimal("1"),
+                Decimal("300"),
+            )
+
+            occupied = classroom._preparation_summary(
+                Ledger(occupied_path), "classroom-evidence"
+            )
+            clean = classroom._preparation_summary(
+                Ledger(clean_path), "classroom-evidence"
+            )
+
+            self.assertEqual(occupied, clean)
+
     def test_completed_replay_on_same_db_counts_only_new_realized_trades(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "classroom.db"
@@ -1817,7 +1887,7 @@ class ClassroomRuntimeProfileTest(unittest.TestCase):
 
             self.assertEqual(cfg.profile, expected)
             self.assertEqual(cfg.data_mode, "mock")
-            self.assertEqual(cfg.screening_mode, "mock")
+            self.assertEqual(cfg.screening_mode, "fixture")
             self.assertEqual(cfg.llm_mode, "mock")
             self.assertEqual(cfg.report_mode, "lite")
             self.assertEqual(cfg.research_tools, ())

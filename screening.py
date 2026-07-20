@@ -10,8 +10,11 @@ screening.py — 모듈 1: 종목 스크리닝
 """
 
 import asyncio
+import inspect
 import logging
 from typing import Optional
+
+from prism_core.domain import Market, validate_market_contract
 
 log = logging.getLogger(__name__)
 
@@ -42,13 +45,35 @@ async def run_screening(target_ticker: Optional[str] = None, use_real: bool = Fa
 
     Args:
         target_ticker: 지정 시 해당 종목만 분석 (디버그용)
-        use_real: True면 yfinance 실데이터, False면 데모 예시값 (기본).
-                  실데이터 조회 실패 시 자동으로 데모값으로 폴백합니다.
+        use_real: True면 legacy yfinance 실데이터, False면 데모 예시값 (기본).
+                  이 폴백은 mock/real_data 호환 경로에만 적용됩니다.
 
     Returns:
         선정된 종목코드 리스트
     """
-    if target_ticker:
+    if target_ticker is not None:
+        market = (
+            Market.KR
+            if isinstance(target_ticker, str)
+            and len(target_ticker) == 6
+            and target_ticker.isascii()
+            and target_ticker.isdigit()
+            else Market.US
+        )
+        validate_market_contract(market, target_ticker)
+
+    from runtime_config import load_runtime_config
+
+    config = load_runtime_config()
+    if config.profile in {"classroom", "backtest", "paper", "live"}:
+        log.info("운영 프로필 상세 스크리닝 시작: %s", config.profile)
+        detailed = await run_detailed_screening(
+            profile=config.profile,
+            target_ticker=target_ticker,
+        )
+        return [candidate.instrument.symbol for candidate in detailed]
+
+    if target_ticker is not None:
         log.info(f"단일 종목 모드: {target_ticker}")
         return [target_ticker]
 
@@ -58,8 +83,25 @@ async def run_screening(target_ticker: Optional[str] = None, use_real: bool = Fa
     return candidates
 
 
+async def run_detailed_screening(
+    *, profile: str, target_ticker: Optional[str] = None
+):
+    """Delegate lazily to the stateful market pipeline when it is installed.
+
+    The import and provider failures intentionally propagate. In particular,
+    paper/live must never continue into the legacy demo universe.
+    """
+
+    from prism_core.market_pipeline import run_detailed_screening as detailed
+
+    result = detailed(profile=profile, target_ticker=target_ticker)
+    if inspect.isawaitable(result):
+        result = await result
+    return list(result)
+
+
 async def _filter_candidates(use_real: bool = False) -> list[str]:
-    """필터링 로직. use_real=True면 yfinance 실데이터, 실패 시 데모값 폴백."""
+    """Legacy mock/real_data filter; real lookup may fall back to demo data."""
     log.info(f"  조건1: 거래량 급등 ({VOLUME_SURGE_RATIO}배 이상) 체크 중...")
     log.info(f"  조건2: 시가총액 {MIN_MARKET_CAP_KRW/1e8:.0f}억 이상 체크 중...")
     log.info(f"  조건3: {MOMENTUM_DAYS}일 이동평균 돌파 체크 중...")
