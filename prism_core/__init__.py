@@ -19,7 +19,7 @@ from .domain import (
     validate_market_contract,
     validate_transition,
 )
-from .ledger import IncompatibleLedgerSchema
+from .ledger import IncompatibleLedgerSchema, Ledger
 from .market_data import (
     DailyBar,
     FixtureMarketDataProvider,
@@ -56,6 +56,7 @@ __all__ = [
     "InsufficientMarketHistory",
     "Instrument",
     "InvalidMarketData",
+    "Ledger",
     "Market",
     "MarketDataProvider",
     "MarketDataUnavailable",

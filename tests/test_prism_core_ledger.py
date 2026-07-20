@@ -15,7 +15,7 @@ from prism_core.domain import (
     OrderType,
     PositionFillConflict,
 )
-from prism_core.ledger import Ledger
+from prism_core.ledger import IncompatibleLedgerSchema, Ledger
 
 
 def buy_intent(
@@ -59,6 +59,341 @@ def kr_buy_intent(order_id="run-1:005930:BUY"):
         Decimal("70000"),
         "KRW",
     )
+
+
+def seed_v4_ledger(path):
+    ledger = Ledger(path)
+    ledger.create_order(buy_intent("legacy:AAPL:BUY"))
+    with sqlite3.connect(path) as conn:
+        for table in ("entry_contexts", "candidates", "market_regimes"):
+            conn.execute(f'DROP TABLE IF EXISTS "{table}"')
+        conn.execute(
+            "UPDATE prism_core_meta SET value='4' WHERE key='schema_version'"
+        )
+
+
+class LedgerSchemaTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.path = Path(self.tmp.name) / "ledger.db"
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    @staticmethod
+    def _version(path):
+        with sqlite3.connect(path) as conn:
+            return conn.execute(
+                "SELECT value FROM prism_core_meta WHERE key='schema_version'"
+            ).fetchone()[0]
+
+    @staticmethod
+    def _columns(conn, table):
+        return tuple(
+            (row[1], row[2], row[3], row[4], row[5])
+            for row in conn.execute(f'PRAGMA table_info("{table}")')
+        )
+
+    def test_v4_to_v5_migration_preserves_orders_and_adds_provenance_tables(self):
+        seed_v4_ledger(self.path)
+        with sqlite3.connect(self.path) as conn:
+            before = conn.execute(
+                "SELECT * FROM broker_orders ORDER BY client_order_id"
+            ).fetchall()
+
+        Ledger(self.path)
+
+        with sqlite3.connect(self.path) as conn:
+            after = conn.execute(
+                "SELECT * FROM broker_orders ORDER BY client_order_id"
+            ).fetchall()
+            version = conn.execute(
+                "SELECT value FROM prism_core_meta WHERE key='schema_version'"
+            ).fetchone()[0]
+            tables = {
+                row[0]
+                for row in conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table'"
+                ).fetchall()
+            }
+        self.assertEqual(after, before)
+        self.assertEqual(version, "5")
+        self.assertTrue(
+            {"market_regimes", "candidates", "entry_contexts"} <= tables
+        )
+
+    def test_v5_provenance_tables_have_exact_columns_primary_and_unique_keys(self):
+        Ledger(self.path)
+        expected = {
+            "market_regimes": (
+                ("run_id", "TEXT", 1, None, 1),
+                ("market", "TEXT", 1, None, 2),
+                ("as_of", "TEXT", 1, None, 0),
+                ("regime", "TEXT", 1, None, 0),
+                ("confidence", "TEXT", 1, None, 0),
+                ("pulse", "TEXT", 1, None, 0),
+                ("metrics_json", "TEXT", 1, None, 0),
+                ("reasons_json", "TEXT", 1, None, 0),
+                ("source", "TEXT", 1, None, 0),
+            ),
+            "candidates": (
+                ("run_id", "TEXT", 1, None, 1),
+                ("rank", "INTEGER", 1, None, 0),
+                ("market", "TEXT", 1, None, 2),
+                ("symbol", "TEXT", 1, None, 3),
+                ("exchange", "TEXT", 1, None, 0),
+                ("currency", "TEXT", 1, None, 0),
+                ("name", "TEXT", 1, None, 0),
+                ("sector", "TEXT", 1, None, 0),
+                ("lot_size", "TEXT", 1, None, 0),
+                ("price_precision", "INTEGER", 1, None, 0),
+                ("as_of", "TEXT", 1, None, 0),
+                ("trigger_type", "TEXT", 1, None, 4),
+                ("regime", "TEXT", 1, None, 0),
+                ("feature_values_json", "TEXT", 1, None, 0),
+                ("component_scores_json", "TEXT", 1, None, 0),
+                ("final_score", "TEXT", 1, None, 0),
+                ("reference_price", "TEXT", 1, None, 0),
+                ("stop_price", "TEXT", 1, None, 0),
+                ("target_price", "TEXT", 1, None, 0),
+                ("risk_reward_ratio", "TEXT", 1, None, 0),
+                ("source", "TEXT", 1, None, 0),
+            ),
+            "entry_contexts": (
+                ("client_order_id", "TEXT", 0, None, 1),
+                ("run_id", "TEXT", 1, None, 0),
+                ("market", "TEXT", 1, None, 0),
+                ("symbol", "TEXT", 1, None, 0),
+                ("strategy_id", "TEXT", 1, None, 0),
+                ("regime", "TEXT", 1, None, 0),
+                ("trigger_type", "TEXT", 1, None, 0),
+                ("stop_price", "TEXT", 1, None, 0),
+                ("target_price", "TEXT", 1, None, 0),
+                ("risk_reward_ratio", "TEXT", 1, None, 0),
+                ("trailing_pct", "TEXT", 1, None, 0),
+                ("source", "TEXT", 1, None, 0),
+                ("created_at", "TEXT", 1, None, 0),
+            ),
+        }
+        with sqlite3.connect(self.path) as conn:
+            for table, columns in expected.items():
+                with self.subTest(table=table):
+                    self.assertEqual(self._columns(conn, table), columns)
+            candidate_unique = {
+                tuple(item[2] for item in conn.execute(
+                    "SELECT * FROM pragma_index_xinfo(?)", (row[1],)
+                ) if item[5])
+                for row in conn.execute('PRAGMA index_list("candidates")')
+                if row[2] and row[3] != "pk"
+            }
+            context_unique = {
+                tuple(item[2] for item in conn.execute(
+                    "SELECT * FROM pragma_index_xinfo(?)", (row[1],)
+                ) if item[5])
+                for row in conn.execute('PRAGMA index_list("entry_contexts")')
+                if row[2] and row[3] != "pk"
+            }
+        self.assertEqual(candidate_unique, {("run_id", "market", "rank")})
+        self.assertEqual(
+            context_unique,
+            {("run_id", "market", "symbol", "trigger_type")},
+        )
+
+    def test_two_concurrent_v4_openers_migrate_once_and_preserve_rows(self):
+        seed_v4_ledger(self.path)
+        barrier = threading.Barrier(2)
+        errors = []
+
+        def open_ledger():
+            try:
+                barrier.wait(2)
+                Ledger(self.path)
+            except Exception as exc:
+                errors.append(exc)
+
+        threads = [threading.Thread(target=open_ledger) for _ in range(2)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(3)
+        self.assertFalse(any(thread.is_alive() for thread in threads))
+        self.assertEqual(errors, [])
+        self.assertEqual(self._version(self.path), "5")
+        with sqlite3.connect(self.path) as conn:
+            self.assertEqual(conn.execute(
+                "SELECT client_order_id FROM broker_orders"
+            ).fetchall(), [("legacy:AAPL:BUY",)])
+
+    def test_failed_v5_migration_rolls_back_version_and_all_new_tables(self):
+        seed_v4_ledger(self.path)
+        statements = (
+            "CREATE TABLE market_regimes (run_id TEXT)",
+            "THIS IS NOT SQL",
+        )
+        with patch("prism_core.ledger._VERSION_FIVE_SCHEMA", statements):
+            with self.assertRaises(sqlite3.OperationalError):
+                Ledger(self.path)
+        self.assertEqual(self._version(self.path), "4")
+        with sqlite3.connect(self.path) as conn:
+            tables = {row[0] for row in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            )}
+        self.assertFalse(
+            {"market_regimes", "candidates", "entry_contexts"} & tables
+        )
+
+    def test_v4_with_any_premature_v5_table_is_rejected_without_mutation(self):
+        seed_v4_ledger(self.path)
+        with sqlite3.connect(self.path) as conn:
+            conn.execute("CREATE TABLE market_regimes (run_id TEXT)")
+        with self.assertRaisesRegex(
+            IncompatibleLedgerSchema, "partial or premature"
+        ):
+            Ledger(self.path)
+        self.assertEqual(self._version(self.path), "4")
+        with sqlite3.connect(self.path) as conn:
+            self.assertEqual(
+                conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' "
+                    "AND name LIKE '%regimes'"
+                ).fetchall(),
+                [("market_regimes",)],
+            )
+
+    def test_v5_rejects_unknown_columns_checks_triggers_and_extra_unique(self):
+        mutations = (
+            (
+                "unknown columns",
+                "ALTER TABLE market_regimes ADD COLUMN note TEXT DEFAULT 'x'",
+            ),
+            (
+                "unexpected CHECK",
+                "CREATE TABLE checked (value INTEGER CHECK(value > 0)); "
+                "ALTER TABLE checked RENAME TO checked_aux",
+            ),
+            (
+                "unexpected triggers",
+                "CREATE TRIGGER regime_touch AFTER UPDATE ON market_regimes "
+                "BEGIN SELECT 1; END",
+            ),
+            (
+                "unexpected UNIQUE key",
+                "CREATE UNIQUE INDEX regime_source_unique "
+                "ON market_regimes(source)",
+            ),
+        )
+        for index, (message, sql) in enumerate(mutations):
+            path = Path(self.tmp.name) / f"corrupt-{index}.db"
+            Ledger(path)
+            with sqlite3.connect(path) as conn:
+                if message == "unexpected CHECK":
+                    original = conn.execute(
+                        "SELECT sql FROM sqlite_master WHERE type='table' "
+                        "AND name='market_regimes'"
+                    ).fetchone()[0]
+                    conn.execute("DROP TABLE market_regimes")
+                    conn.execute(original.replace(
+                        "source TEXT NOT NULL,",
+                        "source TEXT NOT NULL CHECK(length(source) > 0),",
+                    ))
+                else:
+                    conn.execute(sql)
+            with self.subTest(message=message):
+                with self.assertRaisesRegex(IncompatibleLedgerSchema, message):
+                    Ledger(path)
+
+    def test_v5_rejects_generated_nonbinary_and_noncanonical_keys(self):
+        cases = (
+            ("generated", "market_regimes"),
+            ("non-BINARY", "market_regimes"),
+            ("incompatible type", "entry_contexts"),
+            ("partial UNIQUE", "candidates"),
+            ("expression UNIQUE", "candidates"),
+            ("non-BINARY", "candidates"),
+        )
+        for index, (message, table) in enumerate(cases):
+            path = Path(self.tmp.name) / f"hostile-{index}.db"
+            Ledger(path)
+            with sqlite3.connect(path) as conn:
+                original = conn.execute(
+                    "SELECT sql FROM sqlite_master WHERE type='table' "
+                    "AND name=?",
+                    (table,),
+                ).fetchone()[0]
+                conn.execute(f'DROP TABLE "{table}"')
+                if index == 0:
+                    altered = original.replace(
+                        "metrics_json TEXT NOT NULL",
+                        "metrics_json TEXT GENERATED ALWAYS AS ('{}') STORED",
+                    )
+                elif index == 1:
+                    altered = original.replace(
+                        "PRIMARY KEY(run_id, market)",
+                        "PRIMARY KEY(run_id COLLATE NOCASE, market)",
+                    )
+                elif index == 2:
+                    altered = original.replace(
+                        "client_order_id TEXT PRIMARY KEY",
+                        "client_order_id INTEGER PRIMARY KEY",
+                    )
+                else:
+                    altered = original.replace(
+                        ",\n    UNIQUE(run_id, market, rank)", ""
+                    )
+                conn.execute(altered)
+                if index == 3:
+                    conn.execute(
+                        "CREATE UNIQUE INDEX candidate_rank_unique "
+                        "ON candidates(run_id, market, rank) WHERE rank > 0"
+                    )
+                elif index == 4:
+                    conn.execute(
+                        "CREATE UNIQUE INDEX candidate_rank_unique "
+                        "ON candidates(run_id, market, rank + 0)"
+                    )
+                elif index == 5:
+                    conn.execute(
+                        "CREATE UNIQUE INDEX candidate_rank_unique "
+                        "ON candidates(run_id COLLATE NOCASE, market, rank)"
+                    )
+            with self.subTest(message=message, table=table):
+                with self.assertRaisesRegex(IncompatibleLedgerSchema, message):
+                    Ledger(path)
+
+    def test_v5_rejects_noncanonical_integer_primary_key_semantics(self):
+        replacements = (
+            "id INTEGER PRIMARY KEY",
+            "id INTEGER PRIMARY KEY ON CONFLICT REPLACE",
+        )
+        for index, replacement in enumerate(replacements):
+            path = Path(self.tmp.name) / f"integer-pk-{index}.db"
+            Ledger(path)
+            with sqlite3.connect(path) as conn:
+                original = conn.execute(
+                    "SELECT sql FROM sqlite_master WHERE type='table' "
+                    "AND name='order_events'"
+                ).fetchone()[0]
+                rows = conn.execute(
+                    "SELECT client_order_id, status, occurred_at "
+                    "FROM order_events ORDER BY id"
+                ).fetchall()
+                conn.execute("DROP TABLE order_events")
+                conn.execute(
+                    original.replace(
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT", replacement
+                    )
+                )
+                conn.executemany(
+                    "INSERT INTO order_events "
+                    "(client_order_id, status, occurred_at) VALUES (?,?,?)",
+                    rows,
+                )
+            with self.subTest(replacement=replacement):
+                with self.assertRaisesRegex(
+                    IncompatibleLedgerSchema,
+                    "noncanonical INTEGER PRIMARY KEY",
+                ):
+                    Ledger(path)
 
 
 class _CursorAfterFetch:
@@ -857,7 +1192,7 @@ class PrismCoreLedgerTest(unittest.TestCase):
                 conn.execute(
                     "SELECT value FROM prism_core_meta WHERE key='schema_version'"
                 ).fetchone(),
-                ("4",),
+                ("5",),
             )
 
     def test_order_events_record_first_status_observation_and_fills_audit_each_execution(self):

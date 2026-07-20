@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sqlite3
 import time
 from collections import Counter
@@ -10,7 +11,10 @@ from decimal import Decimal
 from pathlib import Path
 
 from .domain import (
+    Candidate,
+    EntryContext,
     Fill,
+    Instrument,
     Market,
     OrderIntent,
     OrderRecord,
@@ -20,11 +24,15 @@ from .domain import (
     Position,
     PositionEntryConflict,
     PositionFillConflict,
+    Regime,
+    TriggerType,
     validate_market_contract,
     validate_transition,
 )
+from .regime import PulseState, RegimeResult
+from .policy import policy_for
 
-CURRENT_SCHEMA_VERSION = 4
+CURRENT_SCHEMA_VERSION = 5
 
 
 class IncompatibleLedgerSchema(RuntimeError):
@@ -74,6 +82,38 @@ _VERSION_ONE_SCHEMA = (
 )""",
 )
 
+_VERSION_FIVE_SCHEMA = (
+    """CREATE TABLE market_regimes (
+    run_id TEXT NOT NULL, market TEXT NOT NULL, as_of TEXT NOT NULL,
+    regime TEXT NOT NULL, confidence TEXT NOT NULL, pulse TEXT NOT NULL,
+    metrics_json TEXT NOT NULL, reasons_json TEXT NOT NULL, source TEXT NOT NULL,
+    PRIMARY KEY(run_id, market)
+)""",
+    """CREATE TABLE candidates (
+    run_id TEXT NOT NULL, rank INTEGER NOT NULL, market TEXT NOT NULL,
+    symbol TEXT NOT NULL, exchange TEXT NOT NULL, currency TEXT NOT NULL,
+    name TEXT NOT NULL, sector TEXT NOT NULL, lot_size TEXT NOT NULL,
+    price_precision INTEGER NOT NULL,
+    as_of TEXT NOT NULL, trigger_type TEXT NOT NULL,
+    regime TEXT NOT NULL, feature_values_json TEXT NOT NULL,
+    component_scores_json TEXT NOT NULL, final_score TEXT NOT NULL,
+    reference_price TEXT NOT NULL, stop_price TEXT NOT NULL,
+    target_price TEXT NOT NULL, risk_reward_ratio TEXT NOT NULL,
+    source TEXT NOT NULL,
+    PRIMARY KEY(run_id, market, symbol, trigger_type),
+    UNIQUE(run_id, market, rank)
+)""",
+    """CREATE TABLE entry_contexts (
+    client_order_id TEXT PRIMARY KEY, run_id TEXT NOT NULL,
+    market TEXT NOT NULL, symbol TEXT NOT NULL, strategy_id TEXT NOT NULL,
+    regime TEXT NOT NULL, trigger_type TEXT NOT NULL,
+    stop_price TEXT NOT NULL, target_price TEXT NOT NULL,
+    risk_reward_ratio TEXT NOT NULL, trailing_pct TEXT NOT NULL,
+    source TEXT NOT NULL, created_at TEXT NOT NULL,
+    UNIQUE(run_id, market, symbol, trigger_type)
+)""",
+)
+
 _VERSION_ONE_COLUMNS = {
     "prism_core_meta": {"key", "value"},
     "broker_orders": {
@@ -113,15 +153,35 @@ _VERSION_THREE_COLUMNS = {
     "classroom_replays": _VERSION_TWO_COLUMNS["classroom_replays"]
     | {"phase", "abort_reason", "aborted_at"},
 }
-_CURRENT_COLUMNS = {
+_VERSION_FOUR_COLUMNS = {
     **_VERSION_THREE_COLUMNS,
     "positions": _VERSION_ONE_COLUMNS["positions"] | {"entry_client_order_id"},
+}
+_CURRENT_COLUMNS = {
+    **_VERSION_FOUR_COLUMNS,
+    "market_regimes": {
+        "run_id", "market", "as_of", "regime", "confidence", "pulse",
+        "metrics_json", "reasons_json", "source",
+    },
+    "candidates": {
+        "run_id", "rank", "market", "symbol", "exchange", "currency",
+        "name", "sector", "lot_size", "price_precision", "as_of", "trigger_type",
+        "regime", "feature_values_json", "component_scores_json",
+        "final_score", "reference_price", "stop_price", "target_price",
+        "risk_reward_ratio", "source",
+    },
+    "entry_contexts": {
+        "client_order_id", "run_id", "market", "symbol", "strategy_id",
+        "regime", "trigger_type", "stop_price", "target_price",
+        "risk_reward_ratio", "trailing_pct", "source", "created_at",
+    },
 }
 _SCHEMA_COLUMNS_BY_VERSION = {
     1: _VERSION_ONE_COLUMNS,
     2: _VERSION_TWO_COLUMNS,
     3: _VERSION_THREE_COLUMNS,
-    4: _CURRENT_COLUMNS,
+    4: _VERSION_FOUR_COLUMNS,
+    5: _CURRENT_COLUMNS,
 }
 _PRIMARY_KEYS = {
     "prism_core_meta": ("key",),
@@ -131,10 +191,15 @@ _PRIMARY_KEYS = {
     "positions": ("market", "symbol"),
     "realized_trades": ("id",),
     "classroom_replays": ("sequence",),
+    "market_regimes": ("run_id", "market"),
+    "candidates": ("run_id", "market", "symbol", "trigger_type"),
+    "entry_contexts": ("client_order_id",),
 }
 _REQUIRED_UNIQUE_KEYS = {
     "order_events": {("client_order_id", "status")},
     "classroom_replays": {("session_id",), ("strategy_id",)},
+    "candidates": {("run_id", "market", "rank")},
+    "entry_contexts": {("run_id", "market", "symbol", "trigger_type")},
 }
 
 
@@ -205,6 +270,14 @@ _COLUMN_CONTRACTS = {
         },
         defaults={"phase": "1", "realized_trades": "0"},
     ),
+    "market_regimes": _text_contract(_CURRENT_COLUMNS["market_regimes"]),
+    "candidates": _text_contract(
+        _CURRENT_COLUMNS["candidates"],
+        types={"rank": "INTEGER", "price_precision": "INTEGER"},
+    ),
+    "entry_contexts": _text_contract(
+        _CURRENT_COLUMNS["entry_contexts"], nullable={"client_order_id"}
+    ),
 }
 
 _UNRESOLVED_ORDER_STATUSES = (
@@ -224,6 +297,40 @@ _CLEANUP_ELIGIBLE_ABORT_REASONS = (
 )
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+_DECIMAL_JSON_TAG = "__prism_decimal__"
+
+
+def _encode_typed_json(values) -> str:
+    encoded = {
+        key: {_DECIMAL_JSON_TAG: str(value)}
+        if isinstance(value, Decimal)
+        else value
+        for key, value in dict(values).items()
+    }
+    return json.dumps(encoded, sort_keys=True, separators=(",", ":"))
+
+
+def _decode_typed_json(payload: str) -> dict:
+    decoded = json.loads(payload)
+    if not isinstance(decoded, dict):
+        raise ValueError("typed JSON must contain an object")
+    values = {}
+    for key, value in decoded.items():
+        if isinstance(value, dict):
+            if set(value) != {_DECIMAL_JSON_TAG} or not isinstance(
+                value[_DECIMAL_JSON_TAG], str
+            ):
+                raise ValueError("malformed or unknown typed JSON tag")
+            decimal_value = Decimal(value[_DECIMAL_JSON_TAG])
+            if not decimal_value.is_finite():
+                raise ValueError("tagged Decimal must be finite")
+            value = decimal_value
+        elif isinstance(value, list):
+            raise ValueError("malformed or unknown typed JSON value")
+        values[key] = value
+    return values
 
 
 def _sql_has_unquoted_keyword(sql: str, keyword: str) -> bool:
@@ -381,6 +488,19 @@ class Ledger:
             if indexes:
                 raise IncompatibleLedgerSchema(
                     f"{table} must use an INTEGER rowid PRIMARY KEY"
+                )
+            table_sql_row = conn.execute(
+                "SELECT sql FROM sqlite_master "
+                "WHERE type='table' AND name=?",
+                (table,),
+            ).fetchone()
+            table_sql = table_sql_row[0] if table_sql_row else ""
+            if (
+                not _sql_has_unquoted_keyword(table_sql, "AUTOINCREMENT")
+                or _sql_has_unquoted_keyword(table_sql, "CONFLICT")
+            ):
+                raise IncompatibleLedgerSchema(
+                    f"{table} has noncanonical INTEGER PRIMARY KEY semantics"
                 )
             return
         if not indexes:
@@ -570,6 +690,22 @@ class Ledger:
                 conn, "positions", "entry_client_order_id TEXT"
             )
             return
+        if target_version == 5:
+            existing = {
+                row[0]
+                for row in conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' "
+                    "AND name IN ('market_regimes','candidates','entry_contexts')"
+                ).fetchall()
+            }
+            if existing:
+                raise IncompatibleLedgerSchema(
+                    "partial or premature v5 provenance tables: "
+                    f"{sorted(existing)!r}"
+                )
+            for statement in _VERSION_FIVE_SCHEMA:
+                conn.execute(statement)
+            return
         raise AssertionError(f"unknown schema migration: {target_version}")
 
     def _initialize_schema(self) -> None:
@@ -622,8 +758,8 @@ class Ledger:
                 # Older course builds sometimes stamped the current version
                 # before every modeled additive column existed. Repair only
                 # known migrations after the base/unknown/trigger/key safety
-                # preflight; final validation still requires the exact v4 set.
-                for target in range(2, CURRENT_SCHEMA_VERSION + 1):
+                # preflight; final validation still requires the exact v5 set.
+                for target in range(2, 5):
                     self._run_migration(conn, target)
             self._validate_schema(conn, _CURRENT_COLUMNS)
             conn.commit()
@@ -647,6 +783,471 @@ class Ledger:
             raise
         finally:
             conn.close()
+
+    @staticmethod
+    def _regime_metrics_json(result: RegimeResult) -> str:
+        return _encode_typed_json(result.metrics)
+
+    def record_market_regime(self, run_id: str, result: RegimeResult) -> None:
+        row = self._market_regime_row(run_id, result)
+        with self._connect(immediate=True) as conn:
+            self._record_market_regime_row(conn, row)
+
+    def _market_regime_row(self, run_id: str, result: RegimeResult) -> tuple:
+        if not isinstance(run_id, str) or not run_id.strip():
+            raise ValueError("run_id is required")
+        if not isinstance(result, RegimeResult):
+            raise ValueError("result must be a RegimeResult")
+        normalized = RegimeResult(
+            market=result.market,
+            as_of=result.as_of,
+            regime=result.regime,
+            confidence=result.confidence,
+            pulse=result.pulse,
+            metrics=result.metrics,
+            reasons=result.reasons,
+            source=result.source,
+        )
+        row = (
+            run_id.strip(),
+            normalized.market.value,
+            normalized.as_of.isoformat(),
+            normalized.regime.value,
+            str(normalized.confidence),
+            normalized.pulse.value,
+            self._regime_metrics_json(normalized),
+            json.dumps(
+                normalized.reasons,
+                ensure_ascii=False,
+                separators=(",", ":"),
+            ),
+            normalized.source,
+        )
+        return row
+
+    @staticmethod
+    def _record_market_regime_row(conn, row) -> None:
+        existing = conn.execute(
+            "SELECT run_id,market,as_of,regime,confidence,pulse,"
+            "metrics_json,reasons_json,source FROM market_regimes "
+            "WHERE run_id=? AND market=?",
+            row[:2],
+        ).fetchone()
+        if existing is not None:
+            if tuple(existing) == row:
+                return
+            raise ValueError(f"market regime collision: {row[0]}:{row[1]}")
+        conn.execute(
+            "INSERT INTO market_regimes "
+            "(run_id,market,as_of,regime,confidence,pulse,metrics_json,"
+            "reasons_json,source) VALUES (?,?,?,?,?,?,?,?,?)",
+            row,
+        )
+
+    def get_market_regime(
+        self, run_id: str, market: Market
+    ) -> RegimeResult | None:
+        if not isinstance(run_id, str) or not run_id.strip():
+            raise ValueError("run_id is required")
+        if not isinstance(market, Market):
+            raise ValueError("market must be a Market")
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM market_regimes WHERE run_id=? AND market=?",
+                (run_id.strip(), market.value),
+            ).fetchone()
+        if row is None:
+            return None
+        try:
+            metrics = _decode_typed_json(row["metrics_json"])
+            reasons = json.loads(row["reasons_json"])
+            if not isinstance(reasons, list):
+                raise ValueError("reasons_json must contain an array")
+            return RegimeResult(
+                market=Market(row["market"]),
+                as_of=datetime.fromisoformat(row["as_of"]),
+                regime=Regime(row["regime"]),
+                confidence=Decimal(row["confidence"]),
+                pulse=PulseState(row["pulse"]),
+                metrics=metrics,
+                reasons=tuple(reasons),
+                source=row["source"],
+            )
+        except Exception as exc:
+            raise ValueError("corrupt stored market regime") from exc
+
+    @staticmethod
+    def _candidate_json(values) -> str:
+        return _encode_typed_json(values)
+
+    def record_candidates(self, run_id: str, candidates) -> None:
+        rows = self._candidate_rows(run_id, candidates)
+        with self._connect(immediate=True) as conn:
+            self._record_candidate_rows(conn, rows)
+
+    def _candidate_rows(self, run_id: str, candidates) -> list[tuple]:
+        if not isinstance(run_id, str) or not run_id.strip():
+            raise ValueError("run_id is required")
+        run_id = run_id.strip()
+        candidates = tuple(candidates)
+        ranks = Counter()
+        rows = []
+        identities = set()
+        for candidate in candidates:
+            if not isinstance(candidate, Candidate):
+                raise ValueError("candidates must contain Candidate values")
+            normalized = Candidate(
+                instrument=Instrument(
+                    symbol=candidate.instrument.symbol,
+                    market=candidate.instrument.market,
+                    exchange=candidate.instrument.exchange,
+                    currency=candidate.instrument.currency,
+                    name=candidate.instrument.name,
+                    sector=candidate.instrument.sector,
+                    lot_size=candidate.instrument.lot_size,
+                    price_precision=candidate.instrument.price_precision,
+                ),
+                as_of=candidate.as_of,
+                trigger_type=candidate.trigger_type,
+                regime=candidate.regime,
+                feature_values=candidate.feature_values,
+                component_scores=candidate.component_scores,
+                final_score=candidate.final_score,
+                reference_price=candidate.reference_price,
+                stop_price=candidate.stop_price,
+                target_price=candidate.target_price,
+                risk_reward_ratio=candidate.risk_reward_ratio,
+                source=candidate.source,
+            )
+            instrument = normalized.instrument
+            ranks[instrument.market] += 1
+            identity = (
+                run_id,
+                instrument.market.value,
+                instrument.symbol,
+                normalized.trigger_type.value,
+            )
+            if identity in identities:
+                raise ValueError(f"candidate collision: {identity!r}")
+            identities.add(identity)
+            rows.append((
+                run_id,
+                ranks[instrument.market],
+                instrument.market.value,
+                instrument.symbol,
+                instrument.exchange,
+                instrument.currency,
+                instrument.name,
+                instrument.sector,
+                str(instrument.lot_size),
+                instrument.price_precision,
+                normalized.as_of.isoformat(),
+                normalized.trigger_type.value,
+                normalized.regime.value,
+                self._candidate_json(normalized.feature_values),
+                self._candidate_json(normalized.component_scores),
+                str(normalized.final_score),
+                str(normalized.reference_price),
+                str(normalized.stop_price),
+                str(normalized.target_price),
+                str(normalized.risk_reward_ratio),
+                normalized.source,
+            ))
+        return rows
+
+    @staticmethod
+    def _record_candidate_rows(conn, rows) -> None:
+        pending = []
+        for row in rows:
+            existing = conn.execute(
+                    "SELECT run_id,rank,market,symbol,exchange,currency,name,sector,"
+                    "lot_size,price_precision,as_of,trigger_type,regime,"
+                    "feature_values_json,component_scores_json,final_score,"
+                    "reference_price,stop_price,target_price,risk_reward_ratio,source "
+                    "FROM candidates WHERE run_id=? AND market=? AND symbol=? "
+                    "AND trigger_type=?",
+                    (row[0], row[2], row[3], row[11]),
+            ).fetchone()
+            if existing is not None:
+                if tuple(existing) != row:
+                    raise ValueError(
+                        f"candidate collision: {row[0]}:{row[2]}:{row[3]}"
+                    )
+                continue
+            occupied_rank = conn.execute(
+                "SELECT symbol,trigger_type FROM candidates "
+                "WHERE run_id=? AND market=? AND rank=?",
+                (row[0], row[2], row[1]),
+            ).fetchone()
+            if occupied_rank is not None:
+                raise ValueError(
+                    f"candidate collision: {row[0]}:{row[2]}:rank-{row[1]}"
+                )
+            pending.append(row)
+        conn.executemany(
+            "INSERT INTO candidates (run_id,rank,market,symbol,exchange,"
+            "currency,name,sector,lot_size,price_precision,as_of,trigger_type,"
+            "regime,feature_values_json,component_scores_json,final_score,"
+            "reference_price,stop_price,target_price,risk_reward_ratio,source) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            pending,
+        )
+
+    def list_candidates(
+        self, run_id: str, market: Market | None = None
+    ) -> list[Candidate]:
+        if not isinstance(run_id, str) or not run_id.strip():
+            raise ValueError("run_id is required")
+        if market is not None and not isinstance(market, Market):
+            raise ValueError("market must be a Market")
+        parameters = [run_id.strip()]
+        where = "run_id=?"
+        if market is not None:
+            where += " AND market=?"
+            parameters.append(market.value)
+        with self._connect() as conn:
+            rows = conn.execute(
+                f"SELECT * FROM candidates WHERE {where} ORDER BY rank,rowid",
+                parameters,
+            ).fetchall()
+        results = []
+        for row in rows:
+            try:
+                features = _decode_typed_json(row["feature_values_json"])
+                components = _decode_typed_json(row["component_scores_json"])
+                results.append(Candidate(
+                    instrument=Instrument(
+                        symbol=row["symbol"],
+                        market=Market(row["market"]),
+                        exchange=row["exchange"],
+                        currency=row["currency"],
+                        name=row["name"],
+                        sector=row["sector"],
+                        lot_size=Decimal(row["lot_size"]),
+                        price_precision=row["price_precision"],
+                    ),
+                    as_of=datetime.fromisoformat(row["as_of"]),
+                    trigger_type=TriggerType(row["trigger_type"]),
+                    regime=Regime(row["regime"]),
+                    feature_values=features,
+                    component_scores=components,
+                    final_score=Decimal(row["final_score"]),
+                    reference_price=Decimal(row["reference_price"]),
+                    stop_price=Decimal(row["stop_price"]),
+                    target_price=Decimal(row["target_price"]),
+                    risk_reward_ratio=Decimal(row["risk_reward_ratio"]),
+                    source=row["source"],
+                ))
+            except Exception as exc:
+                raise ValueError("corrupt stored candidate") from exc
+        return results
+
+    def _validated_entry_reference(self, context: EntryContext) -> Candidate:
+        expected_id = (
+            f"{context.run_id}:{context.candidate.instrument.market.value}:"
+            f"{context.candidate.instrument.symbol}:BUY"
+        )
+        if context.client_order_id != expected_id:
+            raise ValueError("entry context client_order_id mismatch")
+        candidates = self.list_candidates(
+            context.run_id, context.candidate.instrument.market
+        )
+        referenced = next(
+            (
+                candidate
+                for candidate in candidates
+                if candidate.instrument.symbol
+                == context.candidate.instrument.symbol
+                and candidate.trigger_type is context.candidate.trigger_type
+            ),
+            None,
+        )
+        if referenced is None:
+            raise ValueError("entry context candidate mismatch")
+        self._validate_entry_context_against_candidate(context, referenced)
+        return referenced
+
+    @staticmethod
+    def _validate_entry_context_against_candidate(
+        context: EntryContext, referenced: Candidate
+    ) -> None:
+        expected_id = (
+            f"{context.run_id}:{referenced.instrument.market.value}:"
+            f"{referenced.instrument.symbol}:BUY"
+        )
+        if context.client_order_id != expected_id:
+            raise ValueError("entry context client_order_id mismatch")
+        if referenced != context.candidate:
+            raise ValueError("entry context candidate mismatch")
+        if context.strategy_id != referenced.source:
+            raise ValueError("entry context strategy_id mismatch")
+        if context.policy != policy_for(referenced.regime):
+            raise ValueError("entry context policy mismatch")
+
+    def record_entry_context(self, context: EntryContext) -> None:
+        if not isinstance(context, EntryContext):
+            raise ValueError("context must be an EntryContext")
+        referenced = self._validated_entry_reference(context)
+        row = self._entry_context_row(context, referenced)
+        with self._connect(immediate=True) as conn:
+            self._record_entry_context_row(conn, row)
+
+    @staticmethod
+    def _entry_context_row(context: EntryContext, referenced: Candidate) -> tuple:
+        return (
+            context.client_order_id,
+            context.run_id,
+            referenced.instrument.market.value,
+            referenced.instrument.symbol,
+            context.strategy_id,
+            referenced.regime.value,
+            referenced.trigger_type.value,
+            str(referenced.stop_price),
+            str(referenced.target_price),
+            str(referenced.risk_reward_ratio),
+            str(context.policy.trailing_pct),
+            referenced.source,
+        )
+
+    @staticmethod
+    def _record_entry_context_row(conn, row) -> None:
+        existing = conn.execute(
+                "SELECT client_order_id,run_id,market,symbol,strategy_id,regime,"
+                "trigger_type,stop_price,target_price,risk_reward_ratio,"
+                "trailing_pct,source FROM entry_contexts WHERE client_order_id=? "
+                "OR (run_id=? AND market=? AND symbol=? AND trigger_type=?)",
+                (row[0], row[1], row[2], row[3], row[6]),
+        ).fetchone()
+        if existing is not None:
+            if tuple(existing) == row:
+                return
+            raise ValueError(f"entry context collision: {row[0]}")
+        conn.execute(
+            "INSERT INTO entry_contexts (client_order_id,run_id,market,symbol,"
+            "strategy_id,regime,trigger_type,stop_price,target_price,"
+            "risk_reward_ratio,trailing_pct,source,created_at) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            row + (_now(),),
+        )
+
+    def get_entry_context(self, client_order_id: str) -> EntryContext | None:
+        if not isinstance(client_order_id, str) or not client_order_id.strip():
+            raise ValueError("client_order_id is required")
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM entry_contexts WHERE client_order_id=?",
+                (client_order_id.strip(),),
+            ).fetchone()
+        if row is None:
+            return None
+        try:
+            created_at = datetime.fromisoformat(row["created_at"])
+            if created_at.tzinfo is None or created_at.utcoffset() is None:
+                raise ValueError("created_at must be timezone-aware")
+            market = Market(row["market"])
+            trigger = TriggerType(row["trigger_type"])
+            referenced = next(
+                (
+                    candidate
+                    for candidate in self.list_candidates(row["run_id"], market)
+                    if candidate.instrument.symbol == row["symbol"]
+                    and candidate.trigger_type is trigger
+                ),
+                None,
+            )
+            if referenced is None:
+                raise ValueError("entry context candidate is missing")
+            policy = policy_for(referenced.regime)
+            context = EntryContext(
+                client_order_id=row["client_order_id"],
+                run_id=row["run_id"],
+                candidate=referenced,
+                strategy_id=row["strategy_id"],
+                policy=policy,
+            )
+            if (
+                context.client_order_id
+                != f"{context.run_id}:{market.value}:{row['symbol']}:BUY"
+                or row["strategy_id"] != referenced.source
+                or row["source"] != referenced.source
+                or Regime(row["regime"]) is not referenced.regime
+                or Decimal(row["stop_price"]) != referenced.stop_price
+                or Decimal(row["target_price"]) != referenced.target_price
+                or Decimal(row["risk_reward_ratio"])
+                != referenced.risk_reward_ratio
+                or Decimal(row["trailing_pct"]) != policy.trailing_pct
+            ):
+                raise ValueError("entry context does not match candidate")
+            return context
+        except Exception as exc:
+            raise ValueError("corrupt stored entry context") from exc
+
+    def record_market_preparation(
+        self,
+        run_id: str,
+        regimes: tuple[RegimeResult, ...],
+        candidates: tuple[Candidate, ...],
+        entry_contexts: tuple[EntryContext, ...],
+    ) -> None:
+        if not isinstance(run_id, str) or not run_id.strip():
+            raise ValueError("run_id is required")
+        if not all(type(values) is tuple for values in (
+            regimes, candidates, entry_contexts
+        )):
+            raise ValueError("market preparation inputs must be exact tuples")
+        run_id = run_id.strip()
+
+        regime_rows = []
+        regime_by_market = {}
+        for result in regimes:
+            row = self._market_regime_row(run_id, result)
+            if result.market in regime_by_market:
+                raise ValueError("duplicate market regime")
+            regime_by_market[result.market] = result
+            regime_rows.append(row)
+
+        candidate_rows = self._candidate_rows(run_id, candidates)
+        candidate_by_identity = {}
+        for selected in candidates:
+            supplied_regime = regime_by_market.get(selected.instrument.market)
+            if supplied_regime is None or supplied_regime.regime is not selected.regime:
+                raise ValueError("candidate has no matching supplied market regime")
+            identity = (
+                selected.instrument.market,
+                selected.instrument.symbol,
+                selected.trigger_type,
+            )
+            if identity in candidate_by_identity:
+                raise ValueError("duplicate candidate identity")
+            candidate_by_identity[identity] = selected
+
+        context_rows = []
+        context_ids = set()
+        for context in entry_contexts:
+            if not isinstance(context, EntryContext):
+                raise ValueError("entry_contexts must contain EntryContext values")
+            if context.run_id != run_id:
+                raise ValueError("entry context run_id mismatch")
+            if context.client_order_id in context_ids:
+                raise ValueError("duplicate entry context client_order_id")
+            context_ids.add(context.client_order_id)
+            identity = (
+                context.candidate.instrument.market,
+                context.candidate.instrument.symbol,
+                context.candidate.trigger_type,
+            )
+            referenced = candidate_by_identity.get(identity)
+            if referenced is None:
+                raise ValueError("entry context references unsupplied candidate")
+            self._validate_entry_context_against_candidate(context, referenced)
+            context_rows.append(self._entry_context_row(context, referenced))
+
+        with self._connect(immediate=True) as conn:
+            for row in regime_rows:
+                self._record_market_regime_row(conn, row)
+            self._record_candidate_rows(conn, candidate_rows)
+            for row in context_rows:
+                self._record_entry_context_row(conn, row)
 
     @contextmanager
     def cycle_fence(self):

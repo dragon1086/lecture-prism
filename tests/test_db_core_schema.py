@@ -899,6 +899,12 @@ class DatabaseCoreSchemaTest(unittest.TestCase):
             path = Path(tmp) / "old-core.db"
             Ledger(path)
             with sqlite3.connect(path) as conn:
+                for table in (
+                    "entry_contexts",
+                    "candidates",
+                    "market_regimes",
+                ):
+                    conn.execute(f'DROP TABLE "{table}"')
                 for table, columns in (
                     ("positions", ("entry_client_order_id",)),
                     ("realized_trades", ("exit_fill_id", "exit_client_order_id")),
@@ -933,7 +939,7 @@ class DatabaseCoreSchemaTest(unittest.TestCase):
                 version = conn.execute(
                     "SELECT value FROM prism_core_meta WHERE key='schema_version'"
                 ).fetchone()[0]
-            self.assertEqual(version, "4")
+            self.assertEqual(version, "5")
 
     def test_current_course_shell_database_shape_is_preserved_idempotently(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -976,7 +982,7 @@ class DatabaseCoreSchemaTest(unittest.TestCase):
                     conn.execute(
                         "SELECT value FROM prism_core_meta WHERE key='schema_version'"
                     ).fetchone(),
-                    ("4",),
+                    ("5",),
                 )
 
     def test_concurrent_empty_database_initialization_is_serialized(self):
@@ -1005,7 +1011,7 @@ class DatabaseCoreSchemaTest(unittest.TestCase):
                     conn.execute(
                         "SELECT value FROM prism_core_meta WHERE key='schema_version'"
                     ).fetchone(),
-                    ("4",),
+                    ("5",),
                 )
 
 
