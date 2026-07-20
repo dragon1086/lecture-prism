@@ -1,8 +1,12 @@
 from .domain import (
+    Candidate,
+    EntryContext,
+    EntryDecision,
     Fill,
     Instrument,
     Market,
     Regime,
+    RegimePolicy,
     OrderIntent,
     OrderRecord,
     OrderSide,
@@ -11,6 +15,7 @@ from .domain import (
     Position,
     PositionEntryConflict,
     PositionFillConflict,
+    TriggerType,
     validate_market_contract,
     validate_transition,
 )
@@ -29,15 +34,20 @@ from .market_data import (
     YFinanceMarketDataProvider,
     validate_series_for_profile,
 )
+from .policy import gate_entry, policy_for
 from .regime import (
     InsufficientMarketHistory,
     PulseState,
     RegimeResult,
     classify_market_regime,
 )
+from .screening import OneilTrendStrategy, ScreeningStrategy, screen_candidates
 
 __all__ = [
+    "Candidate",
     "DailyBar",
+    "EntryContext",
+    "EntryDecision",
     "Fill",
     "FixtureMarketDataProvider",
     "FixtureUniverseProvider",
@@ -55,16 +65,23 @@ __all__ = [
     "OrderSide",
     "OrderStatus",
     "OrderType",
+    "OneilTrendStrategy",
     "Position",
     "PositionEntryConflict",
     "PositionFillConflict",
     "PulseState",
     "Regime",
+    "RegimePolicy",
     "RegimeResult",
+    "ScreeningStrategy",
     "UniverseMember",
     "UniverseProvider",
+    "TriggerType",
     "YFinanceMarketDataProvider",
     "classify_market_regime",
+    "gate_entry",
+    "policy_for",
+    "screen_candidates",
     "validate_market_contract",
     "validate_series_for_profile",
     "validate_transition",
