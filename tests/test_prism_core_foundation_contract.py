@@ -55,23 +55,20 @@ class PrismCoreFoundationContractTest(unittest.TestCase):
         self.assertIn("paper/live", options)
         self.assertIn("fail-closed", options)
 
-        follow_ons = self._section(
-            text, "## 11. 아직 연결 완료로 말하면 안 되는 것"
-        )
-        for incomplete_item in (
-            "분석 evidence와 OAuth",
-            "KIS",
-            "Toss WTS",
-            "dashboard.py",
-        ):
+        follow_ons = self._section(text, "## 11. 완료 증거와 남은 연결 범위")
+        for completed_item in ("공식 Codex", "KIS 매수·매도"):
+            self.assertRegex(
+                follow_ons,
+                rf"- 완료 — [^\n]*{re.escape(completed_item)}",
+            )
+        for incomplete_item in ("Toss WTS", "dashboard.py"):
             self.assertRegex(
                 follow_ons,
                 rf"- 미완료 — [^\n]*{re.escape(incomplete_item)}",
             )
-        self.assertIn("미완료인 후속 과제", follow_ons)
         self.assertNotIn("paper/live용 market provider fail-closed", follow_ons)
         self.assertNotIn("시장 regime과 screening 결합", follow_ons)
-        self.assertNotRegex(follow_ons, r"(?:KIS|Toss).{0,30}(?:완성된|운영 준비 완료)")
+        self.assertNotRegex(follow_ons, r"Toss.{0,30}(?:완성된|운영 준비 완료)")
         self.assertNotRegex(follow_ons, r"backtest.{0,40}PaperBroker")
         self.assertIn("core table 시각화는 미완료", follow_ons)
 
@@ -135,6 +132,28 @@ class PrismCoreFoundationContractTest(unittest.TestCase):
             r"dashboard[^.\n]{0,100}core table 시각화(?:가|는)? 완료",
         ):
             self.assertNotRegex(combined, contradiction)
+
+    def test_current_course_docs_use_only_the_official_codex_oauth_path(self):
+        architecture = (ROOT / "docs/architecture.md").read_text(encoding="utf-8")
+        verification = (ROOT / "docs/agent-prompt-equivalence.md").read_text(
+            encoding="utf-8"
+        )
+        curriculum = (ROOT / "lecture/curriculum.html").read_text(encoding="utf-8")
+        requirements = (ROOT / "requirements.txt").read_text(encoding="utf-8")
+        part4 = (ROOT / "lecture/exercises/part4_실습가이드.md").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("`llm_provider.py`, `analysis.py`", architecture)
+        self.assertIn("공식 Codex 공급자 단위 테스트", verification)
+        self.assertIn("LECTURE_LLM_MODE=oauth", curriculum)
+        self.assertIn("공식 Codex CLI", requirements)
+        self.assertIn("cores/chatgpt_proxy 참고 회귀", requirements)
+        self.assertNotIn("_run_news_agent", part4)
+        for text in (curriculum, requirements):
+            self.assertNotIn("localhost:18741", text)
+            self.assertNotIn("OPENAI_BASE_URL", text)
+        self.assertNotIn("cores/chatgpt_proxy", curriculum)
 
     def test_course_docs_explain_regime_screening_as_one_safety_contract(self):
         paths = (

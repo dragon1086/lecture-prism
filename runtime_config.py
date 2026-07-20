@@ -219,7 +219,6 @@ def _llm_enabled(llm_mode: str) -> tuple[bool, bool]:
     oauth_requested = (
         os.getenv("PRISM_OPENAI_AUTH_MODE") == "chatgpt_oauth"
         or llm_mode == "oauth"
-        or bool(os.getenv("OPENAI_BASE_URL"))
     )
     api_ready = bool(os.getenv("OPENAI_API_KEY"))
     if llm_mode == "mock":

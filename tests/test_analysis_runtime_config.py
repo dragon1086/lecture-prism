@@ -1,6 +1,7 @@
 import asyncio
 import os
 import unittest
+from unittest import mock
 
 import analysis
 import research_tools
@@ -39,6 +40,22 @@ class AnalysisRuntimeConfigTest(unittest.TestCase):
 
         self.assertFalse(analysis._llm_enabled())
 
+    def test_json_extractor_skips_non_json_braces_before_object(self):
+        text = '설명 {not-json}\n```json\n{"llm_veto": false, "risk": "없음"}\n```'
+
+        self.assertEqual(
+            analysis._extract_json(text),
+            {"llm_veto": False, "risk": "없음"},
+        )
+
+    def test_legacy_multi_call_helpers_are_not_exposed(self):
+        for name in (
+            "_run_technical_agent",
+            "_run_news_agent",
+            "_run_strategy_agent",
+        ):
+            self.assertFalse(hasattr(analysis, name), name)
+
     def test_analysis_result_records_runtime_modes(self):
         os.environ["LECTURE_PROFILE"] = "mock"
 
@@ -62,6 +79,70 @@ class AnalysisRuntimeConfigTest(unittest.TestCase):
         result = asyncio.run(analysis.run_analysis("005930"))
 
         self.assertIn("실시간 리서치", result["news_summary"])
+
+    def test_oauth_analysis_uses_exactly_one_structured_llm_call(self):
+        os.environ["LECTURE_LLM_MODE"] = "oauth"
+        payload = {
+            "technical_summary": "기술 요약",
+            "news_summary": "뉴스 요약",
+            "llm_veto": False,
+            "rationale": "추세와 실적이 함께 개선됨",
+            "risk": "시장 레짐 악화",
+        }
+        with mock.patch(
+            "analysis._llm_complete",
+            new=mock.AsyncMock(return_value=__import__("json").dumps(payload)),
+        ) as complete:
+            result = asyncio.run(analysis.run_analysis("005930"))
+
+        complete.assert_awaited_once()
+        self.assertEqual(result["technical_summary"], "기술 요약")
+        self.assertEqual(result["news_summary"], "뉴스 요약")
+        self.assertEqual(result["buy_score"], 8)
+
+    def test_llm_cannot_promote_quantitative_pass_or_control_prices(self):
+        os.environ["LECTURE_LLM_MODE"] = "oauth"
+        payload = {
+            "technical_summary": "기술 요약",
+            "news_summary": "뉴스 요약",
+            "recommendation": "buy",
+            "buy_score": 10,
+            "target_price": 999999999,
+            "stop_loss": 1,
+            "llm_veto": False,
+            "rationale": "근거",
+            "risk": "위험",
+        }
+        with mock.patch(
+            "analysis._llm_complete",
+            new=mock.AsyncMock(return_value=__import__("json").dumps(payload)),
+        ):
+            result = asyncio.run(analysis.run_analysis("105560"))
+
+        self.assertEqual(result["recommendation"], "PASS")
+        self.assertEqual(result["decision"], "보류")
+        self.assertEqual(result["buy_score"], 3)
+        self.assertNotEqual(result["target_price"], 999999999)
+        self.assertNotEqual(result["stop_loss"], 1)
+
+    def test_llm_may_veto_but_never_upgrade_quantitative_buy(self):
+        os.environ["LECTURE_LLM_MODE"] = "oauth"
+        payload = {
+            "technical_summary": "기술 요약",
+            "news_summary": "뉴스 요약",
+            "llm_veto": True,
+            "rationale": "뉴스 근거가 불충분해 보류",
+            "risk": "검증되지 않은 촉매",
+        }
+        with mock.patch(
+            "analysis._llm_complete",
+            new=mock.AsyncMock(return_value=__import__("json").dumps(payload)),
+        ):
+            result = asyncio.run(analysis.run_analysis("005930"))
+
+        self.assertEqual(result["recommendation"], "HOLD")
+        self.assertEqual(result["decision"], "보류")
+        self.assertEqual(result["buy_score"], 8)
 
 
 if __name__ == "__main__":

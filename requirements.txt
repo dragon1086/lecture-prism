@@ -7,9 +7,11 @@
 fastapi>=0.110
 uvicorn>=0.29
 
-# 실제 LLM 분석 (analysis.py, OPENAI_BASE_URL/OPENAI_API_KEY 설정 시)
-# ChatGPT OAuth 프록시를 통하면 API 키 없이도 사용 가능
+# 실제 LLM 분석 (analysis.py)
+# ChatGPT 구독은 공식 Codex CLI를 사용하므로 Python 패키지가 필요하지 않습니다.
+# 별도 OpenAI API 키 경로를 선택할 때만 openai 패키지를 사용합니다.
 openai>=1.40
+# cores/chatgpt_proxy 참고 회귀 테스트용 선택 의존성
 aiohttp>=3.9
 
 # 실데이터 스크리닝 + 분석 (screening.py --real / analysis.py / data_source.py)

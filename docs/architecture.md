@@ -50,7 +50,7 @@ LLM 연결이 없으면 더미 응답으로 동작합니다. 그래서 수업 �
 
 ![API 키와 선택 연동 안전 지도](assets/readme/optional-integrations-safety.png)
 
-강의 기본 실습에는 필수 API 키가 없습니다. 실제 LLM은 내장 ChatGPT OAuth 프록시 또는 OpenAI API 키로 선택 연결하고, KIS API는 심화 실습에서만 다룹니다. `trading.py`는 실거래 요청을 기본으로 차단합니다.
+강의 기본 실습에는 필수 API 키가 없습니다. 실제 LLM은 공식 Codex의 ChatGPT 구독 로그인 또는 별도 OpenAI API 키로 선택 연결하고, KIS API는 심화 실습에서만 다룹니다. `trading.py`는 실거래 요청을 기본으로 차단합니다.
 
 ## 7. 전략 하네스
 
@@ -72,7 +72,7 @@ lecture-prism은 PRISM 본 시스템의 축소판입니다.
 |---|---|
 | 많은 데이터 중 후보만 추리기 | `screening.py` |
 | 여러 AI 에이전트를 순서대로 연결하기 | `analysis.py` |
-| 구독 어댑터 또는 API 키로 실제 LLM 붙이기 | `cores/chatgpt_proxy/`, `analysis.py` |
+| 공식 Codex 구독 또는 API 키로 실제 LLM 붙이기 | `llm_provider.py`, `analysis.py` |
 | 주문 전 리스크 판단하기 | `trading.py` |
 | 매매일지와 장기 기억 만들기 | `feedback.py`, `db.py` |
 | 사람이 결과를 보고 다음 개선 방향 잡기 | `dashboard.py`, 실습 프롬프트 |
@@ -106,13 +106,14 @@ lecture-prism은 PRISM 본 시스템의 축소판입니다.
 
 `UNKNOWN` 주문은 성공이나 실패를 추측하지 않습니다. 해당 종목의 새 주문이나 replay 주문, fill, 청산 mutation을 막고, 명시적인 관찰 증거에 근거한 reconciliation이 끝날 때까지 fail-closed로 유지합니다. 다만 사이클 앞단의 관찰과 mutation은 구분됩니다. 유효한 quote가 있다면 UNKNOWN 주문이 있어도 포지션의 high-water 관찰은 먼저 저장될 수 있습니다. 이 규칙은 네트워크 응답을 잃어버렸을 때 같은 주문을 두 번 내는 문제를 피하기 위한 안전장치입니다.
 
-## 11. 아직 연결 완료로 말하면 안 되는 것
+## 11. 완료 증거와 남은 연결 범위
 
-아래 항목은 **미완료인 후속 과제**입니다. 현재 regime·screening·provider 연결의 완료 범위에 포함되지 않습니다.
+완료와 미완료를 같은 기준으로 구분합니다.
 
-- 미완료 — 분석 evidence와 OAuth 응답의 end-to-end 출처 연결
-- 미완료 — KIS 주문·조회·정정·취소·체결 확인·재시작 reconcile을 포함한 full lifecycle
+- 완료 — 공식 Codex 구독 호출, 종목당 단일 구조화 분석, 실패 시 규칙 폴백
+- 완료 — KIS 매수·매도, 주문가능수량·보유수량 제한, 체결 조회, 취소, 재시작 reconcile, UNKNOWN 중복주문 차단
+- 남은 선택 확장 — KIS 정정은 취소 후 재주문으로 처리하며 별도 정정 API 명령은 제공하지 않음
 - 미완료 — Toss WTS 어댑터와 같은 수준의 lifecycle 검증
 - 미완료 — `dashboard.py`에서 `broker_orders`, `order_events`, `fills`, `positions`, `realized_trades`, `classroom_replays`를 직접 시각화하는 화면
 
-현재 대시보드는 기존 `trade_history`, `analysis_decisions`, `feedback_lessons`만 읽으며 **core table 시각화는 미완료**입니다. 따라서 classroom 실행 증거는 SQLite 조회로 확인해야 하며, 대시보드에 core table이 보인다고 설명하면 안 됩니다. KIS는 기존 강의용 부분 어댑터가 있고 OAuth 프록시 기본형도 있지만, 위 lifecycle·evidence 연결까지 완료됐다는 뜻은 아닙니다. Toss 역시 완료된 브로커 경로로 취급하지 않습니다.
+현재 대시보드는 기존 `trade_history`, `analysis_decisions`, `feedback_lessons`만 읽으며 **core table 시각화는 미완료**입니다. 따라서 classroom 실행 증거는 SQLite 조회로 확인해야 하며, 대시보드에 core table이 보인다고 설명하면 안 됩니다. OAuth는 공식 Codex 경로로 연결됐지만, LLM 서술은 진입 정량 게이트를 우회할 수 없습니다. Toss는 아직 완료된 브로커 경로로 취급하지 않습니다.

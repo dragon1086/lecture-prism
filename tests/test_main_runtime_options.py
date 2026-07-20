@@ -204,11 +204,7 @@ class MainRuntimeOptionsTest(unittest.TestCase):
             with mock.patch("db.DB_PATH", path), mock.patch(
                 "prism_core.classroom.run_classroom_replay",
                 return_value=summary,
-            ) as replay, mock.patch.object(
-                main,
-                "_maybe_start_chatgpt_oauth_proxy",
-                new=mock.AsyncMock(side_effect=AssertionError("OAuth path")),
-            ):
+            ) as replay:
                 result = asyncio.run(
                     main.run_pipeline(
                         config=runtime_config.load_runtime_config("classroom")
@@ -221,10 +217,6 @@ class MainRuntimeOptionsTest(unittest.TestCase):
     def test_backtest_profile_keeps_existing_pipeline_branch(self):
         with mock.patch(
             "screening.run_screening", new=mock.AsyncMock(return_value=[])
-        ), mock.patch.object(
-            main,
-            "_maybe_start_chatgpt_oauth_proxy",
-            new=mock.AsyncMock(return_value=(False, {})),
         ), mock.patch(
             "prism_core.classroom.run_classroom_replay"
         ) as replay:
@@ -256,10 +248,6 @@ class MainRuntimeOptionsTest(unittest.TestCase):
             "trading.run_trading", new=mock.AsyncMock(return_value=[])
         ) as trading, mock.patch(
             "feedback.run_feedback", new=mock.AsyncMock()
-        ), mock.patch.object(
-            main,
-            "_maybe_start_chatgpt_oauth_proxy",
-            new=mock.AsyncMock(return_value=(False, {})),
         ):
             asyncio.run(
                 main.run_pipeline(

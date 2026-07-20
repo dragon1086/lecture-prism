@@ -40,11 +40,13 @@ lecture-prism은 한 저장소 안에서 초급자용 더미 데모부터 상태
 |---|---|---|
 | `LECTURE_DATA_MODE` | `mock`, `auto`, `yfinance` | 분석 데이터 원천 |
 | `LECTURE_SCREENING_MODE` | `mock`, `fixture`, `real` | 스크리닝 원천 (`fixture` = classroom/backtest, `real` = yfinance) |
-| `LECTURE_LLM_MODE` | `mock`, `auto`, `oauth`, `openai` | LLM 호출 여부 |
+| `LECTURE_LLM_MODE` | `mock`, `auto`, `oauth`, `openai` | `oauth`는 공식 Codex 구독, `openai`는 별도 API 키, `auto`는 API 키가 있을 때만 호출 |
 | `LECTURE_REPORT_MODE` | `lite`, `research` | 보고서 깊이 |
 | `LECTURE_RESEARCH_TOOLS` | `perplexity,firecrawl` | 선택 리서치 도구 |
 | `LECTURE_TRADE_MODE` | `simulation`, `demo`, `real` | 매매 실행 수준 |
 | `LECTURE_SAVE_REPORTS` | `1`, `0` | `reports/` Markdown 저장 여부 |
+
+이전 설정의 `PRISM_OPENAI_AUTH_MODE=chatgpt_oauth`도 명시적 호환 입력으로 인식하지만, 비공식 프록시를 시작하지 않고 공식 Codex 공급자를 선택합니다. `auto`는 이 명시적 값이나 API 키가 없으면 로컬 로그인 상태를 추측하지 않습니다.
 
 `mock/real_data`의 관찰 경로와 `research`의 선택 연동은 실패하면 더 안전한 기능으로 폴백합니다. 예를 들어 `research`에서 Perplexity 키가 없으면 해당 리서치만 빠지고 기본 분석은 계속됩니다. 반면 `paper/live`는 market provider 검증이 실패하면 mock으로 주문 판단을 계속하지 않고 **fail-closed**로 막습니다.
 
@@ -107,23 +109,21 @@ LECTURE_TRADE_MODE=simulation
 
 ```env
 LECTURE_PROFILE=research
-LECTURE_LLM_MODE=auto
+LECTURE_LLM_MODE=oauth
 LECTURE_REPORT_MODE=research
-LECTURE_RESEARCH_TOOLS=perplexity,firecrawl
-OPENAI_API_KEY="..."
-PERPLEXITY_API_KEY="..."
-FIRECRAWL_API_KEY="..."
+LECTURE_RESEARCH_TOOLS=""
 ```
 
-얻는 것: 분석 에이전트가 LLM으로 기술·뉴스·전략 섹션을 쓰고, Perplexity/Firecrawl 컨텍스트가 뉴스 섹션에 보강됩니다.
+얻는 것: 공식 Codex 로그인으로 기술·뉴스·전략 역할을 종목당 한 번의 구조화 호출로 실행합니다. Perplexity/Firecrawl은 비워 둬도 되며 선택적으로만 보강합니다. 최초 연결은 `docs/api-keys.md`의 코딩 에이전트용 로그인 프롬프트를 사용하세요.
 
-### 모의투자 설정 구조 읽기 — 후속 과제
+### KIS 모의투자 전체 주문 주기 확인
 
-KIS 연결에 필요한 선택 패키지는 기본 mock/classroom 실행에는 필요하지 않습니다. 현재 저장소에는 부분 어댑터가 있지만, 주문·조회·정정·취소·체결 확인·재시작 reconcile을 포함한 full lifecycle은 완료되지 않았습니다. 아래 프롬프트는 실제 연결 시작이 아니라 현재 범위와 빈칸을 확인하는 용도입니다.
+KIS 연결에 필요한 선택 패키지는 기본 mock/classroom 실행에는 필요하지 않습니다. 현재 저장소는 매수·매도, 주문가능수량·보유수량 제한, 주문 상태·체결 조회, 취소, 재시작 reconcile을 연결합니다. 접수는 체결로 보지 않고, 응답을 잃으면 UNKNOWN으로 기록해 중복 주문을 막습니다. 정정은 별도 명령 대신 취소 후 새 주문으로 처리합니다.
 
 ```text
 lecture-prism의 KIS 관련 코드를 읽기 전용으로 점검해줘.
-현재 실제로 연결된 주문 단계와 아직 없는 조회·정정·취소·체결 확인·재시작 reconcile을 표로 나눠줘.
+매수·매도 → 접수 저장 → 체결 조회 → 부분/전체 체결 → 취소 → 재시작 reconcile을 표로 보여줘.
+정정이 취소 후 재주문 정책인 점과 UNKNOWN이 새 주문을 막는 조건도 설명해줘.
 paper/live market provider fail-closed는 현재 코드·테스트 근거로 확인하고,
 실계좌 주문이나 외부 API 호출은 절대 실행하지 마.
 Toss도 완료된 어댑터라고 가정하지 말고 같은 기준으로 빈칸만 설명해줘.
@@ -142,7 +142,7 @@ LECTURE_KIS_MODE=demo
 
 주의: `LECTURE_ENABLE_LIVE_BROKER=1`은 브로커 API 호출을 허용한다는 뜻입니다. 모의투자 모드라도 실제 증권사 서버에 요청이 나갈 수 있습니다.
 
-현재 강의용 KIS 어댑터는 국내주식 **매수 주문 경로부터** 연결합니다. 청산 규칙은 시뮬레이션에서 검증할 수 있지만, KIS 매도 주문 연결은 이후 확장 과제입니다.
+현재 강의용 KIS 어댑터는 국내주식 매수와 매도 모두 연결합니다. 실계좌 검증은 실제 키·장 운영시간·사용자 승인이 필요하므로 자동 테스트에서는 외부 주문을 보내지 않습니다.
 
 ### 실전투자 설정 구조 — 실행 실습 아님
 
@@ -197,7 +197,7 @@ broker factory와 adapter place_order를 mock으로 감싸 호출되면 실패�
 그 조건에서 결과가 live_blocked이고 adapter 호출이 0회라는 테스트 증거만 설명해줘.
 ```
 
-market regime·screening·provider fail-closed는 현재 강의 범위입니다. 하지만 OAuth 응답의 분석 evidence provenance, KIS full lifecycle, Toss WTS adapter, dashboard core-table 시각화는 후속 과제이며 완료된 기능으로 설명하지 않습니다.
+market regime·screening·provider fail-closed, 공식 Codex OAuth 단일 분석 호출, KIS 매수·매도·체결 조회·취소·재시작 reconcile은 현재 구현 범위입니다. Toss WTS adapter와 dashboard core-table 시각화는 후속 과제이며 완료된 기능으로 설명하지 않습니다.
 
 ### 기존 프로필 설정 점검 프롬프트
 

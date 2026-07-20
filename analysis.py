@@ -10,7 +10,7 @@ analysis.py — 모듈 2: LLM 분석 파이프라인 (6섹션 리치 리포트)
 3계층 동작:
   Tier 0 (표준 라이브러리)      : mock 데이터로 6섹션 리치 리포트 (키/설치 불필요)
   Tier 1 (pip install yfinance) : 가격·재무·뉴스·지수 실데이터로 섹션 채움
-  Tier 2 (+ OPENAI/OAuth 프록시) : 기술·뉴스·전략 에이전트가 LLM으로 심층 서술
+  Tier 2 (+ OpenAI API/Codex OAuth) : 역할 3개를 단일 LLM 호출로 통합해 심층 서술
 
   → 데이터 원천은 data_source.fetch_stock_data() 하나로 단일화(실데이터 접점).
 
@@ -31,8 +31,8 @@ import data_source
 log = logging.getLogger(__name__)
 
 # ── LLM 연동 설정 ────────────────────────────────────────────────
-# 파트3 CH1에서 띄운 ChatGPT OAuth 프록시(OPENAI_BASE_URL=http://localhost:18741/v1)
-# 또는 OPENAI_API_KEY가 있으면 실제 LLM을 호출합니다. 둘 다 없으면 mock/규칙으로 동작.
+# ChatGPT OAuth는 공식 Codex CLI 로그인, API 과금은 OPENAI_API_KEY를 사용합니다.
+# 둘 다 명시적으로 선택하지 않으면 mock/규칙으로 동작합니다.
 LLM_MODEL = os.getenv("LECTURE_LLM_MODEL", "gpt-5.4-mini")  # PRISM 분석 파이프라인과 동일
 
 # ── 매매 의사결정 기준 (원본 PRISM과 동일 개념) ──────────────────
@@ -45,7 +45,7 @@ _MARKET_CONDITION_FALLBACK = (
 
 
 def _llm_enabled() -> bool:
-    """OAuth 프록시(base_url) 또는 API 키가 설정돼 있으면 실제 LLM 사용."""
+    """Return whether an explicit official LLM provider is ready."""
     from runtime_config import load_runtime_config
 
     return load_runtime_config().llm_enabled
@@ -53,36 +53,29 @@ def _llm_enabled() -> bool:
 
 async def _llm_complete(system_prompt: str, user_msg: str) -> str:
     """
-    OpenAI Chat Completions 호출 (OAuth 프록시 또는 API 키 경유).
+    선택된 공식 공급자 호출 (Codex subscription 또는 OpenAI API).
     실패 시 RuntimeError를 던져 호출부가 mock/규칙으로 폴백하도록 함.
     """
-    try:
-        from openai import AsyncOpenAI
-    except ImportError as e:
-        raise RuntimeError("openai 패키지 미설치 (pip install openai)") from e
+    from llm_provider import LLMProviderError, provider_for
+    from runtime_config import load_runtime_config
 
-    # 프록시 모드면 키가 없어도 되므로 더미 키 허용.
-    # OPENAI_BASE_URL을 명시적으로 넘겨 원본 PRISM의 OAuth 프록시 방향과 맞춥니다.
-    client_kwargs = {"api_key": os.getenv("OPENAI_API_KEY", "chatgpt-oauth-placeholder")}
-    if os.getenv("OPENAI_BASE_URL"):
-        client_kwargs["base_url"] = os.environ["OPENAI_BASE_URL"]
-    client = AsyncOpenAI(**client_kwargs)
-    resp = await client.chat.completions.create(
-        model=LLM_MODEL,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_msg},
-        ],
-    )
-    return resp.choices[0].message.content or ""
+    provider = provider_for(load_runtime_config())
+    if provider is None:
+        raise LLMProviderError("활성화된 LLM 공급자가 없습니다")
+    return await provider.complete(system_prompt, user_msg)
 
 
 def _extract_json(text: str) -> dict:
     """LLM 응답에서 첫 번째 JSON 객체를 추출 (코드펜스/잡설 포함 대응)."""
-    match = re.search(r"\{.*\}", text, re.S)
-    if not match:
-        raise ValueError("응답에 JSON 없음")
-    return json.loads(match.group(0))
+    decoder = json.JSONDecoder()
+    for match in re.finditer(r"\{", text):
+        try:
+            value, _ = decoder.raw_decode(text[match.start():])
+        except json.JSONDecodeError:
+            continue
+        if isinstance(value, dict):
+            return value
+    raise ValueError("응답에 JSON 객체 없음")
 
 
 def get_current_price(ticker: str) -> int:
@@ -108,10 +101,21 @@ NEWS_AGENT_PROMPT = """
 헤드라인이 영문이면 핵심을 한국어로 해석해 전달하세요. 3~4문장으로 서술하세요.
 """
 
-STRATEGY_AGENT_PROMPT = """
-당신은 기술·수급·재무·산업·뉴스·시장 분석을 종합해 최종 투자 의견을 제시하는 투자 전략가입니다.
-윌리엄 오닐식 추세추종 관점에서 목표가는 마일스톤, 손절은 기계적으로 봅니다.
-0~10점 매수 점수(buy_score)와 진입 여부, 목표가/손절가/투자기간/핵심 리스크를 제시하세요.
+COMBINED_AGENT_PROMPT = f"""
+당신은 한 번의 호출 안에서 아래 세 역할을 순서대로 수행하는 투자 분석 위원회입니다.
+
+[기술 분석가]
+{TECHNICAL_AGENT_PROMPT.strip()}
+
+[뉴스 분석가]
+{NEWS_AGENT_PROMPT.strip()}
+
+[리스크 검토자]
+정량 엔진의 추천·점수·목표가·손절가를 변경하지 마세요. 제공된 근거에 모순,
+중대한 악재, 출처 부족이 있으면 llm_veto를 true로 두고 이유를 설명하세요.
+그 외에는 false로 두되, 확정 수익이나 근거 없는 사실을 만들지 마세요.
+
+응답은 요청된 JSON 하나뿐이어야 합니다.
 """
 
 
@@ -135,9 +139,9 @@ async def run_analysis(ticker: str) -> dict:
         src = "모의 데이터(mock)"
     log.info(f"  [{ticker}] 데이터 원천: {src}")
 
-    # 1) 기술적 분석 — LLM(맥락) 또는 데이터 템플릿
-    log.info(f"  [{ticker}] 기술적 분석 에이전트 실행 중...")
-    technical = await _run_technical_agent(ticker, data)
+    # 규칙·원천 데이터로 6섹션의 근거를 먼저 만든다. LLM은 이 근거를
+    # 수집하지 않고 해석만 하며, Plus OAuth는 종목당 한 번만 호출한다.
+    technical = _technical_data_text(data)
 
     # 2) 수급 — 실거래량 파생 프록시 (규칙)
     supply = _section_supply(data)
@@ -148,18 +152,33 @@ async def run_analysis(ticker: str) -> dict:
     # 4) 산업 — 섹터/산업 (규칙)
     industry = _section_industry(data)
 
-    # 5) 뉴스 — LLM(맥락) 또는 헤드라인/mock
-    log.info(f"  [{ticker}] 뉴스 분석 에이전트 실행 중...")
-    news = await _run_news_agent(ticker, data)
+    # 5) 뉴스 — 검증 가능한 헤드라인/선택 리서치 원문
+    news = _news_evidence_text(ticker, data)
 
     # 6) 시장 국면 — 지수 실데이터 (규칙)
     market_condition = _section_market(market)
 
-    # 종합 — 투자전략가 (LLM 또는 규칙 스코어링)
-    log.info(f"  [{ticker}] 투자전략 에이전트 통합 중...")
-    strategy = await _run_strategy_agent(
-        ticker, data, technical, supply, financial, industry, news, market_condition
+    # 정량 점수·추천·가격은 규칙 엔진이 소유한다. LLM은 서술을 보강하고
+    # 명시적으로 veto할 수만 있으며, PASS/HOLD를 BUY로 올릴 수 없다.
+    strategy = _rule_based_score(data)
+    strategy["current_price"] = data["current_price"]
+    strategy["rationale"] = (
+        f"기술·수급·재무·뉴스 종합 {strategy['recommendation']} 판단. {technical[:40]}…"
     )
+    strategy["risk"] = "시장 급락 시 동반 조정 및 수급 이탈 가능성."
+
+    # 종합 — 기술·뉴스·전략 역할을 단일 구조화 호출로 실행한다.
+    if _llm_enabled():
+        log.info(f"  [{ticker}] 통합 LLM 분석 1회 실행 중...")
+        try:
+            enriched = await _run_combined_llm_agent(
+                ticker, data, technical, supply, financial, industry, news, market_condition
+            )
+            technical = enriched.pop("technical_summary", technical) or technical
+            news = enriched.pop("news_summary", news) or news
+            strategy = _apply_llm_overlay(strategy, enriched)
+        except Exception as exc:  # noqa: BLE001 - provider failure must fall back
+            log.warning("  통합 LLM 실패 → 규칙 분석 폴백: %s", exc)
 
     return _build_scenario(
         ticker, data, technical, supply, financial, industry, news, market_condition, strategy
@@ -256,48 +275,69 @@ def _technical_data_text(data: dict) -> str:
     return ", ".join(bits) + "." if bits else "기술 지표 계산 데이터 부족."
 
 
-async def _run_technical_agent(ticker: str, data: dict) -> str:
-    """기술적 분석. LLM 연동 시 실제 호출, 아니면 데이터/mock 템플릿."""
-    base = _technical_data_text(data)
-    if _llm_enabled():
-        try:
-            summary = await _llm_complete(
-                TECHNICAL_AGENT_PROMPT,
-                f"종목코드 {ticker}의 기술적 지표입니다: {base}\n"
-                "이 수치를 근거로 추세와 매수 신호 여부를 전문가답게 판단해줘.",
-            )
-            return summary.strip() or base
-        except Exception as e:
-            log.warning(f"  기술 에이전트 LLM 실패 → 데이터/mock 폴백: {e}")
-    await asyncio.sleep(0.05)  # 네트워크 호출 시뮬레이션(교육용)
-    return base
-
-
-async def _run_news_agent(ticker: str, data: dict) -> str:
-    """뉴스 분석. 실데이터 헤드라인 → LLM 해석, 아니면 mock/헤드라인 나열."""
+def _news_evidence_text(ticker: str, data: dict) -> str:
+    """Return bounded news evidence without asking an LLM to collect data."""
     news = data.get("news")
     headlines = news if isinstance(news, list) else []
+    text = "\n".join(f"- {headline}" for headline in headlines[:8])
+    if not text:
+        text = news if isinstance(news, str) else "관련 뉴스 없음"
     research_context = _optional_research_context(ticker, data)
-    src_txt = "\n".join(f"- {h}" for h in headlines) if headlines else (
-        news if isinstance(news, str) else "관련 뉴스 없음")
-    if research_context:
-        src_txt = f"{src_txt}\n\n{research_context}"
-    if _llm_enabled():
-        try:
-            summary = await _llm_complete(
-                NEWS_AGENT_PROMPT,
-                f"종목코드 {ticker} 관련 최근 뉴스 헤드라인입니다:\n{src_txt}\n\n"
-                "여기서 호재/악재 촉매를 골라 시장 영향을 한국어로 정리해줘.",
-            )
-            return summary.strip()
-        except Exception as e:
-            log.warning(f"  뉴스 에이전트 LLM 실패 → 데이터/mock 폴백: {e}")
-    await asyncio.sleep(0.05)
-    if research_context:
-        return src_txt
-    if headlines:
-        return "최근 헤드라인: " + " / ".join(headlines[:3])
-    return news if isinstance(news, str) else "관련 뉴스 없음"
+    return f"{text}\n\n{research_context}" if research_context else text
+
+
+def _normalize_llm_result(parsed: dict) -> dict:
+    """Keep only qualitative fields; all trading numbers stay deterministic."""
+    result = {"llm_veto": parsed.get("llm_veto") is True}
+    for key in ("technical_summary", "news_summary", "rationale", "risk"):
+        value = parsed.get(key)
+        result[key] = value.strip() if isinstance(value, str) else ""
+    return result
+
+
+def _apply_llm_overlay(strategy: dict, qualitative: dict) -> dict:
+    """Apply prose and a one-way veto without weakening quantitative gates."""
+    result = dict(strategy)
+    if qualitative.get("llm_veto") is True and result.get("recommendation") == "BUY":
+        result["recommendation"] = "HOLD"
+    for key in ("rationale", "risk"):
+        if qualitative.get(key):
+            result[key] = qualitative[key]
+    return result
+
+
+async def _run_combined_llm_agent(ticker, data, technical, supply, financial,
+                                  industry, news, market_condition) -> dict:
+    """Run the three teaching roles in one provider request per ticker."""
+    price = data["current_price"]
+    currency = data.get("currency") or ("KRW" if ticker.isdigit() else "USD")
+    evidence = {
+        "ticker": ticker,
+        "company_name": data.get("name", ticker),
+        "current_price": price,
+        "currency": currency,
+        "technical_evidence": technical,
+        "supply_evidence": supply,
+        "financial_evidence": financial,
+        "industry_evidence": industry,
+        "news_evidence": news,
+        "market_regime": market_condition,
+    }
+    schema_example = {
+        "technical_summary": "근거 수치를 인용한 요약",
+        "news_summary": "확인된 헤드라인만 해석한 요약",
+        "llm_veto": False,
+        "rationale": "진입 또는 보류 근거",
+        "risk": "주요 리스크",
+    }
+    message = (
+        "아래 입력 근거만 사용해 분석하세요. JSON 스키마의 모든 키를 채우세요.\n"
+        f"입력 근거:\n{json.dumps(evidence, ensure_ascii=False)}\n\n"
+        f"출력 JSON 예시(숫자는 반드시 JSON number):\n"
+        f"{json.dumps(schema_example, ensure_ascii=False)}"
+    )
+    parsed = _extract_json(await _llm_complete(COMBINED_AGENT_PROMPT, message))
+    return _normalize_llm_result(parsed)
 
 
 def _optional_research_context(ticker: str, data: dict) -> str:
@@ -321,7 +361,7 @@ def _optional_research_context(ticker: str, data: dict) -> str:
         return ""
 
 
-# ── 에이전트: 투자전략 (LLM 통합 또는 규칙 스코어링) ────────────────────
+# ── 규칙 기반 전략 점수 ─────────────────────────────────────────────
 def _rule_based_score(data: dict) -> dict:
     """실데이터(LLM 없음) 경로용 규칙 기반 매수 점수 0~10."""
     if data["source"] != "yfinance":
@@ -354,40 +394,6 @@ def _rule_based_score(data: dict) -> dict:
     rec = "BUY" if buy_score >= 7 else "HOLD" if buy_score >= 5 else "PASS"
     return {"recommendation": rec, "buy_score": buy_score,
             "expected_return_pct": 12, "expected_loss_pct": 6, "investment_period": "중기"}
-
-
-async def _run_strategy_agent(ticker, data, technical, supply, financial,
-                              industry, news, market_condition) -> dict:
-    """투자전략가 — 6섹션 통합 최종 의견. LLM 연동 시 실제 호출."""
-    price = data["current_price"]
-    if _llm_enabled():
-        try:
-            user_msg = (
-                f"종목코드: {ticker} / 현재가: {price:,}원\n"
-                f"[기술적 분석] {technical}\n[수급] {supply}\n[재무] {financial}\n"
-                f"[산업] {industry}\n[뉴스] {news}\n[시장 국면] {market_condition}\n\n"
-                "위 6개 분석을 종합해 최종 투자 의견을 아래 JSON 형식으로만 답해줘:\n"
-                '{"recommendation":"BUY|HOLD|PASS", "buy_score":0~10 정수, '
-                '"target_price":목표가(원,정수), "stop_loss":손절가(원,정수), '
-                '"expected_return_pct":기대수익률, "expected_loss_pct":기대손실률, '
-                '"investment_period":"단기|중기|장기", '
-                '"rationale":"진입/보류 근거 한 문장", "risk":"주요 리스크 한 문장"}'
-            )
-            raw = await _llm_complete(STRATEGY_AGENT_PROMPT, user_msg)
-            parsed = _extract_json(raw)
-            parsed["current_price"] = price
-            parsed.setdefault("recommendation", "HOLD")
-            return parsed
-        except Exception as e:
-            log.warning(f"  전략 에이전트 LLM 실패 → 규칙 스코어링 폴백: {e}")
-
-    await asyncio.sleep(0.05)
-    scored = _rule_based_score(data)
-    scored["current_price"] = price
-    scored["rationale"] = (
-        f"기술·수급·재무·뉴스 종합 {scored['recommendation']} 판단. {technical[:40]}…")
-    scored["risk"] = "시장 급락 시 대형주 동반 조정 및 수급 이탈 가능성."
-    return scored
 
 
 def _build_scenario(ticker, data, technical, supply, financial,

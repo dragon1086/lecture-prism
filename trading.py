@@ -79,6 +79,11 @@ def _decide_position(analysis: dict, portfolio: dict) -> Optional[dict]:
 
     파트4 트랙D에서 수강생이 이 로직을 수정하는 부분.
     """
+    # 추천·결정·점수가 모두 진입이어야 한다. 높은 점수 하나만으로 HOLD/PASS를
+    # 주문으로 바꾸지 않으며, LLM veto도 이 경계에서 다시 강제한다.
+    if analysis.get("recommendation") != "BUY" or analysis.get("decision") != "진입":
+        return None
+
     # 매수 점수 필터 (0~10점, analysis가 산출한 buy_score)
     buy_score = analysis.get("buy_score", analysis.get("score", 0))
     if buy_score < BUY_SCORE_THRESHOLD:

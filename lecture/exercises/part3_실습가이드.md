@@ -44,21 +44,25 @@ main.py 전체 흐름을 API 키 없이 데모 모드로 실행해줘.
 
 ## 선택 실습 — 강의용 ChatGPT 어댑터 구조 확인 (CH1 라이브 데모 · 후속 과제)
 
-**목표**: 번들된 OAuth 프록시 기본형과 실제 LLM 선택 연결 구조 이해 (foundation의 end-to-end evidence 연결 완료 범위는 아님)
+**목표**: 공식 Codex의 ChatGPT 구독 로그인과 실제 LLM 선택 연결 구조 이해
 
-> 이 단계는 초보 수강생이 반드시 혼자 완성해야 하는 첫 실습이 아니라, 강사 라이브 데모 또는 선택 실습입니다. 기본 흐름은 OAuth 없이도 더미 데이터 모드로 먼저 체험할 수 있습니다. 프록시 기본형은 이미 `cores/chatgpt_proxy`에 들어 있으므로 새로 만들지 않습니다. 로그인부터 분석 evidence provenance까지의 OAuth end-to-end 경로는 후속 과제이며, 연결 성공을 상태형 paper foundation의 완료 조건으로 말하지 않습니다.
+> 이 단계는 강사 라이브 데모 또는 선택 실습입니다. 기본 흐름은 OAuth 없이도 더미 데이터 모드로 먼저 체험할 수 있습니다. 로그인과 token refresh는 공식 Codex가 담당하고, 프로젝트는 인증 파일을 읽지 않습니다. LLM은 정량 게이트를 우회하지 않으며 실패하면 규칙 분석으로 돌아갑니다.
 
 ### 코딩 에이전트에 입력
 
 ```text
-lecture-prism에 포함된 ChatGPT OAuth 프록시를 사용해 실제 LLM 분석을 연결해줘.
+공식 Codex의 ChatGPT 구독 로그인을 사용해 lecture-prism 실제 LLM 분석을 연결해줘.
+설치와 로그인 상태를 먼저 확인하고, 필요하면 최초 1회 로그인만 도와줘.
+인증 파일과 토큰 내용은 읽거나 출력하지 마.
+.env에는 LECTURE_LLM_MODE=oauth를 설정하고 종목 1개를 분석해줘.
+기술·뉴스·전략 역할이 종목당 한 번의 구조화 호출로 처리되는지 검증해줘.
 
 조건:
-1. 프록시를 새로 만들지 말고 cores/chatgpt_proxy 기본 구현을 사용해줘.
-2. 필요한 패키지가 설치되어 있는지 확인하고 부족하면 requirements.txt 기준으로 설치해줘.
-3. ChatGPT Plus 또는 Pro 계정 로그인이 필요한지 확인하고, 필요하면 브라우저 로그인 과정을 안내해줘.
-4. localhost:18741 프록시 연결 상태를 확인해줘.
-5. analysis.py가 이 프록시를 통해 실제 LLM 응답을 받는지, 아니면 더미 응답으로 실행됐는지 구분해줘.
+1. 비공식 프록시나 비공개 ChatGPT backend를 시작하지 말고 공식 Codex CLI만 사용해줘.
+2. ChatGPT Plus 또는 Pro 계정 로그인이 필요한지 확인하고, 필요하면 브라우저 또는 device auth 로그인을 안내해줘.
+3. Codex 셸·파일·브라우저 도구가 비활성화되고 부모 프로세스의 키·토큰 환경변수가 전달되지 않는지 테스트로 확인해줘.
+4. analysis.py가 공식 구독 경로의 실제 LLM 응답을 받았는지, 아니면 규칙 폴백으로 실행됐는지 구분해줘.
+5. LLM이 정량 점수·추천·목표가·손절가를 올리지 못하고 veto와 서술만 담당하는지 확인해줘.
 
 내가 직접 터미널 명령어를 치지 않도록 필요한 실행과 검증은 네가 해줘.
 ```
@@ -66,7 +70,7 @@ lecture-prism에 포함된 ChatGPT OAuth 프록시를 사용해 실제 LLM 분�
 ### 확인 프롬프트
 
 ```text
-방금 만든 프록시를 통해 삼성전자 주식을 어떻게 볼 수 있는지 GPT 모델에게 물어봐줘.
+방금 확인한 공식 Codex 구독 경로로 삼성전자 분석을 한 번만 실행해줘.
 응답이 실제 LLM 응답인지, 더미 응답인지 구분해서 설명해줘.
 ```
 
@@ -106,19 +110,19 @@ VOLUME_SURGE_RATIO를 5.0에서 3.0으로 바꾸고 다시 실행해줘.
 
 ---
 
-## 실습 3 — 분석 에이전트 파이프라인 (CH3 · 15분)
+## 실습 3 — 분석 역할 파이프라인 (CH3 · 15분)
 
-**목표**: 기술적 분석 → 뉴스 분석 → 투자전략 순차 실행 이해
+**목표**: 규칙 근거 생성 → 기술·뉴스·리스크 역할의 단일 구조화 호출 → 정량 gate 이해
 
-> 왜 1콜에 통째로 안 맡기고 에이전트를 나누는지는 [`docs/why-multi-agent.md`](../../docs/why-multi-agent.md) 참고.
+> 역할을 왜 나누고, 강의용 경량판에서는 왜 종목당 1회 호출로 묶는지는 [`docs/why-multi-agent.md`](../../docs/why-multi-agent.md) 참고.
 
 ### 코딩 에이전트에 입력
 
 ```text
 삼성전자 005930을 analysis.py로 분석해줘.
-기술적 분석 에이전트 → 뉴스 분석 에이전트 → 투자전략 에이전트 순서로 실행하고,
-각 단계의 입력과 출력이 다음 단계로 어떻게 넘어가는지 설명해줘.
-LLM 연결이 없어서 더미 응답으로 동작하면 그 사실도 명확히 말해줘.
+규칙 엔진이 만든 근거와 기술·뉴스·리스크 역할의 단일 구조화 LLM 호출을 구분하고,
+LLM이 정성 서술과 veto만 담당하며 점수·목표가·손절가는 바꾸지 못하는 이유를 설명해줘.
+LLM 연결이 없어 규칙 폴백으로 동작하면 그 사실도 명확히 말해줘.
 ```
 
 ### 프롬프트 수정 실험
@@ -249,7 +253,7 @@ broker factory와 adapter place_order를 mock으로 감싸 호출되면 실패�
 실제 계좌·config 파일을 읽지 않고 결과가 live_blocked이며 adapter 호출이 0회라는 증거만 설명해줘.
 ```
 
-> regime·screening·paper/live market-provider fail-closed는 현재 강의 범위입니다. 분석 evidence와 OAuth end-to-end 연결, KIS full lifecycle, Toss WTS adapter, dashboard core-table 시각화는 후속 과제입니다. KIS나 Toss가 완성됐다고 설명하지 않습니다.
+> regime·screening·paper/live market-provider fail-closed, 공식 Codex OAuth 단일 분석 호출, KIS 매수·매도·체결 조회·취소·재시작 reconcile은 현재 구현 범위입니다. Toss WTS adapter와 dashboard core-table 시각화는 후속 과제입니다.
 
 ---
 
