@@ -32,7 +32,7 @@ LLM 연결이 없으면 더미 응답으로 동작합니다. 그래서 수업 �
 
 ![옵션별 전체 아키텍처 지도](assets/readme/runtime-architecture-map.png)
 
-`.env`의 프로필 하나가 더미 데이터, 실데이터, LLM, Perplexity/Firecrawl, 브로커 모의투자, 실전투자 잠금까지 어느 깊이로 켤지 결정합니다. 키나 패키지가 없을 때 안전하게 건너뛰거나 mock으로 돌아가는 설명은 `mock` 기본 경로와 LLM·리서치 같은 **선택 분석 연동**에만 해당합니다. 아직 market provider가 연결되지 않은 paper/live 안전을 뜻하지 않습니다.
+`.env`의 프로필 하나가 더미 데이터, 실데이터, LLM, Perplexity/Firecrawl, 브로커 모의투자, 실전투자 잠금까지 어느 깊이로 켤지 결정합니다. 키나 패키지가 없을 때 안전하게 건너뛰거나 mock으로 돌아가는 설명은 `mock`/`real_data` 관찰 경로와 LLM·리서치 같은 **선택 분석 연동**에만 해당합니다. `paper/live`는 실시세 market provider 검증이 실패하면 mock으로 돌아가지 않고 **fail-closed**로 진입을 막습니다.
 
 ## 5. 파일별 역할 지도
 
@@ -96,15 +96,20 @@ lecture-prism은 PRISM 본 시스템의 축소판입니다.
 | `prism_core/ledger.py` | SQLite에 주문 이벤트, fills, positions, realized trades, classroom replay 상태를 저장합니다. 프로세스를 재시작해도 이어지며, 청산 거래에는 주문·fill provenance를 함께 남깁니다. |
 | `prism_core/cycle.py` | 포트폴리오 전체를 관찰해 **유효한 유한 quote가 있는 모든 포지션**의 high-water를 청산 write 전에 먼저 저장합니다. quote가 없거나 잘못된 포지션은 건너뛰고 주문 mutation을 만들지 않은 뒤, 청산 판단과 주문을 새 진입보다 먼저 처리합니다. 즉 **청산 우선**입니다. |
 | `prism_core/classroom.py` | KR/US 진입 → 고점 갱신 → 트레일링 청산을 결정론적으로 실행하고, 중단된 세션은 SQLite 증거에 맞춰 재개합니다. |
+| `prism_core/regime.py` | KR 120/60 이동평균, US 200/50 이동평균과 VIX를 구분해 `strong_bull`부터 `strong_bear`까지 5단계를 계산합니다. |
+| `prism_core/screening.py`, `policy.py` | trigger plugin을 점수화하고 regime별 최소 점수·손익비·손절폭·위험률을 같은 코드 정책으로 강제합니다. |
+| `prism_core/market_pipeline.py` | provider validation → regime → screening → analysis gate → sizing → cycle 순서로 진입 증거를 연결합니다. |
+
+시황과 스크리닝은 따로 평가하지 않습니다. 같은 후보라도 bull의 완화된 점수·손익비 문턱에서는 통과하고, bear의 높은 문턱과 비활성 trigger에서는 거절됩니다. 이 차이를 없애면 regime을 계산해도 실제 진입 안전에 쓰지 못합니다.
+
+과거 구간은 각 판단 시점까지의 데이터만 보는 walk-forward로 분리합니다. 미래 데이터를 진입 판단에 섞지 않아야 하며, 종목 목록도 첫 판단일에 이미 알 수 있었던 **point-in-time universe snapshot**이어야 합니다. 마지막 날짜에 조회한 현재 구성 종목을 과거 전체에 소급하면 survivorship bias가 생기므로 엔진은 이를 빈 결과로 숨기지 않고 중단합니다. 결과는 전략과 regime 궁합을 비교하는 교육용 증거일 뿐 **수익 보장 아님**을 명시합니다.
 
 `UNKNOWN` 주문은 성공이나 실패를 추측하지 않습니다. 해당 종목의 새 주문이나 replay 주문, fill, 청산 mutation을 막고, 명시적인 관찰 증거에 근거한 reconciliation이 끝날 때까지 fail-closed로 유지합니다. 다만 사이클 앞단의 관찰과 mutation은 구분됩니다. 유효한 quote가 있다면 UNKNOWN 주문이 있어도 포지션의 high-water 관찰은 먼저 저장될 수 있습니다. 이 규칙은 네트워크 응답을 잃어버렸을 때 같은 주문을 두 번 내는 문제를 피하기 위한 안전장치입니다.
 
 ## 11. 아직 연결 완료로 말하면 안 되는 것
 
-아래 항목은 **모두 미완료인 후속 과제**입니다. 현재 상태형 paper 코어의 완료 범위에 포함되지 않습니다.
+아래 항목은 **미완료인 후속 과제**입니다. 현재 regime·screening·provider 연결의 완료 범위에 포함되지 않습니다.
 
-- 미완료 — paper/live용 market provider fail-closed: 실데이터를 못 얻었을 때 mock으로 거래 판단을 계속하지 않고 주문 경로를 닫는 연결
-- 미완료 — 시장 regime과 screening 결합
 - 미완료 — 분석 evidence와 OAuth 응답의 end-to-end 출처 연결
 - 미완료 — KIS 주문·조회·정정·취소·체결 확인·재시작 reconcile을 포함한 full lifecycle
 - 미완료 — Toss WTS 어댑터와 같은 수준의 lifecycle 검증

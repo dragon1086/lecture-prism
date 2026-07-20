@@ -18,12 +18,12 @@ lecture-prism은 한 저장소 안에서 초급자용 더미 데모부터 상태
 | 프로필 | 데이터 | 분석 보고서 | 매매 | 추천 대상 |
 |---|---|---|---|---|
 | `mock` | 더미 데이터 | 6섹션 기본 보고서 | 기존 가상 매매 | API 키 없는 첫 실행, Part 4 전략 실습 |
-| `classroom` | 고정 KR/US 시세 | LLM 없음 | 상태형 paper replay | 주문·체결·보유·청산 증거 학습 |
+| `classroom` | 고정 KR/US fixture + regime screening | LLM 없음 | 상태형 paper replay | regime·candidate·order·fill 증거 학습 |
 | `real_data` | yfinance 실데이터, 실패하면 더미 데이터 | 6섹션 기본 보고서 | 가상 매매 | 실제 가격·거래량으로 보고 싶은 수강생 |
 | `research` | 실데이터 | LLM + Perplexity/Firecrawl 선택 리서치 | 가상 매매 | 원본 PRISM에 가까운 분석을 원하는 수강생 |
-| `paper` | 현재 `auto` | research 보고서 | 증권사 모의투자 설정 경로 | **후속 과제**, 운영 준비 완료 아님 |
-| `live` | 현재 `auto` | research 보고서 | 이중 잠금된 실전 설정 경로 | **후속 과제**, 기본 차단 유지 |
-| `backtest` | 고정 mock | LLM 없음 | legacy stateless simulation | 외부 연동을 고정 차단한 호환 프로필 |
+| `paper` | yfinance 실데이터 | research 보고서 | 증권사 모의투자 설정 경로 | provider 실패 시 fail-closed; 브로커 lifecycle은 후속 과제 |
+| `live` | yfinance 실데이터 | research 보고서 | 이중 잠금된 실전 설정 경로 | provider fail-closed + 별도 live gate; 운영 준비 완료 아님 |
+| `backtest` | 고정 fixture | LLM 없음 | legacy stateless simulation | 고정 fixture 호환 검증 |
 
 ```text
 내 .env를 lecture-prism 런타임 프로필 방식으로 점검해줘.
@@ -39,16 +39,14 @@ lecture-prism은 한 저장소 안에서 초급자용 더미 데모부터 상태
 | 값 | 선택지 | 의미 |
 |---|---|---|
 | `LECTURE_DATA_MODE` | `mock`, `auto`, `yfinance` | 분석 데이터 원천 |
-| `LECTURE_SCREENING_MODE` | `mock`, `real` | 스크리닝 유니버스 원천 (`real` = yfinance 실데이터 필터) |
+| `LECTURE_SCREENING_MODE` | `mock`, `fixture`, `real` | 스크리닝 원천 (`fixture` = classroom/backtest, `real` = yfinance) |
 | `LECTURE_LLM_MODE` | `mock`, `auto`, `oauth`, `openai` | LLM 호출 여부 |
 | `LECTURE_REPORT_MODE` | `lite`, `research` | 보고서 깊이 |
 | `LECTURE_RESEARCH_TOOLS` | `perplexity,firecrawl` | 선택 리서치 도구 |
 | `LECTURE_TRADE_MODE` | `simulation`, `demo`, `real` | 매매 실행 수준 |
 | `LECTURE_SAVE_REPORTS` | `1`, `0` | `reports/` Markdown 저장 여부 |
 
-`mock`, `real_data`, `research`의 선택 연동은 실패하면 더 안전한 기능으로 폴백합니다. 예를 들어 `research`에서 Perplexity 키가 없으면 해당 리서치만 빠지고 기본 분석은 계속됩니다.
-
-다만 이 폴백 정책을 주문 경로까지 확대하면 안 됩니다. 목표 계약은 **paper/live에서는 mock 데이터로 주문 판단을 계속하지 않고 market provider 실패를 fail-closed로 막는 것**입니다. 이 market-provider slice는 아직 후속 과제이므로, 현재 `paper`와 `live`를 완성된 운영 프로필로 사용하거나 설명하지 않습니다.
+`mock/real_data`의 관찰 경로와 `research`의 선택 연동은 실패하면 더 안전한 기능으로 폴백합니다. 예를 들어 `research`에서 Perplexity 키가 없으면 해당 리서치만 빠지고 기본 분석은 계속됩니다. 반면 `paper/live`는 market provider 검증이 실패하면 mock으로 주문 판단을 계속하지 않고 **fail-closed**로 막습니다.
 
 `classroom`과 `backtest`는 환경변수로 data/LLM/외부 broker 설정을 덮어쓸 수 없는 고정 offline simulation 프로필이며 live 플래그를 무시합니다. 두 프로필의 서로 다른 실행 코어는 다음 절에서 구분합니다.
 
@@ -58,7 +56,7 @@ lecture-prism은 한 저장소 안에서 초급자용 더미 데모부터 상태
 
 `classroom`은 주문 원장을 배우기 위한 별도 경로입니다. 삼성전자(KR/KRW)와 AAPL(US/USD)을 대상으로 아래 세 사이클을 결정론적으로 실행합니다.
 
-`classroom`만 SQLite 상태와 `PaperBroker`를 사용합니다. `backtest`는 고정 offline이지만 legacy stateless `_simulate_trade` 경로를 유지하며, 상태형 paper broker나 완성된 백테스트 엔진이 아닙니다.
+`classroom`만 SQLite 상태와 `PaperBroker`를 사용합니다. `backtest`는 고정 offline이지만 legacy stateless `_simulate_trade` 경로를 유지하며, 상태형 paper broker나 완성된 백테스트 엔진이 아닙니다. 미래 데이터 누수를 차단한 비교는 프로필 실행과 별개인 `run_walk_forward()` 증거 API가 담당합니다.
 
 1. 지정가 진입 주문과 fill 기록
 2. 두 시장 포지션의 high-water 갱신
@@ -91,6 +89,8 @@ lecture-prism의 classroom 전체 사이클을 안전한 임시 SQLite DB로 실
 기존 prism.db는 수정하지 말고, 프로그램 안에서 db.DB_PATH를 임시 경로로 바꾼 뒤 main.py의 classroom 프로필을 실행해줘.
 KR/US fixture의 유효한 유한 quote를 관찰해 두 포지션의 high-water를 청산 write 전에 갱신하고, 청산 우선 트레일링 스탑으로 이어지는 과정을 설명해줘.
 classroom과 backtest가 외부 환경변수로 data/LLM/broker를 바꿀 수 없는 고정 offline 프로필인지 확인하되, classroom만 상태형 PaperBroker이고 backtest는 legacy _simulate_trade 경로라고 구분해줘.
+provider validation → regime → screening → analysis gate → sizing → cycle 순서를 확인하고,
+regime, candidate, order, fill이 같은 run_id로 어떻게 연결되는지 표로 보여줘.
 ```
 
 ### 중급자: 실제 가격·거래량만 켜기
@@ -124,7 +124,7 @@ KIS 연결에 필요한 선택 패키지는 기본 mock/classroom 실행에는 �
 ```text
 lecture-prism의 KIS 관련 코드를 읽기 전용으로 점검해줘.
 현재 실제로 연결된 주문 단계와 아직 없는 조회·정정·취소·체결 확인·재시작 reconcile을 표로 나눠줘.
-paper/live의 market provider fail-closed가 아직 후속 과제인지 확인하고,
+paper/live market provider fail-closed는 현재 코드·테스트 근거로 확인하고,
 실계좌 주문이나 외부 API 호출은 절대 실행하지 마.
 Toss도 완료된 어댑터라고 가정하지 말고 같은 기준으로 빈칸만 설명해줘.
 ```
@@ -158,7 +158,7 @@ LECTURE_KIS_MODE=real
 
 추가로 `kis_devlp.yaml`의 `default_mode`와 계좌별 `mode`도 `real`이어야 합니다.
 
-이중 플래그는 기존 안전장치 설명입니다. 이것만으로 live 운영 준비가 완료되지 않습니다. market provider fail-closed와 KIS full lifecycle 검증 전에는 실제 주문 경로를 켜지 않습니다.
+이중 플래그는 market provider fail-closed와 별개인 **별도 live gate**입니다. 이것만으로 live 운영 준비가 완료되지 않으며, KIS full lifecycle 검증 전에는 실제 주문 경로를 켜지 않습니다.
 
 ## 5. 보고서 산출물
 
@@ -197,7 +197,7 @@ broker factory와 adapter place_order를 mock으로 감싸 호출되면 실패�
 그 조건에서 결과가 live_blocked이고 adapter 호출이 0회라는 테스트 증거만 설명해줘.
 ```
 
-OAuth 프록시 기본형과 KIS 부분 어댑터가 존재하더라도, 분석 evidence provenance, market regime, market-provider fail-closed, KIS full lifecycle, Toss WTS adapter는 모두 후속 과제입니다. 완료된 기능으로 설명하지 않습니다.
+market regime·screening·provider fail-closed는 현재 강의 범위입니다. 하지만 OAuth 응답의 분석 evidence provenance, KIS full lifecycle, Toss WTS adapter, dashboard core-table 시각화는 후속 과제이며 완료된 기능으로 설명하지 않습니다.
 
 ### 기존 프로필 설정 점검 프롬프트
 

@@ -52,14 +52,13 @@ class PrismCoreFoundationContractTest(unittest.TestCase):
         options = self._section(text, "## 4. 옵션별 전체 아키텍처")
         self.assertIn("mock", options)
         self.assertIn("선택 분석 연동", options)
-        self.assertIn("paper/live 안전을 뜻하지 않습니다", options)
+        self.assertIn("paper/live", options)
+        self.assertIn("fail-closed", options)
 
         follow_ons = self._section(
             text, "## 11. 아직 연결 완료로 말하면 안 되는 것"
         )
         for incomplete_item in (
-            "paper/live용 market provider fail-closed",
-            "시장 regime과 screening 결합",
             "분석 evidence와 OAuth",
             "KIS",
             "Toss WTS",
@@ -69,7 +68,9 @@ class PrismCoreFoundationContractTest(unittest.TestCase):
                 follow_ons,
                 rf"- 미완료 — [^\n]*{re.escape(incomplete_item)}",
             )
-        self.assertIn("모두 미완료인 후속 과제", follow_ons)
+        self.assertIn("미완료인 후속 과제", follow_ons)
+        self.assertNotIn("paper/live용 market provider fail-closed", follow_ons)
+        self.assertNotIn("시장 regime과 screening 결합", follow_ons)
         self.assertNotRegex(follow_ons, r"(?:KIS|Toss).{0,30}(?:완성된|운영 준비 완료)")
         self.assertNotRegex(follow_ons, r"backtest.{0,40}PaperBroker")
         self.assertIn("core table 시각화는 미완료", follow_ons)
@@ -134,6 +135,67 @@ class PrismCoreFoundationContractTest(unittest.TestCase):
             r"dashboard[^.\n]{0,100}core table 시각화(?:가|는)? 완료",
         ):
             self.assertNotRegex(combined, contradiction)
+
+    def test_course_docs_explain_regime_screening_as_one_safety_contract(self):
+        paths = (
+            "docs/architecture.md",
+            "docs/runtime-profiles.md",
+            "lecture/exercises/part3_실습가이드.md",
+            "lecture/exercises/part4_실습가이드.md",
+        )
+        documents = {
+            path: (ROOT / path).read_text(encoding="utf-8") for path in paths
+        }
+        combined = "\n".join(documents.values())
+
+        for required in (
+            "strong_bull",
+            "strong_bear",
+            "KR 120/60",
+            "US 200/50",
+            "VIX",
+            "paper/live",
+            "fail-closed",
+            "미래 데이터",
+            "수익 보장 아님",
+            "ScreeningStrategy",
+        ):
+            self.assertIn(required, combined)
+        self.assertIn(
+            "provider validation → regime → screening → analysis gate → sizing → cycle",
+            combined,
+        )
+        self.assertRegex(
+            combined,
+            r"같은 후보.{0,100}bull.{0,100}(통과|admit).{0,100}bear.{0,100}(거절|reject)",
+        )
+        self.assertRegex(
+            combined,
+            r"mock/real_data.{0,160}폴백.{0,160}paper/live.{0,160}fail-closed",
+        )
+        self.assertRegex(
+            combined,
+            r"classroom.{0,200}regime.{0,160}candidate.{0,160}order.{0,160}fill",
+        )
+        part4 = documents["lecture/exercises/part4_실습가이드.md"]
+        self.assertRegex(part4, r"트랙 A[\s\S]{0,500}ScreeningStrategy")
+        for track in ("Track B", "Track C", "Track D"):
+            self.assertIn(track, part4)
+
+        for path, text in documents.items():
+            with self.subTest(path=path):
+                self.assertNotRegex(
+                    text,
+                    r"```(?:bash|sh|shell|zsh|console|powershell)\b",
+                )
+
+        for forbidden_claim in (
+            r"KIS.{0,100}full lifecycle.{0,40}(완료됐|완성됐|운영 준비 완료)",
+            r"Toss WTS.{0,100}(adapter|어댑터).{0,40}(완료됐|완성됐|운영 준비 완료)",
+            r"OAuth.{0,100}evidence.{0,40}(완료됐습니다|완료되었습니다|연결됐습니다)",
+            r"대시보드.{0,100}(regime|candidate|order|fill).{0,40}(완료됐|통합됐)",
+        ):
+            self.assertNotRegex(combined, forbidden_claim)
 
 
 if __name__ == "__main__":

@@ -196,6 +196,16 @@ lecture-prism의 classroom 전체 사이클을 실행해줘.
 
 ### 미체결 → 체결 → 청산 증거 읽기
 
+시황 판단과 후보 선정은 한 쌍입니다. 같은 후보가 `strong_bull`에서는 통과하고 `strong_bear`에서는 거절되는지 보아야 regime이 실제 정책을 바꿘다고 말할 수 있습니다. KR은 **KR 120/60**, US는 **US 200/50** 이동평균을 쓰고 US는 VIX 경계도 함께 봅니다.
+
+```text
+lecture-prism의 classroom 전체 사이클을 기존 prism.db를 건드리지 않고 임시 DB에서 실행해줘.
+provider validation → regime → screening → analysis gate → sizing → cycle 순서를 코드와 실행 증거로 확인해줘.
+classroom의 regime, candidate, order, fill을 run_id와 심볼 기준으로 연결해 한 표로 정리해줘.
+같은 후보가 bull에서 통과하고 bear에서 거절되는 정책 차이를 점수·손익비·손절폭으로 설명해줘.
+실거래, 외부 브로커, 루트 DB는 사용하지 마.
+```
+
 ```text
 방금 classroom 실행에 쓴 임시 DB를 읽기 전용으로 조사해줘.
 
@@ -239,7 +249,7 @@ broker factory와 adapter place_order를 mock으로 감싸 호출되면 실패�
 실제 계좌·config 파일을 읽지 않고 결과가 live_blocked이며 adapter 호출이 0회라는 증거만 설명해줘.
 ```
 
-> 상태형 foundation의 완료 범위는 offline paper 코어까지입니다. paper/live market-provider fail-closed, 시장 regime, 분석 evidence와 OAuth 연결, KIS full lifecycle, Toss WTS adapter, dashboard core-table 시각화는 후속 과제입니다. KIS나 Toss가 완성됐다고 설명하지 않습니다.
+> regime·screening·paper/live market-provider fail-closed는 현재 강의 범위입니다. 분석 evidence와 OAuth end-to-end 연결, KIS full lifecycle, Toss WTS adapter, dashboard core-table 시각화는 후속 과제입니다. KIS나 Toss가 완성됐다고 설명하지 않습니다.
 
 ---
 

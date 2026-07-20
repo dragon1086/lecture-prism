@@ -49,6 +49,14 @@ from .regime import (
     classify_market_regime,
 )
 from .screening import OneilTrendStrategy, ScreeningStrategy, screen_candidates
+from .walk_forward import (
+    HistoricalMarketData,
+    SegmentMetrics,
+    TradeSample,
+    WalkForwardConfig,
+    WalkForwardReport,
+    run_walk_forward,
+)
 
 __all__ = [
     "Candidate",
@@ -58,6 +66,7 @@ __all__ = [
     "Fill",
     "FixtureMarketDataProvider",
     "FixtureUniverseProvider",
+    "HistoricalMarketData",
     "IncompatibleLedgerSchema",
     "IndexBundle",
     "InsufficientMarketHistory",
@@ -86,14 +95,19 @@ __all__ = [
     "RegimePolicy",
     "RegimeResult",
     "ScreeningStrategy",
+    "SegmentMetrics",
+    "TradeSample",
     "UniverseMember",
     "UniverseProvider",
     "TriggerType",
     "YFinanceMarketDataProvider",
+    "WalkForwardConfig",
+    "WalkForwardReport",
     "classify_market_regime",
     "gate_entry",
     "policy_for",
     "run_detailed_screening",
+    "run_walk_forward",
     "screen_candidates",
     "validate_market_contract",
     "validate_series_for_profile",

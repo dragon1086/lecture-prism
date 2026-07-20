@@ -39,7 +39,7 @@ MY_STRATEGY.md를 읽고 내 전략을 lecture-prism에 반영해줘.
 
 | 트랙 | 사전과제 항목 | 내용 | 대상 파일 | 난이도 |
 |------|------|------|----------|--------|
-| **A** | 진입 | 종목 선정 조건 | `screening.py` | ★☆☆ |
+| **A** | 진입 | 종목 선정 plugin | `prism_core/screening.py` | ★☆☆ |
 | **B** | 진입 | 분석 에이전트 프롬프트 | `analysis.py` | ★☆☆ |
 | **C** | 청산 | 매도·목표가·트레일링 스탑 | `trading.py` (`_decide_exit`) | ★★☆ |
 | **D** | 리스크 | 보유 종목 수·섹터·현금·손절 | `trading.py` (상수) | ★☆☆ |
@@ -158,28 +158,42 @@ MY_STRATEGY.md를 읽고 내 전략을 lecture-prism에 반영해줘.
 
 ## 트랙 A — 스크리닝 조건 수정
 
-**목표**: `screening.py`의 필터 조건을 본인 이론으로 교체
+**목표**: `ScreeningStrategy` plugin 하나를 본인 이론으로 교체
 
-### Claude Code 프롬프트
+스크리닝과 regime은 같이 평가합니다. 같은 후보도 `strong_bull`에서는 통과하고 `strong_bear`에서는 거절될 수 있어야 합니다. KR은 **KR 120/60**, US는 **US 200/50** 이동평균을 사용하고 US의 VIX는 별도 시장 경계로 취급합니다.
 
-```
-"현재 screening.py는 거래량 5배 + 시가총액 5000억 조건이야.
-내 이론: RSI 30 이하 + 거래량 3배 + 시가총액 3000억 이상으로 바꿔줘.
-함수 시그니처 run_screening(target_ticker)는 유지해줘."
+전체 진입 순서는 `provider validation → regime → screening → analysis gate → sizing → cycle`입니다. Track A는 screening plugin만 바꾸고 나머지 단계를 우회하지 않습니다.
+
+### 코딩 에이전트 프롬프트
+
+```text
+prism_core.screening의 ScreeningStrategy protocol을 구현하는 새 plugin으로 내 이론을 반영해줘.
+내 이론은 RSI 30 이하 반등 + 거래량 3배 + 중형주 이상이야.
+Candidate의 불변 계약, 결정론적 정렬, regime policy gate, root run_screening() -> list[str] 호환은 유지해줘.
+API 키 없는 fixture로 bull 통과·bear 거절 사례를 테스트하고 실거래는 하지 마.
 ```
 
 ### 검증
 
-```
-"바꾼 스크리닝 조건이 내 이론을 정확히 반영하는지 확인해줘.
-내 이론: RSI 30 이하 반등 + 거래량 동반 + 중형주 이상"
+```text
+바꾼 ScreeningStrategy plugin이 내 이론을 정확히 반영하는지 확인해줘.
+같은 특징값을 strong_bull과 strong_bear에 넣어 policy 결과가 달라지는지 표로 비교해줘.
 ```
 
 ### 전체 파이프라인 통합 테스트
 
+```text
+내 plugin을 classroom fixture 상세 스크리닝에 주입해 전체 순서와 증거를 검증해줘.
+기존 prism.db를 수정하지 말고 코딩 에이전트가 임시 DB와 테스트를 사용해줘.
 ```
-"main.py 실행해봐. 내가 수정한 스크리닝이 제대로 통합되는지 확인해줘."
-```
+
+### Track B/C/D가 유지할 core contract
+
+- Track B는 분석 프롬프트를 바꿔도 LLM이 정량 gate를 통과시키지 못하고 veto만 할 수 있습니다.
+- Track C는 청산 규칙을 바꿔도 손절·UNKNOWN·청산 우선 계약을 약화하지 않습니다.
+- Track D는 비중을 바꿔도 regime policy의 최대 슬롯·현금·위험률보다 공격적으로 우회하지 않습니다.
+
+walk-forward는 각 시점의 과거만 보고 다음 구간을 평가합니다. 미래 데이터를 후보 점수나 regime 판정에 섞으면 결과를 믿을 수 없습니다. 종목 목록도 첫 판단일에 알고 있던 point-in-time universe snapshot이어야 하며, 오늘의 구성 종목을 과거에 소급하는 survivorship bias는 허용하지 않습니다. 이 보고서는 전략·regime 궁합의 교육용 증거이며 **수익 보장 아님**입니다. live 활성화는 이 결과와 별개의 provider fail-closed, 브로커, 이중 안전 플래그를 모두 확인하는 별도 gate입니다.
 
 ---
 
