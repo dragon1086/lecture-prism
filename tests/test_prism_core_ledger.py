@@ -65,6 +65,22 @@ def seed_v4_ledger(path):
     ledger = Ledger(path)
     ledger.create_order(buy_intent("legacy:AAPL:BUY"))
     with sqlite3.connect(path) as conn:
+        conn.execute("DROP INDEX IF EXISTS uq_broker_orders_broker_identity")
+        conn.execute("DROP INDEX IF EXISTS ix_broker_orders_pending_recovery")
+        conn.execute("DROP TABLE IF EXISTS market_calendar_cache")
+        columns = {
+            row[1] for row in conn.execute("PRAGMA table_info(broker_orders)")
+        }
+        for column in (
+            "remaining_quantity",
+            "broker_order_no",
+            "broker_org_no",
+            "broker_order_date",
+            "broker_mode",
+            "broker",
+        ):
+            if column in columns:
+                conn.execute(f'ALTER TABLE broker_orders DROP COLUMN "{column}"')
         for table in ("entry_contexts", "candidates", "market_regimes"):
             conn.execute(f'DROP TABLE IF EXISTS "{table}"')
         conn.execute(
@@ -98,14 +114,20 @@ class LedgerSchemaTest(unittest.TestCase):
         seed_v4_ledger(self.path)
         with sqlite3.connect(self.path) as conn:
             before = conn.execute(
-                "SELECT * FROM broker_orders ORDER BY client_order_id"
+                "SELECT client_order_id,market,symbol,side,order_type,quantity,"
+                "limit_price,currency,strategy_id,reason,status,filled_quantity,"
+                "average_fill_price,created_at,updated_at FROM broker_orders "
+                "ORDER BY client_order_id"
             ).fetchall()
 
         Ledger(self.path)
 
         with sqlite3.connect(self.path) as conn:
             after = conn.execute(
-                "SELECT * FROM broker_orders ORDER BY client_order_id"
+                "SELECT client_order_id,market,symbol,side,order_type,quantity,"
+                "limit_price,currency,strategy_id,reason,status,filled_quantity,"
+                "average_fill_price,created_at,updated_at FROM broker_orders "
+                "ORDER BY client_order_id"
             ).fetchall()
             version = conn.execute(
                 "SELECT value FROM prism_core_meta WHERE key='schema_version'"
@@ -117,7 +139,7 @@ class LedgerSchemaTest(unittest.TestCase):
                 ).fetchall()
             }
         self.assertEqual(after, before)
-        self.assertEqual(version, "5")
+        self.assertEqual(version, "6")
         self.assertTrue(
             {"market_regimes", "candidates", "entry_contexts"} <= tables
         )
@@ -218,7 +240,7 @@ class LedgerSchemaTest(unittest.TestCase):
             thread.join(3)
         self.assertFalse(any(thread.is_alive() for thread in threads))
         self.assertEqual(errors, [])
-        self.assertEqual(self._version(self.path), "5")
+        self.assertEqual(self._version(self.path), "6")
         with sqlite3.connect(self.path) as conn:
             self.assertEqual(conn.execute(
                 "SELECT client_order_id FROM broker_orders"
@@ -1192,7 +1214,7 @@ class PrismCoreLedgerTest(unittest.TestCase):
                 conn.execute(
                     "SELECT value FROM prism_core_meta WHERE key='schema_version'"
                 ).fetchone(),
-                ("5",),
+                ("6",),
             )
 
     def test_order_events_record_first_status_observation_and_fills_audit_each_execution(self):

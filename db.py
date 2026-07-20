@@ -151,6 +151,40 @@ def save_lesson(ticker: str, action: str, lesson: str,
         )
 
 
+# ── 외부 브로커 주문/시장일 facade ────────────────────────────────────────────
+
+def _ledger():
+    """Return the single prism_core ledger without duplicating its SQL rules."""
+
+    from prism_core.ledger import Ledger
+
+    return Ledger(DB_PATH)
+
+
+def save_broker_order(intent, *, broker: str, broker_mode: str):
+    return _ledger().save_broker_order(
+        intent, broker=broker, broker_mode=broker_mode
+    )
+
+
+def update_broker_order(client_order_id: str, **snapshot):
+    return _ledger().update_broker_order(client_order_id, **snapshot)
+
+
+def get_pending_broker_orders(*, broker: str, broker_mode: str):
+    return _ledger().get_pending_broker_orders(
+        broker=broker, broker_mode=broker_mode
+    )
+
+
+def save_market_day(market, trade_date: str, **values):
+    return _ledger().save_market_day(market, trade_date, **values)
+
+
+def get_market_day(market, trade_date: str, **filters):
+    return _ledger().get_market_day(market, trade_date, **filters)
+
+
 # ── 읽기 (feedback.py 교훈 주입 / dashboard.py 표시) ──────────────────────────
 
 def get_recent_lessons(n: int = 5) -> list[str]:

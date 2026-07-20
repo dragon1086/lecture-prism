@@ -32,7 +32,7 @@ from .domain import (
 from .regime import PulseState, RegimeResult
 from .policy import policy_for
 
-CURRENT_SCHEMA_VERSION = 5
+CURRENT_SCHEMA_VERSION = 6
 
 
 class IncompatibleLedgerSchema(RuntimeError):
@@ -114,6 +114,23 @@ _VERSION_FIVE_SCHEMA = (
 )""",
 )
 
+_VERSION_SIX_SCHEMA = (
+    """CREATE TABLE market_calendar_cache (
+    market TEXT NOT NULL, broker_mode TEXT NOT NULL,
+    trade_date TEXT NOT NULL, is_open INTEGER NOT NULL,
+    source TEXT NOT NULL, checked_at TEXT NOT NULL,
+    PRIMARY KEY(market, broker_mode, trade_date)
+)""",
+    """CREATE UNIQUE INDEX uq_broker_orders_broker_identity
+    ON broker_orders(
+        broker, broker_mode, broker_order_date, broker_org_no, broker_order_no
+    )""",
+    """CREATE INDEX ix_broker_orders_pending_recovery
+    ON broker_orders(
+        broker, broker_mode, status, updated_at, client_order_id
+    )""",
+)
+
 _VERSION_ONE_COLUMNS = {
     "prism_core_meta": {"key", "value"},
     "broker_orders": {
@@ -157,7 +174,7 @@ _VERSION_FOUR_COLUMNS = {
     **_VERSION_THREE_COLUMNS,
     "positions": _VERSION_ONE_COLUMNS["positions"] | {"entry_client_order_id"},
 }
-_CURRENT_COLUMNS = {
+_VERSION_FIVE_COLUMNS = {
     **_VERSION_FOUR_COLUMNS,
     "market_regimes": {
         "run_id", "market", "as_of", "regime", "confidence", "pulse",
@@ -176,12 +193,33 @@ _CURRENT_COLUMNS = {
         "risk_reward_ratio", "trailing_pct", "source", "created_at",
     },
 }
+_CURRENT_COLUMNS = {
+    **_VERSION_FIVE_COLUMNS,
+    "broker_orders": _VERSION_FIVE_COLUMNS["broker_orders"]
+    | {
+        "broker",
+        "broker_mode",
+        "broker_order_date",
+        "broker_org_no",
+        "broker_order_no",
+        "remaining_quantity",
+    },
+    "market_calendar_cache": {
+        "market",
+        "broker_mode",
+        "trade_date",
+        "is_open",
+        "source",
+        "checked_at",
+    },
+}
 _SCHEMA_COLUMNS_BY_VERSION = {
     1: _VERSION_ONE_COLUMNS,
     2: _VERSION_TWO_COLUMNS,
     3: _VERSION_THREE_COLUMNS,
     4: _VERSION_FOUR_COLUMNS,
-    5: _CURRENT_COLUMNS,
+    5: _VERSION_FIVE_COLUMNS,
+    6: _CURRENT_COLUMNS,
 }
 _PRIMARY_KEYS = {
     "prism_core_meta": ("key",),
@@ -194,12 +232,33 @@ _PRIMARY_KEYS = {
     "market_regimes": ("run_id", "market"),
     "candidates": ("run_id", "market", "symbol", "trigger_type"),
     "entry_contexts": ("client_order_id",),
+    "market_calendar_cache": ("market", "broker_mode", "trade_date"),
 }
 _REQUIRED_UNIQUE_KEYS = {
+    "broker_orders": {
+        (
+            "broker",
+            "broker_mode",
+            "broker_order_date",
+            "broker_org_no",
+            "broker_order_no",
+        )
+    },
     "order_events": {("client_order_id", "status")},
     "classroom_replays": {("session_id",), ("strategy_id",)},
     "candidates": {("run_id", "market", "rank")},
     "entry_contexts": {("run_id", "market", "symbol", "trigger_type")},
+}
+_REQUIRED_INDEX_KEYS = {
+    "broker_orders": {
+        (
+            "broker",
+            "broker_mode",
+            "status",
+            "updated_at",
+            "client_order_id",
+        )
+    }
 }
 
 
@@ -232,8 +291,16 @@ _COLUMN_CONTRACTS = {
             "client_order_id",
             "limit_price",
             "average_fill_price",
+            "broker_order_date",
+            "broker_org_no",
+            "broker_order_no",
         },
-        defaults={"filled_quantity": "'0'"},
+        defaults={
+            "filled_quantity": "'0'",
+            "broker": "'paper'",
+            "broker_mode": "'simulation'",
+            "remaining_quantity": "'0'",
+        },
     ),
     "order_events": _text_contract(
         _CURRENT_COLUMNS["order_events"],
@@ -278,6 +345,10 @@ _COLUMN_CONTRACTS = {
     "entry_contexts": _text_contract(
         _CURRENT_COLUMNS["entry_contexts"], nullable={"client_order_id"}
     ),
+    "market_calendar_cache": _text_contract(
+        _CURRENT_COLUMNS["market_calendar_cache"],
+        types={"is_open": "INTEGER"},
+    ),
 }
 
 _UNRESOLVED_ORDER_STATUSES = (
@@ -297,6 +368,30 @@ _CLEANUP_ELIGIBLE_ABORT_REASONS = (
 )
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def _validated_trade_date(value: str) -> str:
+    if not isinstance(value, str):
+        raise ValueError("trade_date must be YYYYMMDD")
+    try:
+        parsed = datetime.strptime(value, "%Y%m%d")
+    except ValueError as exc:
+        raise ValueError("trade_date must be a valid YYYYMMDD date") from exc
+    if parsed.strftime("%Y%m%d") != value:
+        raise ValueError("trade_date must be a valid YYYYMMDD date")
+    return value
+
+
+def _validated_checked_at(value: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError("checked_at must be an aware ISO timestamp")
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError as exc:
+        raise ValueError("checked_at must be an aware ISO timestamp") from exc
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise ValueError("checked_at must be an aware ISO timestamp")
+    return parsed.astimezone(timezone.utc).isoformat()
 
 
 _DECIMAL_JSON_TAG = "__prism_decimal__"
@@ -391,6 +486,29 @@ class ClassroomReplayClaim:
     cleanup_strategies: frozenset[str] = frozenset()
 
 
+@dataclass(frozen=True)
+class BrokerOrderState:
+    order: OrderRecord
+    broker: str
+    broker_mode: str
+    broker_order_date: str | None
+    broker_org_no: str | None
+    broker_order_no: str | None
+    remaining_quantity: Decimal
+
+    @property
+    def status(self) -> OrderStatus:
+        return self.order.status
+
+    @property
+    def filled_quantity(self) -> Decimal:
+        return self.order.filled_quantity
+
+    @property
+    def average_fill_price(self) -> Decimal | None:
+        return self.order.average_fill_price
+
+
 class Ledger:
     def __init__(self, path: Path):
         self.path = Path(path)
@@ -464,6 +582,37 @@ class Ledger:
             raise IncompatibleLedgerSchema(
                 f"{table} missing required full UNIQUE keys: "
                 f"{sorted(missing)!r}"
+            )
+
+    @staticmethod
+    def _validate_required_indexes(
+        conn: sqlite3.Connection,
+        table: str,
+        required: set[tuple[str, ...]],
+    ) -> None:
+        if not required:
+            return
+        valid: set[tuple[str, ...]] = set()
+        for row in conn.execute(f'PRAGMA index_list("{table}")').fetchall():
+            name = row[1]
+            if bool(row[2]) or bool(row[4]):
+                continue
+            key_rows = [
+                item
+                for item in conn.execute(
+                    "SELECT * FROM pragma_index_xinfo(?)", (name,)
+                ).fetchall()
+                if item[5]
+            ]
+            if any(item[1] < 0 or item[2] is None for item in key_rows):
+                continue
+            if any(str(item[4]).upper() != "BINARY" for item in key_rows):
+                continue
+            valid.add(tuple(item[2] for item in key_rows))
+        missing = required - valid
+        if missing:
+            raise IncompatibleLedgerSchema(
+                f"{table} missing required index keys: {sorted(missing)!r}"
             )
 
     @staticmethod
@@ -639,8 +788,20 @@ class Ledger:
                 _PRIMARY_KEYS[table],
                 by_name,
             )
-            required_unique = _REQUIRED_UNIQUE_KEYS.get(table, set())
+            required_unique = {
+                key
+                for key in _REQUIRED_UNIQUE_KEYS.get(table, set())
+                if set(key) <= allowed
+            }
             cls._validate_unique_keys(conn, table, required_unique)
+            required_indexes = {
+                key
+                for key in _REQUIRED_INDEX_KEYS.get(table, set())
+                if set(key) <= allowed
+            }
+            cls._validate_required_indexes(
+                conn, table, required_indexes
+            )
 
     @classmethod
     def _add_column(
@@ -704,6 +865,65 @@ class Ledger:
                     f"{sorted(existing)!r}"
                 )
             for statement in _VERSION_FIVE_SCHEMA:
+                conn.execute(statement)
+            return
+        if target_version == 6:
+            existing = conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' "
+                "AND name='market_calendar_cache'"
+            ).fetchone()
+            if existing is not None:
+                raise IncompatibleLedgerSchema(
+                    "partial or premature v6 market calendar table"
+                )
+            cls._add_column(
+                conn,
+                "broker_orders",
+                "broker TEXT NOT NULL DEFAULT 'paper'",
+            )
+            cls._add_column(
+                conn,
+                "broker_orders",
+                "broker_mode TEXT NOT NULL DEFAULT 'simulation'",
+            )
+            cls._add_column(conn, "broker_orders", "broker_order_date TEXT")
+            cls._add_column(conn, "broker_orders", "broker_org_no TEXT")
+            cls._add_column(conn, "broker_orders", "broker_order_no TEXT")
+            cls._add_column(
+                conn,
+                "broker_orders",
+                "remaining_quantity TEXT NOT NULL DEFAULT '0'",
+            )
+            for client_order_id, quantity, filled_quantity in conn.execute(
+                "SELECT client_order_id,quantity,filled_quantity "
+                "FROM broker_orders"
+            ).fetchall():
+                try:
+                    requested = Decimal(quantity)
+                    filled = Decimal(filled_quantity)
+                except Exception as exc:
+                    raise IncompatibleLedgerSchema(
+                        f"invalid order quantity during v6 migration: "
+                        f"{client_order_id}"
+                    ) from exc
+                remaining = requested - filled
+                if (
+                    not requested.is_finite()
+                    or not filled.is_finite()
+                    or requested <= 0
+                    or filled < 0
+                    or remaining < 0
+                ):
+                    raise IncompatibleLedgerSchema(
+                        f"invalid order quantity during v6 migration: "
+                        f"{client_order_id}"
+                    )
+                conn.execute(
+                    "UPDATE broker_orders SET remaining_quantity=? "
+                    "WHERE client_order_id=?",
+                    (str(remaining), client_order_id),
+                )
+            for statement in _VERSION_SIX_SCHEMA:
                 conn.execute(statement)
             return
         raise AssertionError(f"unknown schema migration: {target_version}")
@@ -1634,7 +1854,7 @@ class Ledger:
         namespace_pattern = f"{session_id}-%"
         rows = conn.execute(
             "SELECT client_order_id,market,symbol,side,status,strategy_id,"
-            "quantity,filled_quantity,currency "
+            "quantity,filled_quantity,remaining_quantity,currency "
             "FROM broker_orders WHERE strategy_id=? "
             "OR client_order_id LIKE ? "
             "ORDER BY client_order_id",
@@ -1728,12 +1948,18 @@ class Ledger:
         try:
             order_quantity = Decimal(order["quantity"])
             filled_quantity = Decimal(order["filled_quantity"])
+            remaining_quantity = Decimal(order["remaining_quantity"])
             fill_quantities = [Decimal(fill["quantity"]) for fill in fills]
         except Exception:
             return True
         if any(quantity <= 0 for quantity in fill_quantities):
             return True
         if sum(fill_quantities, Decimal("0")) != filled_quantity:
+            return True
+        if (
+            remaining_quantity < 0
+            or filled_quantity + remaining_quantity != order_quantity
+        ):
             return True
         status = OrderStatus(order["status"])
         if status is OrderStatus.FILLED and filled_quantity != order_quantity:
@@ -2136,6 +2362,20 @@ class Ledger:
             ),
         )
 
+    @classmethod
+    def _row_to_broker_order_state(
+        cls, row: sqlite3.Row
+    ) -> BrokerOrderState:
+        return BrokerOrderState(
+            order=cls._row_to_order(row),
+            broker=row["broker"],
+            broker_mode=row["broker_mode"],
+            broker_order_date=row["broker_order_date"],
+            broker_org_no=row["broker_org_no"],
+            broker_order_no=row["broker_order_no"],
+            remaining_quantity=Decimal(row["remaining_quantity"]),
+        )
+
     @staticmethod
     def _row_to_position(row: sqlite3.Row) -> Position:
         market = Market(row["market"])
@@ -2259,8 +2499,8 @@ class Ledger:
         with self._connect() as conn:
             cursor = conn.execute(
                 "INSERT OR IGNORE INTO broker_orders "
-                "(client_order_id,market,symbol,side,order_type,quantity,limit_price,currency,strategy_id,reason,status,created_at,updated_at) "
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                "(client_order_id,market,symbol,side,order_type,quantity,limit_price,currency,strategy_id,reason,status,remaining_quantity,created_at,updated_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (
                     intent.client_order_id,
                     intent.market.value,
@@ -2273,6 +2513,7 @@ class Ledger:
                     intent.strategy_id,
                     intent.reason,
                     OrderStatus.CREATED.value,
+                    str(intent.quantity),
                     now,
                     now,
                 ),
@@ -2292,6 +2533,360 @@ class Ledger:
                         f"order id collision: {intent.client_order_id}"
                     )
         return self.get_order(intent.client_order_id)
+
+    @staticmethod
+    def _normalized_broker_value(value: str, name: str) -> str:
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"{name} is required")
+        return value.strip().lower()
+
+    def save_broker_order(
+        self,
+        intent: OrderIntent,
+        *,
+        broker: str,
+        broker_mode: str,
+    ) -> BrokerOrderState:
+        if not isinstance(intent, OrderIntent):
+            raise ValueError("intent must be an OrderIntent")
+        intent.__post_init__()
+        normalized_broker = self._normalized_broker_value(broker, "broker")
+        normalized_mode = self._normalized_broker_value(
+            broker_mode, "broker_mode"
+        )
+        now = _now()
+        with self._connect(immediate=True) as conn:
+            cursor = conn.execute(
+                "INSERT OR IGNORE INTO broker_orders "
+                "(client_order_id,market,symbol,side,order_type,quantity,"
+                "limit_price,currency,strategy_id,reason,status,"
+                "remaining_quantity,broker,broker_mode,created_at,updated_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (
+                    intent.client_order_id,
+                    intent.market.value,
+                    intent.symbol,
+                    intent.side.value,
+                    intent.order_type.value,
+                    str(intent.quantity),
+                    (
+                        str(intent.limit_price)
+                        if intent.limit_price is not None
+                        else None
+                    ),
+                    intent.currency,
+                    intent.strategy_id,
+                    intent.reason,
+                    OrderStatus.CREATED.value,
+                    str(intent.quantity),
+                    normalized_broker,
+                    normalized_mode,
+                    now,
+                    now,
+                ),
+            )
+            row = conn.execute(
+                "SELECT * FROM broker_orders WHERE client_order_id=?",
+                (intent.client_order_id,),
+            ).fetchone()
+            if row is None or not self._order_payload_matches(row, intent):
+                raise ValueError(f"order id collision: {intent.client_order_id}")
+            if (
+                row["broker"] != normalized_broker
+                or row["broker_mode"] != normalized_mode
+            ):
+                raise ValueError(
+                    f"order broker collision: {intent.client_order_id}"
+                )
+            if cursor.rowcount:
+                conn.execute(
+                    "INSERT INTO order_events "
+                    "(client_order_id,status,occurred_at) VALUES (?,?,?)",
+                    (
+                        intent.client_order_id,
+                        OrderStatus.CREATED.value,
+                        now,
+                    ),
+                )
+            state = self._row_to_broker_order_state(row)
+        return state
+
+    def get_broker_order_state(
+        self, client_order_id: str
+    ) -> BrokerOrderState:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM broker_orders WHERE client_order_id=?",
+                (client_order_id,),
+            ).fetchone()
+        if row is None:
+            raise KeyError(client_order_id)
+        return self._row_to_broker_order_state(row)
+
+    def bind_broker_identity(
+        self,
+        client_order_id: str,
+        *,
+        broker_order_date: str,
+        broker_org_no: str,
+        broker_order_no: str,
+    ) -> BrokerOrderState:
+        values = {
+            "broker_order_date": broker_order_date,
+            "broker_org_no": broker_org_no,
+            "broker_order_no": broker_order_no,
+        }
+        normalized: dict[str, str] = {}
+        for name, value in values.items():
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError(f"{name} is required")
+            normalized[name] = value.strip()
+        normalized["broker_order_date"] = _validated_trade_date(
+            normalized["broker_order_date"]
+        )
+        with self._connect(immediate=True) as conn:
+            row = conn.execute(
+                "SELECT * FROM broker_orders WHERE client_order_id=?",
+                (client_order_id,),
+            ).fetchone()
+            if row is None:
+                raise KeyError(client_order_id)
+            current = (
+                row["broker_order_date"],
+                row["broker_org_no"],
+                row["broker_order_no"],
+            )
+            requested = (
+                normalized["broker_order_date"],
+                normalized["broker_org_no"],
+                normalized["broker_order_no"],
+            )
+            if current == requested:
+                return self._row_to_broker_order_state(row)
+            if any(value is not None for value in current):
+                raise ValueError(
+                    f"broker identity is already bound: {client_order_id}"
+                )
+            try:
+                conn.execute(
+                    "UPDATE broker_orders SET broker_order_date=?,"
+                    "broker_org_no=?,broker_order_no=?,updated_at=? "
+                    "WHERE client_order_id=?",
+                    (*requested, _now(), client_order_id),
+                )
+            except sqlite3.IntegrityError as exc:
+                raise ValueError("broker order identity collision") from exc
+            updated = conn.execute(
+                "SELECT * FROM broker_orders WHERE client_order_id=?",
+                (client_order_id,),
+            ).fetchone()
+            return self._row_to_broker_order_state(updated)
+
+    def update_broker_order(
+        self,
+        client_order_id: str,
+        *,
+        status: OrderStatus,
+        filled_quantity: Decimal,
+        remaining_quantity: Decimal,
+        average_fill_price: Decimal | None,
+    ) -> BrokerOrderState:
+        if not isinstance(status, OrderStatus):
+            raise ValueError("status must be an OrderStatus")
+        for name, value in (
+            ("filled_quantity", filled_quantity),
+            ("remaining_quantity", remaining_quantity),
+        ):
+            if (
+                not isinstance(value, Decimal)
+                or not value.is_finite()
+                or value < 0
+            ):
+                raise ValueError(f"{name} must be a finite non-negative Decimal")
+        if filled_quantity == 0:
+            if average_fill_price is not None:
+                raise ValueError(
+                    "average_fill_price must be None when nothing is filled"
+                )
+        elif (
+            not isinstance(average_fill_price, Decimal)
+            or not average_fill_price.is_finite()
+            or average_fill_price <= 0
+        ):
+            raise ValueError(
+                "average_fill_price must be positive when quantity is filled"
+            )
+        with self._connect(immediate=True) as conn:
+            row = conn.execute(
+                "SELECT * FROM broker_orders WHERE client_order_id=?",
+                (client_order_id,),
+            ).fetchone()
+            if row is None:
+                raise KeyError(client_order_id)
+            requested = Decimal(row["quantity"])
+            if filled_quantity + remaining_quantity != requested:
+                raise ValueError(
+                    "filled_quantity + remaining_quantity must equal requested quantity"
+                )
+            if status is OrderStatus.FILLED and (
+                filled_quantity != requested or remaining_quantity != 0
+            ):
+                raise ValueError(
+                    "FILLED requires the full requested quantity and zero remaining"
+                )
+            if status is OrderStatus.PARTIALLY_FILLED and not (
+                0 < filled_quantity < requested and remaining_quantity > 0
+            ):
+                raise ValueError(
+                    "PARTIALLY_FILLED requires both filled and remaining quantity"
+                )
+            if status in {
+                OrderStatus.CREATED,
+                OrderStatus.PREVIEWED,
+                OrderStatus.SUBMITTED,
+                OrderStatus.ACCEPTED,
+                OrderStatus.REJECTED,
+            } and filled_quantity != 0:
+                raise ValueError(f"{status.value} cannot contain filled quantity")
+            if status is OrderStatus.CANCELED and remaining_quantity <= 0:
+                raise ValueError("CANCELED requires an unfilled remaining quantity")
+            current_status = OrderStatus(row["status"])
+            current_filled = Decimal(row["filled_quantity"])
+            current_remaining = Decimal(row["remaining_quantity"])
+            if filled_quantity < current_filled:
+                raise ValueError("filled_quantity cannot decrease")
+            if remaining_quantity > current_remaining:
+                raise ValueError("remaining_quantity cannot increase")
+            if current_status is not status and not validate_transition(
+                current_status, status
+            ):
+                raise ValueError(
+                    f"invalid order transition: {current_status.value} -> "
+                    f"{status.value}"
+                )
+            now = _now()
+            conn.execute(
+                "UPDATE broker_orders SET status=?,filled_quantity=?,"
+                "remaining_quantity=?,average_fill_price=?,updated_at=? "
+                "WHERE client_order_id=?",
+                (
+                    status.value,
+                    str(filled_quantity),
+                    str(remaining_quantity),
+                    (
+                        str(average_fill_price)
+                        if average_fill_price is not None
+                        else None
+                    ),
+                    now,
+                    client_order_id,
+                ),
+            )
+            if current_status is not status:
+                conn.execute(
+                    "INSERT OR IGNORE INTO order_events "
+                    "(client_order_id,status,occurred_at) VALUES (?,?,?)",
+                    (client_order_id, status.value, now),
+                )
+            updated = conn.execute(
+                "SELECT * FROM broker_orders WHERE client_order_id=?",
+                (client_order_id,),
+            ).fetchone()
+            return self._row_to_broker_order_state(updated)
+
+    def get_pending_broker_orders(
+        self,
+        *,
+        broker: str,
+        broker_mode: str,
+    ) -> list[BrokerOrderState]:
+        normalized_broker = self._normalized_broker_value(broker, "broker")
+        normalized_mode = self._normalized_broker_value(
+            broker_mode, "broker_mode"
+        )
+        placeholders = ",".join("?" for _ in _UNRESOLVED_ORDER_STATUSES)
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT * FROM broker_orders WHERE broker=? AND broker_mode=? "
+                f"AND status IN ({placeholders}) "
+                "ORDER BY updated_at,client_order_id",
+                (
+                    normalized_broker,
+                    normalized_mode,
+                    *(status.value for status in _UNRESOLVED_ORDER_STATUSES),
+                ),
+            ).fetchall()
+        return [self._row_to_broker_order_state(row) for row in rows]
+
+    def save_market_day(
+        self,
+        market: Market,
+        trade_date: str,
+        *,
+        is_open: bool,
+        source: str,
+        broker_mode: str = "paper",
+        checked_at: str | None = None,
+    ) -> dict:
+        if not isinstance(market, Market):
+            raise ValueError("market must be a Market")
+        normalized_date = _validated_trade_date(trade_date)
+        if type(is_open) is not bool:
+            raise ValueError("is_open must be a bool")
+        if not isinstance(source, str) or not source.strip():
+            raise ValueError("source is required")
+        mode = self._normalized_broker_value(broker_mode, "broker_mode")
+        timestamp = _validated_checked_at(checked_at or _now())
+        with self._connect(immediate=True) as conn:
+            conn.execute(
+                "INSERT INTO market_calendar_cache "
+                "(market,broker_mode,trade_date,is_open,source,checked_at) "
+                "VALUES (?,?,?,?,?,?) ON CONFLICT(market,broker_mode,trade_date) "
+                "DO UPDATE SET is_open=excluded.is_open,source=excluded.source,"
+                "checked_at=excluded.checked_at "
+                "WHERE excluded.checked_at > market_calendar_cache.checked_at",
+                (
+                    market.value,
+                    mode,
+                    normalized_date,
+                    int(is_open),
+                    source.strip(),
+                    timestamp,
+                ),
+            )
+        return self.get_market_day(
+            market, normalized_date, broker_mode=mode
+        )
+
+    def get_market_day(
+        self,
+        market: Market,
+        trade_date: str,
+        *,
+        broker_mode: str = "paper",
+    ) -> dict | None:
+        if not isinstance(market, Market):
+            raise ValueError("market must be a Market")
+        normalized_date = _validated_trade_date(trade_date)
+        mode = self._normalized_broker_value(broker_mode, "broker_mode")
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM market_calendar_cache "
+                "WHERE market=? AND broker_mode=? AND trade_date=?",
+                (market.value, mode, normalized_date),
+            ).fetchone()
+        if row is None:
+            return None
+        if row["is_open"] not in {0, 1}:
+            raise ValueError("persisted is_open must be 0 or 1")
+        return {
+            "market": row["market"],
+            "broker_mode": row["broker_mode"],
+            "trade_date": row["trade_date"],
+            "is_open": bool(row["is_open"]),
+            "source": row["source"],
+            "checked_at": row["checked_at"],
+        }
 
     def create_order_if_admissible(
         self, intent: OrderIntent
@@ -2362,8 +2957,8 @@ class Ledger:
             now = _now()
             conn.execute(
                 "INSERT INTO broker_orders "
-                "(client_order_id,market,symbol,side,order_type,quantity,limit_price,currency,strategy_id,reason,status,created_at,updated_at) "
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                "(client_order_id,market,symbol,side,order_type,quantity,limit_price,currency,strategy_id,reason,status,remaining_quantity,created_at,updated_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (
                     intent.client_order_id,
                     intent.market.value,
@@ -2380,6 +2975,7 @@ class Ledger:
                     intent.strategy_id,
                     intent.reason,
                     OrderStatus.CREATED.value,
+                    str(intent.quantity),
                     now,
                     now,
                 ),
@@ -2474,8 +3070,8 @@ class Ledger:
             now = _now()
             conn.execute(
                 "INSERT INTO broker_orders "
-                "(client_order_id,market,symbol,side,order_type,quantity,limit_price,currency,strategy_id,reason,status,created_at,updated_at) "
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                "(client_order_id,market,symbol,side,order_type,quantity,limit_price,currency,strategy_id,reason,status,remaining_quantity,created_at,updated_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (
                     intent.client_order_id,
                     intent.market.value,
@@ -2488,6 +3084,7 @@ class Ledger:
                     intent.strategy_id,
                     intent.reason,
                     OrderStatus.CREATED.value,
+                    str(intent.quantity),
                     now,
                     now,
                 ),
@@ -2848,10 +3445,13 @@ class Ledger:
                     f"invalid order transition: {order.status.value} -> {target.value}"
                 )
             conn.execute(
-                "UPDATE broker_orders SET status=?,filled_quantity=?,average_fill_price=?,updated_at=? WHERE client_order_id=?",
+                "UPDATE broker_orders SET status=?,filled_quantity=?,"
+                "remaining_quantity=?,average_fill_price=?,updated_at=? "
+                "WHERE client_order_id=?",
                 (
                     target.value,
                     str(cumulative),
+                    str(order.intent.quantity - cumulative),
                     str(average_fill),
                     now,
                     fill.client_order_id,

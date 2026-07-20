@@ -320,11 +320,25 @@ class DatabaseCoreSchemaTest(unittest.TestCase):
                     "filled_quantity TEXT NOT NULL DEFAULT '0',"
                     "average_fill_price TEXT,created_at TEXT NOT NULL,"
                     "updated_at TEXT NOT NULL,"
+                    "broker TEXT NOT NULL DEFAULT 'paper',"
+                    "broker_mode TEXT NOT NULL DEFAULT 'simulation',"
+                    "broker_order_date TEXT,broker_org_no TEXT,"
+                    "broker_order_no TEXT,"
+                    "remaining_quantity TEXT NOT NULL DEFAULT '0',"
                     "rogue TEXT NOT NULL DEFAULT (1/0))"
                 )
                 conn.execute(
                     "INSERT INTO broker_orders "
-                    "SELECT *, 'keep' FROM old_orders"
+                    "(client_order_id,market,symbol,side,order_type,quantity,"
+                    "limit_price,currency,strategy_id,reason,status,"
+                    "filled_quantity,average_fill_price,created_at,updated_at,"
+                    "broker,broker_mode,broker_order_date,broker_org_no,"
+                    "broker_order_no,remaining_quantity,rogue) "
+                    "SELECT client_order_id,market,symbol,side,order_type,"
+                    "quantity,limit_price,currency,strategy_id,reason,status,"
+                    "filled_quantity,average_fill_price,created_at,updated_at,"
+                    "broker,broker_mode,broker_order_date,broker_org_no,"
+                    "broker_order_no,remaining_quantity,'keep' FROM old_orders"
                 )
                 conn.execute("DROP TABLE old_orders")
             before = self._schema_snapshot(path, "broker_orders")
@@ -899,6 +913,9 @@ class DatabaseCoreSchemaTest(unittest.TestCase):
             path = Path(tmp) / "old-core.db"
             Ledger(path)
             with sqlite3.connect(path) as conn:
+                conn.execute("DROP INDEX IF EXISTS uq_broker_orders_broker_identity")
+                conn.execute("DROP INDEX IF EXISTS ix_broker_orders_pending_recovery")
+                conn.execute("DROP TABLE IF EXISTS market_calendar_cache")
                 for table in (
                     "entry_contexts",
                     "candidates",
@@ -912,6 +929,22 @@ class DatabaseCoreSchemaTest(unittest.TestCase):
                 ):
                     for column in columns:
                         conn.execute(f"ALTER TABLE {table} DROP COLUMN {column}")
+                broker_columns = {
+                    row[1]
+                    for row in conn.execute("PRAGMA table_info(broker_orders)")
+                }
+                for column in (
+                    "remaining_quantity",
+                    "broker_order_no",
+                    "broker_org_no",
+                    "broker_order_date",
+                    "broker_mode",
+                    "broker",
+                ):
+                    if column in broker_columns:
+                        conn.execute(
+                            f'ALTER TABLE broker_orders DROP COLUMN "{column}"'
+                        )
                 conn.execute(
                     "UPDATE prism_core_meta SET value='1' WHERE key='schema_version'"
                 )
@@ -939,7 +972,7 @@ class DatabaseCoreSchemaTest(unittest.TestCase):
                 version = conn.execute(
                     "SELECT value FROM prism_core_meta WHERE key='schema_version'"
                 ).fetchone()[0]
-            self.assertEqual(version, "5")
+            self.assertEqual(version, "6")
 
     def test_current_course_shell_database_shape_is_preserved_idempotently(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -982,7 +1015,7 @@ class DatabaseCoreSchemaTest(unittest.TestCase):
                     conn.execute(
                         "SELECT value FROM prism_core_meta WHERE key='schema_version'"
                     ).fetchone(),
-                    ("5",),
+                    ("6",),
                 )
 
     def test_concurrent_empty_database_initialization_is_serialized(self):
@@ -1011,7 +1044,7 @@ class DatabaseCoreSchemaTest(unittest.TestCase):
                     conn.execute(
                         "SELECT value FROM prism_core_meta WHERE key='schema_version'"
                     ).fetchone(),
-                    ("5",),
+                    ("6",),
                 )
 
 
