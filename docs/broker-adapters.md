@@ -10,7 +10,8 @@ lecture-prism의 기본 성공 기준은 여전히 **API 키 없이 데모 모�
 | `brokers/base.py` | 모든 브로커가 맞춰야 하는 최소 인터페이스입니다. |
 | `brokers/kis.py` | 기존 한국투자증권 브리지를 감싸는 어댑터입니다. |
 | `brokers/kiwoom.py` | 키움증권 REST API용 교육용 어댑터입니다. |
-| `brokers/toss.py` | 토스증권 파트너/비공개 문서가 있을 때 채워 넣는 안전 템플릿입니다. |
+| `brokers/toss.py` | `tossctl 0.24.1`의 WTS JSON 출력을 변환하는 선택 어댑터입니다. |
+| `brokers/tossctl.py` | shell 없이 고정 버전 CLI를 실행하고 JSON만 받는 보안 경계입니다. |
 | `.env.example` | 브로커를 갈아끼우는 환경변수 예시입니다. 실제 `.env`는 커밋 금지입니다. |
 
 `LECTURE_BROKER` 값만 바꾸면 `trading.py`는 같은 전략 로직을 유지한 채 다른 어댑터를 호출합니다.
@@ -19,7 +20,7 @@ lecture-prism의 기본 성공 기준은 여전히 **API 키 없이 데모 모�
 |---|---|
 | `kis` | 기존 한국투자증권 브리지 사용 |
 | `kiwoom` | 키움증권 REST API 어댑터 사용 |
-| `toss` | 토스증권 안전 템플릿 사용. 기본 상태에서는 주문하지 않음 |
+| `toss` | 토스증권 WTS 선택 어댑터. 기본 상태에서는 주문하지 않음 |
 | `custom` | 수강생이 만든 `module:Class` 어댑터 사용 |
 
 ## 2. 안전장치
@@ -64,19 +65,23 @@ lecture-prism에서 KIS 대신 키움증권 어댑터를 쓰게 설정해줘.
 
 ## 4. 토스증권 어댑터
 
-2026년 6월 28일 기준으로 확인 가능한 토스 공식 개발자 문서는 토스페이먼츠 결제 API 중심입니다. 토스증권의 공개 개인용 주문 API 문서는 확인하지 못했습니다. 그래서 `brokers/toss.py`는 **주문을 보내지 않는 안전 템플릿**입니다.
+토스 연동은 공식 공개 주문 API가 아니라 오픈소스 `tossinvest-cli`의 **비공식 WTS 세션**을 사용합니다. WTS 내부 endpoint와 cookie를 lecture-prism이 직접 다루지 않고, 검증한 `tossctl 0.24.1`의 JSON 출력만 읽습니다.
 
-수강생이 토스증권 파트너/비공개 API 문서를 가져온 경우에는 아래 프롬프트로 확장합니다.
+구현 범위는 국내 지정가 매수·매도, 주문 가능·보유 수량 제한, 주문 조회, 부분·전체 체결, 취소, 재시작 reconcile입니다. 세션 만료나 주문 결과 불명확 상태는 `UNKNOWN`으로 보존해 재주문을 막습니다.
+
+Toss WTS에는 모의투자 backend가 없습니다. 실제 주문에는 공용 이중 플래그와 tossctl 자체 거래 설정이 모두 필요하며, QR 로그인·휴대폰 세션 연장은 사용자가 직접 승인해야 합니다. 자동 환전 동의와 주문 정정은 지원하지 않습니다.
+
+수강생은 코딩 에이전트에게 아래처럼 진단을 맡깁니다.
 
 ```text
-lecture-prism의 brokers/toss.py를 내가 제공하는 토스증권 API 문서에 맞게 채워줘.
+lecture-prism의 Toss WTS 선택 연동을 읽기 전용으로 점검해줘.
 
 조건:
-1. 공개 문서에 없는 엔드포인트를 추측하지 마.
-2. 토큰 발급, 계좌 조회, 주문 요청, 응답 필드를 문서 근거로만 구현해줘.
-3. 실제 키는 .env에만 두고 커밋하지 마.
-4. 기본값은 demo/mock 또는 주문 차단이어야 해.
-5. 먼저 테스트에서 요청 payload만 검증하고, 실제 주문 API 호출은 하지 마.
+1. tossctl 버전, 실행 파일, 인증 만료 여부만 확인하고 세션 파일 내용은 읽거나 출력하지 마.
+2. 매수·매도 → 접수 → 부분/전체 체결 → 취소 → 재시작 reconcile 테스트를 확인해줘.
+3. 실제 계좌 주문은 실행하지 마.
+4. WTS가 비공식 연동이고 영구 무인 로그인을 보장하지 않는다고 알려줘.
+5. 설정이 부족하면 주문을 열지 말고 필요한 사용자 승인만 설명해줘.
 ```
 
 ## 5. 완전히 다른 증권사 붙이기
@@ -115,4 +120,4 @@ lecture-prism에 내가 가져온 증권사 API 문서를 기반으로 새 브�
 - 키움 REST API 가이드: <https://openapi.kiwoom.com/guide/apiguide>
 - 키움 REST API 테스트 샘플: <https://openapi.kiwoom.com/guide/guideTestSample>
 - 토스증권 공식 사이트: <https://www.tossinvest.com/>
-- 토스페이먼츠 개발자센터 API 참고: <https://docs.tosspayments.com/reference>
+- tossinvest-cli 참고 구현: <https://github.com/JungHoonGhae/tossinvest-cli>

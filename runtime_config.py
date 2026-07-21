@@ -7,7 +7,10 @@ the project from `.env` without installing extra configuration packages.
 from __future__ import annotations
 
 import os
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
+from typing import Iterator
 
 from brokers.config import load_dotenv_once, normalize_mode, truthy
 from brokers.factory import selected_broker_name
@@ -17,6 +20,14 @@ _PROFILE_DEFAULTS = {
     "mock": {
         "data_mode": "mock",
         "screening_mode": "mock",
+        "llm_mode": "mock",
+        "report_mode": "lite",
+        "research_tools": "",
+        "trade_mode": "simulation",
+    },
+    "classroom": {
+        "data_mode": "mock",
+        "screening_mode": "fixture",
         "llm_mode": "mock",
         "report_mode": "lite",
         "research_tools": "",
@@ -39,20 +50,28 @@ _PROFILE_DEFAULTS = {
         "trade_mode": "simulation",
     },
     "paper": {
-        "data_mode": "auto",
-        "screening_mode": "mock",
+        "data_mode": "yfinance",
+        "screening_mode": "real",
         "llm_mode": "auto",
         "report_mode": "research",
         "research_tools": "perplexity,firecrawl",
         "trade_mode": "demo",
     },
     "live": {
-        "data_mode": "auto",
-        "screening_mode": "mock",
+        "data_mode": "yfinance",
+        "screening_mode": "real",
         "llm_mode": "auto",
         "report_mode": "research",
         "research_tools": "perplexity,firecrawl",
         "trade_mode": "real",
+    },
+    "backtest": {
+        "data_mode": "mock",
+        "screening_mode": "fixture",
+        "llm_mode": "mock",
+        "report_mode": "lite",
+        "research_tools": "",
+        "trade_mode": "simulation",
     },
 }
 
@@ -60,6 +79,8 @@ _PROFILE_ALIASES = {
     "dummy": "mock",
     "demo": "mock",
     "basic": "mock",
+    "class": "classroom",
+    "replay": "classroom",
     "realdata": "real_data",
     "real-data": "real_data",
     "advanced": "research",
@@ -71,7 +92,11 @@ _PROFILE_ALIASES = {
     "broker-demo": "paper",
     "real": "live",
     "prod": "live",
+    "walk_forward": "backtest",
 }
+
+PROFILE_CHOICES = tuple(sorted(set(_PROFILE_DEFAULTS) | set(_PROFILE_ALIASES)))
+_FIXED_SIMULATION_PROFILES = frozenset({"classroom", "backtest"})
 
 _DATA_ALIASES = {
     "dummy": "mock",
@@ -138,6 +163,22 @@ class RuntimeConfig:
         )
 
 
+_CURRENT_RUNTIME_CONFIG: ContextVar[RuntimeConfig | None] = ContextVar(
+    "lecture_prism_runtime_config", default=None
+)
+
+
+@contextmanager
+def runtime_config_scope(config: RuntimeConfig) -> Iterator[RuntimeConfig]:
+    """Expose one normalized config to all readers in this execution context."""
+
+    token = _CURRENT_RUNTIME_CONFIG.set(config)
+    try:
+        yield config
+    finally:
+        _CURRENT_RUNTIME_CONFIG.reset(token)
+
+
 def _normalize(value: str | None, *, default: str, aliases: dict[str, str],
                allowed: set[str]) -> str:
     text = str(value or default).strip().lower().replace(" ", "_")
@@ -145,8 +186,10 @@ def _normalize(value: str | None, *, default: str, aliases: dict[str, str],
     return text if text in allowed else default
 
 
-def _profile() -> str:
-    raw = os.getenv("LECTURE_PROFILE") or os.getenv("PRISM_PROFILE")
+def _profile(explicit: str | None = None) -> str:
+    raw = explicit
+    if raw is None:
+        raw = os.getenv("LECTURE_PROFILE") or os.getenv("PRISM_PROFILE")
     return _normalize(
         raw,
         default="mock",
@@ -176,7 +219,6 @@ def _llm_enabled(llm_mode: str) -> tuple[bool, bool]:
     oauth_requested = (
         os.getenv("PRISM_OPENAI_AUTH_MODE") == "chatgpt_oauth"
         or llm_mode == "oauth"
-        or bool(os.getenv("OPENAI_BASE_URL"))
     )
     api_ready = bool(os.getenv("OPENAI_API_KEY"))
     if llm_mode == "mock":
@@ -188,12 +230,34 @@ def _llm_enabled(llm_mode: str) -> tuple[bool, bool]:
     return bool(api_ready or oauth_requested), oauth_requested
 
 
-def load_runtime_config() -> RuntimeConfig:
+def load_runtime_config(profile: str | None = None) -> RuntimeConfig:
     """Load `.env` and return normalized runtime settings."""
 
+    scoped = _CURRENT_RUNTIME_CONFIG.get()
+    if profile is None and scoped is not None:
+        return scoped
+
     load_dotenv_once()
-    profile = _profile()
+    profile = _profile(profile)
     defaults = _PROFILE_DEFAULTS[profile]
+
+    if profile in _FIXED_SIMULATION_PROFILES:
+        return RuntimeConfig(
+            profile=profile,
+            data_mode=defaults["data_mode"],
+            screening_mode=defaults["screening_mode"],
+            llm_mode=defaults["llm_mode"],
+            report_mode=defaults["report_mode"],
+            research_tools=(),
+            trade_mode=defaults["trade_mode"],
+            broker="paper",
+            broker_mode="paper",
+            llm_enabled=False,
+            chatgpt_oauth_requested=False,
+            tool_ready={},
+            live_broker_enabled=False,
+            real_broker_allowed=False,
+        )
 
     data_mode = _normalize(
         os.getenv("LECTURE_DATA_MODE") or os.getenv("PRISM_DATA_MODE") or defaults["data_mode"],
@@ -205,8 +269,13 @@ def load_runtime_config() -> RuntimeConfig:
         os.getenv("LECTURE_SCREENING_MODE") or defaults["screening_mode"],
         default=defaults["screening_mode"],
         aliases={"demo": "mock", "pykrx": "real", "yfinance": "real"},
-        allowed={"mock", "real"},
+        allowed={"mock", "fixture", "real"},
     )
+    if profile in {"paper", "live"}:
+        # Operating profiles may not be weakened into fixture/demo decisions
+        # through ambient configuration. Provider errors must stay fail-closed.
+        data_mode = "yfinance"
+        screening_mode = "real"
     llm_mode = _normalize(
         os.getenv("LECTURE_LLM_MODE") or os.getenv("PRISM_LLM_MODE") or defaults["llm_mode"],
         default=defaults["llm_mode"],
@@ -277,9 +346,11 @@ def resolve_trade_dry_run(explicit_live: bool, explicit_dry_run: bool,
                           config: RuntimeConfig | None = None) -> bool:
     """Resolve whether `main.py` should stay in simulation mode."""
 
+    cfg = config or load_runtime_config()
+    if cfg.profile in _FIXED_SIMULATION_PROFILES:
+        return True
     if explicit_live:
         return False
     if explicit_dry_run:
         return True
-    cfg = config or load_runtime_config()
     return cfg.trade_mode == "simulation"

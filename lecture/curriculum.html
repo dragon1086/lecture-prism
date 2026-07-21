@@ -621,7 +621,7 @@
               <span class="time-chip">⏱ 20분</span>
             </div>
             <div class="chapter-desc">
-              "ChatGPT Plus 구독($20/월) 계정을 강의용 어댑터에 붙여 <strong>최신 GPT-5.5</strong>를 파이썬에서 바로 실행하는 법" — 첫 5분에 라이브 연동 시연으로 임팩트를 주고(실무 운영은 정식 API 키 권장), 그 위에 AI-Native 매매 전략이 왜 필요한지 설득. "알고리즘은 공개하면 파훼되지만 LLM 판단은 복제 불가능하다." <span style="color:#64748B;font-size:13px;">(PRISM 실제 구성: 보고서 생성 <code>gpt-5.4-mini</code>, 매매 판단 <code>gpt-5.5</code>)</span>
+              "ChatGPT Plus 구독 계정을 공식 Codex CLI로 연결해 <strong>최신 GPT-5.5</strong>를 파이썬 분석 단계에서 실행하는 법" — 첫 5분에 라이브 연동 시연으로 임팩트를 주고, 별도 과금 API와의 차이 및 mock 폴백을 함께 설명. 그 위에 AI-Native 매매 전략이 왜 필요한지 설득. <span style="color:#64748B;font-size:13px;">(PRISM 실제 구성: 보고서 생성 <code>gpt-5.4-mini</code>, 매매 판단 <code>gpt-5.5</code>)</span>
             </div>
             <div class="chapter-tags">
               <span class="tag tag-demo">Claude Code 데모</span>
@@ -629,8 +629,8 @@
             </div>
             <div class="chapter-bullets">
               <!-- OAuth 오프닝 임팩트 (첫 5분) -->
-              <div class="cc-cmd"><span class="cc-bubble">Claude Code</span><div><span class="cc-text">"lecture-prism에 이미 들어있는 cores/chatgpt_proxy 기본형을 사용해서 ChatGPT Plus OAuth 로그인, localhost:18741 health check, analysis.py 실LLM 실행 검증까지 해줘. 프록시는 새로 만들지 말고 원본 PRISM 축소판 구조를 설명해줘."</span><div class="cc-result">→ 내장 OAuth 프록시 사용 → openai SDK에서 base_url만 바꿔 GPT-5.5 즉시 연동</div></div></div>
-              <div class="cc-cmd"><span class="cc-bubble">Claude Code</span><div><span class="cc-text">"이 프록시 서버 실행하고 KIS API로 삼성전자 현재가 조회한 다음, GPT-5.5에게 '지금 살 만해?' 물어봐줘."</span><div class="cc-result">→ 가격조회 + LLM 판단 + 매수 시뮬레이션 전 사이클 30초 안에 완성</div></div></div>
+              <div class="cc-cmd"><span class="cc-bubble">Claude Code</span><div><span class="cc-text">"공식 Codex CLI의 ChatGPT 로그인 상태를 확인하고 토큰은 읽지 마. lecture-prism에 LECTURE_LLM_MODE=oauth를 적용한 뒤 삼성전자 분석을 한 번만 실행해줘."</span><div class="cc-result">→ 공식 로그인 재사용 → 종목당 단일 구조화 호출 → 실패하면 규칙 분석으로 안전 폴백</div></div></div>
+              <div class="cc-cmd"><span class="cc-bubble">Claude Code</span><div><span class="cc-text">"KIS API로 삼성전자 현재가를 조회하고 공식 Codex 분석을 붙여줘. 실주문은 보내지 말고 LLM이 점수·목표가·손절가를 바꾸지 못하는지도 확인해줘."</span><div class="cc-result">→ 가격조회 + 정성 분석 + 정량 gate + 매수 시뮬레이션 경계 확인</div></div></div>
               <!-- AI-Native 프레임 -->
               <div class="bullet">알고리즘의 딜레마: 공개 → 파훼 → 공유 문화 없음. LLM은 확률론적 판단 → 복제 불가 → 오픈소스로 공유 가능</div>
               <div class="bullet">Anthropic 6패턴 중 PRISM이 실제 쓰는 3개: Prompt Chaining(본 시스템 분석 6에이전트 순차) · Orchestrator-Workers · Evaluator-Optimizer <span style="color:#94A3B8;">(lecture-prism은 이 중 Prompt Chaining을 3에이전트로 경량 구현)</span></div>
@@ -678,17 +678,17 @@
               <span class="time-chip">⏱ 20분</span>
             </div>
             <div class="chapter-desc">
-              코딩 에이전트에게 <code>analysis.py</code> 실행 요청 → 기술적 분석 에이전트 + 뉴스 에이전트 + 투자전략 에이전트 순서로 리포트 생성. "왜 1개 에이전트보다 분리된 여러 에이전트가 나은가"를 결과로 증명.
+              코딩 에이전트에게 <code>analysis.py</code> 실행 요청 → 기술·뉴스·리스크 검토 역할을 한 번의 구조화 호출 안에서 분리해 리포트 생성. "역할은 나누되 호출 비용과 정량 통제권은 어떻게 관리하는가"를 결과로 설명.
             </div>
             <div class="chapter-tags">
               <span class="tag tag-demo">Claude Code 데모</span>
               <span class="tag tag-lecture">에이전트 비교</span>
             </div>
             <div class="chapter-bullets">
-              <div class="cc-cmd"><span class="cc-bubble">Claude Code</span><div><span class="cc-text">"005930 삼성전자 분석 파이프라인 실행해봐. 에이전트별로 어떤 결과가 나오는지 보고 싶어"</span><div class="cc-result">→ 기술적 분석 에이전트 → 뉴스 에이전트 → 투자전략 에이전트 순차 출력</div></div></div>
-              <div class="bullet">1개 에이전트 vs 3개 분리: 같은 질문에 다른 결과 — 생략·편향 차이 화면으로 비교 (Prompt Chaining)</div>
+              <div class="cc-cmd"><span class="cc-bubble">Claude Code</span><div><span class="cc-text">"005930 삼성전자 분석 파이프라인을 실행하고, 한 번의 호출 안에서 기술·뉴스·리스크 역할 결과가 어떻게 나뉘는지 보여줘"</span><div class="cc-result">→ 규칙 근거 생성 → 단일 구조화 LLM 호출 → 세 역할 요약 → 정량 gate 유지</div></div></div>
+              <div class="bullet">무구조 질문 vs 역할이 분리된 구조화 호출: 생략·편향 차이를 비교하되 종목당 호출은 1회로 제한</div>
               <div class="bullet">개념 소개: PRISM 본 시스템은 여기에 <strong>Evaluator-Optimizer</strong>(Summary 생성 → Quality Evaluator 채점 → EXCELLENT까지 루프)를 더해 요약 품질을 보장 — 파트4 트랙B 확장 아이디어로 제시</div>
-              <div class="cc-cmd"><span class="cc-bubble">Claude Code</span><div><span class="cc-text">"기술적 분석 에이전트 프롬프트를 더 보수적으로 수정하고 다시 실행해봐. 결과 어떻게 달라지는지 비교해줘"</span><div class="cc-result">→ CH1에서 띄운 OAuth 프록시 연결 시: 프롬프트 수정 → 실제 LLM이 다시 판단 → 매수 점수 변동 확인 (미연결 시 mock 고정값)</div></div></div>
+              <div class="cc-cmd"><span class="cc-bubble">Claude Code</span><div><span class="cc-text">"기술적 분석 역할 프롬프트를 더 보수적으로 수정하고 다시 실행해봐. 정성 요약과 veto가 어떻게 달라지고 정량 점수는 왜 그대로인지 비교해줘"</span><div class="cc-result">→ 공식 Codex 연결 시 정성 서술·veto만 변화, 매수 점수·목표가·손절가는 규칙 엔진이 유지</div></div></div>
             </div>
           </div>
         </div>

@@ -86,6 +86,24 @@ class RuntimeConfigTest(unittest.TestCase):
         self.assertEqual(cfg.report_mode, "lite")
         self.assertEqual(cfg.research_tools, ("perplexity",))
 
+    def test_openai_base_url_alone_does_not_enable_private_oauth_proxy(self):
+        os.environ["LECTURE_PROFILE"] = "research"
+        os.environ["OPENAI_BASE_URL"] = "http://localhost:18741/v1"
+
+        cfg = runtime_config.load_runtime_config()
+
+        self.assertFalse(cfg.llm_enabled)
+        self.assertFalse(cfg.chatgpt_oauth_requested)
+
+    def test_explicit_oauth_mode_needs_no_api_key(self):
+        os.environ["LECTURE_PROFILE"] = "research"
+        os.environ["LECTURE_LLM_MODE"] = "oauth"
+
+        cfg = runtime_config.load_runtime_config()
+
+        self.assertTrue(cfg.llm_enabled)
+        self.assertTrue(cfg.chatgpt_oauth_requested)
+
 
 if __name__ == "__main__":
     unittest.main()

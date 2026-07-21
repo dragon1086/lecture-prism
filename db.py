@@ -79,6 +79,10 @@ def init_db() -> None:
         except sqlite3.OperationalError:
             pass  # 이미 존재
 
+    from prism_core.ledger import Ledger
+
+    Ledger(DB_PATH)
+
 
 def _now() -> str:
     return datetime.now().isoformat(timespec="seconds")
@@ -145,6 +149,54 @@ def save_lesson(ticker: str, action: str, lesson: str,
             "VALUES (?,?,?,?,?,?)",
             (_now(), ticker, action, lesson, tier, error_type),
         )
+
+
+# ── 외부 브로커 주문/시장일 facade ────────────────────────────────────────────
+
+def _ledger():
+    """Return the single prism_core ledger without duplicating its SQL rules."""
+
+    from prism_core.ledger import Ledger
+
+    return Ledger(DB_PATH)
+
+
+def save_broker_order(intent, *, broker: str, broker_mode: str):
+    return _ledger().save_broker_order(
+        intent, broker=broker, broker_mode=broker_mode
+    )
+
+
+def get_broker_order_state(client_order_id: str):
+    return _ledger().get_broker_order_state(client_order_id)
+
+
+def admit_broker_order(intent, *, broker: str, broker_mode: str):
+    return _ledger().admit_broker_order(
+        intent, broker=broker, broker_mode=broker_mode
+    )
+
+
+def bind_broker_identity(client_order_id: str, **identity):
+    return _ledger().bind_broker_identity(client_order_id, **identity)
+
+
+def update_broker_order(client_order_id: str, **snapshot):
+    return _ledger().update_broker_order(client_order_id, **snapshot)
+
+
+def get_pending_broker_orders(*, broker: str, broker_mode: str):
+    return _ledger().get_pending_broker_orders(
+        broker=broker, broker_mode=broker_mode
+    )
+
+
+def save_market_day(market, trade_date: str, **values):
+    return _ledger().save_market_day(market, trade_date, **values)
+
+
+def get_market_day(market, trade_date: str, **filters):
+    return _ledger().get_market_day(market, trade_date, **filters)
 
 
 # ── 읽기 (feedback.py 교훈 주입 / dashboard.py 표시) ──────────────────────────

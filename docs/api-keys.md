@@ -21,7 +21,7 @@ lecture-prism은 **API 키 없이도 기본 데모가 바로 실행**되도록 �
 |---|---|---|
 | 키 없이 전체 흐름 확인 | `LECTURE_PROFILE=mock` | 없음 |
 | 실제 가격·거래량만 사용 | `LECTURE_PROFILE=real_data` | 없음 (yfinance는 무료·무키) |
-| 최신 뉴스·시장 리서치 보강 | `LECTURE_PROFILE=research` | OpenAI API 키 또는 강의용 구독 어댑터, 선택으로 Perplexity/Firecrawl |
+| 최신 뉴스·시장 리서치 보강 | `LECTURE_PROFILE=research` | ChatGPT Plus/Pro 로그인 또는 OpenAI API 키, 선택으로 Perplexity/Firecrawl |
 | 증권사 모의투자 주문 경로 | `LECTURE_PROFILE=paper` | 브로커 demo 키, KIS라면 `kis_devlp.yaml` |
 | 실전투자 | `LECTURE_PROFILE=live` | 브로커 real 키, 이중 안전 플래그 |
 
@@ -31,10 +31,20 @@ lecture-prism은 **API 키 없이도 기본 데모가 바로 실행**되도록 �
 
 | 방식 | 수강생 준비물 | 설명 |
 |---|---|---|
-| 강의용 ChatGPT 어댑터 | ChatGPT Plus 또는 Pro 계정 | 이 리포지토리의 `cores/chatgpt_proxy` 기본형. 구독 계정을 로그인해 붙이는 강의·실습 편의용 경로입니다. |
-| OpenAI API (정식·권장) | `OPENAI_API_KEY` | 정식으로 지원되는 안정적 경로. 실제 서비스 운영에는 이 방식을 권장합니다. |
+| 공식 Codex 구독 경로 | ChatGPT Plus 또는 Pro 계정, Codex CLI | 최초 `codex login` 후 공식 CLI가 토큰 저장·갱신을 맡습니다. 프로젝트는 인증 파일을 직접 읽지 않으며 종목당 통합 분석을 한 번만 호출합니다. |
+| OpenAI API | `OPENAI_API_KEY` | ChatGPT 구독과 별도 과금되는 API 경로입니다. 서버형 운영이나 사용량 기반 제어가 필요할 때 선택합니다. |
 
-초보 수강생에게는 **기본 실습을 mock으로 두고**, 구독 어댑터나 API 키 연동은 **강사 데모 또는 선택 실습**으로 보여주는 구성이 가장 쉽고 안전합니다.
+초보 수강생에게는 **기본 실습을 mock으로 두고**, 구독 또는 API 키 연동은 선택 실습으로 보여주는 구성이 가장 쉽고 안전합니다. OAuth는 아래 문장을 코딩 에이전트에게 그대로 붙여넣으세요.
+
+```text
+내 컴퓨터에서 Codex CLI 설치 상태와 ChatGPT 로그인 상태를 확인해줘.
+로그인이 안 되어 있으면 공식 codex login 절차를 안내하고, 브라우저를 쓸 수 없는 환경이면 device auth를 사용해줘.
+로그인 뒤 lecture-prism의 .env에서 LECTURE_LLM_MODE=oauth만 켜고,
+실거래 없이 종목 1개 통합 분석이 한 번의 LLM 호출로 완주하는지 확인해줘.
+인증 파일과 토큰 내용은 읽거나 출력하거나 복사하지 마.
+```
+
+로그인은 보통 최초 1회만 필요하고 이후 access token 갱신은 Codex가 처리합니다. 로그아웃되거나 구독 호출이 실패하면 lecture-prism은 주문 조건을 완화하지 않고 규칙 분석으로 돌아갑니다.
 
 ## 4. 실데이터·리서치 도구
 
@@ -52,7 +62,7 @@ Perplexity와 Firecrawl은 `LECTURE_REPORT_MODE=research`이고 해당 키가 �
 |---|---|---|
 | KIS 모의투자 조회·주문 구조 | 한국투자증권 모의투자 App Key, App Secret, HTS ID, 계좌번호 앞 8자리, 상품코드 2자리 | 심화 |
 | Kiwoom 모의투자/REST 구조 | 키움증권 REST API App Key, Secret Key 또는 Access Token | 심화 |
-| Toss Securities | 2026년 6월 28일 기준 공개 공식 주문 API 문서 확인 불가. 파트너/비공개 문서가 있을 때만 템플릿 확장 | 선택 |
+| Toss Securities | `tossctl 0.24.1`과 사용자가 직접 승인한 WTS 로그인 세션. API 키는 lecture-prism이 보관하지 않음 | 선택 |
 | 실전투자 | 각 증권사 실전투자 키와 실제 계좌 정보 | 강의 기본 실습에서는 금지 |
 
 `trading.py`는 실거래 요청을 기본으로 차단합니다. KIS만 고정으로 쓰지 않고 `.env`의 `LECTURE_BROKER` 값으로 브로커 어댑터를 바꿀 수 있습니다.
@@ -61,7 +71,7 @@ Perplexity와 Firecrawl은 `LECTURE_REPORT_MODE=research`이고 해당 키가 �
 |---|---|---|
 | 한국투자증권 | `LECTURE_BROKER=kis` | 기존 PRISM KIS 브리지 wrapping |
 | 키움증권 | `LECTURE_BROKER=kiwoom` | 공식 REST API의 `/oauth2/token`, `/api/dostk/ordr`, `kt10000/kt10001` 구조 반영 |
-| 토스증권 | `LECTURE_BROKER=toss` | 공개 주문 API 미확인으로 기본 차단 템플릿 제공 |
+| 토스증권 | `LECTURE_BROKER=toss` | 비공식 WTS 선택 어댑터. 매수·매도·조회·취소·재시작 reconcile, 인증 만료·UNKNOWN 차단 |
 | 기타 증권사 | `LECTURE_BROKER=custom` | `LECTURE_BROKER_ADAPTER=module:Class`로 수강생 전용 어댑터 연결 |
 
 자세한 확장 방식은 [`docs/broker-adapters.md`](broker-adapters.md)를 참고하세요.

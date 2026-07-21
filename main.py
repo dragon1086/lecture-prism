@@ -14,7 +14,6 @@ from __future__ import annotations
 import asyncio
 import argparse
 import logging
-import os
 from typing import Optional
 
 logging.basicConfig(
@@ -25,57 +24,12 @@ logging.basicConfig(
 log = logging.getLogger("main")
 
 
-_OPENAI_ENV_KEYS = ("OPENAI_BASE_URL", "OPENAI_API_KEY")
-
-
-def _restore_openai_env(saved: dict[str, str | None]) -> None:
-    """Restore OpenAI env vars after a failed/finished OAuth proxy run."""
-    for key, value in saved.items():
-        if value is None:
-            os.environ.pop(key, None)
-        else:
-            os.environ[key] = value
-
-
-async def _maybe_start_chatgpt_oauth_proxy() -> tuple[bool, dict[str, str | None]]:
-    """
-    Mirror the full PRISM pattern in a teaching-safe way.
-
-    If PRISM_OPENAI_AUTH_MODE=chatgpt_oauth, start the bundled OAuth proxy and
-    inject OPENAI_BASE_URL/OPENAI_API_KEY before analysis.py imports the OpenAI
-    client. If anything is missing, restore env vars and let analysis.py fall
-    back to mock mode instead of blocking the beginner demo.
-    """
-    saved = {key: os.environ.get(key) for key in _OPENAI_ENV_KEYS}
-    from runtime_config import load_runtime_config
-
-    cfg = load_runtime_config()
-    if not cfg.llm_enabled or not cfg.chatgpt_oauth_requested or os.getenv("OPENAI_BASE_URL"):
-        return False, saved
-
-    try:
-        from cores.chatgpt_proxy import inject_env, start_proxy
-    except ImportError as exc:
-        log.warning("ChatGPT OAuth 프록시 의존성이 없어 mock 모드로 진행합니다: %s", exc)
-        return False, saved
-
-    inject_env()
-    started = await start_proxy()
-    if started:
-        log.info("ChatGPT OAuth 프록시 연결: %s", os.environ.get("OPENAI_BASE_URL"))
-        return True, saved
-
-    _restore_openai_env(saved)
-    log.warning("ChatGPT OAuth 프록시 시작 실패 — LLM 분석은 mock 폴백으로 진행합니다.")
-    return False, saved
-
-
 def _resolve_runtime_options(args) -> dict:
     """Resolve CLI flags plus `.env` profile into pipeline options."""
 
     from runtime_config import load_runtime_config, resolve_trade_dry_run
 
-    cfg = load_runtime_config()
+    cfg = load_runtime_config(getattr(args, "profile", None))
     return {
         "config": cfg,
         "dry_run": resolve_trade_dry_run(
@@ -83,17 +37,38 @@ def _resolve_runtime_options(args) -> dict:
             explicit_dry_run=bool(getattr(args, "dry_run", False)),
             config=cfg,
         ),
-        "use_real_data": bool(getattr(args, "real", False) or cfg.screening_mode == "real"),
+        "use_real_data": bool(
+            cfg.profile not in {"classroom", "backtest"}
+            and (getattr(args, "real", False) or cfg.screening_mode == "real")
+        ),
     }
 
 
 async def run_pipeline(dry_run: bool = True, target_ticker: Optional[str] = None,
-                       use_real_data: bool = False):
-    proxy_started = False
-    saved_openai_env: dict[str, str | None] = {}
+                       use_real_data: bool = False, config=None):
+    from runtime_config import load_runtime_config, runtime_config_scope
 
+    cfg = config or load_runtime_config()
+    with runtime_config_scope(cfg):
+        return await _run_pipeline_scoped(
+            dry_run=dry_run,
+            target_ticker=target_ticker,
+            use_real_data=use_real_data,
+            config=cfg,
+        )
+
+
+async def _run_pipeline_scoped(
+    dry_run: bool = True,
+    target_ticker: Optional[str] = None,
+    use_real_data: bool = False,
+    config=None,
+):
     from runtime_config import load_runtime_config
-    cfg = load_runtime_config()
+    cfg = config or load_runtime_config()
+    if cfg.profile in {"classroom", "backtest"}:
+        dry_run = True
+        use_real_data = False
 
     log.info("=" * 60)
     log.info("lecture-prism 파이프라인 시작")
@@ -101,68 +76,77 @@ async def run_pipeline(dry_run: bool = True, target_ticker: Optional[str] = None
     log.info(f"런타임 설정: {cfg.summary()}")
     log.info("=" * 60)
 
-    try:
-        proxy_started, saved_openai_env = await _maybe_start_chatgpt_oauth_proxy()
+    if cfg.profile == "classroom":
+        from db import DB_PATH
+        from prism_core.classroom import run_classroom_replay
 
-        # Step 1: 스크리닝
-        log.info("[1/4] 스크리닝 시작 — 전종목 필터링")
-        from screening import run_screening
-        candidates = await run_screening(target_ticker=target_ticker, use_real=use_real_data)
-        log.info(f"      → 선정 종목: {candidates}")
+        summary = await asyncio.to_thread(run_classroom_replay, DB_PATH)
+        log.info("classroom replay 완료: %s", summary)
+        return summary
 
-        if not candidates:
-            log.info("선정 종목 없음. 파이프라인 종료.")
-            return
+    # Step 1: 스크리닝
+    log.info("[1/4] 스크리닝 시작 — 전종목 필터링")
+    from screening import run_screening
+    candidates = await run_screening(target_ticker=target_ticker, use_real=use_real_data)
+    log.info(f"      → 선정 종목: {candidates}")
 
-        # Step 2: 분석
-        log.info("[2/4] 분석 파이프라인 시작")
-        from analysis import run_analysis
-        analyses = []
-        for ticker in candidates:
-            log.info(f"      → {ticker} 분석 중...")
-            result = await run_analysis(ticker)
-            analyses.append(result)
-            log.info(f"      → {ticker} 완료: 추천={result['recommendation']}({result['decision']}), "
-                     f"매수점수={result['buy_score']}/10, 목표가={result['target_price']:,}원")
+    if not candidates:
+        log.info("선정 종목 없음. 파이프라인 종료.")
+        return
 
-        from report_writer import write_reports
-        report_paths = await asyncio.to_thread(write_reports, analyses)
-        if report_paths:
-            joined = ", ".join(str(path) for path in report_paths)
-            log.info(f"      → 분석 보고서 저장: {joined}")
+    # Step 2: 분석
+    log.info("[2/4] 분석 파이프라인 시작")
+    from analysis import run_analysis
+    analyses = []
+    for ticker in candidates:
+        log.info(f"      → {ticker} 분석 중...")
+        result = await run_analysis(ticker)
+        analyses.append(result)
+        log.info(f"      → {ticker} 완료: 추천={result['recommendation']}({result['decision']}), "
+                 f"매수점수={result['buy_score']}/10, 목표가={result['target_price']:,}")
 
-        # Step 3: 매매
-        log.info("[3/4] 매매 의사결정 시작")
-        from trading import run_trading
-        trade_results = await run_trading(analyses, dry_run=dry_run)
-        log.info(f"      → 체결 건수: {len(trade_results)}")
+    from report_writer import write_reports
+    report_paths = await asyncio.to_thread(write_reports, analyses)
+    if report_paths:
+        joined = ", ".join(str(path) for path in report_paths)
+        log.info(f"      → 분석 보고서 저장: {joined}")
 
-        # Step 4: 피드백
-        log.info("[4/4] 피드백 & 매매일지 기록")
-        from feedback import run_feedback
-        await run_feedback(trade_results, analyses)
-        log.info("      → 매매일지 저장 완료")
+    # Step 3: 매매
+    log.info("[3/4] 매매 의사결정 시작")
+    from trading import run_trading
+    trade_results = await run_trading(analyses, dry_run=dry_run)
+    log.info(f"      → 체결 건수: {len(trade_results)}")
 
-        log.info("=" * 60)
-        log.info("파이프라인 완료")
-        log.info(f"대시보드: http://localhost:8080")
-        log.info("=" * 60)
-    finally:
-        if proxy_started:
-            try:
-                from cores.chatgpt_proxy import stop_proxy
-                await stop_proxy()
-            finally:
-                _restore_openai_env(saved_openai_env)
+    # Step 4: 피드백
+    log.info("[4/4] 피드백 & 매매일지 기록")
+    from feedback import run_feedback
+    await run_feedback(trade_results, analyses)
+    log.info("      → 매매일지 저장 완료")
+
+    log.info("=" * 60)
+    log.info("파이프라인 완료")
+    log.info("대시보드: http://localhost:8080")
+    log.info("=" * 60)
 
 
-if __name__ == "__main__":
+def _build_arg_parser() -> argparse.ArgumentParser:
+    from runtime_config import PROFILE_CHOICES
+
     parser = argparse.ArgumentParser(description="lecture-prism 자동매매 시스템")
+    parser.add_argument(
+        "--profile",
+        choices=PROFILE_CHOICES,
+        help="런타임 프로필 (환경변수 LECTURE_PROFILE보다 우선)",
+    )
     parser.add_argument("--dry-run", action="store_true", help="시뮬레이션 모드로 강제 실행")
     parser.add_argument("--live", action="store_true", help="실거래 모드 (KIS API 필요)")
     parser.add_argument("--ticker", type=str, help="특정 종목 코드 (예: 005930)")
     parser.add_argument("--real", action="store_true", help="스크리닝에 yfinance 실데이터 사용 (기본: 데모값)")
-    args = parser.parse_args()
+    return parser
+
+
+if __name__ == "__main__":
+    args = _build_arg_parser().parse_args()
 
     options = _resolve_runtime_options(args)
     asyncio.run(
@@ -170,5 +154,6 @@ if __name__ == "__main__":
             dry_run=options["dry_run"],
             target_ticker=args.ticker,
             use_real_data=options["use_real_data"],
+            config=options["config"],
         )
     )
