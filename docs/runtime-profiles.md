@@ -1,6 +1,9 @@
 # 런타임 프로필 가이드
 
-lecture-prism은 한 저장소 안에서 초급자용 더미 데모부터 상태가 남는 교실 재생, 선택 실데이터·리서치·브로커 연결까지 단계적으로 구분합니다. 프로필 이름이 있다고 해서 해당 운영 경로가 모두 완성됐다는 뜻은 아닙니다.
+lecture-prism은 한 저장소 안에서 초급자용 더미 데모부터 상태가 남는 교실 재생, 선택 실데이터·리서치·브로커 연결까지 단계적으로 구분합니다. 문서를 읽을 때는 먼저 **기본 학습 경로**와 **상태 기반 고급 경로**를 구분하세요.
+
+- **기본 학습 경로**: `mock`과 `real_data`가 루트 `screening.py` → `analysis.py` → `trading.py` → `feedback.py`를 사용합니다. API 키 없는 첫 성공과 전략 A/B/C/D 수정의 출발점입니다.
+- **상태 기반 고급 경로**: `classroom`, `backtest`, `paper`, `live`가 `prism_core`의 시장 국면·후보·주문 원장·체결 증거를 사용하거나 그 계약을 검증합니다. `paper/live`는 market provider 오류를 mock 매매로 바꾸지 않고 fail-closed로 막습니다.
 
 수강생이 기본적으로 만지는 파일은 두 개입니다.
 
@@ -21,7 +24,7 @@ lecture-prism은 한 저장소 안에서 초급자용 더미 데모부터 상태
 | `classroom` | 고정 KR/US fixture + regime screening | LLM 없음 | 상태형 paper replay | regime·candidate·order·fill 증거 학습 |
 | `real_data` | yfinance 실데이터, 실패하면 더미 데이터 | 6섹션 기본 보고서 | 가상 매매 | 실제 가격·거래량으로 보고 싶은 수강생 |
 | `research` | 실데이터 | LLM + Perplexity/Firecrawl 선택 리서치 | 가상 매매 | 원본 PRISM에 가까운 분석을 원하는 수강생 |
-| `paper` | yfinance 실데이터 | research 보고서 | 증권사 모의투자 설정 경로 | provider 실패 시 fail-closed; 브로커 lifecycle은 후속 과제 |
+| `paper` | yfinance 실데이터 | research 보고서 | KIS 모의투자 등 선택 broker 경로 | provider 실패 시 fail-closed; KIS/Toss lifecycle은 fixture 검증 범위 |
 | `live` | yfinance 실데이터 | research 보고서 | 이중 잠금된 실전 설정 경로 | provider fail-closed + 별도 live gate; 운영 준비 완료 아님 |
 | `backtest` | 고정 fixture | LLM 없음 | legacy stateless simulation | 고정 fixture 호환 검증 |
 
@@ -114,7 +117,7 @@ LECTURE_REPORT_MODE=research
 LECTURE_RESEARCH_TOOLS=""
 ```
 
-얻는 것: 공식 Codex 로그인으로 기술·뉴스·전략 역할을 종목당 한 번의 구조화 호출로 실행합니다. Perplexity/Firecrawl은 비워 둬도 되며 선택적으로만 보강합니다. 최초 연결은 `docs/api-keys.md`의 코딩 에이전트용 로그인 프롬프트를 사용하세요.
+얻는 것: 공식 Codex 로그인으로 기술·뉴스·리스크 정성 역할을 종목당 한 번의 구조화 호출로 실행합니다. 추천·점수·목표가·손절가는 규칙이 소유하고, LLM은 BUY를 HOLD로만 veto할 수 있습니다. Perplexity/Firecrawl은 비워 둬도 되며 선택적으로만 보강합니다. 최초 연결은 `docs/api-keys.md`의 코딩 에이전트용 로그인 프롬프트를 사용하세요.
 
 ### KIS 모의투자 전체 주문 주기 확인
 
@@ -159,7 +162,7 @@ LECTURE_KIS_MODE=real
 
 추가로 `kis_devlp.yaml`의 `default_mode`와 계좌별 `mode`도 `real`이어야 합니다.
 
-이중 플래그는 market provider fail-closed와 별개인 **별도 live gate**입니다. 이것만으로 live 운영 준비가 완료되지 않으며, KIS full lifecycle 검증 전에는 실제 주문 경로를 켜지 않습니다.
+이중 플래그는 market provider fail-closed와 별개인 **별도 live gate**입니다. KIS와 Toss의 전체 수명주기는 코드와 고정 fixture로 검증했지만, 그것만으로 live 운영 준비가 완료되지는 않습니다. 실제 계좌 E2E는 실제 키·장 운영시간·사용자 승인이 필요한 별도 작업이므로, 강의 문서와 자동 테스트는 주문 경로를 실행하지 않습니다.
 
 ## 5. 보고서 산출물
 

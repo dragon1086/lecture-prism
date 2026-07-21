@@ -1,7 +1,12 @@
-"""Render README infographic PNG assets.
+"""Render deterministic README infographic PNG assets.
 
 This is a maintainer utility, not a runtime dependency. The lecture demo path
 still uses only the Python standard library.
+
+The five architecture-heavy assets in ``docs/assets/readme`` are curated with
+GPT Image 2 (strategy-to-kis, system-result, module guide, optional
+integrations, and runtime map). Keep this renderer from overwriting those
+reviewed images; regenerate only the deterministic learner aids below.
 """
 
 from __future__ import annotations
@@ -634,11 +639,8 @@ def main() -> None:
     hero_learning_map()
     five_minute_start()
     pipeline_map()
-    module_guide()
-    optional_integrations_safety()
     strategy_harness_lite()
     submission_security()
-    runtime_architecture_map()
 
 
 if __name__ == "__main__":

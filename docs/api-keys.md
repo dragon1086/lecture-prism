@@ -22,7 +22,7 @@ lecture-prism은 **API 키 없이도 기본 데모가 바로 실행**되도록 �
 | 키 없이 전체 흐름 확인 | `LECTURE_PROFILE=mock` | 없음 |
 | 실제 가격·거래량만 사용 | `LECTURE_PROFILE=real_data` | 없음 (yfinance는 무료·무키) |
 | 최신 뉴스·시장 리서치 보강 | `LECTURE_PROFILE=research` | ChatGPT Plus/Pro 로그인 또는 OpenAI API 키, 선택으로 Perplexity/Firecrawl |
-| 증권사 모의투자 주문 경로 | `LECTURE_PROFILE=paper` | 브로커 demo 키, KIS라면 `kis_devlp.yaml` |
+| 증권사 모의투자 주문 경로 | `LECTURE_PROFILE=paper` | 실데이터 연결과 KIS 모의투자 키(선택 broker별 요구 사항은 다름) |
 | 실전투자 | `LECTURE_PROFILE=live` | 브로커 real 키, 이중 안전 플래그 |
 
 ## 3. 실제 LLM 응답을 보고 싶을 때
@@ -69,12 +69,14 @@ Perplexity와 Firecrawl은 `LECTURE_REPORT_MODE=research`이고 해당 키가 �
 
 | 브로커 | 선택값 | 구현 상태 |
 |---|---|---|
-| 한국투자증권 | `LECTURE_BROKER=kis` | 기존 PRISM KIS 브리지 wrapping |
+| 한국투자증권 | `LECTURE_BROKER=kis` | 매수·매도·조회·취소·재시작 reconcile을 구현하고 fixture로 검증한 KIS 어댑터 |
 | 키움증권 | `LECTURE_BROKER=kiwoom` | 공식 REST API의 `/oauth2/token`, `/api/dostk/ordr`, `kt10000/kt10001` 구조 반영 |
 | 토스증권 | `LECTURE_BROKER=toss` | 비공식 WTS 선택 어댑터. 매수·매도·조회·취소·재시작 reconcile, 인증 만료·UNKNOWN 차단 |
 | 기타 증권사 | `LECTURE_BROKER=custom` | `LECTURE_BROKER_ADAPTER=module:Class`로 수강생 전용 어댑터 연결 |
 
 자세한 확장 방식은 [`docs/broker-adapters.md`](broker-adapters.md)를 참고하세요.
+
+KIS와 Toss의 수명주기는 `UNKNOWN`이면 재주문을 막는 공통 원장을 사용합니다. 이는 코드·fixture 검증 범위이며, 실제 계좌 E2E가 수행되었다는 뜻은 아닙니다.
 
 수강생이 키움증권이나 다른 증권사 API를 준비해 왔다면, 직접 파일을 고치게 하지 말고 코딩 에이전트에게 아래처럼 말하게 하세요.
 

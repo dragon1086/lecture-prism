@@ -2,6 +2,11 @@
 
 이 문서는 코드를 처음 보는 수강생이 “어느 파일이 어떤 역할을 하는지” 먼저 잡을 수 있도록 만든 그림 설명입니다. README와 같은 한글 PNG 그림을 사용하므로 SVG/Mermaid 다이어그램을 읽지 않아도 흐름을 볼 수 있습니다.
 
+현재 강의 코드는 두 실행 경로를 함께 갖습니다.
+
+- **기본 학습 경로**는 `mock`/`real_data`의 루트 4단계 파이프라인입니다. API 키 없는 첫 성공과 한 파일 중심의 전략 수정을 위한 경로입니다.
+- **상태 기반 고급 경로**는 `classroom`/`backtest`/`paper`/`live`와 `prism_core`의 regime·candidate·order·fill·ledger 계약입니다. `classroom`은 고정 offline 재생이고, `paper/live`는 provider 오류에서 fail-closed로 멈춥니다.
+
 ## 1. 전체 학습 지도
 
 ![강의 학습 지도](assets/readme/hero-learning-map.png)
@@ -14,19 +19,19 @@
 
 처음에는 설치·OAuth·Git을 한꺼번에 해결하지 않습니다. 가장 먼저 볼 것은 **API 키 없이 기본 데모가 실행되는지**입니다.
 
-## 3. 강의용 투자 파이프라인
+## 3. 기본 학습 경로 — 강의용 투자 파이프라인
 
 ![강의용 투자 파이프라인 지도](assets/readme/pipeline-map.png)
 
 | 단계 | 파일 | 쉬운 비유 | 결과 |
 |---|---|---|---|
 | 1 | `screening.py` | 넓은 시장에서 볼 종목을 줄이는 체 | 후보 종목 리스트 |
-| 2 | `analysis.py` | 후보를 여러 관점에서 읽는 AI 분석팀 | 추천, 점수, 근거, 리스크 |
-| 3 | `trading.py` | 살지 말지, 얼마나 살지 정하는 매매 규칙 | 시뮬레이션 체결 결과 |
+| 2 | `analysis.py` | 후보를 읽는 규칙 + 단일 정성 LLM 호출 | 규칙 추천·점수와 정성 근거·veto |
+| 3 | `trading.py` | 살지 말지, 얼마나 살지 정하는 매매 규칙 | simulation 결과 또는 안전한 broker handoff |
 | 4 | `feedback.py` | 매매일지를 쓰고 교훈을 뽑는 회고 담당 | 다음 판단에 쓸 교훈 |
 | 5 | `dashboard.py` | 결과를 눈으로 보는 화면 | 웹 대시보드 |
 
-LLM 연결이 없으면 더미 응답으로 동작합니다. 그래서 수업 초반에는 API 키가 없어도 전체 흐름을 먼저 볼 수 있습니다.
+LLM 연결이 없으면 더미 응답으로 동작합니다. 그래서 수업 초반에는 API 키가 없어도 전체 흐름을 먼저 볼 수 있습니다. 추천·점수·목표가·손절가는 규칙이 소유하며, LLM은 BUY를 HOLD로만 veto할 수 있습니다.
 
 ## 4. 옵션별 전체 아키텍처
 
@@ -50,7 +55,7 @@ LLM 연결이 없으면 더미 응답으로 동작합니다. 그래서 수업 �
 
 ![API 키와 선택 연동 안전 지도](assets/readme/optional-integrations-safety.png)
 
-강의 기본 실습에는 필수 API 키가 없습니다. 실제 LLM은 공식 Codex의 ChatGPT 구독 로그인 또는 별도 OpenAI API 키로 선택 연결하고, KIS API는 심화 실습에서만 다룹니다. `trading.py`는 실거래 요청을 기본으로 차단합니다.
+강의 기본 실습에는 필수 API 키가 없습니다. 실제 LLM은 공식 Codex의 ChatGPT 구독 로그인 또는 별도 OpenAI API 키로 선택 연결하고, KIS·Toss는 심화 실습에서만 다룹니다. `trading.py`는 실거래 요청을 기본으로 차단합니다.
 
 ## 7. 전략 하네스
 
@@ -66,12 +71,12 @@ GitHub에 올려야 하는 것은 학습 코드와 문서입니다. 실제 API �
 
 ## 9. 본 시스템과의 관계
 
-lecture-prism은 PRISM 본 시스템의 축소판입니다.
+lecture-prism은 PRISM 본 시스템의 축소판입니다. 아래 링크와 `docs/assets/prism-insight/` 그림은 **원본 PRISM의 참고 아키텍처**이며, 현재 lecture-prism의 실행 경로를 그대로 설명하지는 않습니다.
 
 | 본 시스템에서 배우는 개념 | lecture-prism에서 보는 위치 |
 |---|---|
-| 많은 데이터 중 후보만 추리기 | `screening.py` |
-| 여러 AI 에이전트를 순서대로 연결하기 | `analysis.py` |
+| 많은 데이터 중 후보만 추리기 | root `screening.py`, 고급 경로의 `prism_core/screening.py` |
+| 여러 AI 에이전트를 순서대로 연결하기 | 원본 PRISM 참고 자료; lecture-prism은 단일 구조화 호출 |
 | 공식 Codex 구독 또는 API 키로 실제 LLM 붙이기 | `llm_provider.py`, `analysis.py` |
 | 주문 전 리스크 판단하기 | `trading.py` |
 | 매매일지와 장기 기억 만들기 | `feedback.py`, `db.py` |

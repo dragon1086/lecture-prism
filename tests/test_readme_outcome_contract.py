@@ -35,6 +35,15 @@ class ReadmeOutcomeContractTest(unittest.TestCase):
         self.assertIn("KIS 실전투자", self.readme)
         self.assertNotIn("LECTURE_ALLOW_REAL_BROKER", self.readme)
 
+    def test_readme_keeps_the_first_run_simple_but_names_current_broker_scope(self):
+        for phrase in (
+            "기본 학습 경로",
+            "상태 기반 고급 경로",
+            "매수·매도·조회·취소·재시작 reconcile",
+        ):
+            self.assertIn(phrase, self.readme)
+        self.assertNotIn("KIS 실전투자 매수 주문 경로", self.readme)
+
     def test_kis_bridge_optional_dependencies_and_beginner_setup_are_documented(self):
         for package in (
             "pandas",
