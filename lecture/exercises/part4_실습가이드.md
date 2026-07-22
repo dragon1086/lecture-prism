@@ -39,7 +39,7 @@ MY_STRATEGY.md를 읽고 내 전략을 lecture-prism에 반영해줘.
 
 | 트랙 | 사전과제 항목 | 내용 | 대상 파일 | 난이도 |
 |------|------|------|----------|--------|
-| **A** | 진입 | 기본 데모 후보 조건·상수 | root `screening.py` | ★☆☆ |
+| **A** | 진입 | 기본 데모 후보 조건·상수 (심화: `ScreeningStrategy` plugin) | root `screening.py` | ★☆☆ |
 | **B** | 진입 | LLM 연결 시 분석 프롬프트 | `analysis.py` | ★☆☆ |
 | **C** | 청산 | 매도·목표가·트레일링 스탑 | `trading.py` (`_decide_exit`) | ★★☆ |
 | **D** | 리스크 | 보유 종목 수·현금·매수 점수 | `trading.py` (상수) | ★☆☆ |

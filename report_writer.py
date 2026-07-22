@@ -45,19 +45,38 @@ def _text(value) -> str:
     return str(value)
 
 
+def _section_lines(title: str, summary, provenance: str | None) -> list[str]:
+    """Render one analysis section with an optional, explicit evidence label."""
+    lines = [f"## {title}", ""]
+    if provenance:
+        lines.extend([f"> 근거: {provenance}", ""])
+    lines.extend([_text(summary) or "-", ""])
+    return lines
+
+
 def render_analysis_report(result: dict) -> str:
     """Render one `analysis.py` scenario dict as a student-readable report."""
 
     company = result.get("company_name") or result.get("ticker", "Unknown")
     ticker = result.get("ticker", "UNKNOWN")
     generated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    data_as_of = result.get("data_as_of")
+    section_provenance = result.get("section_provenance") or {}
     lines = [
         f"# {company} ({ticker}) 분석 보고서",
         "",
         f"- 생성 시각: {generated_at}",
         f"- 섹터: {result.get('sector', '-')}",
         f"- 데이터 원천: {result.get('data_source', '-')}",
+        f"- 데이터 상태: {result.get('data_status', '-')}",
         f"- 런타임 설정: {result.get('runtime_summary', '-')}",
+        "",
+    ]
+    if data_as_of:
+        lines.append(f"- 분석 기준: {data_as_of}")
+    if result.get("data_notice"):
+        lines.append(f"- 주의: {result['data_notice']}")
+    lines.extend([
         "",
         "## 요약",
         "",
@@ -69,30 +88,21 @@ def render_analysis_report(result: dict) -> str:
         f"- 손익비: {result.get('risk_reward_ratio', '-')} : 1",
         f"- 투자기간: {result.get('investment_period', '-')}",
         "",
-        "## 1. 기술적 분석",
-        "",
-        _text(result.get("technical_summary")) or "-",
-        "",
-        "## 2. 수급 분석",
-        "",
-        _text(result.get("supply_summary")) or "-",
-        "",
-        "## 3. 재무 분석",
-        "",
-        _text(result.get("financial_summary")) or "-",
-        "",
-        "## 4. 산업 분석",
-        "",
-        _text(result.get("industry_summary")) or "-",
-        "",
-        "## 5. 뉴스와 촉매",
-        "",
-        _text(result.get("news_summary")) or "-",
-        "",
-        "## 6. 시장 국면",
-        "",
-        _text(result.get("market_condition")) or "-",
-        "",
+    ])
+    for title, summary_key, provenance_key in (
+        ("1. 기술적 분석", "technical_summary", "technical"),
+        ("2. 수급 분석", "supply_summary", "supply"),
+        ("3. 재무 분석", "financial_summary", "financial"),
+        ("4. 산업 분석", "industry_summary", "industry"),
+        ("5. 뉴스와 촉매", "news_summary", "news"),
+        ("6. 시장 국면", "market_condition", "market"),
+    ):
+        lines.extend(_section_lines(
+            title,
+            result.get(summary_key),
+            section_provenance.get(provenance_key),
+        ))
+    lines.extend([
         "## 종합 판단",
         "",
         _text(result.get("rationale")) or "-",
@@ -105,7 +115,7 @@ def render_analysis_report(result: dict) -> str:
         "",
         "이 보고서는 강의 실습용 자동 생성 결과입니다. 실제 투자 판단은 본인이 별도로 검증해야 합니다.",
         "",
-    ]
+    ])
     return "\n".join(lines)
 
 

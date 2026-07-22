@@ -22,6 +22,7 @@ analysis.py가 6섹션 분석에 쓰는 원천 데이터를 이 파일 하나로
 
 from __future__ import annotations
 
+import copy
 import logging
 
 log = logging.getLogger(__name__)
@@ -35,81 +36,102 @@ _KRX_SUFFIXES = (".KS", ".KQ")
 # 종목명·섹터 등 메타데이터가 깨지므로, 진짜 시장의 심볼만 채택합니다.
 _EXCHANGE_BY_SUFFIX = {".KS": "KSC", ".KQ": "KOE"}
 
-# 종목별 mock 프로필 (Tier 0). 실데이터가 없어도 6섹션 리치 리포트가 나오도록
-# 기술·수급·재무·산업·뉴스 문장을 모두 담습니다. 실데이터 연동 시 이 값들이 실측치로 대체됩니다.
+# 종목별 mock fixture (Tier 0). 실시간 사실을 흉내 내는 문장이 아니라,
+# 고정된 가격·거래량·재무·뉴스 *시나리오*를 넣는다. analysis.py는 yfinance와
+# 같은 규칙 템플릿과 점수 엔진으로 이 수치를 해석한다.
+_FIXTURE_AS_OF = "2026-07-01 장 마감"
+_FIXTURE_NOTICE = "교육용 고정 시나리오이며 현재 시장 정보가 아닙니다."
 _PROFILES: dict[str, dict] = {
     "005930": dict(
-        name="삼성전자", price=71200, sector="전기전자/반도체", rec="BUY", buy_score=8, period="중기", ret=14, loss=5,
-        tech="20일선 회복 후 거래량 5일 평균 3배 동반 상승. 정배열 초입으로 추세 전환 신호.",
-        supply="최근 5거래일 상승일 거래량이 하락일의 2.1배로 매집 우위. 거래대금 20일 평균 상회.",
-        finance="PER 13.2배·PBR 1.1배로 밸류 부담 낮음. ROE 8.4%, 영업이익률 개선 흐름.",
-        industry="메모리 업황 저점 통과 국면. HBM·파운드리로 성장축 이동, 경쟁구도 상위.",
-        news="HBM·파운드리 수주 기대와 메모리 업황 저점 통과 전망이 우호적. 외국인 순매수 유입."),
+        name="삼성전자", price=71200, sector="전기전자/반도체", industry="반도체",
+        ma5=69900, ma20=68500, rsi=62.8, vol_ratio=1.8, ret_1d=2.1,
+        supply={"up_down_vol_ratio": 2.1, "obv": "매집 우위"},
+        finance={"per": 13.2, "pbr": 1.1, "roe": 8.4, "margin": 7.5,
+                 "rev_growth": None, "eps_growth": 18.0},
+        industry_context="메모리 업황 회복과 HBM 수요 확대를 가정한 경쟁력 우위 시나리오.",
+        news=["HBM 공급 확대 기대가 투자심리를 개선한다는 가정",
+              "파운드리 수주 회복이 촉매로 작용한다는 가정"]),
     "000660": dict(
-        name="SK하이닉스", price=178500, sector="전기전자/반도체", rec="BUY", buy_score=9, period="중기", ret=16, loss=6,
-        tech="정배열 유지하며 52주 신고가 근접. 눌림목마다 매수세 유입, 돌파 시 강한 모멘텀.",
-        supply="외국인·기관 동반 순매수 추정(거래량 급증비 3.4배). 대금 상위 지속.",
-        finance="PER 9.8배로 이익 대비 저평가. ROE 18%대, 실적 레버리지 큼.",
-        industry="HBM3E 사실상 과점. AI 메모리 수요 급증의 최대 수혜주.",
-        news="HBM3E 공급 확대와 목표주가 상향 리포트 다수. AI 서버 수요 강세."),
+        name="SK하이닉스", price=178500, sector="전기전자/반도체", industry="반도체",
+        ma5=175000, ma20=168000, rsi=64.1, vol_ratio=2.1, ret_1d=1.7,
+        supply={"up_down_vol_ratio": 3.4, "obv": "매집 우위"},
+        finance={"per": 9.8, "pbr": 2.1, "roe": 18.0, "margin": 18.5,
+                 "rev_growth": None, "eps_growth": 35.0},
+        industry_context="AI 메모리 수요 확대로 HBM 공급이 타이트해진다는 업황 시나리오.",
+        news=["HBM3E 공급 확대가 이어진다는 가정", "AI 서버 투자 증가가 수요를 지지한다는 가정"]),
     "035420": dict(
-        name="NAVER", price=215000, sector="서비스/인터넷", rec="BUY", buy_score=7, period="중기", ret=12, loss=6,
-        tech="박스권 상단 돌파 시도. 거래량 점증하며 수급 개선 신호.",
-        supply="기관 순매수 전환 구간. 거래량 5일 평균 1.8배로 관심 확대.",
-        finance="PER 22배로 성장 기대 반영. 광고·커머스 이익률 회복 중.",
-        industry="국내 검색·커머스 1위. AI 검색·광고 신사업이 재평가 촉매.",
-        news="AI 검색·광고 매출 회복 기대감이 투자심리를 자극."),
+        name="NAVER", price=215000, sector="서비스/인터넷", industry="인터넷 콘텐츠·정보",
+        ma5=214000, ma20=208000, rsi=59.2, vol_ratio=1.2, ret_1d=0.8,
+        supply={"up_down_vol_ratio": 0.9, "obv": "중립"},
+        finance={"per": 22.0, "pbr": 1.4, "roe": 8.0, "margin": 9.2,
+                 "rev_growth": None, "eps_growth": 6.0},
+        industry_context="AI 검색과 광고 회복이 재평가 촉매가 된다는 플랫폼 성장 시나리오.",
+        news=["AI 검색 기능의 이용자 전환이 확대된다는 가정", "광고·커머스 마진이 회복된다는 가정"]),
     "042700": dict(
-        name="한미반도체", price=143000, sector="반도체장비", rec="BUY", buy_score=8, period="중기", ret=15, loss=6,
-        tech="후공정 장비 수주 모멘텀으로 신고가 근접. 눌림목 매수세 견조.",
-        supply="거래대금 급증(20일 평균 2.6배). 상승일 거래 집중 = 매집 우위.",
-        finance="PER 30배대의 성장주 밸류. 수주잔고 기반 이익 가시성 높음.",
-        industry="HBM 본더 핵심 벤더. 전방 capex 확대의 직접 수혜.",
-        news="HBM 본더 수주 증가와 전방 capex 기대가 긍정적."),
+        name="한미반도체", price=143000, sector="반도체장비", industry="반도체 장비",
+        ma5=140000, ma20=135000, rsi=67.0, vol_ratio=2.0, ret_1d=2.8,
+        supply={"up_down_vol_ratio": 0.8, "obv": "중립"},
+        finance={"per": 31.0, "pbr": 4.5, "roe": 9.0, "margin": 14.0,
+                 "rev_growth": None, "eps_growth": 22.0},
+        industry_context="HBM 본더 장비 발주가 확대된다는 전방 투자 시나리오.",
+        news=["후공정 장비 수주가 늘어난다는 가정", "메모리 capex 회복이 이어진다는 가정"]),
     "247540": dict(
-        name="에코프로비엠", price=168000, sector="2차전지", rec="BUY", buy_score=7, period="중기", ret=13, loss=7,
-        tech="낙폭과대 후 기관 순매수 전환. 이평선 수렴 후 반등 시도.",
-        supply="바닥권 거래량 증가. 하락일 대비 상승일 거래 우위로 전환 초기.",
-        finance="업황 부진으로 PER 변동성 큼. 중장기 성장성엔 프리미엄.",
-        industry="양극재 국내 선두. 전기차 캐즘 구간이나 업황 바닥 신호 포착.",
-        news="2차전지 업황 바닥 통과 신호가 일부 지표에서 포착."),
+        name="에코프로비엠", price=168000, sector="2차전지", industry="양극재",
+        ma5=174000, ma20=171000, rsi=28.0, vol_ratio=1.8, ret_1d=1.2,
+        supply={"up_down_vol_ratio": 1.1, "obv": "매집 우위"},
+        finance={"per": None, "pbr": 2.0, "roe": 5.0, "margin": 3.0,
+                 "rev_growth": None, "eps_growth": None},
+        industry_context="전기차 수요 둔화 뒤 재고 조정이 마무리된다는 반등 시나리오.",
+        news=["양극재 재고 조정이 마무리된다는 가정", "전방 수요의 저점 통과 신호가 나온다는 가정"]),
     "005380": dict(
-        name="현대차", price=245000, sector="자동차", rec="HOLD", buy_score=5, period="중기", ret=9, loss=5,
-        tech="단기 급등 후 과열 구간. 20일선까지 눌림목 형성 가능.",
-        supply="차익실현 매물 출회. 거래량 증가하나 상·하락 혼조.",
-        finance="PER 5배대 저평가·고배당. 이익 체력 견조하나 성장률 둔화.",
-        industry="글로벌 완성차 상위. 전동화·하이브리드 믹스가 관건.",
-        news="실적은 양호하나 환율·금리 변수로 방향성은 중립."),
+        name="현대차", price=245000, sector="자동차", industry="자동차 제조",
+        ma5=250000, ma20=248000, rsi=76.0, vol_ratio=1.6, ret_1d=-0.4,
+        supply={"up_down_vol_ratio": 1.1, "obv": "매집 우위"},
+        finance={"per": 5.2, "pbr": 0.7, "roe": 9.0, "margin": 8.0,
+                 "rev_growth": None, "eps_growth": 4.0},
+        industry_context="하이브리드 판매 비중 상승이 이익을 지지한다는 완성차 시나리오.",
+        news=["환율이 실적에 우호적으로 작용한다는 가정", "금리 변동이 밸류에이션을 제한한다는 가정"]),
     "035720": dict(
-        name="카카오", price=47850, sector="서비스/인터넷", rec="HOLD", buy_score=5, period="단기", ret=8, loss=5,
-        tech="20일선 부근 등락 반복. 방향성 불명확.",
-        supply="거래 한산, 뚜렷한 주체 없음. 관망 구간.",
-        finance="PER 부담 구간. 신사업 수익성 개선이 재평가 조건.",
-        industry="플랫폼 규제·경쟁 심화. 뚜렷한 성장 촉매 부재.",
-        news="신사업 모멘텀이 약화되며 뚜렷한 촉매가 부재."),
+        name="카카오", price=47850, sector="서비스/인터넷", industry="인터넷 콘텐츠·정보",
+        ma5=48000, ma20=49000, rsi=29.0, vol_ratio=1.8, ret_1d=0.3,
+        supply={"up_down_vol_ratio": 0.8, "obv": "중립"},
+        finance={"per": 28.0, "pbr": 1.3, "roe": 4.0, "margin": 4.0,
+                 "rev_growth": None, "eps_growth": None},
+        industry_context="플랫폼 규제와 경쟁 심화 속 신사업 수익성 회복을 기다리는 시나리오.",
+        news=["신사업의 수익화 시점이 지연된다는 가정", "규제 불확실성이 투자심리를 제약한다는 가정"]),
     "105560": dict(
-        name="KB금융", price=76300, sector="금융", rec="PASS", buy_score=3, period="단기", ret=7, loss=5,
-        tech="거래량 한산, 모멘텀 부재. 박스권 하단 부근.",
-        supply="수급 공백. 배당 시즌 외 관심 저조.",
-        finance="PER 5배 미만·고배당의 전형적 밸류주. 성장성은 제한적.",
-        industry="대형 금융지주. 금리 방향과 정책 변수에 민감.",
-        news="밸류 매력은 있으나 단기 촉매가 보이지 않음."),
+        name="KB금융", price=76300, sector="금융", industry="은행",
+        ma5=76000, ma20=78000, rsi=46.0, vol_ratio=0.8, ret_1d=-0.6,
+        supply={"up_down_vol_ratio": 0.7, "obv": "분산 우위"},
+        finance={"per": 4.8, "pbr": 0.5, "roe": 9.0, "margin": 19.0,
+                 "rev_growth": -2.0, "eps_growth": -1.0},
+        industry_context="금리 방향과 주주환원 정책이 주가를 좌우한다는 금융지주 시나리오.",
+        news=["배당 시즌 외 수급이 약하다는 가정", "금리 인하 기대가 순이자마진을 제한한다는 가정"]),
     "068270": dict(
-        name="셀트리온", price=187000, sector="바이오", rec="PASS", buy_score=2, period="단기", ret=7, loss=7,
-        tech="이평선 정배열 붕괴 + 수급 이탈. 추세 훼손.",
-        supply="기관·외국인 순매도 추정. 거래량 감소 속 하락.",
-        finance="PER 고평가 논란. 합병 이후 이익 정상화 확인 필요.",
-        industry="바이오시밀러 선두이나 섹터 투자심리 악화.",
-        news="바이오 섹터 투자심리 악화로 반등 동력 약함."),
+        name="셀트리온", price=187000, sector="바이오", industry="바이오시밀러",
+        ma5=188000, ma20=192000, rsi=78.0, vol_ratio=0.9, ret_1d=-1.4,
+        supply={"up_down_vol_ratio": 0.6, "obv": "분산 우위"},
+        finance={"per": 35.0, "pbr": 2.6, "roe": 5.0, "margin": 10.0,
+                 "rev_growth": None, "eps_growth": None},
+        industry_context="합병 뒤 이익 정상화 확인이 필요한 바이오시밀러 시나리오.",
+        news=["섹터 투자심리가 약화된다는 가정", "실적 정상화 확인 전까지 변동성이 크다는 가정"]),
 }
 
 _DEFAULT_PROFILE = dict(
-    name="", price=70000, sector="기타", rec="BUY", buy_score=7, period="중기", ret=12, loss=6,
-    tech="20일선 위 거래량 급등, 매수 신호 감지.",
-    supply="거래량 증가로 관심 유입 추정.",
-    finance="밸류·이익 지표는 중립 수준.",
-    industry="해당 섹터 평균 수준의 경쟁 위치.",
-    news="실적 개선 기대감, 수급 유입.")
+    name="", price=70000, sector="기타", industry="기타",
+    ma5=70400, ma20=69000, rsi=58.0, vol_ratio=1.2, ret_1d=0.5,
+    supply={"up_down_vol_ratio": 0.9, "obv": "중립"},
+    finance={"per": None, "pbr": None, "roe": 8.0, "margin": None,
+             "rev_growth": None, "eps_growth": None},
+    industry_context="해당 섹터 평균 수준의 경쟁 위치를 가정한 시나리오.",
+    news=["실적 개선 기대감이 유입된다는 가정"])
+
+_MOCK_MARKET_INDEX = {
+    "source": "fixture",
+    "as_of": _FIXTURE_AS_OF,
+    "KOSPI": {"last": 2_835.4, "ret_20d": 2.4},
+    "KOSDAQ": {"last": 764.8, "ret_20d": -1.1},
+}
 
 
 def mock_profile(ticker: str) -> dict:
@@ -368,27 +390,34 @@ def fetch_market_index() -> dict | None:
 
     cfg = load_runtime_config()
     if cfg.data_mode == "mock":
-        return None
+        return copy.deepcopy(_MOCK_MARKET_INDEX)
     return _fetch_market_index_yfinance()
 
 
 # ── 공개 단일 접점 ──────────────────────────────────────────────────────
 def _fetch_mock(ticker: str) -> dict:
     prof = mock_profile(ticker)
+    ma20 = prof.get("ma20")
+    price = prof["price"]
     return {
         "source": "mock",
+        "evidence_kind": "fixture",
+        "as_of": _FIXTURE_AS_OF,
+        "notice": _FIXTURE_NOTICE,
         "ticker": ticker,
         "name": prof["name"],
-        "current_price": prof["price"],
+        "current_price": price,
         "sector": prof["sector"],
         "industry": prof["industry"],
-        "tech": prof["tech"],
-        "supply": prof["supply"],
-        "finance": prof["finance"],
-        "news": prof["news"],
-        # mock 판단 기준값 (실데이터엔 없음 — 전략 단계에서 규칙/LLM이 산출)
-        "rec": prof["rec"], "buy_score": prof["buy_score"],
-        "ret": prof["ret"], "loss": prof["loss"], "period": prof["period"],
+        "industry_context": prof["industry_context"],
+        # yfinance 경로와 같은 입력 계약: 보고서 문장은 analysis.py가 이
+        # 숫자/목록으로 만들어 내며, 사전 작성한 매수 의견을 사용하지 않는다.
+        "ma5": prof["ma5"], "ma20": ma20, "rsi": prof["rsi"],
+        "vol_ratio": prof["vol_ratio"], "ret_1d": prof["ret_1d"],
+        "price_vs_ma20": round((price / ma20 - 1) * 100, 1) if ma20 else None,
+        "supply": copy.deepcopy(prof["supply"]),
+        "finance": copy.deepcopy(prof["finance"]),
+        "news": list(prof["news"]),
     }
 
 
