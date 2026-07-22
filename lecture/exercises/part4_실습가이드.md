@@ -14,7 +14,7 @@
 예시)
 1. 진입: RSI 30 이하 + 거래량 3배 이상 동시 충족
 2. 청산: +15% 목표가 또는 -7% 손절
-3. 리스크: 동일 섹터 최대 2종목, 전체 포트 20% 이내
+3. 리스크: 최대 5종목, 현금 50% 유지, 매수 점수 6점 이상
 ```
 
 ---
@@ -39,13 +39,13 @@ MY_STRATEGY.md를 읽고 내 전략을 lecture-prism에 반영해줘.
 
 | 트랙 | 사전과제 항목 | 내용 | 대상 파일 | 난이도 |
 |------|------|------|----------|--------|
-| **A** | 진입 | 기본 데모 후보 조건 / 상세 screening plugin | root `screening.py` / `prism_core/screening.py` | ★☆☆ |
-| **B** | 진입 | 분석 에이전트 프롬프트 | `analysis.py` | ★☆☆ |
+| **A** | 진입 | 기본 데모 후보 조건·상수 | root `screening.py` | ★☆☆ |
+| **B** | 진입 | LLM 연결 시 분석 프롬프트 | `analysis.py` | ★☆☆ |
 | **C** | 청산 | 매도·목표가·트레일링 스탑 | `trading.py` (`_decide_exit`) | ★★☆ |
-| **D** | 리스크 | 보유 종목 수·섹터·현금·손절 | `trading.py` (상수) | ★☆☆ |
+| **D** | 리스크 | 보유 종목 수·현금·매수 점수 | `trading.py` (상수) | ★☆☆ |
 | 심화 | — | 데이터 소스 추가 / 뼈대부터 구현 | `analysis.py` / `blank_pipeline.py` | ★★★ |
 
-> 준비해온 이론 3줄 중 **하나만** 골라 구현하면 오늘은 성공. 진입은 A·B, 청산은 C, 리스크는 D. 처음 전략을 바꾸는 수강생은 root `screening.py`의 Track A부터 시작하고, `prism_core/screening.py`는 classroom·paper/live의 상세 screening을 함께 검증할 때만 선택합니다.
+> 준비해온 이론 3줄 중 **하나만** 골라 구현하면 오늘은 성공. 진입은 A·B, 청산은 C, 리스크는 D. 처음 전략을 바꾸는 수강생은 root `screening.py`의 Track A부터 시작합니다. `prism_core/screening.py`의 `ScreeningStrategy` plugin, 섹터별 보유 제한, 부분청산은 classroom·paper/live의 상세 흐름까지 검증할 때 고르는 **심화 선택지**입니다.
 
 ---
 
@@ -158,40 +158,43 @@ MY_STRATEGY.md를 읽고 내 전략을 lecture-prism에 반영해줘.
 
 ## 트랙 A — 스크리닝 조건 수정
 
-**목표**: `ScreeningStrategy` plugin 하나를 본인 이론으로 교체
+**목표**: root `screening.py`의 간단한 후보 조건·상수를 본인 이론으로 교체
 
-스크리닝과 regime은 같이 평가합니다. 같은 후보도 `strong_bull`에서는 통과하고 `strong_bear`에서는 거절될 수 있어야 합니다. KR은 **KR 120/60**, US는 **US 200/50** 이동평균을 사용하고 US의 VIX는 별도 시장 경계로 취급합니다.
+기본 데모가 실제로 쓰는 값은 `VOLUME_SURGE_RATIO`, `MIN_MARKET_CAP_KRW`, `MOMENTUM_DAYS`, `MAX_CANDIDATES`입니다. 이 값과 `_filter_candidates()`의 간단한 조건을 바꾸면 API 키 없이도 후보 종목이 달라지는 것을 볼 수 있습니다.
 
-전체 진입 순서는 `provider validation → regime → screening → analysis gate → sizing → cycle`입니다. Track A는 screening plugin만 바꾸고 나머지 단계를 우회하지 않습니다.
+처음에는 root `screening.py`만 고칩니다. `run_screening() -> list[str]` 형태와 `main.py` 파이프라인은 유지합니다.
 
 ### 코딩 에이전트 프롬프트
 
 ```text
-prism_core.screening의 ScreeningStrategy protocol을 구현하는 새 plugin으로 내 이론을 반영해줘.
+root screening.py의 기본 스크리닝 조건을 내 이론으로 바꿔줘.
 내 이론은 RSI 30 이하 반등 + 거래량 3배 + 중형주 이상이야.
-Candidate의 불변 계약, 결정론적 정렬, regime policy gate, root run_screening() -> list[str] 호환은 유지해줘.
-API 키 없는 fixture로 bull 통과·bear 거절 사례를 테스트하고 실거래는 하지 마.
+VOLUME_SURGE_RATIO, MIN_MARKET_CAP_KRW, MOMENTUM_DAYS, MAX_CANDIDATES 같은 상수와 _filter_candidates() 안의 단순 조건만 우선 검토해줘.
+run_screening()의 입력과 list[str] 반환은 유지하고, API 키 없이 데모 모드로 전후 후보가 달라지는지 검증해줘.
+실거래는 절대 하지 마.
 ```
 
 ### 검증
 
 ```text
-바꾼 ScreeningStrategy plugin이 내 이론을 정확히 반영하는지 확인해줘.
-같은 특징값을 strong_bull과 strong_bear에 넣어 policy 결과가 달라지는지 표로 비교해줘.
+바꾼 screening.py가 내 이론을 정확히 반영하는지 확인해줘.
+수정 전후로 어떤 종목이 통과/탈락하는지 표로 비교해줘.
+API 키 없는 데모 경로가 끝까지 도는지도 확인해줘.
 ```
 
-### 전체 파이프라인 통합 테스트
+### 심화 선택 — 상태 저장형 ScreeningStrategy plugin
 
 ```text
-내 plugin을 classroom fixture 상세 스크리닝에 주입해 전체 순서와 증거를 검증해줘.
-기존 prism.db를 수정하지 말고 코딩 에이전트가 임시 DB와 테스트를 사용해줘.
+기본 Track A가 끝난 뒤, prism_core.screening의 ScreeningStrategy protocol을 구현하는 상세 plugin도 만들어줘.
+classroom fixture에서 bull 통과·bear 거절 사례를 검증하고, root run_screening() 호환은 유지해줘.
+paper/live나 브로커 주문은 건드리지 말고 실거래는 절대 하지 마.
 ```
 
 ### Track B/C/D가 유지할 core contract
 
-- Track B는 분석 프롬프트를 바꿔도 LLM이 정량 gate를 통과시키지 못하고 veto만 할 수 있습니다.
-- Track C는 청산 규칙을 바꿔도 손절·UNKNOWN·청산 우선 계약을 약화하지 않습니다.
-- Track D는 비중을 바꿔도 regime policy의 최대 슬롯·현금·위험률보다 공격적으로 우회하지 않습니다.
+- Track B는 LLM 연결이 있을 때만 프롬프트 변경 효과가 보입니다. 정량 점수·가격 규칙을 프롬프트가 마음대로 우회하지 않습니다.
+- Track C는 청산 규칙을 바꿔도 손절·트레일링·목표가 각각의 전용 시나리오로 증명해야 합니다.
+- Track D 기본 실습은 root `trading.py`가 실제로 쓰는 `MAX_SLOTS`, `CASH_RESERVE_RATIO`, `BUY_SCORE_THRESHOLD`만 약속합니다.
 
 walk-forward는 각 시점의 과거만 보고 다음 구간을 평가합니다. 미래 데이터를 후보 점수나 regime 판정에 섞으면 결과를 믿을 수 없습니다. 종목 목록도 첫 판단일에 알고 있던 point-in-time universe snapshot이어야 하며, 오늘의 구성 종목을 과거에 소급하는 survivorship bias는 허용하지 않습니다. 이 보고서는 전략·regime 궁합의 교육용 증거이며 **수익 보장 아님**입니다. live 활성화는 이 결과와 별개의 provider fail-closed, 브로커, 이중 안전 플래그를 모두 확인하는 별도 gate입니다.
 
@@ -199,7 +202,7 @@ walk-forward는 각 시점의 과거만 보고 다음 구간을 평가합니다.
 
 ## 트랙 B — 분석 프롬프트 교체
 
-**목표**: `analysis.py`의 `TECHNICAL_AGENT_PROMPT`를 본인 이론으로 교체
+**목표**: LLM을 연결한 뒤 `analysis.py`의 `TECHNICAL_AGENT_PROMPT`를 본인 이론으로 교체
 
 > 📌 `analysis.py`는 원본 PRISM처럼 **6개 섹션**(기술·수급·재무·산업·뉴스·시장)을 만듭니다.
 > 이 중 **수급·재무·산업·시장은 규칙(실데이터 지표)**, **기술·뉴스·리스크의 정성 서술은 종목당 한 번의 구조화 LLM 호출**이 담당합니다. 추천·점수·목표가·손절가는 규칙이 소유하며, LLM은 BUY를 HOLD로만 veto할 수 있습니다.
@@ -208,21 +211,24 @@ walk-forward는 각 시점의 과거만 보고 다음 구간을 평가합니다.
 > ⚠️ **중요 — 프롬프트 변경 효과는 LLM을 연결해야 보입니다.**
 > OpenAI API 키/공식 Codex 구독 로그인(파트3 CH1)이 **없으면** 기술 섹션은 실데이터 지표 템플릿(또는 더미 응답)으로 나오고,
 > 프롬프트를 바꿔도 출력이 **그대로**입니다. 트랙B를 제대로 실습하려면 **LLM 연결이 사실상 필수**입니다.
-> (프롬프트 없이 결과가 바로 바뀌는 걸 보고 싶다면 트랙 A·C·D를 고르세요.)
+> LLM을 쓰지 않는 수강생은 트랙 A·C·D를 고르거나, 트랙B에서는 "코드/mock 완성"까지만 받으세요.
 
 ### Claude Code 프롬프트
 
-```
-"현재 analysis.py 기술적 분석 에이전트는 CANSLIM 기반이야.
+```text
+현재 analysis.py 기술적 분석 에이전트는 CANSLIM 기반이야.
 내 이론: 볼린저 밴드 하단 터치 + RSI 과매도 반등으로 바꿔줘.
-TECHNICAL_AGENT_PROMPT만 수정하고 나머지 구조는 그대로 둬."
+LLM 연결이 없으면 출력 변화가 안 보일 수 있다는 점을 먼저 확인해줘.
+TECHNICAL_AGENT_PROMPT만 수정하고 나머지 구조는 그대로 둬.
+API 키 없는 데모에서는 코드/mock 완성 여부만 검증하고, 실거래는 절대 하지 마.
 ```
 
 ### 프롬프트 품질 검증 (LLM 연결 상태에서)
 
-```
-"LLM을 연결한 상태에서, 이 프롬프트로 삼성전자를 분석하면
-기술 섹션이 어떻게 달라지는지 수정 전후로 실행해서 비교해줘."
+```text
+LLM을 연결한 상태에서, 이 프롬프트로 삼성전자를 분석하면
+기술 섹션이 어떻게 달라지는지 수정 전후로 실행해서 비교해줘.
+LLM이 연결되지 않았으면 결과 변화가 없다고 명확히 말하고, A/C/D 중 하나를 추천해줘.
 ```
 
 ---
@@ -239,15 +245,19 @@ TRAILING_STOP = 0.08    # 고점 대비 -8% 되돌림 시 트레일링 스탑
 ```
 
 ### Claude Code 프롬프트
-```
-"trading.py의 _decide_exit를 내 청산 이론으로 바꿔줘.
-내 이론: 목표가 +20%에서 절반 청산, 트레일링 스탑은 고점 대비 -10%, 손절 -5%.
-함수 시그니처(holding, current_price)는 유지해줘."
+```text
+trading.py의 _decide_exit를 내 청산 이론으로 바꿔줘.
+내 이론: 목표가 +20% 도달 시 전체 청산, 트레일링 스탑은 고점 대비 -10%, 손절 -5%.
+함수 시그니처(holding, current_price)는 유지해줘.
+부분청산은 수량·상태 저장·후속 청산까지 바뀌는 심화 기능이므로 이번 기본 실습에서는 넣지 마.
+API 키 없는 데모로 검증하고 실거래는 절대 하지 마.
 ```
 
-### 검증 (손절·트레일링·목표가 3시나리오 실행)
-```
-"trading.py --exit 실행해서 손절·트레일링·목표가가 각각 잘 발화하는지 보여줘."
+### 검증 (손절·트레일링·목표가 전용 3시나리오)
+```text
+손절·트레일링·목표가가 각각 따로 발화하는 보유 예시 3개를 만들어 검증해줘.
+각 시나리오에서 현재가, 진입가, 고점, 기대 청산 사유, 실제 청산 사유를 표로 보여줘.
+가능하면 trading.py --exit 데모도 함께 확인하되, 세 조건이 각각 독립적으로 증명되어야 해.
 ```
 예상 출력:
 ```
@@ -265,16 +275,20 @@ TRAILING_STOP = 0.08    # 고점 대비 -8% 되돌림 시 트레일링 스탑
 ### 현재 코드
 ```python
 MAX_SLOTS = 10            # 최대 보유 종목 수
-MAX_SAME_SECTOR = 3       # 동일 섹터 최대 보유 수
 CASH_RESERVE_RATIO = 0.7  # 현금 70% 유지
 BUY_SCORE_THRESHOLD = 6   # 매수 최소 점수 (10점 만점)
 ```
 
+> `MAX_SAME_SECTOR` 상수는 코드에 보일 수 있지만 root 데모의 `_decide_position()`은 아직 섹터 정보를 사용하지 않습니다. 동일 섹터 제한은 포트폴리오에 섹터 데이터와 보유 상태를 연결하는 심화 과제입니다.
+
 ### Claude Code 프롬프트
-```
-"trading.py의 리스크 상수를 내 원칙으로 바꿔줘.
-내 원칙: 최대 5종목, 동일 섹터 2개까지, 현금 50% 유지, 매수 점수 5 이상.
-바꾼 뒤 _decide_position이 이 값들을 제대로 쓰는지 확인해줘."
+```text
+trading.py의 리스크 상수를 내 원칙으로 바꿔줘.
+내 원칙: 최대 5종목, 현금 50% 유지, 매수 점수 6 이상.
+이번 기본 실습에서는 _decide_position이 실제로 쓰는 MAX_SLOTS, CASH_RESERVE_RATIO, BUY_SCORE_THRESHOLD만 바꿔줘.
+동일 섹터 제한은 root 데모에서 아직 쓰지 않으니 심화 과제로 분리해줘.
+바꾼 뒤 API 키 없는 데모에서 포지션 수량과 매수 통과 기준이 달라지는지 확인해줘.
+실거래는 절대 하지 마.
 ```
 
 ---
@@ -362,5 +376,5 @@ GitHub 제출은 선택입니다. 오늘의 성공 기준은 먼저 “내 전�
 [ ] 시뮬레이터 성과 3개월 이상 검증
 [ ] 손절 로직 작동 확인 (-7% 이내)
 [ ] 보유 종목 수는 10개 중 5개 이내로 시작
-[ ] 섹터 집중 방지(동일 섹터 3개 이하) 확인
+[ ] 동일 섹터 제한은 섹터 데이터가 연결된 심화 버전에서 별도 확인
 ```
