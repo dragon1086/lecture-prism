@@ -40,6 +40,8 @@ class ReportWriterTests(unittest.TestCase):
             self.assertTrue(path.exists())
             text = path.read_text(encoding="utf-8")
             self.assertIn("# 삼성전자 (005930) 분석 보고서", text)
+            self.assertIn("- 매수점수: 8/10", text)
+            self.assertNotIn("- 매수점수: 8/6", text)
             self.assertIn("## 1. 기술적 분석", text)
             self.assertIn("런타임 설정", text)
 

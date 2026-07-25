@@ -17,6 +17,7 @@ from brokers.config import load_dotenv_once, truthy
 log = logging.getLogger(__name__)
 
 DEFAULT_REPORT_DIR = Path("reports")
+BUY_SCORE_MAX = 10
 
 
 def _reports_enabled() -> bool:
@@ -81,7 +82,7 @@ def render_analysis_report(result: dict) -> str:
         "## 요약",
         "",
         f"- 투자판단: {result.get('recommendation', '-')} -> {result.get('decision', '-')}",
-        f"- 매수점수: {result.get('buy_score', '-')}/{result.get('min_score', '-')}",
+        f"- 매수점수: {result.get('buy_score', '-')}/{BUY_SCORE_MAX}",
         f"- 현재가: {_money(result.get('current_price'))}",
         f"- 목표가: {_money(result.get('target_price'))} ({result.get('expected_return_pct', '-')}%)",
         f"- 손절가: {_money(result.get('stop_loss'))} (-{result.get('expected_loss_pct', '-')}%)",
