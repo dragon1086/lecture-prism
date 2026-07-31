@@ -27,6 +27,44 @@
 - 원본 이미지의 종횡비는 유지하고 잘라내지 않는다.
 - 페이지 번호와 출처·주의 문구가 이미지 위를 가리지 않게 한다.
 
+## 모듈별 원본·강의판 비교 인포그래픽
+
+기존 P3-S12, P3-S19, P3-S27, P3-S35의 작은 카드형 비교를 폐기하고 모듈마다 1920×1080 전용 인포그래픽 한 장으로 교체한다. 슬라이드 수는 38장을 유지한다.
+
+### 시각 체계
+
+- PRISM 원본의 흰색 보고서형 이미지와 구분되는 딥 네이비 블루프린트 테마를 사용한다.
+- 원본 PRISM의 여러 운영 부품은 청록색, lecture-prism의 짧은 교육 경로는 주황·연두색으로 구분한다.
+- 큰 일반어 설명을 먼저 읽게 하고 실제 파일·함수명은 그 아래 보조 정보로 둔다.
+- 한글과 코드 식별자는 검증된 텍스트 레이어로 조판해 생성형 이미지의 글자 오류를 허용하지 않는다.
+- 장식보다 원본의 여러 부품이 강의판의 어느 파일·함수로 줄었는지 보여 주는 대응선이 우선이다.
+
+### 모듈별 강의판 매핑
+
+1. 스크리닝: “데이터 받기 → 조건으로 거르기 → 세 종목 남기기”
+   - `data_source.py`: 데이터를 가져오는 입구
+   - `screening.py` / `run_screening`: 선별 시작 버튼
+   - `_filter_candidates`: 연습 데이터에 같은 필터 적용
+   - `_filter_with_real_data`: 선택적으로 yfinance 데이터를 다시 검사
+2. 종목 분석: “규칙 보고서 네 칸 → 선택적 AI 보완 → 매수 의견 조립”
+   - `analysis.py` / `run_analysis`: 한 종목 분석의 시작
+   - `_section_supply`, `_section_financial`, `_section_industry`, `_section_market`: 규칙으로 만드는 네 근거
+   - `_run_combined_llm_agent`: 기술·뉴스·전략 맥락의 선택적 AI 보완
+   - `_rule_based_score`, `_build_scenario`: 점수와 최종 분석 의견 조립
+3. 매매: “보유 종목 청산 우선 → 신규 진입 재검사 → 모의 체결 또는 안전 게이트”
+   - `trading.py` / `run_trading`: 매매 판단의 시작
+   - `_decide_exit`: 손절·트레일링·목표가 순서의 청산 판단
+   - `_decide_position`: 점수·가격·손익비·현금·보유 수 검사
+   - `_simulate_trade`: 기본 모의 체결
+   - `_execute_broker_order`, `brokers/`: 이중 안전 플래그 뒤의 선택적 브로커 연결
+4. 피드백·운영: “거래 결과 → 교훈 → 기억 압축·검색 → 예약된 보조 작업”
+   - `feedback.py` / `run_feedback`, `_extract_lesson`, `_save_to_memory`: 청산 결과에서 교훈 생성·저장
+   - `memory.py` / `compress_memories`, `get_relevant_memories`: 기억 압축과 다음 판단용 검색
+   - `db.py` / `save_lesson`, `get_memory_rows`: 공용 저장소
+   - `operations.py` / `run_holding_monitor`, `run_order_reconciliation`, `run_memory_compression`, `run_scheduler`: 보조 작업과 교육용 스케줄러
+
+각 인포그래픽은 왼쪽의 PRISM 운영 구조, 가운데의 축소 대응선, 오른쪽의 lecture-prism 파일·함수 흐름, 아래의 “무엇을 남기고 무엇을 줄였는가” 한 문장으로 구성한다.
+
 ## 이미지 전체화면
 
 - 슬라이드 안의 래스터 이미지는 마우스 클릭과 키보드 Enter/Space로 열 수 있다.
@@ -52,6 +90,8 @@
 - 대표 이미지 슬라이드를 화면 캡처해 변경 전후 점유율을 비교한다.
 - 전체화면 열기와 이미지·배경·Esc 닫기를 확인한다.
 - 14개 원본 이미지 경로와 캡션을 원문 문서에 1:1로 매핑한다.
+- 비교 인포그래픽 4장의 파일·함수명이 현재 코드와 일치하는지 정적 검사한다.
+- 비교 인포그래픽을 100% 크기로 검사해 한글·코드 식별자·대응선이 잘리지 않는지 확인한다.
 - 38개 슬라이드의 오버플로, 잘림, 제목 줄바꿈, 이미지 누락을 검사한다.
 - 덱을 다시 생성하고 기존 테스트를 통과시킨다.
 
