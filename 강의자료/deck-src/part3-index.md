@@ -10,11 +10,11 @@
 | P3-S04 | — | `part3/00-opening.html` | 자동매매는 이렇게 · 한 바퀴 돕니다 |
 | P3-S05 | — | `part3/01-first-success.html` | 한 번 실행하면, 이 파일들이 함께 움직입니다 |
 | P3-S06 | — | `part3/01-first-success.html` | 원본 PRISM은 시장부터 기억까지 한 줄로 잇습니다 |
-| P3-S07 | — | `part3/02-context.html` | 시장 상태가 오늘의 선별 강도를 정합니다 |
+| P3-S07 | — | `part3/02-context.html` | 시장 상태가 오전·오후 분석 실행 여부를 정합니다 |
 | P3-S08 | — | `part3/02-context.html` | 분산일은 하루의 숫자가 아니라 상태 변화입니다 |
-| P3-S09 | — | `part3/02-context.html` | 시장 국면은 후보 점수와 진입 문턱을 함께 바꿉니다 |
+| P3-S09 | — | `part3/02-context.html` | 시장 판단 두 가지는 서로 다른 일을 합니다 |
 | P3-S10 | — | `part3/02-context.html` | 오전과 오후는 서로 다른 움직임을 찾습니다 |
-| P3-S11 | — | `part3/02-context.html` | 후보를 다시 점수 매겨 세 종목만 넘깁니다 |
+| P3-S11 | — | `part3/02-context.html` | 후보를 다시 점수 매겨 최대 세 종목만 넘깁니다 |
 | P3-S12 | — | `part3/02-context.html` | screening.py는 후보 선별의 뼈대만 남겼습니다 |
 | P3-S13 | P3-M1 | `part3/02-context.html` | screening.py만 따로 읽고 실행합니다 |
 | P3-S14 | — | `part3/03-system-map.html` | 선별이 끝나면 한 종목을 여섯 방향에서 봅니다 |

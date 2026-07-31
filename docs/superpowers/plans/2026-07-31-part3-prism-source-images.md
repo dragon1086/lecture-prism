@@ -1,6 +1,6 @@
 # Part 3 PRISM Source Images Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 파트 3의 PRISM 설명 슬라이드를 `PIPELINE_ARCHITECTURE_ko.md` 원본 이미지 14개로 교체하고, Lecture-prism 전용 신규 보조 이미지만 유지한다.
 
@@ -11,7 +11,8 @@
 ## Global Constraints
 
 - 원본 이미지 14개는 `PIPELINE_ARCHITECTURE_ko.md`가 참조하는 파일과 SHA-256이 같아야 한다.
-- PRISM 기능 설명 슬라이드에서 `*-light.png`를 사용하지 않는다.
+- PRISM 기능 설명 슬라이드에서 `*-light.png`를 사용하지 않고, 폐기 대상
+  일곱 파일을 저장소에서 삭제한다.
 - Lecture-prism 소스 맵, 분석 에이전트·프롬프트, 운영 보조 루프, 메모리 압축 이미지는 유지한다.
 - 파트 3은 38장 구성을 유지한다.
 - 슬라이드, 강사용 진행 스크립트, 수강생 프롬프트를 함께 수정한다.
@@ -37,7 +38,7 @@
 - Consumes: `../prism-insight/prism-insight/docs/PIPELINE_ARCHITECTURE_ko.md`의 이미지 경로 14개
 - Produces: 원본과 SHA-256이 같은 `docs/assets/prism-insight/*.png` 14개
 
-- [ ] **Step 1: 원본 문서의 이미지 목록을 추출한다**
+- [x] **Step 1: 원본 문서의 이미지 목록을 추출한다**
 
 Run:
 
@@ -47,7 +48,7 @@ rg -o 'images/architecture/[A-Za-z0-9._-]+\.png' ../prism-insight/prism-insight/
 
 Expected: 중복 없는 이미지 경로 14개.
 
-- [ ] **Step 2: 14개 원본 이미지를 강의 저장소에 동기화한다**
+- [x] **Step 2: 14개 원본 이미지를 강의 저장소에 동기화한다**
 
 Run: 문서에서 추출한 파일명 각각을
 `../prism-insight/prism-insight/docs/images/architecture/`에서
@@ -55,7 +56,7 @@ Run: 문서에서 추출한 파일명 각각을
 
 Expected: 대상 파일 14개가 모두 존재한다.
 
-- [ ] **Step 3: 원본과 대상 해시를 검증한다**
+- [x] **Step 3: 원본과 대상 해시를 검증한다**
 
 Run: 파일명별 SHA-256을 계산해 원본과 대상이 같은지 비교한다.
 
@@ -74,7 +75,7 @@ Expected: `matched=14`, `mismatched=0`, `missing=0`.
 - Consumes: Task 1의 `docs/assets/prism-insight/*.png`
 - Produces: PRISM 기능 슬라이드의 원본 이미지 참조와 Lecture-prism 보조 이미지 참조
 
-- [ ] **Step 1: 일곱 개 `*-light.png` 참조를 대응 원본으로 바꾼다**
+- [x] **Step 1: 일곱 개 `*-light.png` 참조를 대응 원본으로 바꾼다**
 
 Exact mapping:
 
@@ -90,11 +91,11 @@ prism-feedback-reentry-light.png -> feedback-reentry-overview.png
 
 각 대상은 `../docs/assets/prism-insight/<filename>`을 참조한다.
 
-- [ ] **Step 2: 모든 PRISM 원본 슬라이드의 alt 문구를 원본 그림 의미에 맞춘다**
+- [x] **Step 2: 모든 PRISM 원본 슬라이드의 alt 문구를 원본 그림 의미에 맞춘다**
 
 Expected: “밝은 배경으로 재구성한 강의용 그림” 문구 0개.
 
-- [ ] **Step 3: 신규 보조 이미지 참조가 유지되는지 확인한다**
+- [x] **Step 3: 신규 보조 이미지 참조가 유지되는지 확인한다**
 
 Expected retained references:
 
@@ -107,6 +108,10 @@ assets/prism-auxiliary-operations-loop.png
 assets/prism-memory-compression-operations.png
 ```
 
+- [x] **Step 4: 폐기 대상 `*-light.png` 일곱 파일을 삭제한다**
+
+Expected: `강의자료/assets/prism-*-light.png` 파일 0개.
+
 ### Task 3: 강사용·수강생 자료의 출처 경계 수정
 
 **Files:**
@@ -117,7 +122,7 @@ assets/prism-memory-compression-operations.png
 - Consumes: 설계 문서의 원본/보조 이미지 구분
 - Produces: 강사가 출처를 설명하고 수강생이 PRISM과 Lecture-prism의 구현 범위를 구분하는 문구
 
-- [ ] **Step 1: 강사용 스크립트에서 모듈 1–4 이미지 출처를 명시한다**
+- [x] **Step 1: 강사용 스크립트에서 모듈 1–4 이미지 출처를 명시한다**
 
 각 모듈 시작 부분에 다음 구분을 자연어로 반영한다.
 
@@ -126,12 +131,12 @@ PRISM 기능 그림: PIPELINE_ARCHITECTURE_ko.md 원본
 Lecture-prism 비교 그림: 강의용 신규 보조 자료
 ```
 
-- [ ] **Step 2: 수강생 프롬프트의 사실 확인 기준을 명시한다**
+- [x] **Step 2: 수강생 프롬프트의 사실 확인 기준을 명시한다**
 
 수강생이 구조를 물을 때 `PIPELINE_ARCHITECTURE_ko.md`와 PRISM 코드,
 Lecture-prism 대응 파일을 함께 대조하도록 기존 프롬프트를 보강한다.
 
-- [ ] **Step 3: 폐기 대상 표현을 검색한다**
+- [x] **Step 3: 폐기 대상 표현을 검색한다**
 
 Run:
 
@@ -151,7 +156,7 @@ Expected: 사용 중인 파트 3 자료에서 결과 0개.
 - Consumes: Task 2의 슬라이드 조각
 - Produces: 38장 최종 HTML
 
-- [ ] **Step 1: 덱을 다시 빌드한다**
+- [x] **Step 1: 덱을 다시 빌드한다**
 
 Run:
 
@@ -161,7 +166,7 @@ node 강의자료/deck-src/build-decks.mjs
 
 Expected: `part3: 38 slides`.
 
-- [ ] **Step 2: 생성 결과의 슬라이드·자산 계약을 검사한다**
+- [x] **Step 2: 생성 결과의 슬라이드·자산 계약을 검사한다**
 
 Expected:
 
@@ -171,7 +176,7 @@ section[data-slide-id] = 38
 PRISM source image references = 14
 ```
 
-- [ ] **Step 3: Chrome에서 전체 덱을 렌더링한다**
+- [x] **Step 3: 전체 덱 렌더링 또는 안전한 대체 검사를 수행한다**
 
 검사 항목:
 
@@ -181,7 +186,12 @@ horizontalOverflow = 0
 verticalOverflow = 0
 ```
 
-- [ ] **Step 4: 변경 슬라이드를 육안 검사한다**
+Chrome의 로컬 파일 접근이 보안 정책으로 차단되면 우회하지 않는다. 대신
+모든 이미지 경로 존재 여부, 1920×1080 크기, 16:9 `object-fit: contain`
+레이아웃 불변성, 교체 이미지 접촉 시트를 검사하고 렌더링 미수행 사실을
+최종 보고에 남긴다.
+
+- [x] **Step 4: 변경 슬라이드를 육안 검사한다**
 
 Inspect: P3-S06, S07, S09, S11, S14, S23, S24, S25, S31.
 
@@ -196,7 +206,7 @@ Expected: 원본 이미지가 왜곡 없이 크게 보이고 제목·캡션과 �
 - Consumes: Tasks 1–4의 결과
 - Produces: 리뷰 가능한 단일 구현 커밋
 
-- [ ] **Step 1: 문서와 자산 계약을 검사한다**
+- [x] **Step 1: 문서와 자산 계약을 검사한다**
 
 Run:
 
@@ -207,11 +217,10 @@ git status --short
 
 Expected: 공백 오류 0개, `_workspace/`는 스테이징하지 않는다.
 
-- [ ] **Step 2: 민감정보와 로컬 절대 경로를 검사한다**
+- [x] **Step 2: 민감정보와 로컬 절대 경로를 검사한다**
 
-Expected: API 키·토큰·계좌정보·`/Users/` 경로 0개.
+Expected: API 키·토큰·계좌정보·로컬 절대 경로 0개.
 
-- [ ] **Step 3: 구현 파일을 Lore 형식으로 커밋한다**
+- [x] **Step 3: 구현 파일을 Lore 형식으로 커밋한다**
 
 Commit intent: 검증된 PRISM 원본 그림만 강의의 기능 설명에 사용한다.
-

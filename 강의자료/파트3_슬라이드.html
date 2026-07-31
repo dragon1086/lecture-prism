@@ -355,11 +355,11 @@
 <section data-slide-id="P3-S07" class="slide split large-diagram">
   <div class="txt">
     <div class="kicker">모듈 1 · 스크리닝</div>
-    <h2>시장 상태가 오늘의 선별 강도를 정합니다</h2>
+    <h2>시장 상태가 오전·오후 분석 실행 여부를 정합니다</h2>
   </div>
   <div class="img">
-    <img class="reference-shot" src="assets/prism-market-pulse-batch-control-light.png" alt="PRISM Insight의 시장 상태와 배치 선별 제어를 밝은 배경으로 재구성한 강의용 그림">
-    <p class="caption">원본 PRISM은 시장 방향과 분산일을 먼저 읽고, 진입 허용 여부와 후보 수를 조절합니다.</p>
+    <img class="reference-shot" src="../docs/assets/prism-insight/market-pulse-batch-control-overview.png" alt="PRISM Insight의 오닐식 시장 방향 판단과 오전·오후 배치 제어">
+    <p class="caption">3상태 Market Pulse는 대표지수의 종가·거래량과 분산일을 읽어 오전·오후 분석 배치를 실행할지 정합니다.</p>
   </div>
   <div class="pagenum">7</div>
 </section>
@@ -371,7 +371,7 @@
   </div>
   <div class="img">
     <img class="reference-shot" src="../docs/assets/prism-insight/distribution-day-state-transitions.png" alt="분산일 누적과 시장 상태 전이">
-    <p class="caption">분산일이 쌓이면 정상 → 주의 → 중단으로 이동합니다. 반등 확인 뒤에야 다시 진입을 검토합니다.</p>
+    <p class="caption">최근 25거래일의 분산일이 0–3개면 상승 흐름, 4–5개면 매도 압력 증가, 6개 이상이면 시장 조정으로 봅니다.</p>
   </div>
   <div class="pagenum">8</div>
 </section>
@@ -379,11 +379,11 @@
 <section data-slide-id="P3-S09" class="slide split large-diagram">
   <div class="txt">
     <div class="kicker">모듈 1 · 시장 국면과 진입 정책</div>
-    <h2>시장 국면은 후보 점수와 진입 문턱을 함께 바꿉니다</h2>
+    <h2>시장 판단 두 가지는 서로 다른 일을 합니다</h2>
   </div>
   <div class="img">
-    <img class="reference-shot" src="assets/prism-trading-regime-entry-light.png" alt="시장 국면별 후보 점수와 진입 정책을 밝은 배경으로 재구성한 강의용 그림">
-    <p class="caption">같은 종목도 강세장과 약세장에서 다르게 다룹니다. 시장 해석은 후보 선택과 모듈 3의 진입 게이트에 함께 전달됩니다.</p>
+    <img class="reference-shot" src="../docs/assets/prism-insight/trading-regime-entry-overview.png" alt="오닐식 시장 매수 환경과 스크리닝용 시장 체제의 차이">
+    <p class="caption">3상태는 분석 배치 실행 여부를, 5상태는 후보 점수 비중과 주도 업종 자리를 정합니다. 두 결과는 목적이 다릅니다.</p>
   </div>
   <div class="pagenum">9</div>
 </section>
@@ -403,11 +403,11 @@
 <section data-slide-id="P3-S11" class="slide split large-diagram">
   <div class="txt">
     <div class="kicker">모듈 1 · 후보 재정렬</div>
-    <h2>후보를 다시 점수 매겨 세 종목만 넘깁니다</h2>
+    <h2>후보를 다시 점수 매겨 최대 세 종목만 넘깁니다</h2>
   </div>
   <div class="img">
-    <img class="reference-shot" src="assets/prism-candidate-screening-reranking-light.png" alt="후보 재점수와 최종 세 종목 선택을 밝은 배경으로 재구성한 강의용 그림">
-    <p class="caption">신호가 잡혔다고 모두 분석하지 않습니다. 시장 적합도와 가격·거래량 품질을 다시 계산해 깊이 볼 종목만 남깁니다.</p>
+    <img class="reference-shot" src="../docs/assets/prism-insight/candidate-screening-reranking-overview.png" alt="여섯 발견 조건에서 모은 후보를 시장 체제에 맞춰 재정렬하는 흐름">
+    <p class="caption">발견 조건 점수·예상 손익비·후보군 상대강도·20일선 과열도를 시장 체제별 비중으로 합쳐 보통 최대 세 종목을 남깁니다.</p>
   </div>
   <div class="pagenum">11</div>
 </section>
@@ -451,7 +451,7 @@
   </div>
   <div class="img">
     <img class="reference-shot" src="../docs/assets/prism-insight/screening-analysis-deep-dive.png" alt="선별된 종목을 여섯 분석 에이전트가 조사하는 흐름">
-    <p class="caption">왼쪽은 후보를 줄이는 단계, 오른쪽은 근거를 깊게 모으는 단계입니다. 이 그림의 CAN SLIM 설명은 다음 모듈에서 다룹니다.</p>
+    <p class="caption">최종 후보마다 주가·거래량, 투자 주체, 실적·재무, 사업·경쟁력, 뉴스·주도주, 시장·업종의 여섯 보고서를 만듭니다.</p>
   </div>
   <div class="pagenum">14</div>
 </section>
@@ -558,8 +558,8 @@
 <section data-slide-id="P3-S23" class="slide split large-diagram">
   <div class="txt"><div class="kicker">모듈 3 · 진입 게이트</div><h2>에이전트가 Enter라고 해도 코드 게이트를 통과해야 합니다</h2></div>
   <div class="img">
-    <img class="reference-shot" src="assets/prism-entry-gates-light.png" alt="신규 진입의 코드 안전 게이트를 밝은 배경으로 재구성한 강의용 그림">
-    <p class="caption">시장 상태, 점수, 손익비, 보유 슬롯, 섹터 한도, 재진입 제한을 코드가 다시 검사합니다.</p>
+    <img class="reference-shot" src="../docs/assets/prism-insight/entry-gates-overview.png" alt="AI 신규 진입 판단 뒤 코드가 다시 확인하는 안전 게이트">
+    <p class="caption">AI 시나리오 뒤에도 최소점수, 하락 추세, 재진입 제한, 중복 보유, 업종 집중, 포트폴리오 자리와 진행 중 주문을 코드가 확인합니다.</p>
   </div>
   <div class="pagenum">23</div>
 </section>
@@ -567,8 +567,8 @@
 <section data-slide-id="P3-S24" class="slide split large-diagram">
   <div class="txt"><div class="kicker">모듈 3 · 피라미딩</div><h2>수익 중인 강한 종목만 추가 진입을 검토합니다</h2></div>
   <div class="img">
-    <img class="reference-shot" src="assets/prism-pyramiding-portfolio-light.png" alt="피라미딩과 포트폴리오 슬롯을 밝은 배경으로 재구성한 강의용 그림">
-    <p class="caption">원본은 시장이 강하고 기존 포지션이 수익일 때만 독립 슬롯을 추가합니다. 강의판은 중복 매수를 막는 데서 멈춥니다.</p>
+    <img class="reference-shot" src="../docs/assets/prism-insight/pyramiding-portfolio-overview.png" alt="수익 중인 종목의 피라미딩 조건과 포트폴리오 자리 제한">
+    <p class="caption">원본은 강한 시장에서 기존 포지션 수익률이 5% 이상일 때만 최대 두 번 추가 진입을 검토합니다. 강의판은 중복 매수를 막는 데서 멈춥니다.</p>
   </div>
   <div class="pagenum">24</div>
 </section>
@@ -576,8 +576,8 @@
 <section data-slide-id="P3-S25" class="slide split large-diagram">
   <div class="txt"><div class="kicker">모듈 3 · 청산</div><h2>매도는 손실 제한부터 확인합니다</h2></div>
   <div class="img">
-    <img class="reference-shot" src="assets/prism-trading-exit-light.png" alt="손절, 추세 이탈, 트레일링, 목표가 매도 흐름을 밝은 배경으로 재구성한 강의용 그림">
-    <p class="caption">원본의 실제 실행 경로는 기계 손절 뒤 LLM 매도 판단을 이어 붙입니다. 규칙만 있는 단순한 한 줄이 아닙니다.</p>
+    <img class="reference-shot" src="../docs/assets/prism-insight/trading-exit-overview.png" alt="즉시 손절과 추세·실적·뉴스·시장 판단을 합친 매도 흐름">
+    <p class="caption">원본은 중대 사건과 즉시 손절을 먼저 보고, 그 밖에는 추세·실적·뉴스·시장 변화를 함께 판단합니다. 보호 규칙은 여러 도구에 나뉩니다.</p>
   </div>
   <div class="pagenum">25</div>
 </section>
@@ -647,7 +647,7 @@
 <section data-slide-id="P3-S31" class="slide split large-diagram">
   <div class="txt"><div class="kicker">모듈 4 · 피드백과 메모리</div><h2>매매가 끝나야 비로소 결과 교훈을 만들 수 있습니다</h2></div>
   <div class="img">
-    <img class="reference-shot" src="assets/prism-feedback-reentry-light.png" alt="거래 이력, 회고, 반복 교훈, 다음 판단, 재진입 제한 흐름을 밝은 배경으로 재구성한 강의용 그림">
+    <img class="reference-shot" src="../docs/assets/prism-insight/feedback-reentry-overview.png" alt="매매일지와 반복 교훈이 다음 판단과 재진입 제한으로 돌아가는 흐름">
     <p class="caption">원본은 청산이 끝난 뒤 계획과 결과를 비교하고, 반복 교훈과 재진입 제한을 다음 판단에 전달합니다.</p>
   </div>
   <div class="pagenum">31</div>

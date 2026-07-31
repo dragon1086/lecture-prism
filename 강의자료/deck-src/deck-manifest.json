@@ -25,11 +25,11 @@
         {
           "file": "part3/02-context.html",
           "slides": [
-            {"id": "P3-S07", "title": "시장 상태가 오늘의 선별 강도를 정합니다", "promptId": null},
+            {"id": "P3-S07", "title": "시장 상태가 오전·오후 분석 실행 여부를 정합니다", "promptId": null},
             {"id": "P3-S08", "title": "분산일은 하루의 숫자가 아니라 상태 변화입니다", "promptId": null},
-            {"id": "P3-S09", "title": "시장 국면은 후보 점수와 진입 문턱을 함께 바꿉니다", "promptId": null},
+            {"id": "P3-S09", "title": "시장 판단 두 가지는 서로 다른 일을 합니다", "promptId": null},
             {"id": "P3-S10", "title": "오전과 오후는 서로 다른 움직임을 찾습니다", "promptId": null},
-            {"id": "P3-S11", "title": "후보를 다시 점수 매겨 세 종목만 넘깁니다", "promptId": null},
+            {"id": "P3-S11", "title": "후보를 다시 점수 매겨 최대 세 종목만 넘깁니다", "promptId": null},
             {"id": "P3-S12", "title": "screening.py는 후보 선별의 뼈대만 남겼습니다", "promptId": null},
             {"id": "P3-S13", "title": "screening.py만 따로 읽고 실행합니다", "promptId": "P3-M1"}
           ]

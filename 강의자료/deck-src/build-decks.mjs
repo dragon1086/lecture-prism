@@ -54,7 +54,7 @@ for (const [deckKey, deck] of Object.entries(manifest.decks)) {
     sections.join("\n\n"),
     tail.trimStart()
   ].join("\n\n");
-  fs.writeFileSync(path.join(lectureRoot, deck.output), `${output}\n`);
+  fs.writeFileSync(path.join(lectureRoot, deck.output), `${output.trimEnd()}\n`);
   writeIndex(deckKey, deck);
   console.log(`${deckKey}: ${sections.length} slides -> 강의자료/${deck.output}`);
 }
