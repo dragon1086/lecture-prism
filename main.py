@@ -24,6 +24,19 @@ logging.basicConfig(
 log = logging.getLogger("main")
 
 
+async def _notify(notifier, method_name: str, *args, **kwargs) -> bool:
+    """Run one optional notification without changing pipeline outcomes."""
+
+    method = getattr(notifier, method_name, None)
+    if method is None:
+        return False
+    try:
+        return bool(await method(*args, **kwargs))
+    except Exception as exc:  # noqa: BLE001 - 외부 알림은 항상 fail-open
+        log.warning("Discord %s 알림 실패: %s", method_name, type(exc).__name__)
+        return False
+
+
 def _resolve_runtime_options(args) -> dict:
     """Resolve CLI flags plus `.env` profile into pipeline options."""
 
@@ -45,7 +58,7 @@ def _resolve_runtime_options(args) -> dict:
 
 
 async def run_pipeline(dry_run: bool = True, target_ticker: Optional[str] = None,
-                       use_real_data: bool = False, config=None):
+                       use_real_data: bool = False, config=None, notifier=None):
     from runtime_config import load_runtime_config, runtime_config_scope
 
     cfg = config or load_runtime_config()
@@ -55,6 +68,7 @@ async def run_pipeline(dry_run: bool = True, target_ticker: Optional[str] = None
             target_ticker=target_ticker,
             use_real_data=use_real_data,
             config=cfg,
+            notifier=notifier,
         )
 
 
@@ -63,9 +77,14 @@ async def _run_pipeline_scoped(
     target_ticker: Optional[str] = None,
     use_real_data: bool = False,
     config=None,
+    notifier=None,
 ):
     from runtime_config import load_runtime_config
     cfg = config or load_runtime_config()
+    if notifier is None:
+        from notifications import build_notifier
+
+        notifier = build_notifier()
     if cfg.profile in {"classroom", "backtest"}:
         dry_run = True
         use_real_data = False
@@ -89,6 +108,13 @@ async def _run_pipeline_scoped(
     from screening import run_screening
     candidates = await run_screening(target_ticker=target_ticker, use_real=use_real_data)
     log.info(f"      → 선정 종목: {candidates}")
+    await _notify(
+        notifier,
+        "screening",
+        candidates,
+        data_mode=cfg.data_mode,
+        use_real_data=use_real_data,
+    )
 
     if not candidates:
         log.info("선정 종목 없음. 파이프라인 종료.")
@@ -104,6 +130,7 @@ async def _run_pipeline_scoped(
         analyses.append(result)
         log.info(f"      → {ticker} 완료: 추천={result['recommendation']}({result['decision']}), "
                  f"매수점수={result['buy_score']}/10, 목표가={result['target_price']:,}")
+        await _notify(notifier, "analysis", result)
 
     from report_writer import write_reports
     report_paths = await asyncio.to_thread(write_reports, analyses)
@@ -116,12 +143,14 @@ async def _run_pipeline_scoped(
     from trading import run_trading
     trade_results = await run_trading(analyses, dry_run=dry_run)
     log.info(f"      → 체결 건수: {len(trade_results)}")
+    await _notify(notifier, "trading", analyses, trade_results)
 
     # Step 4: 피드백
     log.info("[4/4] 피드백 & 매매일지 기록")
     from feedback import run_feedback
     await run_feedback(trade_results, analyses)
     log.info("      → 매매일지 저장 완료")
+    await _notify(notifier, "summary", analyses, trade_results)
 
     log.info("=" * 60)
     log.info("파이프라인 완료")

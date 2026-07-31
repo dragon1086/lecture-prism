@@ -23,9 +23,9 @@ log = logging.getLogger(__name__)
 
 # ── 포트폴리오 설정 ──────────────────────────────────────────────
 MAX_SLOTS = 10              # 최대 보유 종목 수
-MAX_SAME_SECTOR = 3         # 동일 섹터 최대 보유 수
 CASH_RESERVE_RATIO = 0.7    # 현금 비중 (70% 유지)
 BUY_SCORE_THRESHOLD = 6     # 매수 최소 점수 (10점 만점, analysis.MIN_BUY_SCORE와 동일 기준)
+MIN_RISK_REWARD_RATIO = 1.5 # 신규 진입에 필요한 최소 손익비
 
 # ── 손절 기준 ─────────────────────────────────────────────────────
 STOP_LOSS = {
@@ -51,26 +51,114 @@ async def run_trading(analyses: list[dict], dry_run: bool = True) -> list[dict]:
     Returns:
         체결된 매매 결과 목록
     """
-    portfolio = await _get_current_portfolio()
     results = []
 
+    # 기존 보유분의 청산을 먼저 판단한다. 같은 실행에서 매도 신호가 난
+    # 종목을 곧바로 다시 사지 않도록 청산 종목을 신규 진입에서 제외한다.
+    holdings = await _get_exit_holdings()
+    price_map = await _load_holding_prices(holdings)
+    await _persist_holding_highs(holdings, price_map)
+    exit_decisions = await run_exit_check(holdings, price_map)
+    held_tickers = {holding["ticker"] for holding in holdings}
+    exited_tickers = {decision["ticker"] for decision in exit_decisions}
+    for decision in exit_decisions:
+        results.append(await _execute_decision(decision, dry_run=dry_run))
+
+    portfolio = await _get_current_portfolio()
+
     for analysis in analyses:
-        decision = _decide_position(analysis, portfolio)
+        if analysis["ticker"] in exited_tickers:
+            log.info("  [%s] 이번 실행에서 청산 판단 — 재진입 보류", analysis["ticker"])
+            continue
+        if analysis["ticker"] in held_tickers:
+            log.info("  [%s] 이미 보유 중 — 추가 매수 보류", analysis["ticker"])
+            continue
+        candidate = dict(analysis)
+        try:
+            from memory import get_relevant_memories
+
+            candidate["memory_lessons"] = await asyncio.to_thread(
+                get_relevant_memories,
+                analysis["ticker"],
+                analysis.get("sector", ""),
+            )
+        except Exception as exc:  # noqa: BLE001 - 기억 조회 실패가 매매 본체를 막지 않음
+            log.warning(
+                "  [%s] 과거 교훈 조회 실패 — 현재 근거만 사용: %s",
+                analysis["ticker"],
+                type(exc).__name__,
+            )
+            candidate["memory_lessons"] = []
+        decision = _decide_position(candidate, portfolio)
         if decision is None:
             log.info(f"  [{analysis['ticker']}] 매수 조건 미충족 — 패스")
             continue
 
         log.info(f"  [{analysis['ticker']}] {decision['action']} 결정: {decision['quantity']}주 @ {decision['price']:,}원")
 
-        if dry_run:
-            result = _simulate_trade(decision)
-            log.info(f"  [{analysis['ticker']}] [시뮬레이션] 체결 완료")
-        else:
-            result = await _execute_broker_order(decision)
-
-        results.append(result)
+        results.append(await _execute_decision(decision, dry_run=dry_run))
 
     return results
+
+
+async def _get_exit_holdings() -> list[dict]:
+    """공용 매매일지에서 청산 점검 대상을 읽는다."""
+
+    import db
+
+    return await asyncio.to_thread(db.get_open_holdings)
+
+
+async def _load_holding_prices(holdings: list[dict]) -> dict[str, float]:
+    """보유 종목 현재가를 읽되 실패한 종목은 청산 판단에서 보류한다."""
+
+    import data_source
+
+    prices: dict[str, float] = {}
+    for holding in holdings:
+        ticker = holding["ticker"]
+        try:
+            data = await asyncio.to_thread(data_source.fetch_stock_data, ticker)
+            price = float(data.get("current_price") or 0)
+        except Exception as exc:  # noqa: BLE001 - 가격 불명은 청산 보류
+            log.warning("  [%s] 청산 가격 조회 실패 — 보유 지속: %s", ticker, type(exc).__name__)
+            continue
+        if price > 0:
+            prices[ticker] = price
+        else:
+            log.warning("  [%s] 청산 가격 없음 — 보유 지속", ticker)
+    return prices
+
+
+async def _persist_holding_highs(
+    holdings: list[dict], price_map: dict[str, float]
+) -> None:
+    """현재가가 새 고점이면 다음 실행의 트레일링 판단을 위해 저장한다."""
+
+    import db
+
+    for holding in holdings:
+        ticker = holding["ticker"]
+        current_price = float(price_map.get(ticker) or 0)
+        if current_price <= 0:
+            continue
+        previous = float(
+            holding.get("high_since_entry") or holding.get("entry_price") or 0
+        )
+        if current_price <= previous:
+            continue
+        holding["high_since_entry"] = current_price
+        await asyncio.to_thread(db.update_holding_high, ticker, current_price)
+
+
+async def _execute_decision(decision: dict, *, dry_run: bool) -> dict:
+    """청산·진입 결정을 같은 안전 실행 경로로 처리한다."""
+
+    if dry_run:
+        result = _simulate_trade(decision)
+        log.info("  [%s] [시뮬레이션] %s 체결 완료", decision["ticker"], decision["action"])
+        return result
+    return await _execute_broker_order(decision)
 
 
 def _decide_position(analysis: dict, portfolio: dict) -> Optional[dict]:
@@ -79,14 +167,31 @@ def _decide_position(analysis: dict, portfolio: dict) -> Optional[dict]:
 
     파트4 트랙D에서 수강생이 이 로직을 수정하는 부분.
     """
-    # 추천·결정·점수가 모두 진입이어야 한다. 높은 점수 하나만으로 HOLD/PASS를
-    # 주문으로 바꾸지 않으며, LLM veto도 이 경계에서 다시 강제한다.
-    if analysis.get("recommendation") != "BUY" or analysis.get("decision") != "진입":
+    # analysis의 decision은 보고서에 남기는 비구속적 의견이다. 실제 주문 여부는
+    # 이 함수가 추천·점수·가격 배열·포트폴리오 조건을 다시 검사해 결정한다.
+    # 높은 점수 하나만으로 HOLD/PASS를 주문으로 바꾸지는 않는다.
+    if analysis.get("recommendation") != "BUY":
         return None
 
     # 매수 점수 필터 (0~10점, analysis가 산출한 buy_score)
     buy_score = analysis.get("buy_score", analysis.get("score", 0))
     if buy_score < BUY_SCORE_THRESHOLD:
+        return None
+
+    # 신규 진입의 가격 배열과 손익비는 주문을 결정하는 이 파일이 직접 검증한다.
+    try:
+        current_price = float(analysis["current_price"])
+        target_price = float(analysis["target_price"])
+        stop_loss = float(analysis["stop_loss"])
+        risk_reward_ratio = float(analysis["risk_reward_ratio"])
+    except (KeyError, TypeError, ValueError):
+        log.info("  [%s] 가격·손익비 정보 부족 — 패스", analysis.get("ticker", "?"))
+        return None
+    if not (
+        target_price > current_price > stop_loss
+        and risk_reward_ratio >= MIN_RISK_REWARD_RATIO
+    ):
+        log.info("  [%s] 가격 배열·손익비 기준 미충족 — 패스", analysis.get("ticker", "?"))
         return None
 
     # 슬랏 여유 확인
@@ -104,7 +209,6 @@ def _decide_position(analysis: dict, portfolio: dict) -> Optional[dict]:
     per_slot_amount = available_cash / max(remaining_slots, 1)
 
     # 현재가: analysis가 제공(종목별 mock 또는 LLM). 실데이터 연동 시 analysis.get_current_price만 교체.
-    current_price = analysis.get("current_price") or 70_000
     quantity = int(per_slot_amount / current_price)
 
     if quantity <= 0:
@@ -118,6 +222,7 @@ def _decide_position(analysis: dict, portfolio: dict) -> Optional[dict]:
         "reason": analysis.get("rationale") or analysis.get("reason", ""),
         "target_price": analysis.get("target_price"),
         "stop_loss": analysis.get("stop_loss", STOP_LOSS["default"]),
+        "memory_lessons": list(analysis.get("memory_lessons") or [])[:5],
     }
 
 
@@ -1180,11 +1285,12 @@ async def _execute_kis_order(decision: dict) -> dict:
 
 
 async def _get_current_portfolio() -> dict:
-    """현재 포트폴리오 조회. TODO: DB 연동."""
+    """교육용 매매일지에서 현재 보유 슬롯을 계산합니다."""
+    holdings = await _get_exit_holdings()
     return {
         "cash": 10_000_000,   # 예시: 1천만원
-        "slots_used": 3,       # 현재 3종목 보유 중
-        "holdings": [],
+        "slots_used": len(holdings),
+        "holdings": holdings,
     }
 
 
@@ -1211,7 +1317,7 @@ if __name__ == "__main__":
         sample_analyses = [
             {"ticker": "005930", "recommendation": "BUY", "decision": "진입", "buy_score": 8,
              "current_price": 71_200, "target_price": 81_200, "stop_loss": 67_600,
-             "rationale": "테스트 진입", "risk": "없음"},
+             "risk_reward_ratio": 2.8, "rationale": "테스트 진입", "risk": "없음"},
         ]
         results = asyncio.run(run_trading(sample_analyses, dry_run=not args.live))
         print(f"\n체결 결과: {results}")

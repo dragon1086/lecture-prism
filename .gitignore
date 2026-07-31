@@ -20,7 +20,9 @@ kis_devlp.yaml
 # ─────────────────────────────────────────────────────────────
 tasks/
 .omc/
+docs/superpowers/
 강의자료/
+lecture/archive/
 student_inputs/
 # 실제 계좌·대시보드 원본. 공개 가능한 슬라이드 HTML은 제외하지 않음.
 lecture/slides/assets/

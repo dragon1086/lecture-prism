@@ -360,7 +360,7 @@ class KISTradingFlowTest(unittest.TestCase):
         state = db.get_broker_order_state(first["client_order_id"])
         self.assertEqual(state.status, OrderStatus.FILLED)
 
-    def test_feedback_learns_only_from_fully_filled_results(self):
+    def test_feedback_records_filled_buy_without_inventing_outcome_lesson(self):
         filled = {
             **decision(quantity=2),
             "status": "filled",
@@ -398,7 +398,7 @@ class KISTradingFlowTest(unittest.TestCase):
             )
 
         self.assertEqual(saved_trades, [filled])
-        self.assertEqual(len(saved_lessons), 1)
+        self.assertEqual(saved_lessons, [])
 
     def test_simulation_remains_a_completed_fill_for_feedback(self):
         result = _simulate_trade(decision(quantity=2))

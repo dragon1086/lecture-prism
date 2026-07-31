@@ -5,7 +5,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 README = ROOT / "README.md"
 SLIDE = ROOT / "lecture" / "slides" / "사전오픈_세미나_슬라이드.html"
-SCRIPT = ROOT / "lecture" / "slides" / "사전오픈_세미나_발표_스크립트.md"
 REQUIREMENTS = ROOT / "requirements.txt"
 RUNTIME_PROFILES = ROOT / "docs" / "runtime-profiles.md"
 
@@ -15,7 +14,6 @@ class ReadmeOutcomeContractTest(unittest.TestCase):
     def setUpClass(cls):
         cls.readme = README.read_text(encoding="utf-8")
         cls.slide = SLIDE.read_text(encoding="utf-8")
-        cls.script = SCRIPT.read_text(encoding="utf-8")
         cls.requirements = REQUIREMENTS.read_text(encoding="utf-8").lower()
         cls.runtime_profiles = RUNTIME_PROFILES.read_text(encoding="utf-8")
 
@@ -78,21 +76,23 @@ class ReadmeOutcomeContractTest(unittest.TestCase):
             "매매 로직",
             "모니터링",
             "대시보드",
-            "텔레그램·디스코드",
+            "Discord 판단 알림",
         ):
             self.assertIn(phrase, self.readme)
 
-    def test_seminar_slide_and_script_match_the_readme_payoff(self):
-        for source in (self.slide, self.script):
-            self.assertIn("API 키 없이", source)
-            self.assertIn("실데이터", source)
-            self.assertIn("실제 AI", source)
-            self.assertIn("KIS", source)
-            self.assertIn("내 전략을 넣는 네 가지 트랙", source)
-            self.assertIn("모의·실전", source)
-            self.assertIn("매수 주문 경로", source)
-            self.assertIn("한 영역씩", source)
-            self.assertIn("나무 모종", source)
+    def test_seminar_slide_matches_the_readme_payoff(self):
+        for phrase in (
+            "API 키 없이",
+            "실데이터",
+            "실제 AI",
+            "KIS",
+            "내 전략을 넣는 네 가지 트랙",
+            "모의·실전",
+            "매수 주문 경로",
+            "한 영역씩",
+            "나무 모종",
+        ):
+            self.assertIn(phrase, self.slide)
 
 
 if __name__ == "__main__":

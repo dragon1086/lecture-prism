@@ -4,10 +4,10 @@ feedback.py — 모듈 4: 피드백 & 메모리 시스템
 매매 결과 → 교훈 추출 → 단기/중기/장기 메모리 저장.
 "인간 투자자의 매매일지와 동일한 구조"
 
-메모리 계층:
-  - 단기 (당일): 오늘 매매 패턴, 체결 이슈
-  - 중기 (주간): 섹터 트렌드, 반복 패턴
-  - 장기 (월간): 시장 체제 판단, 전략 수정 이력
+메모리 계층은 memory.py가 승격합니다:
+  - 단기 (0~7일): 청산 뒤 남긴 상세 교훈
+  - 중기 (8~30일): 한 번 더 검토할 교훈
+  - 장기 (31일+): 반복된 교훈에서만 추린 원칙
 
 실행:
     python feedback.py    # 최근 매매일지 조회
@@ -60,6 +60,15 @@ async def run_feedback(trade_results: list[dict], analyses: list[dict]) -> None:
         # 매매 내역 저장
         db.save_trade(result)
 
+        # 신규 매수 직후에는 성패를 아직 알 수 없다. 진입 근거는 분석·매매
+        # 기록에 남기고, 판단 교훈은 포지션이 끝난 SELL 이후에 만든다.
+        if result.get("action") == "BUY":
+            log.info(
+                "  [%s] 신규 진입 기록 완료 — 결과 교훈은 청산 뒤 생성",
+                result["ticker"],
+            )
+            continue
+
         # 판단 오류 vs 실행 오류 분류
         error_type = _classify_error(result, analysis)
 
@@ -98,6 +107,16 @@ async def _extract_lesson(result: dict, analysis: dict, error_type: str) -> str:
 
     if error_type == "EXECUTION_ERROR":
         return f"{ticker} {action}: 체결 실패. 분석 판단보다 주문 실행 경로(가격/타이밍) 점검 필요."
+    if all(
+        analysis.get(key) is not None
+        for key in ("buy_score", "risk_reward_ratio", "stop_loss")
+    ):
+        return (
+            f"{ticker} {action}: 다음에도 매수점수 {analysis['buy_score']}/10, "
+            f"손익비 {analysis['risk_reward_ratio']}:1, "
+            f"손절가 {int(analysis['stop_loss']):,}원을 함께 확인하고 "
+            "진입 근거와 판단을 다시 볼 조건을 기록한다."
+        )
     return f"{ticker} {action}: 진입 근거 = {reason} 시장 전체 하락 시 연동 리스크 모니터링."
 
 

@@ -1,0 +1,109 @@
+<!-- P3-S31 · 매매가 끝나야 비로소 결과 교훈을 만들 수 있습니다 -->
+<section class="slide split large-diagram">
+  <div class="txt"><div class="kicker">모듈 4 · 피드백과 메모리</div><h2>매매가 끝나야 비로소 결과 교훈을 만들 수 있습니다</h2></div>
+  <div class="img">
+    <img class="reference-shot" src="assets/prism-feedback-reentry-light.png" alt="거래 이력, 회고, 반복 교훈, 다음 판단, 재진입 제한 흐름을 밝은 배경으로 재구성한 강의용 그림">
+    <p class="caption">원본은 청산이 끝난 뒤 계획과 결과를 비교하고, 반복 교훈과 재진입 제한을 다음 판단에 전달합니다.</p>
+  </div>
+  <div class="pagenum">31</div>
+</section>
+
+<!-- P3-S32 · 기억은 저장만 해서는 루프가 되지 않습니다 -->
+<section class="slide">
+  <div class="kicker">원본 PRISM의 닫힌 피드백 루프</div>
+  <h2>기억은 저장만 해서는 다음 판단에 영향을 주지 못합니다</h2>
+  <div class="flow">
+    <div class="step"><div class="n">청산 완료</div><div class="t">매매일지</div><div class="d">진입 근거, 매도 이유, 수익률, 당시 상황을 함께 남깁니다.</div></div>
+    <div class="step"><div class="n">회고</div><div class="t">교훈 추출</div><div class="d">잘한 점, 놓친 신호, 다음 행동을 구조화합니다.</div></div>
+    <div class="step"><div class="n">선별</div><div class="t">원칙·직관</div><div class="d">반복 횟수와 신뢰도를 붙여 약한 기억을 걸러 냅니다.</div></div>
+    <div class="step"><div class="n">재사용</div><div class="t">다음 진입</div><div class="d">같은 종목·섹터·트리거 이력과 장기 원칙을 프롬프트에 넣습니다.</div></div>
+  </div>
+  <div class="takeaway">원본은 과거 기록을 참고했는지와 이후 성과도 따로 비교합니다. 기억 역시 검증 대상입니다.</div>
+  <div class="pagenum">32</div>
+</section>
+
+<!-- P3-S33 · 실제 운영에서는 매주 기록을 압축합니다 -->
+<section class="slide split large-diagram">
+  <div class="txt"><div class="kicker">모듈 4 · 실제 운영 배치</div><h2>실제 운영에서는 매주 기록을 압축합니다</h2></div>
+  <div class="img">
+    <img class="reference-shot" src="assets/prism-memory-compression-operations.png" alt="단기, 중기, 장기 메모리 압축과 정리 게이트">
+    <p class="caption">실제 서버의 일요일 03:00 배치와 2026-07-26 로그를 바탕으로 만든 설명 그림입니다. 압축은 성과 보장이 아닙니다.</p>
+  </div>
+  <div class="pagenum">33</div>
+</section>
+
+<!-- P3-S34 · 실제 기록은 기억을 쓴 거래가 더 좋았다고 말하지 않습니다 -->
+<section class="slide">
+  <div class="kicker">운영 데이터에서 배운 점</div>
+  <h2>기억을 참고했다고 성과가 자동으로 좋아지지는 않았습니다</h2>
+  <div class="code-grid">
+    <div class="code-card">
+      <h3>최근 90일 관측</h3>
+      <p class="plain">메모리 참조 거래와 비참조 거래를 나눠 평균 수익률·승률을 기록했습니다.</p>
+      <pre>한국: 참조 70건 / 비참조 29건
+미국: 참조 29건 / 비참조 45건
+
+두 시장 모두 이 기간에는
+참조 거래의 평균 성과가 더 낮았습니다.</pre>
+    </div>
+    <div class="code-card">
+      <h3>이 숫자를 읽는 법</h3>
+      <p class="plain">관찰 상관관계이지 메모리가 손실을 만들었다는 인과 증명은 아닙니다.</p>
+      <pre>표본 선택이 다를 수 있음
+시장 국면이 다를 수 있음
+어려운 거래에서 기억을 더 자주 봤을 수 있음
+
+→ 기억도 성과로 검증하고 정리한다</pre>
+    </div>
+  </div>
+  <div class="pagenum">34</div>
+</section>
+
+<!-- P3-S35 · lecture-prism도 저장에서 재사용까지 한 바퀴 돕니다 -->
+<section class="slide">
+  <div class="kicker">원본과 강의용 축소판 비교</div>
+  <h2><code>feedback.py</code>와 <code>memory.py</code>가 작은 피드백 루프를 만듭니다</h2>
+  <div class="pattern-grid">
+    <div class="pattern-card on"><div class="tag">청산 뒤 생성</div><h3>단기 교훈</h3><p>BUY 직후에는 결과 교훈을 만들지 않습니다. SELL이 끝난 뒤에 판단 기록을 남깁니다.</p></div>
+    <div class="pattern-card on"><div class="tag">API 키 없음</div><h3>결정론적 압축</h3><p>7일 뒤 중기, 30일 뒤 반복 장기 원칙으로 옮기고 활성 장기 원칙을 20개로 제한합니다.</p></div>
+    <div class="pattern-card on"><div class="tag">다음 진입 참고</div><h3>최대 5개 전달</h3><p>같은 종목의 최근 기록과 반복 장기 원칙을 BUY 결정 기록에 함께 남깁니다.</p></div>
+  </div>
+  <div class="takeaway">강의판에는 LLM 회고, 섹터·트리거 성과 보정, 신뢰도 재계산, 재진입 쿨다운이 없습니다.</div>
+  <div class="pagenum">35</div>
+</section>
+
+<!-- P3-S36 · 보조 운영 작업을 하나씩 실행합니다 -->
+<section class="slide prompt-screen">
+  <div class="kicker">모듈 4 · 구조 질문과 보조 작업 실행</div>
+  <h2>메인 파이프라인 밖의 작업도 하나씩 확인합니다</h2>
+  <div class="prompt-lead">아래 문장을 코딩 에이전트에게 그대로 붙여넣습니다.</div>
+  <div class="prompt-columns">
+    <div class="prompt-panel">
+      <p><span class="num">1.</span> <code>feedback.py</code>, <code>memory.py</code>, <code>operations.py</code>의 역할을 나눠 설명해줘.</p>
+      <p><span class="num">2.</span> <code>python3 feedback.py</code>와 <code>python3 operations.py compress</code>를 실행해줘.</p>
+      <p><span class="num">3.</span> <code>python3 operations.py monitor</code>로 보유종목 점검을 시뮬레이션해줘.</p>
+    </div>
+    <div class="prompt-panel">
+      <p><span class="num">4.</span> <code>python3 operations.py reconcile --broker kis</code>는 새 주문 없이 조회만 하는지 확인해줘.</p>
+      <p><span class="num">5.</span> 예약 시각과 실제 주문 설정은 바꾸지 마.</p>
+      <p><span class="num">6.</span> 원본과 비교해 어떤 보조 시스템이 더 필요한지 세 가지로 정리해줘.</p>
+    </div>
+  </div>
+  <div class="prompt-branch"><code>schedule</code>은 구조를 읽는 용도입니다. 수업 중에는 켜지 않고 한 번 실행하는 명령만 사용합니다.</div>
+  <div class="pagenum">36</div>
+</section>
+
+<!-- P3-S37 · 네 모듈과 네 보조 작업이 자동매매 한 사이클을 만듭니다 -->
+<section class="slide">
+  <div class="kicker">파트 3 마무리</div>
+  <h2>자동매매는 메인 로직과 보조 운영이 함께 있어야 돌아갑니다</h2>
+  <div class="loop-grid">
+    <div class="loop-card"><div class="tag">모듈 1</div><h3>후보 선별</h3><p>넓은 시장에서 깊이 볼 종목만 남깁니다.</p></div>
+    <div class="loop-card"><div class="tag">모듈 2</div><h3>근거 분석</h3><p>여섯 방향의 사실과 조건부 의견을 만듭니다.</p></div>
+    <div class="loop-card"><div class="tag">모듈 3</div><h3>진입·청산</h3><p>코드 게이트와 주문 상태가 실제 행동을 정합니다.</p></div>
+    <div class="loop-card"><div class="tag">모듈 4</div><h3>기록·압축</h3><p>청산 결과에서 교훈을 남기고 다시 꺼내 씁니다.</p></div>
+    <div class="loop-card"><div class="tag">보조 운영</div><h3>계속 확인</h3><p>배치·보유 감시·체결 재조회·압축이 빈틈을 메웁니다.</p></div>
+  </div>
+  <div class="takeaway">파트 4에서는 이 중 한 규칙만 골라 내 전략으로 바꾸고, 전후 증거를 남깁니다.</div>
+  <div class="pagenum">37</div>
+</section>

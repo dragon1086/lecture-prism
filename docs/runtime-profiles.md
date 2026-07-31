@@ -48,6 +48,8 @@ lecture-prism은 한 저장소 안에서 초급자용 더미 데모부터 상태
 | `LECTURE_RESEARCH_TOOLS` | `perplexity,firecrawl` | 선택 리서치 도구 |
 | `LECTURE_TRADE_MODE` | `simulation`, `demo`, `real` | 매매 실행 수준 |
 | `LECTURE_SAVE_REPORTS` | `1`, `0` | `reports/` Markdown 저장 여부 |
+| `LECTURE_NOTIFY_DISCORD` | `1`, `0` | Discord 판단 알림 사용 여부 |
+| `DISCORD_WEBHOOK_URL` | Discord Incoming Webhook URL | 알림을 받을 비밀 주소. `.env`에만 저장 |
 
 이전 설정의 `PRISM_OPENAI_AUTH_MODE=chatgpt_oauth`도 명시적 호환 입력으로 인식하지만, 비공식 프록시를 시작하지 않고 공식 Codex 공급자를 선택합니다. `auto`는 이 명시적 값이나 API 키가 없으면 로컬 로그인 상태를 추측하지 않습니다.
 
@@ -164,7 +166,26 @@ LECTURE_KIS_MODE=real
 
 이중 플래그는 market provider fail-closed와 별개인 **별도 live gate**입니다. KIS와 Toss의 전체 수명주기는 코드와 고정 fixture로 검증했지만, 그것만으로 live 운영 준비가 완료되지는 않습니다. 실제 계좌 E2E는 실제 키·장 운영시간·사용자 승인이 필요한 별도 작업이므로, 강의 문서와 자동 테스트는 주문 경로를 실행하지 않습니다.
 
-## 5. 보고서 산출물
+## 5. Discord로 AI 판단 받기
+
+Discord는 어떤 계좌에 얼마가 있는지 보여 주는 잔고 알림이 아닙니다. `main.py` 한 번에서 나온 스크리닝 후보, 종목별 6개 분석 근거, BUY/SELL/HOLD/PASS 판단, 마지막 AI 판단 요약을 순서대로 보냅니다. 계좌 잔고·계좌번호·webhook URL은 메시지에 보내지 않습니다.
+
+```env
+LECTURE_NOTIFY_DISCORD=1
+DISCORD_WEBHOOK_URL="내 Discord 채널에서 만든 Incoming Webhook URL"
+```
+
+두 값 중 하나라도 없으면 Discord는 조용히 꺼집니다. webhook 형식이 잘못됐거나 Discord가 응답하지 않아도 스크리닝·분석·매매·피드백 저장은 계속됩니다. mock에서는 모든 메시지의 데이터 원천과 매매 모드가 연습 데이터·simulation이라는 사실을 함께 확인하세요.
+
+```text
+lecture-prism의 Discord 판단 알림 설정을 도와줘.
+Discord Incoming Webhook URL은 내가 직접 .env에 넣을 테니 화면이나 답변에 출력하지 마.
+LECTURE_NOTIFY_DISCORD=1과 webhook 설정이 모두 있을 때만 알림이 켜지는지 확인하고,
+실제 주문 없이 mock 파이프라인을 실행해 스크리닝 → 종목별 분석 → 매매 판단 → AI 판단 요약 순서를 점검해줘.
+메시지에 계좌 잔고·계좌번호·webhook 값이 들어가지 않는지도 확인해줘.
+```
+
+## 6. 보고서 산출물
 
 `LECTURE_SAVE_REPORTS=1`이면 `main.py`가 분석 이후 `reports/`에 Markdown 보고서를 저장합니다.
 
@@ -176,7 +197,7 @@ LECTURE_KIS_MODE=real
 
 `reports/`는 실행할 때 생기는 결과물이므로 Git에 올리지 않습니다.
 
-## 6. 상태 증거와 안전을 점검하는 프롬프트
+## 7. 상태 증거와 안전을 점검하는 프롬프트
 
 ```text
 방금 만든 classroom 임시 DB에서 주문과 체결 증거를 읽어 설명해줘.

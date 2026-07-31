@@ -47,10 +47,11 @@
 | `trading.py` | 분석 → 포지션 사이징 → 청산 판단 | **의사결정** | 리스크 상수, `STOP_LOSS`/`TAKE_PROFIT`/`TRAILING_STOP`, `_decide_exit` |
 | `feedback.py` | 매매 결과 → 교훈 추출 → 메모리 저장 | **자기개선** | `_extract_lesson` |
 | `db.py` | 공용 SQLite(`prism.db`) 스키마·읽기·쓰기 | 저장소 | 보통 수정 안 함 (스키마 단일 소스) |
+| `notifications.py` | 단계별 판단 → 선택 Discord 메시지 | 알림 | 보통 수정 안 함 (계좌정보 제외·fail-open) |
 | `dashboard.py` | localhost:8080 로컬 웹 대시보드 (FastAPI, 빌드 없는 단일 HTML) | 확인 화면 | 표·카드 추가 |
 | `blank_pipeline.py` | 4함수 빈 뼈대 (심화: 처음부터 구현) | 실습 | 4함수 중 1개 |
 
-**데이터 흐름**: `analysis.py` → `run_analysis()`가 원본 PRISM scenario 형태 dict 반환(`recommendation`/`decision`/`buy_score`/`target_price`/`stop_loss`/`risk_reward_ratio` + 6섹션 요약 `technical/supply/financial/industry/news_summary`·`market_condition` 등) → `trading.py`가 `buy_score`·`current_price`로 매수/수량 결정 → `feedback.py`가 `db.py`를 통해 `prism.db`에 기록 → `dashboard.py`가 읽어 표시. (피드백 루프가 실제로 연결되어 있음.)
+**데이터 흐름**: `analysis.py` → `run_analysis()`가 원본 PRISM scenario 형태 dict 반환(`recommendation`/`decision`/`buy_score`/`target_price`/`stop_loss`/`risk_reward_ratio` + 6섹션 요약 `technical/supply/financial/industry/news_summary`·`market_condition`) → `trading.py`가 최신 교육용 BUY 기록과 매수 이후 최고가를 읽어 청산을 먼저 판단하고, 이미 보유한 종목은 중복 매수하지 않으며, 나머지 후보의 가격 배열·손익비·포지션 한도를 직접 검사해 신규 매수/수량 결정 → `feedback.py`가 분석값과 체결 결과로 교훈을 만들어 `db.py`의 `prism.db`에 기록 → `dashboard.py`가 분석·매매·피드백을 읽어 표시. `report_writer.py`는 분석값으로 진입 전 확인·판단을 다시 볼 조건·청산 원칙을 설명합니다. `notifications.py`는 각 단계가 끝날 때 후보·분석 근거·매매 판단·AI 판단 요약만 선택적으로 Discord에 보내며, 계좌 정보는 보내지 않고 실패해도 파이프라인을 막지 않음.
 
 **6섹션 분석 (v2 리치 리포트)**: `analysis.py`는 원본 PRISM처럼 기술·수급·재무·산업·뉴스·시장 6개 섹션을 냅니다. **규칙으로 되는 건 규칙으로**(수급·재무·산업·시장 = `data_source` 실데이터 지표 템플릿), **맥락 판단은 LLM으로**(기술·뉴스·전략 = 3-에이전트 체인, 파트4 트랙B). 3계층 동작: ① Tier 0 mock(표준 라이브러리) → ② Tier 1 `pip install yfinance` 실데이터 → ③ Tier 2 `+OPENAI/OAuth` LLM 심층 서술. 각 계층 실패 시 하위로 자동 폴백.
 
@@ -64,11 +65,11 @@
 - **데이터 소스 주의**: KRX는 전종목 벌크 조회(시총·거래대금·수급·재무·지수)에 로그인을 요구해 pykrx로 못 가져옵니다(2026-07 실측: 벌크 API는 KeyError로 깨지고 per-ticker 시세만 동작). 그래서 스크리닝·분석 모두 무료·무로그인 **yfinance**(가격·거래량·시총·재무·뉴스·지수)를 쓰고, 수급은 **거래량 파생 프록시**로 정직하게 대체합니다. yfinance 뉴스는 **영문 국제 기사**라 LLM이 한글로 해석합니다.
 - **런타임 프로필**: `.env`의 `LECTURE_PROFILE=mock|real_data|research|paper|live`이 `runtime_config.py`를 통해 데이터/LLM/리포트/매매 경로를 라우팅합니다(`docs/runtime-profiles.md`). `research_tools.py`(Perplexity/Firecrawl)·`report_writer.py`(`reports/` 저장)는 전부 선택 연동이며 미설정 시 자동 폴백 — 기본 mock 경로를 절대 깨지 마세요.
 
-## `cores/` 는 원본 참조 사본 (주의)
+## `cores/`의 실행 범위 (주의)
 
-`cores/analysis.py`, `cores/data_prefetch.py`, `cores/agents/agents/*` 는 **원본 prism-insight에서 가져온 참조용 사본**입니다. `mcp_agent`, `cores.report_generation` 등 이 저장소에 없는 모듈에 의존하므로 **그대로는 실행되지 않으며, 루트 교육용 파이프라인은 이것을 import 하지 않습니다.** (루트 `analysis.py`가 교육용 경량 버전.) 수강생이 원본 에이전트 프롬프트를 열람하는 용도로만 존재합니다. 혼동 주의: `main.py`가 쓰는 건 항상 루트의 `analysis.py`입니다.
+`cores/analysis.py`, `cores/data_prefetch.py`, `cores/agents/agents/*`는 **원본 prism-insight에서 가져온 참조용 사본**입니다. `mcp_agent`, `cores.report_generation` 등 이 저장소에 없는 모듈에 의존하므로 그대로는 실행되지 않습니다. 수강생이 원본 에이전트 프롬프트와 운영 구조를 비교해 보는 자료로만 둡니다. 혼동 주의: 기본 실행의 분석 시작점은 항상 루트 `analysis.py`입니다.
 
-**실제로 파이프라인이 쓰는 `cores/` 하위는 `cores/chatgpt_proxy` 뿐입니다** — ChatGPT OAuth 프록시(API 키 없이 ChatGPT 구독으로 GPT 호출). `main.py`는 `PRISM_OPENAI_AUTH_MODE=chatgpt_oauth`일 때만 프록시를 시도하고, 실패하면 mock으로 폴백합니다. 프록시는 localhost:18741에서 뜹니다.
+`cores/chatgpt_proxy`도 선택 경로에서만 씁니다. `main.py`는 `PRISM_OPENAI_AUTH_MODE=chatgpt_oauth`일 때만 ChatGPT OAuth 프록시를 시도하고, 실패하면 mock으로 폴백합니다. 프록시는 localhost:18741에서 뜹니다.
 
 ## 브로커 어댑터 (`brokers/`)
 
@@ -93,7 +94,7 @@ python3 dashboard.py                # http://localhost:8080 (fastapi/uvicorn 필
 python3 -m unittest discover -s tests -v   # 브로커/프록시 번역 테스트
 
 # 컴파일 체크 (pycache를 저장소 밖으로)
-PYTHONPYCACHEPREFIX=/private/tmp/lecture-prism-pycache python3 -m compileall main.py analysis.py screening.py trading.py feedback.py db.py dashboard.py
+PYTHONPYCACHEPREFIX=/private/tmp/lecture-prism-pycache python3 -m compileall main.py analysis.py screening.py trading.py feedback.py db.py notifications.py dashboard.py
 ```
 
 작업 완료 전 최소 검증: `python3 main.py` 완주 + 관련 테스트 통과 + 민감정보/로컬 경로 미포함 확인.

@@ -67,6 +67,40 @@ class AnalysisRuntimeConfigTest(unittest.TestCase):
         self.assertEqual(result["research_tools"], [])
         self.assertIn("runtime_summary", result)
 
+    def test_mock_analysis_derives_indicators_and_score_from_fixture_metrics(self):
+        os.environ["LECTURE_PROFILE"] = "mock"
+
+        result = asyncio.run(analysis.run_analysis("005930"))
+
+        self.assertEqual(result["data_source"], "mock")
+        self.assertIn("RSI", result["technical_summary"])
+        self.assertIn("거래량", result["technical_summary"])
+        self.assertEqual(result["buy_score"], 8)
+        self.assertEqual(result["data_status"], "교육용 고정 시나리오")
+        self.assertIn("현재 시장 정보가 아닙니다", result["data_notice"])
+        self.assertIn("technical", result["section_provenance"])
+
+    def test_fixture_metric_change_changes_shared_rule_score(self):
+        fixture = {
+            "source": "mock",
+            "evidence_kind": "fixture",
+            "price_vs_ma20": 3.0,
+            "ma5": 102.0,
+            "ma20": 100.0,
+            "rsi": 55.0,
+            "vol_ratio": 1.6,
+            "finance": {"rev_growth": 5.0, "roe": 12.0},
+            "supply": {"up_down_vol_ratio": 1.3},
+        }
+
+        strong_score = analysis._rule_based_score(fixture)["buy_score"]
+        fixture.update({"price_vs_ma20": -3.0, "ma5": 98.0, "rsi": 78.0, "vol_ratio": 0.8})
+        fixture["finance"] = {"rev_growth": -5.0, "roe": 3.0}
+        fixture["supply"] = {"up_down_vol_ratio": 0.6}
+
+        self.assertEqual(strong_score, 10)
+        self.assertEqual(analysis._rule_based_score(fixture)["buy_score"], 2)
+
     def test_research_profile_adds_optional_research_context_to_news(self):
         os.environ["LECTURE_PROFILE"] = "research"
         os.environ["LECTURE_LLM_MODE"] = "mock"

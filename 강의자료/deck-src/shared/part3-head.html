@@ -1,0 +1,215 @@
+<!-- Shared source header. Edit modules, then run node deck-src/build-decks.mjs. -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>파트3 — 연습 데이터로 안전한 첫 자동매매 흐름 만들기</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  /* ── PPT형 슬라이드: 화면=세로 스크롤, 인쇄=슬라이드당 1페이지 ── */
+  :root {
+    --bg: oklch(0.13 0.015 264); --card: oklch(0.17 0.015 264);
+    --fg: oklch(0.96 0.005 264); --muted: oklch(0.65 0.01 264);
+    --accent: oklch(0.72 0.19 264); --accent2: oklch(0.75 0.15 145);
+    --warn: oklch(0.78 0.15 60);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  body { background: oklch(0.09 0.01 264); font-family: 'Apple SD Gothic Neo','Pretendard','Noto Sans KR',system-ui,sans-serif; }
+
+  .slide {
+    width: 1280px; height: 720px; margin: 24px auto; padding: 64px 80px;
+    background: var(--bg); color: var(--fg); position: relative;
+    display: flex; flex-direction: column; justify-content: center;
+    border-radius: 6px; overflow: hidden;
+  }
+  .slide::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 6px;
+    background: linear-gradient(90deg, var(--accent), oklch(0.6 0.2 300)); }
+  .pagenum { position: absolute; bottom: 22px; right: 32px; font-size: 15px; color: var(--muted); }
+  .kicker { font-size: 20px; font-weight: 700; color: var(--accent); margin-bottom: 14px; letter-spacing: 0.5px; }
+  h1 { font-size: 54px; font-weight: 800; line-height: 1.25; letter-spacing: -1px; }
+  h2 { font-size: 40px; font-weight: 800; line-height: 1.3; margin-bottom: 34px; letter-spacing: -0.5px; }
+  .sub { font-size: 26px; color: var(--muted); margin-top: 20px; line-height: 1.5; }
+  ul { list-style: none; }
+  li { font-size: 26px; line-height: 1.55; padding: 10px 0 10px 40px; position: relative; }
+  li::before { content: "▸"; position: absolute; left: 8px; color: var(--accent); }
+  li strong, p strong { color: var(--accent2); }
+  .note { margin-top: auto; padding-top: 22px; font-size: 20px; color: var(--warn); }
+  .arch-prompt { margin-top: 20px; padding: 14px 18px; border: 1px solid oklch(0.36 0.06 264);
+    border-left: 4px solid var(--accent2); background: oklch(0.16 0.018 264); font-size: 17px;
+    line-height: 1.55; color: var(--muted); }
+  .arch-prompt strong { color: var(--fg); }
+
+  /* 표지형 */
+  .cover { text-align: center; align-items: center; }
+  .cover .kicker { font-size: 24px; }
+  .cover h1 { font-size: 62px; }
+
+  /* 챕터 디바이더 — 장 표지 (파트4와 톤 통일) */
+  .divider { text-align: center; align-items: center; }
+  .divider .chnum { font-size: 26px; font-weight: 800; color: var(--accent); letter-spacing: 6px; margin-bottom: 20px; }
+  .divider h1 { font-size: 60px; }
+  .divider .sub { font-size: 25px; }
+  .divider::before { background: linear-gradient(90deg, var(--accent2), var(--accent)); }
+
+  /* 분할형: 왼쪽 텍스트 + 오른쪽 이미지 자리 */
+  .split { flex-direction: row; align-items: center; gap: 48px; justify-content: flex-start; }
+  .split .txt { flex: 1.15; }
+  .split .img { flex: 0.85; }
+  .compact-flow h2 { margin-bottom: 18px; }
+  .compact-flow .note { padding-top: 10px; }
+  .compact-flow li { font-size: 24px; line-height: 1.42; padding-top: 7px; padding-bottom: 7px; }
+
+  /* 🖼 이미지 자리 표시 — Codex로 생성 후 <img>로 교체 */
+  .imgbox {
+    border: 3px dashed oklch(0.55 0.12 60); border-radius: 14px;
+    background: oklch(0.15 0.02 60 / 0.35); color: var(--warn);
+    padding: 26px; font-size: 19px; line-height: 1.6; min-height: 220px;
+    display: flex; flex-direction: column; justify-content: center; gap: 8px;
+  }
+  .imgbox::before { content: "🖼 이미지 자리"; font-weight: 800; font-size: 22px; }
+  .imgbox .hint { color: oklch(0.7 0.08 60); font-size: 16px; }
+  .imgbox.wide { min-height: 300px; margin-top: 10px; }
+
+  .big { font-size: 34px; line-height: 1.6; text-align: center; }
+  .flow { display: flex; gap: 14px; margin: 26px 0; }
+  .step { flex: 1; background: var(--card); border: 1px solid oklch(0.3 0.02 264); border-radius: 12px;
+    padding: 20px 16px; text-align: center; }
+  .step .n { font-size: 15px; color: var(--accent); font-weight: 800; }
+  .step .t { font-size: 23px; font-weight: 800; margin: 6px 0; }
+  .step .d { font-size: 16.5px; color: var(--muted); line-height: 1.45; }
+
+  /* 패턴·코드 설명형 */
+  .pattern-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .pattern-card { min-height: 128px; padding: 17px 18px; border: 1px solid oklch(0.3 0.02 264);
+    border-radius: 12px; background: var(--card); }
+  .pattern-card.on { border-color: var(--accent2); background: oklch(0.18 0.035 145); }
+  .pattern-card .tag { font-size: 14px; font-weight: 800; color: var(--accent); margin-bottom: 7px; }
+  .pattern-card.on .tag { color: var(--accent2); }
+  .pattern-card h3 { font-size: 20px; margin-bottom: 7px; }
+  .pattern-card p { font-size: 15.5px; line-height: 1.42; color: var(--muted); }
+  .code-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .code-card { padding: 18px; border: 1px solid oklch(0.3 0.02 264); border-radius: 12px; background: var(--card); }
+  .code-card h3 { font-size: 21px; margin-bottom: 8px; }
+  .code-card .plain { font-size: 16px; color: var(--accent2); margin-bottom: 10px; line-height: 1.4; }
+  pre { padding: 14px 16px; border-radius: 9px; background: oklch(0.11 0.012 264); overflow: hidden;
+    font-family: 'SFMono-Regular','Cascadia Code','Consolas',monospace; font-size: 14.5px; line-height: 1.48; color: #d9dcef; }
+  .code-accent { color: #8b7cf8; } .code-green { color: #5ecf9a; } .code-dim { color: #777d98; }
+  .source { margin-top: 13px; font-size: 14px; line-height: 1.4; color: var(--muted); }
+  .takeaway { margin-top: 18px; padding: 14px 18px; border-left: 4px solid var(--accent2);
+    background: oklch(0.16 0.018 264); font-size: 20px; line-height: 1.45; }
+  .dashboard-shot { width: 100%; height: 286px; object-fit: cover; object-position: top center;
+    border-radius: 12px; border: 1px solid oklch(0.3 0.02 264); display: block; }
+  .reference-shot { width: 100%; height: 360px; object-fit: contain; object-position: center;
+    border-radius: 12px; border: 1px solid oklch(0.3 0.02 264); background: oklch(0.11 0.012 264); display: block; }
+  .source-map-slide { padding: 30px 58px 26px; justify-content: flex-start; }
+  .source-map-slide .kicker { font-size: 17px; margin-bottom: 5px; }
+  .source-map-slide h2 { font-size: 34px; line-height: 1.15; margin-bottom: 10px; }
+  .source-map-slide .reference-shot { height: 515px; max-height: 515px; }
+  .source-map-slide .caption { margin: 7px 8px 0; font-size: 14.5px; }
+  /* 정보밀도가 높은 원본 화면은 설명 옆 썸네일이 아니라 한 장의 읽을 자료로 보여 준다. */
+  .image-focus { padding: 28px 60px 26px; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 0; }
+  .image-focus .txt { flex: none; width: 100%; }
+  .image-focus .txt .kicker { font-size: 16px; margin-bottom: 4px; }
+  .image-focus .txt h2 { font-size: 32px; line-height: 1.12; margin: 0 0 9px; }
+  .image-focus .txt ul { display: none; }
+  .image-focus .img { flex: 1; width: 100%; min-height: 0; }
+  .image-focus .reference-shot { height: 500px; max-height: 500px; }
+  .image-focus .caption { margin-top: 5px; }
+  /* 정보량이 많은 모듈 지도는 고연령 수강생도 읽을 수 있게 제목보다 그림에 면적을 준다. */
+  .large-diagram {
+    padding: 18px 28px 20px; flex-direction: column; align-items: stretch;
+    justify-content: flex-start; gap: 0;
+  }
+  .large-diagram .txt { flex: none; width: 100%; }
+  .large-diagram .txt .kicker,
+  .large-diagram > .kicker { font-size: 16px; margin-bottom: 2px; }
+  .large-diagram .txt h2,
+  .large-diagram > h2 { font-size: 28px; line-height: 1.12; margin: 0 0 6px; }
+  .large-diagram .txt ul { display: none; }
+  .large-diagram .img { flex: 1; width: 100%; min-height: 0; }
+  .large-diagram .reference-shot {
+    width: 100%; height: 585px; max-height: 585px; object-fit: contain;
+  }
+  .large-diagram .caption { margin: 4px 2px 0; font-size: 13.5px; line-height: 1.3; }
+  .archive-example::after {
+    content: "과거 운영 예시 · 현재 추천 아님";
+    position: absolute; top: 78px; right: 70px; z-index: 3;
+    padding: 8px 14px; border-radius: 999px;
+    color: #fff; background: rgba(159, 54, 54, 0.94);
+    border: 1px solid rgba(255,255,255,0.4);
+    font-size: 16px; font-weight: 800;
+  }
+  .with-prompt {
+    display: grid; grid-template-columns: 1.15fr 0.85fr;
+    grid-template-rows: minmax(0, 1fr) auto;
+    align-items: center; column-gap: 48px; row-gap: 18px;
+  }
+  .with-prompt .txt { grid-column: 1; grid-row: 1; min-width: 0; }
+  .with-prompt .img { grid-column: 2; grid-row: 1; min-width: 0; }
+  .with-prompt > .arch-prompt { grid-column: 1 / -1; grid-row: 2; margin-top: 0; }
+  .prompt-screen { padding: 24px 42px 26px; justify-content: flex-start; }
+  .prompt-screen .kicker { font-size: 16px; margin-bottom: 3px; }
+  .prompt-screen h2 { font-size: 34px; line-height: 1.15; margin-bottom: 12px; }
+  .prompt-lead {
+    padding: 10px 15px; border-left: 4px solid var(--accent2);
+    background: oklch(0.16 0.018 264); color: var(--fg);
+    font-size: 20px; font-weight: 750; line-height: 1.42;
+  }
+  .prompt-columns {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+    margin-top: 12px; min-height: 0;
+  }
+  .prompt-panel {
+    padding: 16px 18px; border: 1px solid oklch(0.34 0.035 264);
+    border-radius: 11px; background: oklch(0.11 0.012 264);
+  }
+  .prompt-panel p { font-size: 19px; line-height: 1.5; color: #e1e4f0; margin-bottom: 9px; }
+  .prompt-panel p:last-child { margin-bottom: 0; }
+  .prompt-panel .num { color: var(--accent2); font-weight: 850; }
+  .prompt-branch {
+    margin-top: 10px; padding: 10px 15px; border-radius: 10px;
+    background: oklch(0.18 0.035 264); border: 1px solid var(--accent);
+    color: var(--fg); font-size: 19px; font-weight: 750; line-height: 1.42;
+  }
+  .caption { margin-top: 9px; font-size: 14px; color: var(--muted); line-height: 1.4; }
+  .figure { position: relative; }
+  .past-overlay {
+    position: absolute; top: 14px; left: 14px; z-index: 2;
+    padding: 8px 12px; border-radius: 8px;
+    background: oklch(0.10 0.012 264 / 0.88); color: var(--warn);
+    border: 1px solid oklch(0.78 0.15 60 / 0.7);
+    font-size: 14px; font-weight: 800; letter-spacing: 0;
+  }
+  .appendix-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; align-items: start; }
+  .appendix-grid.three { grid-template-columns: repeat(3, 1fr); }
+  .appendix-item { min-width: 0; }
+  .appendix-shot {
+    width: 100%; height: 230px; object-fit: contain; object-position: center;
+    border-radius: 10px; border: 1px solid oklch(0.3 0.02 264);
+    background: oklch(0.11 0.012 264); display: block;
+  }
+  .appendix-grid.three .appendix-shot { height: 210px; }
+  .loop-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin: 24px 0; }
+  .loop-card {
+    min-height: 142px; padding: 16px 14px; border-radius: 12px;
+    background: var(--card); border: 1px solid oklch(0.3 0.02 264);
+  }
+  .loop-card .tag { font-size: 14px; color: var(--accent); font-weight: 800; margin-bottom: 7px; }
+  .loop-card h3 { font-size: 22px; margin-bottom: 7px; }
+  .loop-card p { font-size: 15.5px; line-height: 1.42; color: var(--muted); }
+  .prism-proof { gap: 34px; }
+  .prism-proof .txt { flex: 0.95; }
+  .prism-proof .img { flex: 1.05; }
+  .prism-proof li { font-size: 22px; line-height: 1.43; padding: 7px 0 7px 35px; }
+  .prism-proof .dashboard-shot { height: 320px; }
+
+  @media print {
+    body { background: none; }
+    @page { size: 1280px 720px; margin: 0; }
+    .slide { margin: 0; border-radius: 0; break-after: page; page-break-after: always; }
+  }
+</style>
+</head>
+<body>
+
+<!-- S1 표지 -->

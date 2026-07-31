@@ -38,10 +38,11 @@ LLM_MODEL = os.getenv("LECTURE_LLM_MODEL", "gpt-5.4-mini")  # PRISM 분석 파�
 # ── 매매 의사결정 기준 (원본 PRISM과 동일 개념) ──────────────────
 # buy_score는 0~10점. 시장 국면별 진입 최소점수(MIN_BUY_SCORE)를 넘어야 '진입'.
 MIN_BUY_SCORE = 6           # 강세장 기준 진입 임계 (약세장이면 상향)
-_MARKET_CONDITION_FALLBACK = (
-    "상승추세: KOSPI가 20일 이동평균을 상회, 최근 강세장 조건 충족. "
-    "다만 단기 변동성은 확대 구간. (실데이터 미연동 시 데모 기준)"
-)
+
+
+def _has_structured_evidence(data: dict) -> bool:
+    """Whether fixture and yfinance data may share metric-based analysis rules."""
+    return data.get("source") == "yfinance" or data.get("evidence_kind") == "fixture"
 
 
 def _llm_enabled() -> bool:
@@ -89,10 +90,10 @@ def _round_to(value: float, unit: int) -> int:
 
 # ── 분석 에이전트 프롬프트 (파트4 트랙B에서 수강생이 교체) ──────────
 TECHNICAL_AGENT_PROMPT = """
-당신은 윌리엄 오닐의 CANSLIM 방법론을 따르는 기술적 분석 전문가입니다.
-주어진 주가·거래량·이동평균·RSI 데이터를 근거로 추세와 매수 신호를 판단하세요.
-판단 기준: 52주 신고가 근접 여부, 거래량 동반 상승, 20일선 정배열, 컵&핸들/플랫 베이스 패턴.
-반드시 주어진 수치를 인용하며 3~4문장으로 전문가답게 서술하세요.
+당신은 주가·거래량 기술 분석가입니다.
+주어진 주가·거래량·이동평균·RSI 근거만 사용해 추세, 과열 여부,
+거래량이 가격 움직임을 뒷받침하는지를 판단하세요.
+확인되지 않은 차트 패턴을 만들지 말고, 입력에 있는 수치를 인용해 3~4문장으로 서술하세요.
 """
 
 NEWS_AGENT_PROMPT = """
@@ -187,9 +188,9 @@ async def run_analysis(ticker: str) -> dict:
 
 # ── 섹션 빌더: 규칙(실데이터 템플릿 / mock) ─────────────────────────────
 def _section_supply(data: dict) -> str:
-    """수급(거래 흐름). 실데이터면 거래량 파생 프록시, 아니면 mock 문장."""
-    if data["source"] != "yfinance":
-        return data.get("supply", "")
+    """수급(거래 흐름). fixture와 실데이터를 같은 거래량 규칙으로 해석."""
+    if not _has_structured_evidence(data):
+        return "거래량 기반 수급 지표를 확보하지 못했습니다."
     s = data.get("supply", {})
     ratio, obv = s.get("up_down_vol_ratio"), s.get("obv", "중립")
     vol_ratio = data.get("vol_ratio")
@@ -201,13 +202,15 @@ def _section_supply(data: dict) -> str:
         parts.append(f"당일 거래량은 20일 평균의 {vol_ratio}배")
     parts.append(f"OBV 기준 {obv}")
     body = ", ".join(parts) + "."
+    if data.get("evidence_kind") == "fixture":
+        return body + " (교육용 고정 가격·거래량 시나리오 기반이며 실제 주체별 순매수 정보가 아님)"
     return body + " (※ 기관/외국인/개인 세부 순매수는 KRX 로그인이 필요해 거래량 기반으로 추정)"
 
 
 def _section_financial(data: dict) -> str:
-    """재무. 실데이터면 지표 템플릿, 아니면 mock 문장."""
-    if data["source"] != "yfinance":
-        return data.get("finance", "")
+    """재무. fixture와 실데이터를 같은 지표 템플릿으로 표현."""
+    if not _has_structured_evidence(data):
+        return "재무 지표를 확보하지 못했습니다."
     f = data.get("finance", {})
     bits = []
     if f.get("per") is not None:
@@ -229,18 +232,19 @@ def _section_financial(data: dict) -> str:
 
 def _section_industry(data: dict) -> str:
     """산업/섹터."""
-    if data["source"] != "yfinance":
-        return data.get("industry", "")
     sector = data.get("sector", "기타")
     industry = data.get("industry", "")
     tail = f" 세부 업종: {industry}." if industry else ""
+    if data.get("evidence_kind") == "fixture":
+        context = data.get("industry_context", "")
+        return f"섹터 분류: {sector}.{tail} 교육용 산업 시나리오: {context}"
     return f"섹터 분류: {sector}.{tail} 경쟁 위치·업황은 뉴스·전략 섹션과 함께 판단."
 
 
 def _section_market(market: dict | None) -> str:
     """시장 국면. 지수 실데이터가 있으면 서술, 없으면 폴백."""
     if not market:
-        return _MARKET_CONDITION_FALLBACK
+        return "시장 지수 데이터를 확보하지 못했습니다."
     parts = []
     for name in ("KOSPI", "KOSDAQ"):
         m = market.get(name)
@@ -248,15 +252,18 @@ def _section_market(market: dict | None) -> str:
             trend = "강세" if m["ret_20d"] >= 0 else "약세"
             parts.append(f"{name} {m['last']:,} (20일 {m['ret_20d']:+}%, {trend})")
     if not parts:
-        return _MARKET_CONDITION_FALLBACK
-    return " / ".join(parts) + "."
+        return "시장 지수 데이터를 확보하지 못했습니다."
+    result = " / ".join(parts) + "."
+    if market.get("source") == "fixture":
+        return result + " (교육용 고정 시장 시나리오이며 현재 지수 정보가 아님)"
+    return result
 
 
 # ── 에이전트: 기술 (LLM 또는 데이터 템플릿) ──────────────────────────────
 def _technical_data_text(data: dict) -> str:
-    """실데이터 기술 지표를 문장으로."""
-    if data["source"] != "yfinance":
-        return data.get("tech", "")
+    """fixture와 실데이터 기술 지표를 같은 문장 템플릿으로 표현."""
+    if not _has_structured_evidence(data):
+        return "기술 지표 계산 데이터 부족."
     bits = []
     ma20 = data.get("ma20")
     if data.get("price_vs_ma20") is not None:
@@ -282,6 +289,8 @@ def _news_evidence_text(ticker: str, data: dict) -> str:
     text = "\n".join(f"- {headline}" for headline in headlines[:8])
     if not text:
         text = news if isinstance(news, str) else "관련 뉴스 없음"
+    if data.get("evidence_kind") == "fixture":
+        text = f"교육용 촉매 시나리오(현재 뉴스 아님):\n{text}"
     research_context = _optional_research_context(ticker, data)
     return f"{text}\n\n{research_context}" if research_context else text
 
@@ -364,11 +373,9 @@ def _optional_research_context(ticker: str, data: dict) -> str:
 # ── 규칙 기반 전략 점수 ─────────────────────────────────────────────
 def _rule_based_score(data: dict) -> dict:
     """실데이터(LLM 없음) 경로용 규칙 기반 매수 점수 0~10."""
-    if data["source"] != "yfinance":
-        # mock: 프로필이 준 판단값 사용
-        return {"recommendation": data.get("rec", "BUY"), "buy_score": data.get("buy_score", 7),
-                "expected_return_pct": data.get("ret", 12), "expected_loss_pct": data.get("loss", 6),
-                "investment_period": data.get("period", "중기")}
+    if not _has_structured_evidence(data):
+        return {"recommendation": "PASS", "buy_score": 0,
+                "expected_return_pct": 12, "expected_loss_pct": 6, "investment_period": "중기"}
     score = 5.0
     if data.get("price_vs_ma20") is not None:
         score += 1.2 if data["price_vs_ma20"] >= 0 else -1.0
@@ -415,8 +422,31 @@ def _build_scenario(ticker, data, technical, supply, financial,
     rr = round(up / dn, 1) if dn else 0.0
     decision = "진입" if (rec == "BUY" and buy_score >= MIN_BUY_SCORE) else "보류"
     news_summary = news if isinstance(news, str) else " / ".join(news)
+    is_fixture = data.get("evidence_kind") == "fixture"
+    if is_fixture:
+        data_status = "교육용 고정 시나리오"
+        data_notice = data.get("notice", "교육용 시나리오입니다.")
+        section_provenance = {
+            "technical": "교육용 고정 가격·거래량 시나리오",
+            "supply": "교육용 고정 거래량 시나리오",
+            "financial": "교육용 고정 재무 시나리오",
+            "industry": "교육용 산업 시나리오",
+            "news": "교육용 촉매 시나리오",
+            "market": "교육용 고정 시장 시나리오",
+        }
+    else:
+        data_status = "조회 시점의 yfinance 스냅샷"
+        data_notice = "시세·재무·뉴스 항목의 제공 시점이 다를 수 있으므로 원문을 별도로 확인하세요."
+        section_provenance = {
+            "technical": "yfinance 가격·거래량 지표",
+            "supply": "yfinance 거래량 파생 프록시",
+            "financial": "yfinance 재무 지표",
+            "industry": "yfinance 섹터·산업 분류",
+            "news": "yfinance 뉴스 헤드라인",
+            "market": "yfinance KOSPI/KOSDAQ 지수",
+        }
 
-    return {
+    scenario = {
         "ticker": ticker,
         "company_name": data.get("name", ticker),
         "recommendation": rec,
@@ -435,6 +465,10 @@ def _build_scenario(ticker, data, technical, supply, financial,
         "rationale": strategy.get("rationale") or strategy.get("reason", ""),
         "risk": strategy.get("risk", ""),
         "data_source": data["source"],
+        "data_status": data_status,
+        "data_notice": data_notice,
+        "data_as_of": data.get("as_of"),
+        "section_provenance": section_provenance,
         "runtime_profile": cfg.profile,
         "data_mode": cfg.data_mode,
         "report_mode": cfg.report_mode,
@@ -448,6 +482,7 @@ def _build_scenario(ticker, data, technical, supply, financial,
         "industry_summary": industry,
         "news_summary": news_summary,
     }
+    return scenario
 
 
 if __name__ == "__main__":
