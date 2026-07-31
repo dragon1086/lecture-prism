@@ -32,7 +32,8 @@ CREATE TABLE IF NOT EXISTS trade_history (
     price INTEGER,
     quantity INTEGER,
     mode TEXT DEFAULT 'simulation',
-    reason TEXT
+    reason TEXT,
+    high_since_entry INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS analysis_decisions (
@@ -53,7 +54,10 @@ CREATE TABLE IF NOT EXISTS feedback_lessons (
     action TEXT NOT NULL,
     lesson TEXT NOT NULL,
     tier TEXT DEFAULT 'short',       -- short / medium / long
-    error_type TEXT DEFAULT 'JUDGMENT'
+    error_type TEXT DEFAULT 'JUDGMENT',
+    support_count INTEGER DEFAULT 1,
+    source_ids TEXT,
+    is_active INTEGER DEFAULT 1
 );
 """
 
@@ -78,6 +82,21 @@ def init_db() -> None:
             conn.execute("ALTER TABLE analysis_decisions ADD COLUMN sections TEXT")
         except sqlite3.OperationalError:
             pass  # 이미 존재
+        try:
+            conn.execute(
+                "ALTER TABLE trade_history ADD COLUMN high_since_entry INTEGER"
+            )
+        except sqlite3.OperationalError:
+            pass  # 이미 존재
+        for column_sql in (
+            "ALTER TABLE feedback_lessons ADD COLUMN support_count INTEGER DEFAULT 1",
+            "ALTER TABLE feedback_lessons ADD COLUMN source_ids TEXT",
+            "ALTER TABLE feedback_lessons ADD COLUMN is_active INTEGER DEFAULT 1",
+        ):
+            try:
+                conn.execute(column_sql)
+            except sqlite3.OperationalError:
+                pass  # 이미 존재
 
     from prism_core.ledger import Ledger
 
@@ -125,8 +144,9 @@ def save_trade(trade: dict) -> None:
     init_db()
     with _connect() as conn:
         conn.execute(
-            "INSERT INTO trade_history (timestamp, ticker, action, price, quantity, mode, reason) "
-            "VALUES (?,?,?,?,?,?,?)",
+            "INSERT INTO trade_history "
+            "(timestamp, ticker, action, price, quantity, mode, reason, high_since_entry) "
+            "VALUES (?,?,?,?,?,?,?,?)",
             (
                 _now(),
                 trade.get("ticker", ""),
@@ -135,19 +155,65 @@ def save_trade(trade: dict) -> None:
                 int(trade.get("quantity", 0) or 0),
                 trade.get("mode", "simulation"),
                 trade.get("reason", ""),
+                int(
+                    trade.get("high_since_entry")
+                    or trade.get("executed_price")
+                    or trade.get("price")
+                    or 0
+                )
+                if trade.get("action", "PASS") == "BUY"
+                else None,
             ),
         )
 
 
+def update_holding_high(ticker: str, current_price: float) -> None:
+    """열린 교육용 BUY 한 건의 최고가를 단조 증가 방식으로 갱신한다."""
+
+    price = int(current_price or 0)
+    if not ticker or price <= 0:
+        return
+    init_db()
+    with _connect() as conn:
+        latest = conn.execute(
+            "SELECT id, action, price, high_since_entry "
+            "FROM trade_history WHERE ticker=? "
+            "ORDER BY id DESC LIMIT 1",
+            (ticker,),
+        ).fetchone()
+        if latest is None or latest["action"] != "BUY":
+            return
+        previous = int(latest["high_since_entry"] or latest["price"] or 0)
+        if price > previous:
+            conn.execute(
+                "UPDATE trade_history SET high_since_entry=? WHERE id=?",
+                (price, latest["id"]),
+            )
+
+
 def save_lesson(ticker: str, action: str, lesson: str,
-                tier: str = "short", error_type: str = "JUDGMENT") -> None:
+                tier: str = "short", error_type: str = "JUDGMENT",
+                support_count: int = 1, source_ids: str | None = None,
+                is_active: bool = True) -> None:
     """교훈 1건 저장 (단기/중기/장기 메모리)."""
     init_db()
     with _connect() as conn:
         conn.execute(
-            "INSERT INTO feedback_lessons (timestamp, ticker, action, lesson, tier, error_type) "
-            "VALUES (?,?,?,?,?,?)",
-            (_now(), ticker, action, lesson, tier, error_type),
+            "INSERT INTO feedback_lessons "
+            "(timestamp, ticker, action, lesson, tier, error_type, "
+            "support_count, source_ids, is_active) "
+            "VALUES (?,?,?,?,?,?,?,?,?)",
+            (
+                _now(),
+                ticker,
+                action,
+                lesson,
+                tier,
+                error_type,
+                max(1, int(support_count)),
+                source_ids,
+                1 if is_active else 0,
+            ),
         )
 
 
@@ -209,6 +275,137 @@ def get_recent_lessons(n: int = 5) -> list[str]:
             "SELECT lesson FROM feedback_lessons ORDER BY id DESC LIMIT ?", (n,)
         ).fetchall()
     return [r["lesson"] for r in rows]
+
+
+def get_memory_rows(
+    *, tier: str | None = None, active_only: bool = True
+) -> list[dict]:
+    """압축 작업과 다음 판단이 읽을 구조화된 교훈 목록."""
+
+    init_db()
+    where = []
+    values: list[object] = []
+    if tier is not None:
+        where.append("tier=?")
+        values.append(tier)
+    if active_only:
+        where.append("is_active=1")
+    clause = f"WHERE {' AND '.join(where)}" if where else ""
+    with _connect() as conn:
+        rows = conn.execute(
+            "SELECT id, timestamp, ticker, action, lesson, tier, error_type, "
+            "support_count, source_ids, is_active "
+            f"FROM feedback_lessons {clause} "
+            "ORDER BY timestamp DESC, id DESC",
+            values,
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def set_memory_tier(ids: list[int], tier: str) -> int:
+    """선택한 활성 교훈을 다음 압축 계층으로 이동."""
+
+    if not ids:
+        return 0
+    if tier not in {"short", "medium", "long"}:
+        raise ValueError(f"unknown memory tier: {tier}")
+    init_db()
+    placeholders = ",".join("?" for _ in ids)
+    with _connect() as conn:
+        cursor = conn.execute(
+            f"UPDATE feedback_lessons SET tier=? "
+            f"WHERE is_active=1 AND id IN ({placeholders})",  # noqa: S608
+            [tier, *ids],
+        )
+    return int(cursor.rowcount)
+
+
+def deactivate_memory_rows(ids: list[int]) -> int:
+    """압축 재료가 된 행을 삭제하지 않고 비활성화."""
+
+    if not ids:
+        return 0
+    init_db()
+    placeholders = ",".join("?" for _ in ids)
+    with _connect() as conn:
+        cursor = conn.execute(
+            f"UPDATE feedback_lessons SET is_active=0 "
+            f"WHERE id IN ({placeholders})",  # noqa: S608
+            ids,
+        )
+    return int(cursor.rowcount)
+
+
+def enforce_long_memory_limit(max_count: int) -> int:
+    """지원 건수가 낮은 장기 원칙부터 비활성화해 개수를 제한."""
+
+    limit = max(1, int(max_count))
+    init_db()
+    with _connect() as conn:
+        active = conn.execute(
+            "SELECT COUNT(*) FROM feedback_lessons "
+            "WHERE tier='long' AND is_active=1"
+        ).fetchone()[0]
+        excess = max(0, int(active) - limit)
+        if not excess:
+            return 0
+        ids = [
+            row["id"]
+            for row in conn.execute(
+                "SELECT id FROM feedback_lessons "
+                "WHERE tier='long' AND is_active=1 "
+                "ORDER BY support_count ASC, timestamp ASC, id ASC LIMIT ?",
+                (excess,),
+            ).fetchall()
+        ]
+        placeholders = ",".join("?" for _ in ids)
+        conn.execute(
+            f"UPDATE feedback_lessons SET is_active=0 "
+            f"WHERE id IN ({placeholders})",  # noqa: S608
+            ids,
+        )
+    return len(ids)
+
+
+def get_open_holdings() -> list[dict]:
+    """교육용 매매일지에서 종목별 최신 BUY 상태를 청산 대상으로 읽는다.
+
+    반복 실습에서 같은 BUY가 여러 번 기록돼도 수량을 누적하지 않는다.
+    각 종목의 가장 최근 BUY/SELL 한 건을 현재 상태로 보고, 최신 상태가
+    BUY인 종목만 반환한다.
+    """
+
+    init_db()
+    with _connect() as conn:
+        rows = conn.execute(
+            "SELECT ticker, action, price, quantity, high_since_entry "
+            "FROM trade_history "
+            "WHERE action IN ('BUY', 'SELL') "
+            "ORDER BY id DESC"
+        ).fetchall()
+
+    seen: set[str] = set()
+    holdings: list[dict] = []
+    for row in rows:
+        ticker = str(row["ticker"])
+        if not ticker or ticker in seen:
+            continue
+        seen.add(ticker)
+        if row["action"] != "BUY":
+            continue
+        price = int(row["price"] or 0)
+        quantity = int(row["quantity"] or 0)
+        if price <= 0 or quantity <= 0:
+            continue
+        holdings.append(
+            {
+                "ticker": ticker,
+                "entry_price": price,
+                "quantity": quantity,
+                "high_since_entry": int(row["high_since_entry"] or price),
+            }
+        )
+    return holdings
 
 
 def count_rows(table: str) -> int:

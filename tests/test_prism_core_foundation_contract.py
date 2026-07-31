@@ -78,7 +78,7 @@ class PrismCoreFoundationContractTest(unittest.TestCase):
 
     def test_part3_uses_text_prompts_without_shell_or_live_cli(self):
         texts = [
-            (ROOT / "lecture/exercises/part3_실습가이드.md").read_text(
+            (ROOT / "lecture/exercises/수강생_붙여넣기_프롬프트_파트3.md").read_text(
                 encoding="utf-8"
             ),
             (ROOT / "docs/runtime-profiles.md").read_text(encoding="utf-8"),
@@ -99,26 +99,59 @@ class PrismCoreFoundationContractTest(unittest.TestCase):
                 r"trading\.py[^\n]{0,50}live 요청[^\n]{0,50}(?:실행|결과)",
             )
 
-    def test_live_safety_prompt_requires_sanitized_mocked_unit_test(self):
-        text = (ROOT / "lecture/exercises/part3_실습가이드.md").read_text(
+    def test_part3_prompts_keep_simulation_and_real_order_boundary(self):
+        text = (ROOT / "lecture/exercises/수강생_붙여넣기_프롬프트_파트3.md").read_text(
             encoding="utf-8"
         )
-        safety_section = self._section(text, "### live 기본 차단 확인")
-        prompt_blocks = re.findall(
-            r"```text\n(.*?)```", safety_section, re.DOTALL
+        self.assertIn("연습 데이터(mock)", text)
+        self.assertIn("가상 체결(simulation)", text)
+        self.assertIn("실제 주문·브로커·계좌·시크릿", text)
+        self.assertNotIn("trading.py --live", text)
+
+    def test_part4_operations_prompts_keep_the_safe_learning_boundary(self):
+        text = (ROOT / "lecture/exercises/수강생_붙여넣기_프롬프트_파트4.md").read_text(
+            encoding="utf-8"
         )
-        self.assertEqual(len(prompt_blocks), 1)
-        prompt = prompt_blocks[0]
-        for required in (
-            "격리 단위 테스트",
-            "LECTURE_* enable/allow 변수를 모두 0",
-            "broker factory",
-            "place_order",
-            "호출되면 실패",
-            "계좌·config 파일을 읽지",
-            "live_blocked",
+        for phrase in (
+            "main.py",
+            "연습 데이터와 실제 주문 없는 예행 실행",
+            "미완성일 수 있음을",
+            "실제 주문·브로커·계좌·시크릿",
+            "내가 승인하기 전에는 코드 수정이나 예약 변경을 하지 마",
         ):
-            self.assertIn(required, prompt)
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, text)
+        self.assertNotIn("trading.py --live", text)
+
+    def test_course_prompts_use_the_coaching_first_learning_loop(self):
+        part3 = (
+            ROOT / "lecture/exercises/수강생_붙여넣기_프롬프트_파트3.md"
+        ).read_text(encoding="utf-8")
+        part4 = (
+            ROOT / "lecture/exercises/수강생_붙여넣기_프롬프트_파트4.md"
+        ).read_text(encoding="utf-8")
+        for text in (part3, part4):
+            for phrase in ("북극성", "질문한다", "예측한다", "실행한다", "증거", "회고한다"):
+                with self.subTest(phrase=phrase):
+                    self.assertIn(phrase, text)
+
+    def test_part4_selection_and_scheduler_prompts_do_not_mutate_during_class(self):
+        text = (
+            ROOT / "lecture/exercises/수강생_붙여넣기_프롬프트_파트4.md"
+        ).read_text(encoding="utf-8")
+        selection = self._section(
+            text, "## P4-02 · 하네스로 한 트랙과 파일만 고르기"
+        )
+        self.assertIn("아직 코드", selection)
+        self.assertIn("수정하거나 읽지 말고, 실행도 하지 마", selection)
+        self.assertNotIn("최소한으로 수정", selection)
+
+        scheduler = self._section(
+            text, "## P4-08 · 오전 1회·오후 1회 연습 배치 설계하기"
+        )
+        self.assertIn("아직 예약 작업을 만들거나 등록하지 말고", scheduler)
+        self.assertNotIn("예약 작업을 등록해줘", scheduler)
+        self.assertIn("## O-01 · 수업 후 선택", text)
 
     def test_docs_reject_contradictory_completion_claims(self):
         combined = "\n".join(
@@ -126,7 +159,7 @@ class PrismCoreFoundationContractTest(unittest.TestCase):
             for path in (
                 "docs/architecture.md",
                 "docs/runtime-profiles.md",
-                "lecture/exercises/part3_실습가이드.md",
+                "lecture/exercises/수강생_붙여넣기_프롬프트_파트3.md",
             )
         )
         for contradiction in (
@@ -144,7 +177,7 @@ class PrismCoreFoundationContractTest(unittest.TestCase):
         )
         curriculum = (ROOT / "lecture/curriculum.html").read_text(encoding="utf-8")
         requirements = (ROOT / "requirements.txt").read_text(encoding="utf-8")
-        part4 = (ROOT / "lecture/exercises/part4_실습가이드.md").read_text(
+        part4 = (ROOT / "lecture/exercises/수강생_붙여넣기_프롬프트_파트4.md").read_text(
             encoding="utf-8"
         )
 
@@ -163,8 +196,8 @@ class PrismCoreFoundationContractTest(unittest.TestCase):
         paths = (
             "docs/architecture.md",
             "docs/runtime-profiles.md",
-            "lecture/exercises/part3_실습가이드.md",
-            "lecture/exercises/part4_실습가이드.md",
+            "lecture/exercises/수강생_붙여넣기_프롬프트_파트3.md",
+            "lecture/exercises/수강생_붙여넣기_프롬프트_파트4.md",
         )
         documents = {
             path: (ROOT / path).read_text(encoding="utf-8") for path in paths
@@ -181,7 +214,6 @@ class PrismCoreFoundationContractTest(unittest.TestCase):
             "fail-closed",
             "미래 데이터",
             "수익 보장 아님",
-            "ScreeningStrategy",
         ):
             self.assertIn(required, combined)
         self.assertIn(
@@ -200,9 +232,8 @@ class PrismCoreFoundationContractTest(unittest.TestCase):
             combined,
             r"classroom.{0,200}regime.{0,160}candidate.{0,160}order.{0,160}fill",
         )
-        part4 = documents["lecture/exercises/part4_실습가이드.md"]
-        self.assertRegex(part4, r"트랙 A[\s\S]{0,500}ScreeningStrategy")
-        for track in ("Track B", "Track C", "Track D"):
+        part4 = documents["lecture/exercises/수강생_붙여넣기_프롬프트_파트4.md"]
+        for track in ("트랙 A", "트랙 C", "트랙 D"):
             self.assertIn(track, part4)
 
         for path, text in documents.items():

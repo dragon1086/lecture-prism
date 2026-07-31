@@ -1,0 +1,114 @@
+<!-- P3-S01 · 파트 3 · 실전 자동매매 시스템의 · 구현 패턴 -->
+<section class="slide cover">
+  <div class="kicker">패스트캠퍼스 · AI 네이티브 자동매매 시스템 구축</div>
+  <h1>파트 3<br>실전 자동매매 시스템의<br>구현 패턴</h1>
+  <p class="sub">강사 문상록 · PRISM Insight 개발·운영자</p>
+  <svg viewBox="0 0 900 190" style="width:70%; margin-top:36px; display:block;" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="AI 에이전트들이 협업해 차트를 분석하는 일러스트">
+    <defs>
+      <linearGradient id="c3grad" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="#8b7cf8"/><stop offset="1" stop-color="#5ecf9a"/>
+      </linearGradient>
+    </defs>
+    <rect x="1" y="1" width="898" height="188" rx="14" fill="#171a2b" stroke="#2c3050"/>
+    <g stroke="#20243c" stroke-width="1">
+      <line x1="36" y1="56" x2="864" y2="56"/><line x1="36" y1="98" x2="864" y2="98"/><line x1="36" y1="140" x2="864" y2="140"/>
+    </g>
+    <g opacity="0.85">
+      <rect x="80" y="112" width="9" height="34" rx="2" fill="#2f5d4c"/>
+      <rect x="120" y="96" width="9" height="42" rx="2" fill="#5a3a3a"/>
+      <rect x="160" y="104" width="9" height="30" rx="2" fill="#2f5d4c"/>
+      <rect x="200" y="86" width="9" height="40" rx="2" fill="#2f5d4c"/>
+      <rect x="240" y="94" width="9" height="30" rx="2" fill="#5a3a3a"/>
+      <rect x="680" y="70" width="9" height="34" rx="2" fill="#2f5d4c"/>
+      <rect x="720" y="58" width="9" height="38" rx="2" fill="#2f5d4c"/>
+      <rect x="760" y="66" width="9" height="26" rx="2" fill="#5a3a3a"/>
+    </g>
+    <path d="M48 152 C140 146 200 92 296 98 S470 134 556 94 726 40 852 54" fill="none" stroke="url(#c3grad)" stroke-width="3.5" stroke-linecap="round"/>
+    <g font-size="14" text-anchor="middle">
+      <circle cx="296" cy="98" r="16" fill="#20243a" stroke="#8b7cf8" stroke-width="2"/><text x="296" y="103">📈</text>
+      <circle cx="556" cy="94" r="16" fill="#20243a" stroke="#8b7cf8" stroke-width="2"/><text x="556" y="99">📰</text>
+      <circle cx="852" cy="54" r="16" fill="#20243a" stroke="#5ecf9a" stroke-width="2"/><text x="852" y="59">🧠</text>
+    </g>
+    <g font-size="12.5" fill="#9ba0b8" text-anchor="middle">
+      <text x="296" y="132">기술 분석</text><text x="556" y="128">뉴스 분석</text><text x="838" y="88">전략 종합</text>
+    </g>
+  </svg>
+  <div class="pagenum">1</div>
+</section>
+
+<!-- P3-S02 · 코드는 공개하고, 판단은 기록으로 남깁니다 -->
+<section class="slide">
+  <div class="kicker">공개 운영의 근거</div>
+  <h2>코드는 공개하고,<br>판단은 기록으로 남깁니다</h2>
+  <p class="note" style="margin-top:-18px; margin-bottom:24px;">카카오 메이커스 백엔드 개발자 · PRISM Insight 개발·운영</p>
+  <div class="pattern-grid">
+    <div class="pattern-card">
+      <div class="tag">OPEN SOURCE</div>
+      <h3>PRISM Insight</h3>
+      <p>코드와 변경 이력을 공개한 AI 자동매매 시스템입니다.</p>
+      <p style="margin-top:8px;"><a href="https://github.com/dragon1086/prism-insight" target="_blank" rel="noopener noreferrer" style="color:var(--accent); font-weight:700; text-decoration:none; word-break:break-all;">github.com/dragon1086/prism-insight</a></p>
+    </div>
+    <div class="pattern-card on">
+      <div class="tag">TRANSPARENT OPERATIONS</div>
+      <h3>공개 대시보드</h3>
+      <p>성과·AI 판단 근거·매매일지를 누구나 확인할 수 있습니다.</p>
+      <p style="margin-top:8px;"><a href="https://analysis.stocksimulation.kr/" target="_blank" rel="noopener noreferrer" style="color:var(--accent2); font-weight:700; text-decoration:none; word-break:break-all;">analysis.stocksimulation.kr</a></p>
+    </div>
+    <div class="pattern-card">
+      <div class="tag">SUSTAINABLE OPERATION</div>
+      <h3>운영 기반</h3>
+      <p>AI3의 운영비 후원과 비용 공개로 장기 운영 기반을 만들고 있습니다.</p>
+    </div>
+  </div>
+  <p class="source">후원은 투자 판단이나 성과를 보증하지 않습니다.</p>
+  <div class="pagenum">2</div>
+</section>
+
+<!-- P3-S03 · 첫 5분, 왜 이걸 배울까 -->
+<section class="slide divider">
+  <div class="chnum">CH 01</div>
+  <h1>첫 5분, 왜 이걸 배울까</h1>
+  <p class="sub">나는 지금까지 어떤 방식으로 투자해 왔지?<br>투자하면서 제일 아쉬웠던 일은 뭐였지?<br>그래서 나는 이 수업에 왜 왔지?</p>
+  <div class="pagenum">3</div>
+</section>
+
+<!-- P3-S04 · 자동매매는 이렇게 한 바퀴 돕니다 -->
+<section class="slide split compact-flow">
+  <div class="txt">
+    <div class="kicker">오늘의 첫 실행</div>
+    <h2>자동매매는 이렇게<br>한 바퀴 돕니다</h2>
+    <p class="note">오늘은 결과를 길게 뽑기보다, 네 단계가 실제로 이어지는지 먼저 봅니다. 그래서 보고서는 수업용으로 짧게 만들었습니다.</p>
+    <ul>
+      <li>수업 시작 전 안내에 따라 복제한 <strong>lecture-prism</strong> 폴더를 엽니다.</li>
+      <li>수강생 붙여넣기 프롬프트 파일은 메모장이나 텍스트 편집기에 따로 엽니다.</li>
+      <li>강사가 부르는 첫 번째 공통 프롬프트를 코딩 에이전트에 붙여넣습니다.</li>
+      <li>답변에서 실제로 어느 단계가 실행됐는지 눈으로 확인합니다.</li>
+    </ul>
+  </div>
+  <div class="img">
+    <svg viewBox="0 0 440 340" style="width:100%; display:block;" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="PRISM Insight 운영 흐름을 줄여 놓은 강의용 작업 흐름도">
+      <rect x="14" y="8" width="412" height="38" rx="19" fill="#1a2b26" stroke="#5ecf9a"/>
+      <text x="220" y="33" text-anchor="middle" font-size="15" font-weight="800" fill="#5ecf9a">PRISM Insight 운영 흐름을 줄인 강의용 축소판</text>
+      <g>
+        <rect x="20" y="62" width="400" height="47" rx="12" fill="#20243a" stroke="#8b7cf8"/>
+        <text x="54" y="92" font-size="21">①</text><text x="96" y="87" font-size="18" font-weight="800" fill="#eceef6">main.py로 시작</text>
+        <text x="96" y="103" font-size="12.5" fill="#9ba0b8">연습 데이터를 넣어 전체 흐름을 부릅니다</text>
+      </g>
+      <line x1="220" y1="109" x2="220" y2="120" stroke="#8b7cf8" stroke-width="2.5"/><polygon points="220,129 213,117 227,117" fill="#8b7cf8"/>
+      <g>
+        <rect x="20" y="135" width="400" height="47" rx="12" fill="#20243a" stroke="#8b7cf8"/>
+        <text x="54" y="165" font-size="21">②</text><text x="96" y="160" font-size="18" font-weight="800" fill="#eceef6">후보 선별 → 분석</text>
+        <text x="96" y="176" font-size="12.5" fill="#9ba0b8">screening.py → analysis.py</text>
+      </g>
+      <line x1="220" y1="182" x2="220" y2="193" stroke="#8b7cf8" stroke-width="2.5"/><polygon points="220,202 213,190 227,190" fill="#8b7cf8"/>
+      <g>
+        <rect x="20" y="208" width="400" height="47" rx="12" fill="#1a2b26" stroke="#5ecf9a"/>
+        <text x="54" y="238" font-size="21">③</text><text x="96" y="233" font-size="18" font-weight="800" fill="#eceef6">가상 매매 판단 → 기록</text>
+        <text x="96" y="249" font-size="12.5" fill="#9ba0b8">trading.py → feedback.py · 실제 주문은 보내지 않습니다</text>
+      </g>
+      <text x="220" y="294" text-anchor="middle" font-size="14.5" font-weight="700" fill="#f0b45a">내가 생각한 자동매매에서는 이 판단을 어디에 두고 있나?</text>
+      <text x="220" y="318" text-anchor="middle" font-size="14.5" font-weight="700" fill="#f0b45a">떠오르는 질문은 따로 적어 둡니다.</text>
+    </svg>
+  </div>
+  <div class="pagenum">4</div>
+</section>

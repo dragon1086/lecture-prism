@@ -44,6 +44,9 @@ class ReportWriterTests(unittest.TestCase):
             self.assertNotIn("- 매수점수: 8/6", text)
             self.assertIn("## 1. 기술적 분석", text)
             self.assertIn("런타임 설정", text)
+            self.assertIn("## 매매 시나리오", text)
+            self.assertIn("손익비 2.8 : 1", text)
+            self.assertIn("손절가 67,600원", text)
 
     def test_write_reports_respects_off_env(self):
         old = os.environ.get("LECTURE_SAVE_REPORTS")

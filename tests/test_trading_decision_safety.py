@@ -23,10 +23,28 @@ class TradingDecisionSafetyTest(unittest.TestCase):
             "decision": "진입",
             "buy_score": 8,
             "current_price": 70000,
+            "target_price": 80500,
+            "stop_loss": 65100,
+            "risk_reward_ratio": 2.1,
         }
         portfolio = {"slots_used": 0, "cash": 10_000_000}
 
         self.assertIsNotNone(trading._decide_position(analysis, portfolio))
+
+    def test_trading_rejects_unsafe_price_geometry_without_trade_plan(self):
+        analysis = {
+            "ticker": "005930",
+            "recommendation": "BUY",
+            "decision": "진입",
+            "buy_score": 8,
+            "current_price": 70_000,
+            "target_price": 73_000,
+            "stop_loss": 68_000,
+            "risk_reward_ratio": 1.0,
+        }
+        portfolio = {"slots_used": 0, "cash": 10_000_000}
+
+        self.assertIsNone(trading._decide_position(analysis, portfolio))
 
 
 if __name__ == "__main__":

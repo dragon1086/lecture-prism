@@ -10,8 +10,8 @@ ROOT = Path(__file__).resolve().parents[1]
 DOCUMENTS = {
     "readme": ROOT / "README.md",
     "start": ROOT / "START_HERE.md",
-    "part3": ROOT / "lecture" / "exercises" / "part3_실습가이드.md",
-    "part4": ROOT / "lecture" / "exercises" / "part4_실습가이드.md",
+    "part3": ROOT / "lecture" / "exercises" / "수강생_붙여넣기_프롬프트_파트3.md",
+    "part4": ROOT / "lecture" / "exercises" / "수강생_붙여넣기_프롬프트_파트4.md",
     "architecture": ROOT / "docs" / "architecture.md",
     "runtime": ROOT / "docs" / "runtime-profiles.md",
     "api": ROOT / "docs" / "api-keys.md",
@@ -77,8 +77,11 @@ class DocumentationArchitectureContractTest(unittest.TestCase):
     def test_course_docs_do_not_retain_retired_oauth_or_root_universe_claims(self):
         self.assertNotIn("ChatGPT 어댑터 구조 확인 (CH1 라이브 데모 · 후속 과제)", self.text["part3"])
         self.assertNotIn("약 2,700종목", self.text["defaults"])
-        self.assertIn("root `screening.py`", self.text["part4"])
-        self.assertIn("prism_core/screening.py", self.text["part4"])
+        self.assertIn(
+            "프로젝트 첫 폴더에 있는 screening.py",
+            self.text["part4"],
+        )
+        self.assertNotIn("prism_core/screening.py", self.text["part4"])
 
     def test_maintained_architecture_visuals_are_large_pngs(self):
         for asset in MAINTAINED_VISUALS:

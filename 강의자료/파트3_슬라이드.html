@@ -1,0 +1,774 @@
+<!-- GENERATED FILE. Edit 강의자료/deck-src modules, then run: node 강의자료/deck-src/build-decks.mjs -->
+
+<!-- Shared source header. Edit modules, then run node deck-src/build-decks.mjs. -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>파트3 — 연습 데이터로 안전한 첫 자동매매 흐름 만들기</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  /* ── PPT형 슬라이드: 화면=세로 스크롤, 인쇄=슬라이드당 1페이지 ── */
+  :root {
+    --bg: oklch(0.13 0.015 264); --card: oklch(0.17 0.015 264);
+    --fg: oklch(0.96 0.005 264); --muted: oklch(0.65 0.01 264);
+    --accent: oklch(0.72 0.19 264); --accent2: oklch(0.75 0.15 145);
+    --warn: oklch(0.78 0.15 60);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  body { background: oklch(0.09 0.01 264); font-family: 'Apple SD Gothic Neo','Pretendard','Noto Sans KR',system-ui,sans-serif; }
+
+  .slide {
+    width: 1280px; height: 720px; margin: 24px auto; padding: 64px 80px;
+    background: var(--bg); color: var(--fg); position: relative;
+    display: flex; flex-direction: column; justify-content: center;
+    border-radius: 6px; overflow: hidden;
+  }
+  .slide::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 6px;
+    background: linear-gradient(90deg, var(--accent), oklch(0.6 0.2 300)); }
+  .pagenum { position: absolute; bottom: 22px; right: 32px; font-size: 15px; color: var(--muted); }
+  .kicker { font-size: 20px; font-weight: 700; color: var(--accent); margin-bottom: 14px; letter-spacing: 0.5px; }
+  h1 { font-size: 54px; font-weight: 800; line-height: 1.25; letter-spacing: -1px; }
+  h2 { font-size: 40px; font-weight: 800; line-height: 1.3; margin-bottom: 34px; letter-spacing: -0.5px; }
+  .sub { font-size: 26px; color: var(--muted); margin-top: 20px; line-height: 1.5; }
+  ul { list-style: none; }
+  li { font-size: 26px; line-height: 1.55; padding: 10px 0 10px 40px; position: relative; }
+  li::before { content: "▸"; position: absolute; left: 8px; color: var(--accent); }
+  li strong, p strong { color: var(--accent2); }
+  .note { margin-top: auto; padding-top: 22px; font-size: 20px; color: var(--warn); }
+  .arch-prompt { margin-top: 20px; padding: 14px 18px; border: 1px solid oklch(0.36 0.06 264);
+    border-left: 4px solid var(--accent2); background: oklch(0.16 0.018 264); font-size: 17px;
+    line-height: 1.55; color: var(--muted); }
+  .arch-prompt strong { color: var(--fg); }
+
+  /* 표지형 */
+  .cover { text-align: center; align-items: center; }
+  .cover .kicker { font-size: 24px; }
+  .cover h1 { font-size: 62px; }
+
+  /* 챕터 디바이더 — 장 표지 (파트4와 톤 통일) */
+  .divider { text-align: center; align-items: center; }
+  .divider .chnum { font-size: 26px; font-weight: 800; color: var(--accent); letter-spacing: 6px; margin-bottom: 20px; }
+  .divider h1 { font-size: 60px; }
+  .divider .sub { font-size: 25px; }
+  .divider::before { background: linear-gradient(90deg, var(--accent2), var(--accent)); }
+
+  /* 분할형: 왼쪽 텍스트 + 오른쪽 이미지 자리 */
+  .split { flex-direction: row; align-items: center; gap: 48px; justify-content: flex-start; }
+  .split .txt { flex: 1.15; }
+  .split .img { flex: 0.85; }
+  .compact-flow h2 { margin-bottom: 18px; }
+  .compact-flow .note { padding-top: 10px; }
+  .compact-flow li { font-size: 24px; line-height: 1.42; padding-top: 7px; padding-bottom: 7px; }
+
+  /* 🖼 이미지 자리 표시 — Codex로 생성 후 <img>로 교체 */
+  .imgbox {
+    border: 3px dashed oklch(0.55 0.12 60); border-radius: 14px;
+    background: oklch(0.15 0.02 60 / 0.35); color: var(--warn);
+    padding: 26px; font-size: 19px; line-height: 1.6; min-height: 220px;
+    display: flex; flex-direction: column; justify-content: center; gap: 8px;
+  }
+  .imgbox::before { content: "🖼 이미지 자리"; font-weight: 800; font-size: 22px; }
+  .imgbox .hint { color: oklch(0.7 0.08 60); font-size: 16px; }
+  .imgbox.wide { min-height: 300px; margin-top: 10px; }
+
+  .big { font-size: 34px; line-height: 1.6; text-align: center; }
+  .flow { display: flex; gap: 14px; margin: 26px 0; }
+  .step { flex: 1; background: var(--card); border: 1px solid oklch(0.3 0.02 264); border-radius: 12px;
+    padding: 20px 16px; text-align: center; }
+  .step .n { font-size: 15px; color: var(--accent); font-weight: 800; }
+  .step .t { font-size: 23px; font-weight: 800; margin: 6px 0; }
+  .step .d { font-size: 16.5px; color: var(--muted); line-height: 1.45; }
+
+  /* 패턴·코드 설명형 */
+  .pattern-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .pattern-card { min-height: 128px; padding: 17px 18px; border: 1px solid oklch(0.3 0.02 264);
+    border-radius: 12px; background: var(--card); }
+  .pattern-card.on { border-color: var(--accent2); background: oklch(0.18 0.035 145); }
+  .pattern-card .tag { font-size: 14px; font-weight: 800; color: var(--accent); margin-bottom: 7px; }
+  .pattern-card.on .tag { color: var(--accent2); }
+  .pattern-card h3 { font-size: 20px; margin-bottom: 7px; }
+  .pattern-card p { font-size: 15.5px; line-height: 1.42; color: var(--muted); }
+  .code-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .code-card { padding: 18px; border: 1px solid oklch(0.3 0.02 264); border-radius: 12px; background: var(--card); }
+  .code-card h3 { font-size: 21px; margin-bottom: 8px; }
+  .code-card .plain { font-size: 16px; color: var(--accent2); margin-bottom: 10px; line-height: 1.4; }
+  pre { padding: 14px 16px; border-radius: 9px; background: oklch(0.11 0.012 264); overflow: hidden;
+    font-family: 'SFMono-Regular','Cascadia Code','Consolas',monospace; font-size: 14.5px; line-height: 1.48; color: #d9dcef; }
+  .code-accent { color: #8b7cf8; } .code-green { color: #5ecf9a; } .code-dim { color: #777d98; }
+  .source { margin-top: 13px; font-size: 14px; line-height: 1.4; color: var(--muted); }
+  .takeaway { margin-top: 18px; padding: 14px 18px; border-left: 4px solid var(--accent2);
+    background: oklch(0.16 0.018 264); font-size: 20px; line-height: 1.45; }
+  .dashboard-shot { width: 100%; height: 286px; object-fit: cover; object-position: top center;
+    border-radius: 12px; border: 1px solid oklch(0.3 0.02 264); display: block; }
+  .reference-shot { width: 100%; height: 360px; object-fit: contain; object-position: center;
+    border-radius: 12px; border: 1px solid oklch(0.3 0.02 264); background: oklch(0.11 0.012 264); display: block; }
+  .source-map-slide { padding: 30px 58px 26px; justify-content: flex-start; }
+  .source-map-slide .kicker { font-size: 17px; margin-bottom: 5px; }
+  .source-map-slide h2 { font-size: 34px; line-height: 1.15; margin-bottom: 10px; }
+  .source-map-slide .reference-shot { height: 515px; max-height: 515px; }
+  .source-map-slide .caption { margin: 7px 8px 0; font-size: 14.5px; }
+  /* 정보밀도가 높은 원본 화면은 설명 옆 썸네일이 아니라 한 장의 읽을 자료로 보여 준다. */
+  .image-focus { padding: 28px 60px 26px; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 0; }
+  .image-focus .txt { flex: none; width: 100%; }
+  .image-focus .txt .kicker { font-size: 16px; margin-bottom: 4px; }
+  .image-focus .txt h2 { font-size: 32px; line-height: 1.12; margin: 0 0 9px; }
+  .image-focus .txt ul { display: none; }
+  .image-focus .img { flex: 1; width: 100%; min-height: 0; }
+  .image-focus .reference-shot { height: 500px; max-height: 500px; }
+  .image-focus .caption { margin-top: 5px; }
+  /* 정보량이 많은 모듈 지도는 고연령 수강생도 읽을 수 있게 제목보다 그림에 면적을 준다. */
+  .large-diagram {
+    padding: 18px 28px 20px; flex-direction: column; align-items: stretch;
+    justify-content: flex-start; gap: 0;
+  }
+  .large-diagram .txt { flex: none; width: 100%; }
+  .large-diagram .txt .kicker,
+  .large-diagram > .kicker { font-size: 16px; margin-bottom: 2px; }
+  .large-diagram .txt h2,
+  .large-diagram > h2 { font-size: 28px; line-height: 1.12; margin: 0 0 6px; }
+  .large-diagram .txt ul { display: none; }
+  .large-diagram .img { flex: 1; width: 100%; min-height: 0; }
+  .large-diagram .reference-shot {
+    width: 100%; height: 585px; max-height: 585px; object-fit: contain;
+  }
+  .large-diagram .caption { margin: 4px 2px 0; font-size: 13.5px; line-height: 1.3; }
+  .archive-example::after {
+    content: "과거 운영 예시 · 현재 추천 아님";
+    position: absolute; top: 78px; right: 70px; z-index: 3;
+    padding: 8px 14px; border-radius: 999px;
+    color: #fff; background: rgba(159, 54, 54, 0.94);
+    border: 1px solid rgba(255,255,255,0.4);
+    font-size: 16px; font-weight: 800;
+  }
+  .with-prompt {
+    display: grid; grid-template-columns: 1.15fr 0.85fr;
+    grid-template-rows: minmax(0, 1fr) auto;
+    align-items: center; column-gap: 48px; row-gap: 18px;
+  }
+  .with-prompt .txt { grid-column: 1; grid-row: 1; min-width: 0; }
+  .with-prompt .img { grid-column: 2; grid-row: 1; min-width: 0; }
+  .with-prompt > .arch-prompt { grid-column: 1 / -1; grid-row: 2; margin-top: 0; }
+  .prompt-screen { padding: 24px 42px 26px; justify-content: flex-start; }
+  .prompt-screen .kicker { font-size: 16px; margin-bottom: 3px; }
+  .prompt-screen h2 { font-size: 34px; line-height: 1.15; margin-bottom: 12px; }
+  .prompt-lead {
+    padding: 10px 15px; border-left: 4px solid var(--accent2);
+    background: oklch(0.16 0.018 264); color: var(--fg);
+    font-size: 20px; font-weight: 750; line-height: 1.42;
+  }
+  .prompt-columns {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+    margin-top: 12px; min-height: 0;
+  }
+  .prompt-panel {
+    padding: 16px 18px; border: 1px solid oklch(0.34 0.035 264);
+    border-radius: 11px; background: oklch(0.11 0.012 264);
+  }
+  .prompt-panel p { font-size: 19px; line-height: 1.5; color: #e1e4f0; margin-bottom: 9px; }
+  .prompt-panel p:last-child { margin-bottom: 0; }
+  .prompt-panel .num { color: var(--accent2); font-weight: 850; }
+  .prompt-branch {
+    margin-top: 10px; padding: 10px 15px; border-radius: 10px;
+    background: oklch(0.18 0.035 264); border: 1px solid var(--accent);
+    color: var(--fg); font-size: 19px; font-weight: 750; line-height: 1.42;
+  }
+  .caption { margin-top: 9px; font-size: 14px; color: var(--muted); line-height: 1.4; }
+  .figure { position: relative; }
+  .past-overlay {
+    position: absolute; top: 14px; left: 14px; z-index: 2;
+    padding: 8px 12px; border-radius: 8px;
+    background: oklch(0.10 0.012 264 / 0.88); color: var(--warn);
+    border: 1px solid oklch(0.78 0.15 60 / 0.7);
+    font-size: 14px; font-weight: 800; letter-spacing: 0;
+  }
+  .appendix-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; align-items: start; }
+  .appendix-grid.three { grid-template-columns: repeat(3, 1fr); }
+  .appendix-item { min-width: 0; }
+  .appendix-shot {
+    width: 100%; height: 230px; object-fit: contain; object-position: center;
+    border-radius: 10px; border: 1px solid oklch(0.3 0.02 264);
+    background: oklch(0.11 0.012 264); display: block;
+  }
+  .appendix-grid.three .appendix-shot { height: 210px; }
+  .loop-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin: 24px 0; }
+  .loop-card {
+    min-height: 142px; padding: 16px 14px; border-radius: 12px;
+    background: var(--card); border: 1px solid oklch(0.3 0.02 264);
+  }
+  .loop-card .tag { font-size: 14px; color: var(--accent); font-weight: 800; margin-bottom: 7px; }
+  .loop-card h3 { font-size: 22px; margin-bottom: 7px; }
+  .loop-card p { font-size: 15.5px; line-height: 1.42; color: var(--muted); }
+  .prism-proof { gap: 34px; }
+  .prism-proof .txt { flex: 0.95; }
+  .prism-proof .img { flex: 1.05; }
+  .prism-proof li { font-size: 22px; line-height: 1.43; padding: 7px 0 7px 35px; }
+  .prism-proof .dashboard-shot { height: 320px; }
+
+  @media print {
+    body { background: none; }
+    @page { size: 1280px 720px; margin: 0; }
+    .slide { margin: 0; border-radius: 0; break-after: page; page-break-after: always; }
+  }
+</style>
+</head>
+<body>
+
+<!-- S1 표지 -->
+
+<section data-slide-id="P3-S01" class="slide cover">
+  <div class="kicker">패스트캠퍼스 · AI 네이티브 자동매매 시스템 구축</div>
+  <h1>파트 3<br>실전 자동매매 시스템의<br>구현 패턴</h1>
+  <p class="sub">강사 문상록 · PRISM Insight 개발·운영자</p>
+  <svg viewBox="0 0 900 190" style="width:70%; margin-top:36px; display:block;" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="AI 에이전트들이 협업해 차트를 분석하는 일러스트">
+    <defs>
+      <linearGradient id="c3grad" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="#8b7cf8"/><stop offset="1" stop-color="#5ecf9a"/>
+      </linearGradient>
+    </defs>
+    <rect x="1" y="1" width="898" height="188" rx="14" fill="#171a2b" stroke="#2c3050"/>
+    <g stroke="#20243c" stroke-width="1">
+      <line x1="36" y1="56" x2="864" y2="56"/><line x1="36" y1="98" x2="864" y2="98"/><line x1="36" y1="140" x2="864" y2="140"/>
+    </g>
+    <g opacity="0.85">
+      <rect x="80" y="112" width="9" height="34" rx="2" fill="#2f5d4c"/>
+      <rect x="120" y="96" width="9" height="42" rx="2" fill="#5a3a3a"/>
+      <rect x="160" y="104" width="9" height="30" rx="2" fill="#2f5d4c"/>
+      <rect x="200" y="86" width="9" height="40" rx="2" fill="#2f5d4c"/>
+      <rect x="240" y="94" width="9" height="30" rx="2" fill="#5a3a3a"/>
+      <rect x="680" y="70" width="9" height="34" rx="2" fill="#2f5d4c"/>
+      <rect x="720" y="58" width="9" height="38" rx="2" fill="#2f5d4c"/>
+      <rect x="760" y="66" width="9" height="26" rx="2" fill="#5a3a3a"/>
+    </g>
+    <path d="M48 152 C140 146 200 92 296 98 S470 134 556 94 726 40 852 54" fill="none" stroke="url(#c3grad)" stroke-width="3.5" stroke-linecap="round"/>
+    <g font-size="14" text-anchor="middle">
+      <circle cx="296" cy="98" r="16" fill="#20243a" stroke="#8b7cf8" stroke-width="2"/><text x="296" y="103">📈</text>
+      <circle cx="556" cy="94" r="16" fill="#20243a" stroke="#8b7cf8" stroke-width="2"/><text x="556" y="99">📰</text>
+      <circle cx="852" cy="54" r="16" fill="#20243a" stroke="#5ecf9a" stroke-width="2"/><text x="852" y="59">🧠</text>
+    </g>
+    <g font-size="12.5" fill="#9ba0b8" text-anchor="middle">
+      <text x="296" y="132">기술 분석</text><text x="556" y="128">뉴스 분석</text><text x="838" y="88">전략 종합</text>
+    </g>
+  </svg>
+  <div class="pagenum">1</div>
+</section>
+
+<section data-slide-id="P3-S02" class="slide">
+  <div class="kicker">공개 운영의 근거</div>
+  <h2>코드는 공개하고,<br>판단은 기록으로 남깁니다</h2>
+  <p class="note" style="margin-top:-18px; margin-bottom:24px;">카카오 메이커스 백엔드 개발자 · PRISM Insight 개발·운영</p>
+  <div class="pattern-grid">
+    <div class="pattern-card">
+      <div class="tag">OPEN SOURCE</div>
+      <h3>PRISM Insight</h3>
+      <p>코드와 변경 이력을 공개한 AI 자동매매 시스템입니다.</p>
+      <p style="margin-top:8px;"><a href="https://github.com/dragon1086/prism-insight" target="_blank" rel="noopener noreferrer" style="color:var(--accent); font-weight:700; text-decoration:none; word-break:break-all;">github.com/dragon1086/prism-insight</a></p>
+    </div>
+    <div class="pattern-card on">
+      <div class="tag">TRANSPARENT OPERATIONS</div>
+      <h3>공개 대시보드</h3>
+      <p>성과·AI 판단 근거·매매일지를 누구나 확인할 수 있습니다.</p>
+      <p style="margin-top:8px;"><a href="https://analysis.stocksimulation.kr/" target="_blank" rel="noopener noreferrer" style="color:var(--accent2); font-weight:700; text-decoration:none; word-break:break-all;">analysis.stocksimulation.kr</a></p>
+    </div>
+    <div class="pattern-card">
+      <div class="tag">SUSTAINABLE OPERATION</div>
+      <h3>운영 기반</h3>
+      <p>AI3의 운영비 후원과 비용 공개로 장기 운영 기반을 만들고 있습니다.</p>
+    </div>
+  </div>
+  <p class="source">후원은 투자 판단이나 성과를 보증하지 않습니다.</p>
+  <div class="pagenum">2</div>
+</section>
+
+<section data-slide-id="P3-S03" class="slide divider">
+  <div class="chnum">CH 01</div>
+  <h1>첫 5분, 왜 이걸 배울까</h1>
+  <p class="sub">나는 지금까지 어떤 방식으로 투자해 왔지?<br>투자하면서 제일 아쉬웠던 일은 뭐였지?<br>그래서 나는 이 수업에 왜 왔지?</p>
+  <div class="pagenum">3</div>
+</section>
+
+<section data-slide-id="P3-S04" class="slide split compact-flow">
+  <div class="txt">
+    <div class="kicker">오늘의 첫 실행</div>
+    <h2>자동매매는 이렇게<br>한 바퀴 돕니다</h2>
+    <p class="note">오늘은 결과를 길게 뽑기보다, 네 단계가 실제로 이어지는지 먼저 봅니다. 그래서 보고서는 수업용으로 짧게 만들었습니다.</p>
+    <ul>
+      <li>수업 시작 전 안내에 따라 복제한 <strong>lecture-prism</strong> 폴더를 엽니다.</li>
+      <li>수강생 붙여넣기 프롬프트 파일은 메모장이나 텍스트 편집기에 따로 엽니다.</li>
+      <li>강사가 부르는 첫 번째 공통 프롬프트를 코딩 에이전트에 붙여넣습니다.</li>
+      <li>답변에서 실제로 어느 단계가 실행됐는지 눈으로 확인합니다.</li>
+    </ul>
+  </div>
+  <div class="img">
+    <svg viewBox="0 0 440 340" style="width:100%; display:block;" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="PRISM Insight 운영 흐름을 줄여 놓은 강의용 작업 흐름도">
+      <rect x="14" y="8" width="412" height="38" rx="19" fill="#1a2b26" stroke="#5ecf9a"/>
+      <text x="220" y="33" text-anchor="middle" font-size="15" font-weight="800" fill="#5ecf9a">PRISM Insight 운영 흐름을 줄인 강의용 축소판</text>
+      <g>
+        <rect x="20" y="62" width="400" height="47" rx="12" fill="#20243a" stroke="#8b7cf8"/>
+        <text x="54" y="92" font-size="21">①</text><text x="96" y="87" font-size="18" font-weight="800" fill="#eceef6">main.py로 시작</text>
+        <text x="96" y="103" font-size="12.5" fill="#9ba0b8">연습 데이터를 넣어 전체 흐름을 부릅니다</text>
+      </g>
+      <line x1="220" y1="109" x2="220" y2="120" stroke="#8b7cf8" stroke-width="2.5"/><polygon points="220,129 213,117 227,117" fill="#8b7cf8"/>
+      <g>
+        <rect x="20" y="135" width="400" height="47" rx="12" fill="#20243a" stroke="#8b7cf8"/>
+        <text x="54" y="165" font-size="21">②</text><text x="96" y="160" font-size="18" font-weight="800" fill="#eceef6">후보 선별 → 분석</text>
+        <text x="96" y="176" font-size="12.5" fill="#9ba0b8">screening.py → analysis.py</text>
+      </g>
+      <line x1="220" y1="182" x2="220" y2="193" stroke="#8b7cf8" stroke-width="2.5"/><polygon points="220,202 213,190 227,190" fill="#8b7cf8"/>
+      <g>
+        <rect x="20" y="208" width="400" height="47" rx="12" fill="#1a2b26" stroke="#5ecf9a"/>
+        <text x="54" y="238" font-size="21">③</text><text x="96" y="233" font-size="18" font-weight="800" fill="#eceef6">가상 매매 판단 → 기록</text>
+        <text x="96" y="249" font-size="12.5" fill="#9ba0b8">trading.py → feedback.py · 실제 주문은 보내지 않습니다</text>
+      </g>
+      <text x="220" y="294" text-anchor="middle" font-size="14.5" font-weight="700" fill="#f0b45a">내가 생각한 자동매매에서는 이 판단을 어디에 두고 있나?</text>
+      <text x="220" y="318" text-anchor="middle" font-size="14.5" font-weight="700" fill="#f0b45a">떠오르는 질문은 따로 적어 둡니다.</text>
+    </svg>
+  </div>
+  <div class="pagenum">4</div>
+</section>
+
+<section data-slide-id="P3-S05" class="slide source-map-slide" id="p3-source-map">
+  <div class="kicker">방금 실행한 코드의 실제 연결</div>
+  <h2>한 번 실행하면, 이 파일들이 함께 움직입니다</h2>
+  <img class="reference-shot" src="assets/lecture-prism-source-map.svg" alt="lecture-prism의 main.py, 스크리닝, 분석, 청산 우선 매매, 피드백, Discord 선택 알림, 대시보드 관계도">
+  <p class="caption">첫 실행의 보고서는 일부러 짧게 만들었습니다. 긴 원본 보고서를 매번 만들면 구독 사용량이 빨리 쌓이기 때문입니다. 오늘은 보고서의 길이보다 <code>main.py</code>부터 기록까지 파일이 어떤 순서로 움직였는지 봅니다.</p>
+  <div class="pagenum">5</div>
+</section>
+
+<section data-slide-id="P3-S06" class="slide split large-diagram" id="p3-s06">
+  <div class="txt">
+    <div class="kicker">원본 PRISM Insight 전체 지도</div>
+    <h2>원본 PRISM은 시장부터 기억까지 한 줄로 잇습니다</h2>
+    <ul>
+      <li>시장 → 종목 → 분석 → 매매 → 기록이 끊기지 않음</li>
+      <li>오늘부터 네 모듈을 한 칸씩 확대해서 봄</li>
+      <li><strong>첫 번째 확대 지점은 ‘어떤 종목을 볼 것인가’입니다</strong></li>
+    </ul>
+  </div>
+  <div class="img">
+    <img class="reference-shot" src="../docs/assets/prism-insight/full-pipeline-overview.png" alt="PRISM Insight의 시장, 종목 선별, 분석, 매매, 기록, 기억 전체 파이프라인">
+    <p class="caption">원본 서비스의 전체 흐름입니다. 이번 장에서는 2번 ‘종목 선별’만 먼저 확대합니다.</p>
+  </div>
+  <div class="pagenum">6</div>
+</section>
+
+<section data-slide-id="P3-S07" class="slide split large-diagram">
+  <div class="txt">
+    <div class="kicker">모듈 1 · 스크리닝</div>
+    <h2>시장 상태가 오늘의 선별 강도를 정합니다</h2>
+  </div>
+  <div class="img">
+    <img class="reference-shot" src="assets/prism-market-pulse-batch-control-light.png" alt="PRISM Insight의 시장 상태와 배치 선별 제어를 밝은 배경으로 재구성한 강의용 그림">
+    <p class="caption">원본 PRISM은 시장 방향과 분산일을 먼저 읽고, 진입 허용 여부와 후보 수를 조절합니다.</p>
+  </div>
+  <div class="pagenum">7</div>
+</section>
+
+<section data-slide-id="P3-S08" class="slide split large-diagram">
+  <div class="txt">
+    <div class="kicker">모듈 1 · 시장 위험 누적</div>
+    <h2>분산일은 하루의 숫자가 아니라 상태 변화입니다</h2>
+  </div>
+  <div class="img">
+    <img class="reference-shot" src="../docs/assets/prism-insight/distribution-day-state-transitions.png" alt="분산일 누적과 시장 상태 전이">
+    <p class="caption">분산일이 쌓이면 정상 → 주의 → 중단으로 이동합니다. 반등 확인 뒤에야 다시 진입을 검토합니다.</p>
+  </div>
+  <div class="pagenum">8</div>
+</section>
+
+<section data-slide-id="P3-S09" class="slide split large-diagram">
+  <div class="txt">
+    <div class="kicker">모듈 1 · 시장 국면과 진입 정책</div>
+    <h2>시장 국면은 후보 점수와 진입 문턱을 함께 바꿉니다</h2>
+  </div>
+  <div class="img">
+    <img class="reference-shot" src="assets/prism-trading-regime-entry-light.png" alt="시장 국면별 후보 점수와 진입 정책을 밝은 배경으로 재구성한 강의용 그림">
+    <p class="caption">같은 종목도 강세장과 약세장에서 다르게 다룹니다. 시장 해석은 후보 선택과 모듈 3의 진입 게이트에 함께 전달됩니다.</p>
+  </div>
+  <div class="pagenum">9</div>
+</section>
+
+<section data-slide-id="P3-S10" class="slide split large-diagram">
+  <div class="txt">
+    <div class="kicker">모듈 1 · 여섯 선별 신호</div>
+    <h2>오전과 오후는 서로 다른 움직임을 찾습니다</h2>
+  </div>
+  <div class="img">
+    <img class="reference-shot" src="../docs/assets/prism-insight/screening-six-triggers-overview.png" alt="오전 세 신호와 오후 세 신호">
+    <p class="caption">오전에는 갭과 초기 거래량을, 오후에는 당일 누적 움직임을 봅니다. 공통 하한을 통과한 종목만 후보가 됩니다.</p>
+  </div>
+  <div class="pagenum">10</div>
+</section>
+
+<section data-slide-id="P3-S11" class="slide split large-diagram">
+  <div class="txt">
+    <div class="kicker">모듈 1 · 후보 재정렬</div>
+    <h2>후보를 다시 점수 매겨 세 종목만 넘깁니다</h2>
+  </div>
+  <div class="img">
+    <img class="reference-shot" src="assets/prism-candidate-screening-reranking-light.png" alt="후보 재점수와 최종 세 종목 선택을 밝은 배경으로 재구성한 강의용 그림">
+    <p class="caption">신호가 잡혔다고 모두 분석하지 않습니다. 시장 적합도와 가격·거래량 품질을 다시 계산해 깊이 볼 종목만 남깁니다.</p>
+  </div>
+  <div class="pagenum">11</div>
+</section>
+
+<section data-slide-id="P3-S12" class="slide">
+  <div class="kicker">원본과 강의용 축소판 비교</div>
+  <h2><code>screening.py</code>는 후보 선별의 뼈대만 남겼습니다</h2>
+  <div class="pattern-grid">
+    <div class="pattern-card on"><div class="tag">구현됨</div><h3>공통 하한과 정렬</h3><p>시가총액·거래량·모멘텀 조건을 통과한 후보를 점수순으로 줄입니다.</p></div>
+    <div class="pattern-card on"><div class="tag">작게 구현됨</div><h3>데이터 두 경로</h3><p>연습 데이터가 기본이고, <code>--real</code>에서는 yfinance를 시도한 뒤 안전하게 돌아옵니다.</p></div>
+    <div class="pattern-card"><div class="tag">아직 없음</div><h3>시장별 여섯 신호</h3><p>분산일 상태 전이, 오전·오후 신호, 시장별 자리 배분은 원본에만 있습니다.</p></div>
+  </div>
+  <div class="takeaway">강의판의 목표는 원본을 흉내 내는 것이 아니라, 후보를 넓게 찾고 다음 단계에 적게 넘기는 경계를 익히는 것입니다.</div>
+  <div class="pagenum">12</div>
+</section>
+
+<section data-slide-id="P3-S13" class="slide prompt-screen">
+  <div class="kicker">모듈 1 · 구조 질문과 단독 실행</div>
+  <h2><code>screening.py</code>만 따로 읽고 실행합니다</h2>
+  <div class="prompt-lead">아래 문장을 코딩 에이전트에게 그대로 붙여넣습니다.</div>
+  <div class="prompt-columns">
+    <div class="prompt-panel">
+      <p><span class="num">1.</span> <code>screening.py</code>를 읽고 입력 → 필터 → 점수 → 최종 후보 흐름을 설명해줘.</p>
+      <p><span class="num">2.</span> 코드는 고치지 말고 <code>python3 screening.py</code>를 연습 데이터로 실행해줘.</p>
+      <p><span class="num">3.</span> 조건을 통과하지 못한 종목이 왜 빠졌는지 실행 로그로 확인해줘.</p>
+    </div>
+    <div class="prompt-panel">
+      <p><span class="num">4.</span> 원본 PRISM과 비교해 구현됨 / 작게 구현됨 / 아직 없음으로 나눠줘.</p>
+      <p><span class="num">5.</span> 실제 주문·계좌·API 키는 쓰지 마.</p>
+      <p><span class="num">6.</span> 마지막에 내가 후보 조건을 바꿀 때 확인할 질문 세 개를 남겨줘.</p>
+    </div>
+  </div>
+  <div class="prompt-branch">지금은 구조를 읽습니다. 조건을 고치는 실습은 파트 4에서 합니다.</div>
+  <div class="pagenum">13</div>
+</section>
+
+<section data-slide-id="P3-S14" class="slide split large-diagram">
+  <div class="txt">
+    <div class="kicker">모듈 2 · 종목 분석</div>
+    <h2>선별이 끝나면 한 종목을 여섯 방향에서 봅니다</h2>
+  </div>
+  <div class="img">
+    <img class="reference-shot" src="../docs/assets/prism-insight/screening-analysis-deep-dive.png" alt="선별된 종목을 여섯 분석 에이전트가 조사하는 흐름">
+    <p class="caption">왼쪽은 후보를 줄이는 단계, 오른쪽은 근거를 깊게 모으는 단계입니다. 이 그림의 CAN SLIM 설명은 다음 모듈에서 다룹니다.</p>
+  </div>
+  <div class="pagenum">14</div>
+</section>
+
+<section data-slide-id="P3-S15" class="slide split large-diagram">
+  <div class="txt">
+    <div class="kicker">모듈 2 · 에이전트 역할 지도</div>
+    <h2>여섯 에이전트는 질문과 출력이 다릅니다</h2>
+  </div>
+  <div class="img">
+    <img class="reference-shot" src="assets/prism-analysis-agent-map.png" alt="주가 거래량, 투자자 수급, 기업 현황, 기업 개요, 뉴스 주도주, 시장 지수 분석 에이전트">
+    <p class="caption">원본 코드의 에이전트 이름과 보고서 섹션을 바탕으로 만든 강의용 구조도입니다.</p>
+  </div>
+  <div class="pagenum">15</div>
+</section>
+
+<section data-slide-id="P3-S16" class="slide split large-diagram">
+  <div class="txt">
+    <div class="kicker">모듈 2 · 정량 에이전트 프롬프트</div>
+    <h2>숫자를 읽는 프롬프트는 계산과 근거를 강제합니다</h2>
+  </div>
+  <div class="img">
+    <img class="reference-shot" src="assets/prism-analysis-prompt-quant.png" alt="주가 거래량, 투자자 수급, 시장 지수 분석가의 핵심 프롬프트">
+    <p class="caption">원본 프롬프트의 핵심 제약을 옮긴 개념도입니다. 그림 속 차트와 수치는 실제 종목 데이터가 아닙니다.</p>
+  </div>
+  <div class="pagenum">16</div>
+</section>
+
+<section data-slide-id="P3-S17" class="slide split large-diagram">
+  <div class="txt">
+    <div class="kicker">모듈 2 · 맥락 에이전트 프롬프트</div>
+    <h2>맥락을 읽는 프롬프트는 출처와 범위를 제한합니다</h2>
+  </div>
+  <div class="img">
+    <img class="reference-shot" src="assets/prism-analysis-prompt-context.png" alt="기업 현황, 기업 개요, 뉴스 주도주 분석가의 핵심 프롬프트">
+    <p class="caption">원본 프롬프트를 줄여 표현한 개념도입니다. 화면의 회사·뉴스·재무 수치는 설명용이며 실제 데이터가 아닙니다.</p>
+  </div>
+  <div class="pagenum">17</div>
+</section>
+
+<section data-slide-id="P3-S18" class="slide">
+  <div class="kicker">원본 PRISM의 보고서 조립</div>
+  <h2>여섯 보고서는 조건부 투자 전략과 요약으로 합쳐집니다</h2>
+  <div class="flow">
+    <div class="step"><div class="n">독립 조사</div><div class="t">6개 섹션</div><div class="d">주가·수급·기업·뉴스·시장 근거를 따로 만듭니다.</div></div>
+    <div class="step"><div class="n">기본은 순차</div><div class="t">호출 제어</div><div class="d">속도보다 API 제한과 실패 격리를 먼저 봅니다.</div></div>
+    <div class="step"><div class="n">근거 통합</div><div class="t">투자 전략</div><div class="d">기간별 관점, 조건부 가격대, 위험을 정리합니다.</div></div>
+    <div class="step"><div class="n">읽기용 출력</div><div class="t">요약·PDF</div><div class="d">근거와 기준일을 한 보고서에 묶습니다.</div></div>
+  </div>
+  <div class="takeaway">보고서의 매수 고려 가격은 주문이 아닙니다. 실제 Enter / No Entry는 모듈 3이 다시 결정합니다.</div>
+  <div class="pagenum">18</div>
+</section>
+
+<section data-slide-id="P3-S19" class="slide">
+  <div class="kicker">원본과 강의용 축소판 비교</div>
+  <h2><code>analysis.py</code>는 여섯 에이전트를 한 번의 분석으로 줄였습니다</h2>
+  <div class="pattern-grid">
+    <div class="pattern-card on"><div class="tag">규칙으로 계산</div><h3>수급·재무·산업·시장</h3><p>실데이터나 연습 수치가 있으면 정해진 문장과 점수 규칙으로 해석합니다.</p></div>
+    <div class="pattern-card on"><div class="tag">선택 LLM 1회</div><h3>기술·뉴스·리스크</h3><p>주어진 근거만 풀어 쓰며, BUY를 HOLD로 낮출 수만 있습니다.</p></div>
+    <div class="pattern-card"><div class="tag">경계 정리</div><h3>분석 의견 ≠ 주문 결정</h3><p>추천·참고 목표가·손절가는 분석에 남지만 최종 진입은 <code>trading.py</code>가 정합니다.</p></div>
+  </div>
+  <div class="takeaway">강의판에는 WiseReport, KRX 수급, Perplexity·Firecrawl, 여섯 번의 독립 LLM 호출이 없습니다.</div>
+  <div class="pagenum">19</div>
+</section>
+
+<section data-slide-id="P3-S20" class="slide prompt-screen">
+  <div class="kicker">모듈 2 · 구조 질문과 단독 실행</div>
+  <h2><code>analysis.py</code>만 따로 읽고 실행합니다</h2>
+  <div class="prompt-lead">아래 문장을 코딩 에이전트에게 그대로 붙여넣습니다.</div>
+  <div class="prompt-columns">
+    <div class="prompt-panel">
+      <p><span class="num">1.</span> <code>analysis.py</code>에서 여섯 섹션이 어떤 데이터로 만들어지는지 찾아줘.</p>
+      <p><span class="num">2.</span> 규칙이 맡는 부분과 LLM이 맡는 부분을 나눠 설명해줘.</p>
+      <p><span class="num">3.</span> 코드는 고치지 말고 <code>python3 analysis.py 005930</code>을 실행해줘.</p>
+    </div>
+    <div class="prompt-panel">
+      <p><span class="num">4.</span> 추천·점수·목표가·손절가와 실제 주문 결정의 차이를 설명해줘.</p>
+      <p><span class="num">5.</span> 원본 여섯 에이전트와 비교해 구현됨 / 작게 구현됨 / 아직 없음으로 정리해줘.</p>
+      <p><span class="num">6.</span> 실제 투자 권유처럼 말하지 말고 데이터 기준과 폴백도 함께 보여줘.</p>
+    </div>
+  </div>
+  <div class="prompt-branch">CAN SLIM은 여기서 끝내지 않습니다. 다음 모듈의 신규 진입 판단에서 다시 만납니다.</div>
+  <div class="pagenum">20</div>
+</section>
+
+<section data-slide-id="P3-S21" class="slide split large-diagram">
+  <div class="txt"><div class="kicker">모듈 3 · 신규 진입</div><h2>CAN SLIM의 앞 네 글자는 기업과 수급을 봅니다</h2></div>
+  <div class="img">
+    <img class="reference-shot" src="../docs/assets/prism-insight/can-slim-company-supply-checks.png" alt="CAN SLIM C A N S 점검">
+    <p class="caption">보고서의 실적·성장·신제품·수급 근거를 신규 진입 질문으로 바꿉니다.</p>
+  </div>
+  <div class="pagenum">21</div>
+</section>
+
+<section data-slide-id="P3-S22" class="slide split large-diagram">
+  <div class="txt"><div class="kicker">모듈 3 · 신규 진입</div><h2>뒤의 세 글자는 리더십과 시장을 봅니다</h2></div>
+  <div class="img">
+    <img class="reference-shot" src="../docs/assets/prism-insight/can-slim-leadership-market-checks.png" alt="CAN SLIM L I M 점검">
+    <p class="caption">업종 리더인지, 기관 관심이 있는지, 시장 방향이 받쳐 주는지 확인합니다.</p>
+  </div>
+  <div class="pagenum">22</div>
+</section>
+
+<section data-slide-id="P3-S23" class="slide split large-diagram">
+  <div class="txt"><div class="kicker">모듈 3 · 진입 게이트</div><h2>에이전트가 Enter라고 해도 코드 게이트를 통과해야 합니다</h2></div>
+  <div class="img">
+    <img class="reference-shot" src="assets/prism-entry-gates-light.png" alt="신규 진입의 코드 안전 게이트를 밝은 배경으로 재구성한 강의용 그림">
+    <p class="caption">시장 상태, 점수, 손익비, 보유 슬롯, 섹터 한도, 재진입 제한을 코드가 다시 검사합니다.</p>
+  </div>
+  <div class="pagenum">23</div>
+</section>
+
+<section data-slide-id="P3-S24" class="slide split large-diagram">
+  <div class="txt"><div class="kicker">모듈 3 · 피라미딩</div><h2>수익 중인 강한 종목만 추가 진입을 검토합니다</h2></div>
+  <div class="img">
+    <img class="reference-shot" src="assets/prism-pyramiding-portfolio-light.png" alt="피라미딩과 포트폴리오 슬롯을 밝은 배경으로 재구성한 강의용 그림">
+    <p class="caption">원본은 시장이 강하고 기존 포지션이 수익일 때만 독립 슬롯을 추가합니다. 강의판은 중복 매수를 막는 데서 멈춥니다.</p>
+  </div>
+  <div class="pagenum">24</div>
+</section>
+
+<section data-slide-id="P3-S25" class="slide split large-diagram">
+  <div class="txt"><div class="kicker">모듈 3 · 청산</div><h2>매도는 손실 제한부터 확인합니다</h2></div>
+  <div class="img">
+    <img class="reference-shot" src="assets/prism-trading-exit-light.png" alt="손절, 추세 이탈, 트레일링, 목표가 매도 흐름을 밝은 배경으로 재구성한 강의용 그림">
+    <p class="caption">원본의 실제 실행 경로는 기계 손절 뒤 LLM 매도 판단을 이어 붙입니다. 규칙만 있는 단순한 한 줄이 아닙니다.</p>
+  </div>
+  <div class="pagenum">25</div>
+</section>
+
+<section data-slide-id="P3-S26" class="slide split large-diagram">
+  <div class="txt"><div class="kicker">모듈 3 · 독립 보호 장치</div><h2>보조 감시 루프가 포지션을 따로 지킵니다</h2></div>
+  <div class="img">
+    <img class="reference-shot" src="../docs/assets/prism-insight/position-protection-loops.png" alt="포지션을 보호하는 독립 감시 루프">
+    <p class="caption">전체 분석 배치가 돌지 않는 동안에도 손절·상태 확인·체결 복구 같은 보조 작업이 따로 움직입니다.</p>
+  </div>
+  <div class="pagenum">26</div>
+</section>
+
+<section data-slide-id="P3-S27" class="slide">
+  <div class="kicker">원본과 강의용 축소판 비교</div>
+  <h2><code>trading.py</code>가 실제 BUY·SELL의 마지막 문을 지킵니다</h2>
+  <div class="pattern-grid">
+    <div class="pattern-card on"><div class="tag">신규 진입</div><h3>다시 검사</h3><p>추천, 0~10점 점수, 가격 배열, 최소 손익비, 현금, 실제 보유 슬롯을 확인합니다.</p></div>
+    <div class="pattern-card on"><div class="tag">청산 우선</div><h3>손절 → 트레일링 → 목표가</h3><p>보유종목을 먼저 검사하고 같은 실행에서 판 종목은 다시 사지 않습니다.</p></div>
+    <div class="pattern-card"><div class="tag">간소화됨</div><h3>피라미딩·섹터 제어 없음</h3><p>강의판은 동일 종목 중복 매수를 막고 가상 현금을 균등 배분하는 수준입니다.</p></div>
+  </div>
+  <div class="takeaway">분석의 BUY는 의견입니다. 주문 객체를 만들 수 있는 곳은 모듈 3뿐입니다.</div>
+  <div class="pagenum">27</div>
+</section>
+
+<section data-slide-id="P3-S28" class="slide">
+  <div class="kicker">모듈 3 · 주문 수명주기</div>
+  <h2>브로커가 주문을 받았다고 매매가 끝난 것은 아닙니다</h2>
+  <div class="flow">
+    <div class="step"><div class="n">1</div><div class="t">주문 의도</div><div class="d">종목·방향·수량·가격을 고정합니다.</div></div>
+    <div class="step"><div class="n">2</div><div class="t">접수</div><div class="d">브로커가 요청을 받았지만 체결 수량은 0일 수 있습니다.</div></div>
+    <div class="step"><div class="n">3</div><div class="t">부분체결</div><div class="d">일부 수량만 끝났으므로 교훈을 만들지 않습니다.</div></div>
+    <div class="step"><div class="n">4</div><div class="t">완료·재조회</div><div class="d">미결 주문은 새 주문 없이 상태만 다시 확인합니다.</div></div>
+  </div>
+  <div class="takeaway"><code>operations.py reconcile</code>은 KIS·Toss 미결 주문을 조회만 합니다. Kiwoom 강의 어댑터에는 아직 같은 복구 루프가 없습니다.</div>
+  <div class="pagenum">28</div>
+</section>
+
+<section data-slide-id="P3-S29" class="slide prompt-screen">
+  <div class="kicker">모듈 3 · 구조 질문과 단독 실행</div>
+  <h2>진입과 청산을 따로 실행해 봅니다</h2>
+  <div class="prompt-lead">아래 문장을 코딩 에이전트에게 그대로 붙여넣습니다.</div>
+  <div class="prompt-columns">
+    <div class="prompt-panel">
+      <p><span class="num">1.</span> <code>trading.py</code>에서 신규 BUY가 만들어지기 전 검사 순서를 찾아줘.</p>
+      <p><span class="num">2.</span> <code>python3 trading.py</code>를 기본 시뮬레이션으로 실행해줘.</p>
+      <p><span class="num">3.</span> <code>python3 trading.py --exit</code>로 손절·트레일링·목표가 예시를 확인해줘.</p>
+    </div>
+    <div class="prompt-panel">
+      <p><span class="num">4.</span> 원본의 CAN SLIM·피라미딩·독립 보호 루프와 비교해줘.</p>
+      <p><span class="num">5.</span> 실제 주문은 보내지 말고 두 실주문 안전 플래그가 유지되는지도 확인해줘.</p>
+      <p><span class="num">6.</span> 분석 의견과 최종 주문 결정이 왜 분리돼야 하는지 설명해줘.</p>
+    </div>
+  </div>
+  <div class="pagenum">29</div>
+</section>
+
+<section data-slide-id="P3-S30" class="slide split large-diagram">
+  <div class="txt"><div class="kicker">모듈 3에서 모듈 4로</div><h2>메인 파이프라인 밖에서도 시스템은 움직입니다</h2></div>
+  <div class="img">
+    <img class="reference-shot" src="assets/prism-auxiliary-operations-loop.png" alt="전체 배치 주변의 보유종목 감시, 체결 확인, 메모리 압축, 다음 진입 참고 루프">
+    <p class="caption">강의용 예시 시각입니다. 실제 운영 시각은 배포 환경과 시장에 맞춰 별도로 관리합니다.</p>
+  </div>
+  <div class="pagenum">30</div>
+</section>
+
+<section data-slide-id="P3-S31" class="slide split large-diagram">
+  <div class="txt"><div class="kicker">모듈 4 · 피드백과 메모리</div><h2>매매가 끝나야 비로소 결과 교훈을 만들 수 있습니다</h2></div>
+  <div class="img">
+    <img class="reference-shot" src="assets/prism-feedback-reentry-light.png" alt="거래 이력, 회고, 반복 교훈, 다음 판단, 재진입 제한 흐름을 밝은 배경으로 재구성한 강의용 그림">
+    <p class="caption">원본은 청산이 끝난 뒤 계획과 결과를 비교하고, 반복 교훈과 재진입 제한을 다음 판단에 전달합니다.</p>
+  </div>
+  <div class="pagenum">31</div>
+</section>
+
+<section data-slide-id="P3-S32" class="slide">
+  <div class="kicker">원본 PRISM의 닫힌 피드백 루프</div>
+  <h2>기억은 저장만 해서는 다음 판단에 영향을 주지 못합니다</h2>
+  <div class="flow">
+    <div class="step"><div class="n">청산 완료</div><div class="t">매매일지</div><div class="d">진입 근거, 매도 이유, 수익률, 당시 상황을 함께 남깁니다.</div></div>
+    <div class="step"><div class="n">회고</div><div class="t">교훈 추출</div><div class="d">잘한 점, 놓친 신호, 다음 행동을 구조화합니다.</div></div>
+    <div class="step"><div class="n">선별</div><div class="t">원칙·직관</div><div class="d">반복 횟수와 신뢰도를 붙여 약한 기억을 걸러 냅니다.</div></div>
+    <div class="step"><div class="n">재사용</div><div class="t">다음 진입</div><div class="d">같은 종목·섹터·트리거 이력과 장기 원칙을 프롬프트에 넣습니다.</div></div>
+  </div>
+  <div class="takeaway">원본은 과거 기록을 참고했는지와 이후 성과도 따로 비교합니다. 기억 역시 검증 대상입니다.</div>
+  <div class="pagenum">32</div>
+</section>
+
+<section data-slide-id="P3-S33" class="slide split large-diagram">
+  <div class="txt"><div class="kicker">모듈 4 · 실제 운영 배치</div><h2>실제 운영에서는 매주 기록을 압축합니다</h2></div>
+  <div class="img">
+    <img class="reference-shot" src="assets/prism-memory-compression-operations.png" alt="단기, 중기, 장기 메모리 압축과 정리 게이트">
+    <p class="caption">실제 서버의 일요일 03:00 배치와 2026-07-26 로그를 바탕으로 만든 설명 그림입니다. 압축은 성과 보장이 아닙니다.</p>
+  </div>
+  <div class="pagenum">33</div>
+</section>
+
+<section data-slide-id="P3-S34" class="slide">
+  <div class="kicker">운영 데이터에서 배운 점</div>
+  <h2>기억을 참고했다고 성과가 자동으로 좋아지지는 않았습니다</h2>
+  <div class="code-grid">
+    <div class="code-card">
+      <h3>최근 90일 관측</h3>
+      <p class="plain">메모리 참조 거래와 비참조 거래를 나눠 평균 수익률·승률을 기록했습니다.</p>
+      <pre>한국: 참조 70건 / 비참조 29건
+미국: 참조 29건 / 비참조 45건
+
+두 시장 모두 이 기간에는
+참조 거래의 평균 성과가 더 낮았습니다.</pre>
+    </div>
+    <div class="code-card">
+      <h3>이 숫자를 읽는 법</h3>
+      <p class="plain">관찰 상관관계이지 메모리가 손실을 만들었다는 인과 증명은 아닙니다.</p>
+      <pre>표본 선택이 다를 수 있음
+시장 국면이 다를 수 있음
+어려운 거래에서 기억을 더 자주 봤을 수 있음
+
+→ 기억도 성과로 검증하고 정리한다</pre>
+    </div>
+  </div>
+  <div class="pagenum">34</div>
+</section>
+
+<section data-slide-id="P3-S35" class="slide">
+  <div class="kicker">원본과 강의용 축소판 비교</div>
+  <h2><code>feedback.py</code>와 <code>memory.py</code>가 작은 피드백 루프를 만듭니다</h2>
+  <div class="pattern-grid">
+    <div class="pattern-card on"><div class="tag">청산 뒤 생성</div><h3>단기 교훈</h3><p>BUY 직후에는 결과 교훈을 만들지 않습니다. SELL이 끝난 뒤에 판단 기록을 남깁니다.</p></div>
+    <div class="pattern-card on"><div class="tag">API 키 없음</div><h3>결정론적 압축</h3><p>7일 뒤 중기, 30일 뒤 반복 장기 원칙으로 옮기고 활성 장기 원칙을 20개로 제한합니다.</p></div>
+    <div class="pattern-card on"><div class="tag">다음 진입 참고</div><h3>최대 5개 전달</h3><p>같은 종목의 최근 기록과 반복 장기 원칙을 BUY 결정 기록에 함께 남깁니다.</p></div>
+  </div>
+  <div class="takeaway">강의판에는 LLM 회고, 섹터·트리거 성과 보정, 신뢰도 재계산, 재진입 쿨다운이 없습니다.</div>
+  <div class="pagenum">35</div>
+</section>
+
+<section data-slide-id="P3-S36" class="slide prompt-screen">
+  <div class="kicker">모듈 4 · 구조 질문과 보조 작업 실행</div>
+  <h2>메인 파이프라인 밖의 작업도 하나씩 확인합니다</h2>
+  <div class="prompt-lead">아래 문장을 코딩 에이전트에게 그대로 붙여넣습니다.</div>
+  <div class="prompt-columns">
+    <div class="prompt-panel">
+      <p><span class="num">1.</span> <code>feedback.py</code>, <code>memory.py</code>, <code>operations.py</code>의 역할을 나눠 설명해줘.</p>
+      <p><span class="num">2.</span> <code>python3 feedback.py</code>와 <code>python3 operations.py compress</code>를 실행해줘.</p>
+      <p><span class="num">3.</span> <code>python3 operations.py monitor</code>로 보유종목 점검을 시뮬레이션해줘.</p>
+    </div>
+    <div class="prompt-panel">
+      <p><span class="num">4.</span> <code>python3 operations.py reconcile --broker kis</code>는 새 주문 없이 조회만 하는지 확인해줘.</p>
+      <p><span class="num">5.</span> 예약 시각과 실제 주문 설정은 바꾸지 마.</p>
+      <p><span class="num">6.</span> 원본과 비교해 어떤 보조 시스템이 더 필요한지 세 가지로 정리해줘.</p>
+    </div>
+  </div>
+  <div class="prompt-branch"><code>schedule</code>은 구조를 읽는 용도입니다. 수업 중에는 켜지 않고 한 번 실행하는 명령만 사용합니다.</div>
+  <div class="pagenum">36</div>
+</section>
+
+<section data-slide-id="P3-S37" class="slide">
+  <div class="kicker">파트 3 마무리</div>
+  <h2>자동매매는 메인 로직과 보조 운영이 함께 있어야 돌아갑니다</h2>
+  <div class="loop-grid">
+    <div class="loop-card"><div class="tag">모듈 1</div><h3>후보 선별</h3><p>넓은 시장에서 깊이 볼 종목만 남깁니다.</p></div>
+    <div class="loop-card"><div class="tag">모듈 2</div><h3>근거 분석</h3><p>여섯 방향의 사실과 조건부 의견을 만듭니다.</p></div>
+    <div class="loop-card"><div class="tag">모듈 3</div><h3>진입·청산</h3><p>코드 게이트와 주문 상태가 실제 행동을 정합니다.</p></div>
+    <div class="loop-card"><div class="tag">모듈 4</div><h3>기록·압축</h3><p>청산 결과에서 교훈을 남기고 다시 꺼내 씁니다.</p></div>
+    <div class="loop-card"><div class="tag">보조 운영</div><h3>계속 확인</h3><p>배치·보유 감시·체결 재조회·압축이 빈틈을 메웁니다.</p></div>
+  </div>
+  <div class="takeaway">파트 4에서는 이 중 한 규칙만 골라 내 전략으로 바꾸고, 전후 증거를 남깁니다.</div>
+  <div class="pagenum">37</div>
+</section>
+
+<section data-slide-id="P3-S38" class="slide cover">
+  <h1>Q&amp;A</h1>
+  <p class="sub">질문 환영<br>쉬는 시간에도, 텔레그램 커뮤니티에서도 괜찮습니다</p>
+  <div class="pagenum">38</div>
+</section>
+
+<script>
+  const archiveAssets = [
+    'kr-dashboard-2026-07-10.png', 'kospi.png', 'pdf-report-example.png',
+    'new_buy_message.png', 'skip_message.png', 'delay_message.png',
+    'season1_history.png'
+  ];
+  archiveAssets.forEach(name => {
+    const image = [...document.querySelectorAll('img')].find(img => img.src.includes(name));
+    if (image) image.closest('section.slide').classList.add('archive-example');
+  });
+  const slides = [...document.querySelectorAll('section.slide')];
+  slides.forEach((slide, index) => {
+    if (slide.querySelector('.reference-shot')) slide.classList.add('image-focus');
+    const page = slide.querySelector('.pagenum');
+    if (page) page.textContent = String(index + 1) + ' / ' + String(slides.length);
+  });
+</script>
+</body>
+</html>

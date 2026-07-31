@@ -1,0 +1,116 @@
+<!-- P3-S21 · CAN SLIM의 앞 네 글자는 기업과 수급을 봅니다 -->
+<section class="slide split large-diagram">
+  <div class="txt"><div class="kicker">모듈 3 · 신규 진입</div><h2>CAN SLIM의 앞 네 글자는 기업과 수급을 봅니다</h2></div>
+  <div class="img">
+    <img class="reference-shot" src="../docs/assets/prism-insight/can-slim-company-supply-checks.png" alt="CAN SLIM C A N S 점검">
+    <p class="caption">보고서의 실적·성장·신제품·수급 근거를 신규 진입 질문으로 바꿉니다.</p>
+  </div>
+  <div class="pagenum">21</div>
+</section>
+
+<!-- P3-S22 · 뒤의 세 글자는 리더십과 시장을 봅니다 -->
+<section class="slide split large-diagram">
+  <div class="txt"><div class="kicker">모듈 3 · 신규 진입</div><h2>뒤의 세 글자는 리더십과 시장을 봅니다</h2></div>
+  <div class="img">
+    <img class="reference-shot" src="../docs/assets/prism-insight/can-slim-leadership-market-checks.png" alt="CAN SLIM L I M 점검">
+    <p class="caption">업종 리더인지, 기관 관심이 있는지, 시장 방향이 받쳐 주는지 확인합니다.</p>
+  </div>
+  <div class="pagenum">22</div>
+</section>
+
+<!-- P3-S23 · 에이전트가 Enter라고 해도 코드 게이트를 통과해야 합니다 -->
+<section class="slide split large-diagram">
+  <div class="txt"><div class="kicker">모듈 3 · 진입 게이트</div><h2>에이전트가 Enter라고 해도 코드 게이트를 통과해야 합니다</h2></div>
+  <div class="img">
+    <img class="reference-shot" src="assets/prism-entry-gates-light.png" alt="신규 진입의 코드 안전 게이트를 밝은 배경으로 재구성한 강의용 그림">
+    <p class="caption">시장 상태, 점수, 손익비, 보유 슬롯, 섹터 한도, 재진입 제한을 코드가 다시 검사합니다.</p>
+  </div>
+  <div class="pagenum">23</div>
+</section>
+
+<!-- P3-S24 · 수익 중인 강한 종목만 추가 진입을 검토합니다 -->
+<section class="slide split large-diagram">
+  <div class="txt"><div class="kicker">모듈 3 · 피라미딩</div><h2>수익 중인 강한 종목만 추가 진입을 검토합니다</h2></div>
+  <div class="img">
+    <img class="reference-shot" src="assets/prism-pyramiding-portfolio-light.png" alt="피라미딩과 포트폴리오 슬롯을 밝은 배경으로 재구성한 강의용 그림">
+    <p class="caption">원본은 시장이 강하고 기존 포지션이 수익일 때만 독립 슬롯을 추가합니다. 강의판은 중복 매수를 막는 데서 멈춥니다.</p>
+  </div>
+  <div class="pagenum">24</div>
+</section>
+
+<!-- P3-S25 · 매도는 손실 제한부터 확인합니다 -->
+<section class="slide split large-diagram">
+  <div class="txt"><div class="kicker">모듈 3 · 청산</div><h2>매도는 손실 제한부터 확인합니다</h2></div>
+  <div class="img">
+    <img class="reference-shot" src="assets/prism-trading-exit-light.png" alt="손절, 추세 이탈, 트레일링, 목표가 매도 흐름을 밝은 배경으로 재구성한 강의용 그림">
+    <p class="caption">원본의 실제 실행 경로는 기계 손절 뒤 LLM 매도 판단을 이어 붙입니다. 규칙만 있는 단순한 한 줄이 아닙니다.</p>
+  </div>
+  <div class="pagenum">25</div>
+</section>
+
+<!-- P3-S26 · 보조 감시 루프가 포지션을 따로 지킵니다 -->
+<section class="slide split large-diagram">
+  <div class="txt"><div class="kicker">모듈 3 · 독립 보호 장치</div><h2>보조 감시 루프가 포지션을 따로 지킵니다</h2></div>
+  <div class="img">
+    <img class="reference-shot" src="../docs/assets/prism-insight/position-protection-loops.png" alt="포지션을 보호하는 독립 감시 루프">
+    <p class="caption">전체 분석 배치가 돌지 않는 동안에도 손절·상태 확인·체결 복구 같은 보조 작업이 따로 움직입니다.</p>
+  </div>
+  <div class="pagenum">26</div>
+</section>
+
+<!-- P3-S27 · lecture-prism은 최종 진입과 청산을 trading.py에 모았습니다 -->
+<section class="slide">
+  <div class="kicker">원본과 강의용 축소판 비교</div>
+  <h2><code>trading.py</code>가 실제 BUY·SELL의 마지막 문을 지킵니다</h2>
+  <div class="pattern-grid">
+    <div class="pattern-card on"><div class="tag">신규 진입</div><h3>다시 검사</h3><p>추천, 0~10점 점수, 가격 배열, 최소 손익비, 현금, 실제 보유 슬롯을 확인합니다.</p></div>
+    <div class="pattern-card on"><div class="tag">청산 우선</div><h3>손절 → 트레일링 → 목표가</h3><p>보유종목을 먼저 검사하고 같은 실행에서 판 종목은 다시 사지 않습니다.</p></div>
+    <div class="pattern-card"><div class="tag">간소화됨</div><h3>피라미딩·섹터 제어 없음</h3><p>강의판은 동일 종목 중복 매수를 막고 가상 현금을 균등 배분하는 수준입니다.</p></div>
+  </div>
+  <div class="takeaway">분석의 BUY는 의견입니다. 주문 객체를 만들 수 있는 곳은 모듈 3뿐입니다.</div>
+  <div class="pagenum">27</div>
+</section>
+
+<!-- P3-S28 · 접수와 체결은 같은 말이 아닙니다 -->
+<section class="slide">
+  <div class="kicker">모듈 3 · 주문 수명주기</div>
+  <h2>브로커가 주문을 받았다고 매매가 끝난 것은 아닙니다</h2>
+  <div class="flow">
+    <div class="step"><div class="n">1</div><div class="t">주문 의도</div><div class="d">종목·방향·수량·가격을 고정합니다.</div></div>
+    <div class="step"><div class="n">2</div><div class="t">접수</div><div class="d">브로커가 요청을 받았지만 체결 수량은 0일 수 있습니다.</div></div>
+    <div class="step"><div class="n">3</div><div class="t">부분체결</div><div class="d">일부 수량만 끝났으므로 교훈을 만들지 않습니다.</div></div>
+    <div class="step"><div class="n">4</div><div class="t">완료·재조회</div><div class="d">미결 주문은 새 주문 없이 상태만 다시 확인합니다.</div></div>
+  </div>
+  <div class="takeaway"><code>operations.py reconcile</code>은 KIS·Toss 미결 주문을 조회만 합니다. Kiwoom 강의 어댑터에는 아직 같은 복구 루프가 없습니다.</div>
+  <div class="pagenum">28</div>
+</section>
+
+<!-- P3-S29 · trading.py를 구조 질문으로 읽습니다 -->
+<section class="slide prompt-screen">
+  <div class="kicker">모듈 3 · 구조 질문과 단독 실행</div>
+  <h2>진입과 청산을 따로 실행해 봅니다</h2>
+  <div class="prompt-lead">아래 문장을 코딩 에이전트에게 그대로 붙여넣습니다.</div>
+  <div class="prompt-columns">
+    <div class="prompt-panel">
+      <p><span class="num">1.</span> <code>trading.py</code>에서 신규 BUY가 만들어지기 전 검사 순서를 찾아줘.</p>
+      <p><span class="num">2.</span> <code>python3 trading.py</code>를 기본 시뮬레이션으로 실행해줘.</p>
+      <p><span class="num">3.</span> <code>python3 trading.py --exit</code>로 손절·트레일링·목표가 예시를 확인해줘.</p>
+    </div>
+    <div class="prompt-panel">
+      <p><span class="num">4.</span> 원본의 CAN SLIM·피라미딩·독립 보호 루프와 비교해줘.</p>
+      <p><span class="num">5.</span> 실제 주문은 보내지 말고 두 실주문 안전 플래그가 유지되는지도 확인해줘.</p>
+      <p><span class="num">6.</span> 분석 의견과 최종 주문 결정이 왜 분리돼야 하는지 설명해줘.</p>
+    </div>
+  </div>
+  <div class="pagenum">29</div>
+</section>
+
+<!-- P3-S30 · 메인 파이프라인 밖에서도 시스템은 움직입니다 -->
+<section class="slide split large-diagram">
+  <div class="txt"><div class="kicker">모듈 3에서 모듈 4로</div><h2>메인 파이프라인 밖에서도 시스템은 움직입니다</h2></div>
+  <div class="img">
+    <img class="reference-shot" src="assets/prism-auxiliary-operations-loop.png" alt="전체 배치 주변의 보유종목 감시, 체결 확인, 메모리 압축, 다음 진입 참고 루프">
+    <p class="caption">강의용 예시 시각입니다. 실제 운영 시각은 배포 환경과 시장에 맞춰 별도로 관리합니다.</p>
+  </div>
+  <div class="pagenum">30</div>
+</section>

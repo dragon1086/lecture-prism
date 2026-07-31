@@ -1,0 +1,19 @@
+<script>
+  const archiveAssets = [
+    'kr-dashboard-2026-07-10.png', 'kospi.png', 'pdf-report-example.png',
+    'new_buy_message.png', 'skip_message.png', 'delay_message.png',
+    'season1_history.png'
+  ];
+  archiveAssets.forEach(name => {
+    const image = [...document.querySelectorAll('img')].find(img => img.src.includes(name));
+    if (image) image.closest('section.slide').classList.add('archive-example');
+  });
+  const slides = [...document.querySelectorAll('section.slide')];
+  slides.forEach((slide, index) => {
+    if (slide.querySelector('.reference-shot')) slide.classList.add('image-focus');
+    const page = slide.querySelector('.pagenum');
+    if (page) page.textContent = String(index + 1) + ' / ' + String(slides.length);
+  });
+</script>
+</body>
+</html>

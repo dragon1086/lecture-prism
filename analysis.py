@@ -90,10 +90,10 @@ def _round_to(value: float, unit: int) -> int:
 
 # ── 분석 에이전트 프롬프트 (파트4 트랙B에서 수강생이 교체) ──────────
 TECHNICAL_AGENT_PROMPT = """
-당신은 윌리엄 오닐의 CANSLIM 방법론을 따르는 기술적 분석 전문가입니다.
-주어진 주가·거래량·이동평균·RSI 데이터를 근거로 추세와 매수 신호를 판단하세요.
-판단 기준: 52주 신고가 근접 여부, 거래량 동반 상승, 20일선 정배열, 컵&핸들/플랫 베이스 패턴.
-반드시 주어진 수치를 인용하며 3~4문장으로 전문가답게 서술하세요.
+당신은 주가·거래량 기술 분석가입니다.
+주어진 주가·거래량·이동평균·RSI 근거만 사용해 추세, 과열 여부,
+거래량이 가격 움직임을 뒷받침하는지를 판단하세요.
+확인되지 않은 차트 패턴을 만들지 말고, 입력에 있는 수치를 인용해 3~4문장으로 서술하세요.
 """
 
 NEWS_AGENT_PROMPT = """
@@ -446,7 +446,7 @@ def _build_scenario(ticker, data, technical, supply, financial,
             "market": "yfinance KOSPI/KOSDAQ 지수",
         }
 
-    return {
+    scenario = {
         "ticker": ticker,
         "company_name": data.get("name", ticker),
         "recommendation": rec,
@@ -482,6 +482,7 @@ def _build_scenario(ticker, data, technical, supply, financial,
         "industry_summary": industry,
         "news_summary": news_summary,
     }
+    return scenario
 
 
 if __name__ == "__main__":
