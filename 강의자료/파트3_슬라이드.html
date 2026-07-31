@@ -526,35 +526,35 @@
   <div class="pagenum">18</div>
 </section>
 
-<section data-slide-id="P3-S19" class="slide comparison-slide">
+<section data-slide-id="P3-S19" class="slide comparison-slide" id="p3-s19">
   <div class="txt">
     <div class="kicker">원본과 강의용 축소판 비교</div>
-    <h2>여섯 조사 조직을 규칙 네 칸과 선택적 AI 한 번으로 줄였습니다</h2>
+    <h2>강의용도 여섯 전문 에이전트와 편집 에이전트를 조립합니다</h2>
   </div>
   <div class="img">
-    <img class="reference-shot comparison-shot" src="assets/lecture-compare-analysis.png" alt="PRISM Insight 여섯 분석 조직과 lecture-prism analysis.py의 규칙, 선택적 AI, 시나리오 조립 함수 비교">
-    <p class="caption">규칙이 쓰는 네 근거와 선택적 AI 보완, 마지막 시나리오 조립이 한 파일 안에서 어떻게 이어지는지 봅니다.</p>
+    <img class="reference-shot comparison-shot" src="assets/lecture-compare-analysis.png" alt="PRISM Insight와 lecture-prism의 독립 분석 보고서 에이전트 및 편집 에이전트 비교">
+    <p class="caption"><code>analysis_agents.py</code>에 역할과 프롬프트를 분리하고, <code>analysis.py</code>는 전문 에이전트 6개와 편집 에이전트의 결과만 보고서로 조립합니다.</p>
   </div>
   <div class="pagenum">19</div>
 </section>
 
 <section data-slide-id="P3-S20" class="slide prompt-screen">
   <div class="kicker">모듈 2 · 구조 질문과 단독 실행</div>
-  <h2><code>analysis.py</code>만 따로 읽고 실행합니다</h2>
+  <h2>각 에이전트의 질문과 보고서 조립을 따로 읽습니다</h2>
   <div class="prompt-lead">아래 문장을 코딩 에이전트에게 그대로 붙여넣습니다.</div>
   <div class="prompt-columns">
     <div class="prompt-panel">
-      <p><span class="num">1.</span> <code>analysis.py</code>에서 여섯 섹션이 어떤 데이터로 만들어지는지 찾아줘.</p>
-      <p><span class="num">2.</span> 규칙이 맡는 부분과 LLM이 맡는 부분을 나눠 설명해줘.</p>
+      <p><span class="num">1.</span> <code>analysis_agents.py</code>에서 여섯 역할과 핵심 프롬프트를 찾아줘.</p>
+      <p><span class="num">2.</span> 각 에이전트의 입력 근거와 출력 섹션을 표로 설명해줘.</p>
       <p><span class="num">3.</span> 코드는 고치지 말고 <code>python3 analysis.py 005930</code>을 실행해줘.</p>
     </div>
     <div class="prompt-panel">
-      <p><span class="num">4.</span> 추천·점수·목표가·손절가와 실제 주문 결정의 차이를 설명해줘.</p>
-      <p><span class="num">5.</span> 원본 여섯 에이전트와 비교해 구현됨 / 작게 구현됨 / 아직 없음으로 정리해줘.</p>
+      <p><span class="num">4.</span> 여섯 호출 중 하나가 실패할 때 그 섹션만 폴백하는 코드를 보여줘.</p>
+      <p><span class="num">5.</span> 편집 에이전트가 새 매수 의견을 만들지 않는 경계를 확인해줘.</p>
       <p><span class="num">6.</span> 실제 투자 권유처럼 말하지 말고 데이터 기준과 폴백도 함께 보여줘.</p>
     </div>
   </div>
-  <div class="prompt-branch">CAN SLIM은 여기서 끝내지 않습니다. 다음 모듈의 신규 진입 판단에서 다시 만납니다.</div>
+  <div class="prompt-branch">보고서에는 Enter / No Entry가 없습니다. 다음 모듈의 <code>buy_agent.py</code>가 보고서를 읽고 판단합니다.</div>
   <div class="pagenum">20</div>
 </section>
 
@@ -612,14 +612,14 @@
   <div class="pagenum">26</div>
 </section>
 
-<section data-slide-id="P3-S27" class="slide comparison-slide">
+<section data-slide-id="P3-S27" class="slide comparison-slide" id="p3-s27">
   <div class="txt">
     <div class="kicker">원본과 강의용 축소판 비교</div>
-    <h2>여러 진입·보호 도구를 청산 우선의 한 안전문으로 줄였습니다</h2>
+    <h2>매수 에이전트의 의견 뒤에 코드 안전문을 둡니다</h2>
   </div>
   <div class="img">
-    <img class="reference-shot comparison-shot" src="assets/lecture-compare-trading.png" alt="PRISM Insight 매매·보호 도구와 lecture-prism trading.py의 청산, 진입, 모의체결 함수 비교">
-    <p class="caption">lecture-prism은 새 BUY보다 청산을 먼저 검사하고, 실주문 경로는 두 안전 플래그 뒤에 둡니다.</p>
+    <img class="reference-shot comparison-shot" src="assets/lecture-compare-trading.png" alt="PRISM Insight 매매·보호 도구와 lecture-prism buy_agent.py 및 trading.py 비교">
+    <p class="caption"><code>buy_agent.py</code>가 보고서에서 Enter / No Entry 시나리오를 만들고, <code>trading.py</code>는 청산을 먼저 확인한 뒤 점수·가격·포트폴리오 조건을 재검사합니다.</p>
   </div>
   <div class="pagenum">27</div>
 </section>
@@ -643,14 +643,14 @@
   <div class="prompt-lead">아래 문장을 코딩 에이전트에게 그대로 붙여넣습니다.</div>
   <div class="prompt-columns">
     <div class="prompt-panel">
-      <p><span class="num">1.</span> <code>trading.py</code>에서 신규 BUY가 만들어지기 전 검사 순서를 찾아줘.</p>
-      <p><span class="num">2.</span> <code>python3 trading.py</code>를 기본 시뮬레이션으로 실행해줘.</p>
+      <p><span class="num">1.</span> <code>buy_agent.py</code>가 보고서를 읽어 Enter / No Entry를 만드는 순서를 찾아줘.</p>
+      <p><span class="num">2.</span> <code>python3 buy_agent.py 005930</code>을 실행한 뒤 <code>trading.py</code>의 재검사를 설명해줘.</p>
       <p><span class="num">3.</span> <code>python3 trading.py --exit</code>로 손절·트레일링·목표가 예시를 확인해줘.</p>
     </div>
     <div class="prompt-panel">
       <p><span class="num">4.</span> 원본의 CAN SLIM·피라미딩·독립 보호 루프와 비교해줘.</p>
       <p><span class="num">5.</span> 실제 주문은 보내지 말고 두 실주문 안전 플래그가 유지되는지도 확인해줘.</p>
-      <p><span class="num">6.</span> 분석 의견과 최종 주문 결정이 왜 분리돼야 하는지 설명해줘.</p>
+      <p><span class="num">6.</span> 보고서 작성·매수 의견·최종 주문이 왜 세 경계로 분리되는지 설명해줘.</p>
     </div>
   </div>
   <div class="pagenum">29</div>

@@ -89,7 +89,7 @@
 
 <article class="canvas" data-module="analysis">
   <header class="header">
-    <div><div class="eyebrow">원본과 강의용 축소판 비교</div><h1>종목 분석: 여섯 조사 조직을<br>규칙 네 칸과 선택적 AI 한 번으로 줄였습니다</h1></div>
+    <div><div class="eyebrow">원본과 강의용 축소판 비교</div><h1>종목 분석: 독립 조사와 편집의 구조를<br>일곱 개의 작은 에이전트로 재현했습니다</h1></div>
     <div class="module-no">MODULE 02</div>
   </header>
   <div class="comparison">
@@ -102,18 +102,18 @@
         <div class="source-row"><strong>미국 데이터에 맞춘 별도 분석</strong><code>prism-us/cores/us_analysis.py</code><p>기관 보유와 미국 시장 자료를 같은 큰 구조에 맞게 처리</p></div>
       </div>
     </section>
-    <div class="bridge"><div class="funnel">⇢</div><strong>여섯 번의 조사와<br>보고서 제작을 덜고</strong><p>규칙이 맡을 일과<br>AI가 맡을 일을 분리</p></div>
+    <div class="bridge"><div class="funnel">⇢</div><strong>자료 수집 도구는<br>가볍게 줄이고</strong><p>역할 분리와<br>개별 실패 격리는 유지</p></div>
     <section class="side lecture">
-      <div class="side-title"><i class="dot"></i><strong>lecture-prism 강의형</strong><span>근거 → 점수 → 의견</span></div>
+      <div class="side-title"><i class="dot"></i><strong>lecture-prism 강의형</strong><span>근거 → 6개 보고서 → 편집</span></div>
       <div class="flow">
-        <div class="step" data-step="1"><strong>한 종목 분석 시작</strong><code>analysis.py · run_analysis()</code><p>가격 데이터와 시장지수를 받아 여섯 섹션의 근거를 준비합니다.</p></div>
-        <div class="step" data-step="2"><strong>규칙으로 네 칸 작성</strong><code>_section_supply / financial / industry / market</code><p>수급·재무·산업·시장은 확보한 수치를 정해진 문장으로 해석합니다.</p></div>
-        <div class="step" data-step="3"><strong>어려운 맥락만 AI 보완</strong><code>_run_combined_llm_agent()</code><p>연결돼 있을 때 기술·뉴스·리스크를 한 번 보완하며, BUY를 올리지는 못합니다.</p></div>
-        <div class="step" data-step="4"><strong>숫자와 의견을 한 시나리오로</strong><code>_rule_based_score() → _build_scenario()</code><p>0~10점, 추천, 목표가, 손절가와 여섯 근거를 하나의 분석 결과로 묶습니다.</p></div>
+        <div class="step" data-step="1"><strong>역할과 프롬프트를 한곳에</strong><code>analysis_agents.py · AGENT_SPECS</code><p>기술·수급·재무·산업·뉴스·시장 분석가의 질문과 출력 칸을 명시합니다.</p></div>
+        <div class="step" data-step="2"><strong>전문 에이전트 6개 개별 호출</strong><code>run_report_agents() · asyncio.gather()</code><p>같은 근거 묶음에서 독립 실행하며 한 실패가 다른 보고서를 취소하지 않습니다.</p></div>
+        <div class="step" data-step="3"><strong>편집 에이전트가 마지막 조립</strong><code>EDITOR_PROMPT · executive_summary</code><p>여섯 보고서의 일치·충돌을 요약하되 매수 의견이나 가격을 추가하지 않습니다.</p></div>
+        <div class="step" data-step="4"><strong>분석은 보고서에서 멈춤</strong><code>analysis.py · run_analysis_report()</code><p>Enter / No Entry와 점수·목표가·손절가는 모듈 3의 buy_agent.py로 넘깁니다.</p></div>
       </div>
     </section>
   </div>
-  <footer class="footer">원본의 핵심인 <em>“근거를 나눠 조사하고 마지막에 조립한다”</em>는 남기고 독립 AI 호출과 PDF 제작은 덜었습니다.</footer>
+  <footer class="footer">원본의 핵심인 <em>“근거를 나눠 조사하고 마지막에 조립한다”</em>를 유지하되, 데이터 도구와 PDF 제작만 수업용으로 줄였습니다.</footer>
 </article>
 
 <article class="canvas" data-module="trading">
@@ -137,14 +137,14 @@
     <section class="side lecture">
       <div class="side-title"><i class="dot"></i><strong>lecture-prism 강의형</strong><span>청산 → 진입 → 체결</span></div>
       <div class="flow">
-        <div class="step" data-step="1"><strong>매매 판단 시작</strong><code>trading.py · run_trading()</code><p>새 BUY보다 먼저 현재 보유 종목의 청산 조건을 확인합니다.</p></div>
+        <div class="step" data-step="1"><strong>보고서에서 매수 시나리오로</strong><code>buy_agent.py · run_buy_agent()</code><p>여섯 보고서를 읽고 Enter / No Entry와 근거를 만들며 규칙 숫자는 바꾸지 못합니다.</p></div>
         <div class="step" data-step="2"><strong>손실 보호를 먼저 검사</strong><code>_decide_exit()</code><p>손절 → 트레일링 스탑 → 목표가 순서로 SELL 여부를 정합니다.</p></div>
         <div class="step" data-step="3"><strong>신규 진입을 다시 검사</strong><code>_decide_position()</code><p>점수·가격 배열·손익비·현금·보유 슬롯을 통과해야 BUY가 됩니다.</p></div>
         <div class="step" data-step="4"><strong>기본은 모의 체결</strong><code>_simulate_trade() / _execute_broker_order()</code><p>브로커 연결은 <code>brokers/</code>와 두 실주문 안전 플래그를 모두 통과해야 합니다.</p></div>
       </div>
     </section>
   </div>
-  <footer class="footer">원본의 핵심인 <em>“AI 의견 뒤에도 코드가 다시 검사한다”</em>는 남기고 피라미딩·섹터·독립 보호 프로세스는 줄였습니다.</footer>
+  <footer class="footer">원본의 핵심인 <em>“보고서와 매수 판단을 나누고, AI 의견 뒤에도 코드가 다시 검사한다”</em>는 남겼습니다.</footer>
 </article>
 
 <article class="canvas" data-module="feedback">

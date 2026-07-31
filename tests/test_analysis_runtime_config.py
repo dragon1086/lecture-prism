@@ -114,25 +114,24 @@ class AnalysisRuntimeConfigTest(unittest.TestCase):
 
         self.assertIn("실시간 리서치", result["news_summary"])
 
-    def test_oauth_analysis_uses_exactly_one_structured_llm_call(self):
+    def test_oauth_report_uses_six_specialists_and_one_editor(self):
         os.environ["LECTURE_LLM_MODE"] = "oauth"
-        payload = {
-            "technical_summary": "기술 요약",
-            "news_summary": "뉴스 요약",
-            "llm_veto": False,
-            "rationale": "추세와 실적이 함께 개선됨",
-            "risk": "시장 레짐 악화",
-        }
+
+        async def complete(system_prompt, user_message):
+            if "보고서 편집장" in system_prompt:
+                return __import__("json").dumps({"executive_summary": "핵심 요약"})
+            return __import__("json").dumps({"summary": "전문 분석"})
+
         with mock.patch(
             "analysis._llm_complete",
-            new=mock.AsyncMock(return_value=__import__("json").dumps(payload)),
+            side_effect=complete,
         ) as complete:
-            result = asyncio.run(analysis.run_analysis("005930"))
+            result = asyncio.run(analysis.run_analysis_report("005930"))
 
-        complete.assert_awaited_once()
-        self.assertEqual(result["technical_summary"], "기술 요약")
-        self.assertEqual(result["news_summary"], "뉴스 요약")
-        self.assertEqual(result["buy_score"], 8)
+        self.assertEqual(complete.await_count, 7)
+        self.assertEqual(result["technical_summary"], "전문 분석")
+        self.assertEqual(result["news_summary"], "전문 분석")
+        self.assertEqual(result["executive_summary"], "핵심 요약")
 
     def test_llm_cannot_promote_quantitative_pass_or_control_prices(self):
         os.environ["LECTURE_LLM_MODE"] = "oauth"
@@ -148,10 +147,12 @@ class AnalysisRuntimeConfigTest(unittest.TestCase):
             "risk": "위험",
         }
         with mock.patch(
-            "analysis._llm_complete",
+            "buy_agent._llm_complete",
             new=mock.AsyncMock(return_value=__import__("json").dumps(payload)),
         ):
-            result = asyncio.run(analysis.run_analysis("105560"))
+            report = asyncio.run(analysis.run_analysis_report("105560"))
+            from buy_agent import run_buy_agent
+            result = asyncio.run(run_buy_agent(report))
 
         self.assertEqual(result["recommendation"], "PASS")
         self.assertEqual(result["decision"], "보류")
@@ -169,10 +170,12 @@ class AnalysisRuntimeConfigTest(unittest.TestCase):
             "risk": "검증되지 않은 촉매",
         }
         with mock.patch(
-            "analysis._llm_complete",
+            "buy_agent._llm_complete",
             new=mock.AsyncMock(return_value=__import__("json").dumps(payload)),
         ):
-            result = asyncio.run(analysis.run_analysis("005930"))
+            report = asyncio.run(analysis.run_analysis_report("005930"))
+            from buy_agent import run_buy_agent
+            result = asyncio.run(run_buy_agent(report))
 
         self.assertEqual(result["recommendation"], "HOLD")
         self.assertEqual(result["decision"], "보류")

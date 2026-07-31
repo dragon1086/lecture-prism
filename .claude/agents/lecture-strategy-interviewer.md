@@ -15,7 +15,7 @@ lecture-prism 수강생이 애매하게 말한 매매 아이디어를 진입·�
 ## 트랙 기준
 
 - A `screening.py`: RSI, 거래량, 시총, 이동평균 등 정량 진입 조건
-- B `analysis.py`: 분석 철학, 뉴스/재무/모멘텀 관점 프롬프트
+- B `analysis_agents.py`: 기술·수급·재무·산업·뉴스·시장 중 바꿀 관점과 프롬프트
 - C `trading.py` `_decide_exit`: 목표가, 손절, 트레일링 스탑
 - D `trading.py` 상수: 최대 종목 수, 현금 비중, 매수 점수
 

@@ -22,6 +22,15 @@ def _analysis() -> dict:
     }
 
 
+def _report() -> dict:
+    return {
+        "ticker": "005930",
+        "company_name": "삼성전자",
+        "current_price": 71_200,
+        "executive_summary": "여섯 분석 보고서 요약",
+    }
+
+
 def _trade() -> dict:
     return {
         "ticker": "005930",
@@ -81,6 +90,7 @@ class MainNotificationContractTest(unittest.TestCase):
 
 class MainNotificationFlowTest(unittest.TestCase):
     def _run(self, notifier):
+        report = _report()
         analysis = _analysis()
         trade = _trade()
         feedback = mock.AsyncMock()
@@ -88,7 +98,10 @@ class MainNotificationFlowTest(unittest.TestCase):
             "screening.run_screening",
             new=mock.AsyncMock(return_value=["005930"]),
         ), mock.patch(
-            "analysis.run_analysis",
+            "analysis.run_analysis_report",
+            new=mock.AsyncMock(return_value=report),
+        ), mock.patch(
+            "buy_agent.run_buy_agent",
             new=mock.AsyncMock(return_value=analysis),
         ), mock.patch(
             "report_writer.write_reports",

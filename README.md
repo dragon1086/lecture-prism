@@ -48,7 +48,7 @@ API 키 없이 먼저 전체 흐름을 실행하고, 같은 프로젝트에서 �
 | 트랙 | 내가 정하는 것 | 주로 바꾸는 파일 | 쉬운 예시 |
 |---|---|---|---|
 | **A · 진입** | 언제 종목을 살펴볼까 | `screening.py` | 거래량이 평소보다 크게 늘어난 종목만 고른다. |
-| **B · 분석** | AI가 무엇을 중요하게 볼까 | `analysis.py` | 뉴스와 시장 분위기를 함께 판단한다. |
+| **B · 분석** | AI 분석가가 무엇을 중요하게 볼까 | `analysis_agents.py` | 기술·뉴스 등 한 역할의 질문을 바꾼다. |
 | **C · 청산** | 언제 팔까 | `trading.py` | 손절·목표가·트레일링 스탑을 정한다. |
 | **D · 리스크** | 얼마나 살까 | `trading.py` | 종목 수와 한 종목당 비중을 제한한다. |
 
@@ -67,7 +67,7 @@ A·C·D 트랙은 API 키 없이도 수정 전후 결과를 비교할 수 있습
 
 ## 두 가지 학습 경로
 
-- **기본 학습 경로**: `mock`과 `real_data`에서 루트 `screening.py` → `analysis.py` → `trading.py` → `feedback.py`를 실행합니다. API 키 없는 첫 성공과 A/B/C/D 전략 수정은 여기서 시작합니다.
+- **기본 학습 경로**: `mock`과 `real_data`에서 `screening.py` → `analysis_agents.py`·`analysis.py` → `buy_agent.py` → `trading.py` → `feedback.py`를 실행합니다. API 키 없는 첫 성공과 A/B/C/D 전략 수정은 여기서 시작합니다.
 - **상태 기반 고급 경로**: `classroom`·`backtest`·`paper`·`live`는 `prism_core`의 시장 국면, 주문 원장, 체결·청산 증거를 사용합니다. `classroom`은 고정 offline 재생이고, `paper/live`는 market provider 오류를 mock 매매로 바꾸지 않고 fail-closed로 멈춥니다.
 
 ## 수업이 끝나면 남는 것

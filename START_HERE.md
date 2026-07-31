@@ -30,7 +30,7 @@ ChatGPT Plus/Pro 선택 연결은 공식 Codex 로그인을 사용합니다. 기
 
 첫 성공 뒤에는 한 번에 모든 선택 기능을 켜지 않습니다. 목표에 맞는 경로 하나만 고릅니다.
 
-- **기본 학습 경로**: root `screening.py`·`analysis.py`·`trading.py` 중 한 파일을 A/B/C/D 전략 트랙으로 바꾸고 다시 데모를 실행합니다.
+- **기본 학습 경로**: root `screening.py`·`analysis_agents.py`·`buy_agent.py`·`trading.py` 중 한 책임을 A/B/C/D 전략 트랙으로 바꾸고 다시 데모를 실행합니다.
 - **상태 기반 고급 경로**: `classroom`의 고정 offline replay로 `prism_core`가 남기는 regime·candidate·order·fill 증거를 읽습니다. `backtest`·`paper`·`live`는 이 경로를 확장한 프로필이며, 첫 성공에 필요하지 않습니다.
 - **선택 연동 경로**: 실데이터, 공식 Codex OAuth, KIS 또는 Toss 진단을 각각 따로 켭니다. 실제 주문은 이 문서의 첫 실행 범위가 아닙니다.
 

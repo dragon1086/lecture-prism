@@ -22,15 +22,15 @@
 | P3-S16 | — | `part3/03-system-map.html` | 숫자를 읽는 프롬프트는 계산과 근거를 강제합니다 |
 | P3-S17 | — | `part3/03-system-map.html` | 맥락을 읽는 프롬프트는 출처와 범위를 제한합니다 |
 | P3-S18 | — | `part3/03-system-map.html` | 여섯 보고서는 조건부 투자 전략과 요약으로 합쳐집니다 |
-| P3-S19 | — | `part3/03-system-map.html` | 여섯 조사 조직을 규칙 네 칸과 선택적 AI 한 번으로 줄였습니다 |
-| P3-S20 | P3-M2 | `part3/03-system-map.html` | analysis.py만 따로 읽고 실행합니다 |
+| P3-S19 | — | `part3/03-system-map.html` | 강의용도 여섯 전문 에이전트와 편집 에이전트를 조립합니다 |
+| P3-S20 | P3-M2 | `part3/03-system-map.html` | 각 에이전트의 질문과 보고서 조립을 따로 읽습니다 |
 | P3-S21 | — | `part3/04-guided-practice.html` | CAN SLIM의 앞 네 글자는 기업과 수급을 봅니다 |
 | P3-S22 | — | `part3/04-guided-practice.html` | 뒤의 세 글자는 리더십과 시장을 봅니다 |
 | P3-S23 | — | `part3/04-guided-practice.html` | 에이전트가 Enter라고 해도 코드 게이트를 통과해야 합니다 |
 | P3-S24 | — | `part3/04-guided-practice.html` | 수익 중인 강한 종목만 추가 진입을 검토합니다 |
 | P3-S25 | — | `part3/04-guided-practice.html` | 매도는 손실 제한부터 확인합니다 |
 | P3-S26 | — | `part3/04-guided-practice.html` | 보조 감시 루프가 포지션을 따로 지킵니다 |
-| P3-S27 | — | `part3/04-guided-practice.html` | 여러 진입·보호 도구를 청산 우선의 한 안전문으로 줄였습니다 |
+| P3-S27 | — | `part3/04-guided-practice.html` | 매수 에이전트의 의견 뒤에 코드 안전문을 둡니다 |
 | P3-S28 | — | `part3/04-guided-practice.html` | 브로커가 주문을 받았다고 매매가 끝난 것은 아닙니다 |
 | P3-S29 | P3-M3 | `part3/04-guided-practice.html` | 진입과 청산을 따로 실행해 봅니다 |
 | P3-S30 | — | `part3/04-guided-practice.html` | 메인 파이프라인 밖에서도 시스템은 움직입니다 |

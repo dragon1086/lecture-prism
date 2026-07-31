@@ -78,6 +78,18 @@ class Part3DeckContractTests(unittest.TestCase):
             seen.add(filename)
         self.assertEqual(set(EXPECTED_CAPTION_PHRASES), seen)
 
+    def test_module_two_teaches_report_agents_and_module_three_owns_buy_decision(self):
+        for phrase in (
+            "analysis_agents.py",
+            "전문 에이전트 6개",
+            "편집 에이전트",
+            "buy_agent.py",
+            "Enter / No Entry",
+        ):
+            self.assertIn(phrase, self.sources)
+        self.assertNotIn("선택적 AI 한 번으로 줄였습니다", self.sources)
+        self.assertNotIn("_run_combined_llm_agent", self.sources)
+
     @staticmethod
     def _png_size(path: Path) -> tuple[int, int]:
         with path.open("rb") as image:

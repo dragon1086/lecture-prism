@@ -2,7 +2,7 @@
 
 lecture-prism은 한 저장소 안에서 초급자용 더미 데모부터 상태가 남는 교실 재생, 선택 실데이터·리서치·브로커 연결까지 단계적으로 구분합니다. 문서를 읽을 때는 먼저 **기본 학습 경로**와 **상태 기반 고급 경로**를 구분하세요.
 
-- **기본 학습 경로**: `mock`과 `real_data`가 루트 `screening.py` → `analysis.py` → `trading.py` → `feedback.py`를 사용합니다. API 키 없는 첫 성공과 전략 A/B/C/D 수정의 출발점입니다.
+- **기본 학습 경로**: `mock`과 `real_data`가 `screening.py` → `analysis_agents.py`·`analysis.py` → `buy_agent.py` → `trading.py` → `feedback.py`를 사용합니다. API 키 없는 첫 성공과 전략 A/B/C/D 수정의 출발점입니다.
 - **상태 기반 고급 경로**: `classroom`, `backtest`, `paper`, `live`가 `prism_core`의 시장 국면·후보·주문 원장·체결 증거를 사용하거나 그 계약을 검증합니다. `paper/live`는 market provider 오류를 mock 매매로 바꾸지 않고 fail-closed로 막습니다.
 
 수강생이 기본적으로 만지는 파일은 두 개입니다.
@@ -119,7 +119,7 @@ LECTURE_REPORT_MODE=research
 LECTURE_RESEARCH_TOOLS=""
 ```
 
-얻는 것: 공식 Codex 로그인으로 기술·뉴스·리스크 정성 역할을 종목당 한 번의 구조화 호출로 실행합니다. 추천·점수·목표가·손절가는 규칙이 소유하고, LLM은 BUY를 HOLD로만 veto할 수 있습니다. Perplexity/Firecrawl은 비워 둬도 되며 선택적으로만 보강합니다. 최초 연결은 `docs/api-keys.md`의 코딩 에이전트용 로그인 프롬프트를 사용하세요.
+얻는 것: 공식 Codex 로그인으로 `analysis_agents.py`의 전문 보고서 에이전트 6개를 개별 호출하고 편집 에이전트가 요약합니다. 이어 `buy_agent.py`가 보고서를 읽습니다. 추천·점수·목표가·손절가는 규칙이 소유하고, LLM은 BUY를 HOLD로만 veto할 수 있습니다. Perplexity/Firecrawl은 선택 보강입니다.
 
 ### KIS 모의투자 전체 주문 주기 확인
 
@@ -222,7 +222,7 @@ broker factory와 adapter place_order를 mock으로 감싸 호출되면 실패�
 그 조건에서 결과가 live_blocked이고 adapter 호출이 0회라는 테스트 증거만 설명해줘.
 ```
 
-market regime·screening·provider fail-closed, 공식 Codex OAuth 단일 분석 호출, KIS와 Toss WTS의 매수·매도·체결 조회·취소·재시작 reconcile은 현재 구현 범위입니다. Toss는 고정 `tossctl` JSON fixture로 검증했으며 실제 계좌 E2E는 수행하지 않았습니다. dashboard core-table 시각화는 후속 과제입니다.
+market regime·screening·provider fail-closed, 공식 Codex OAuth 역할별 분석 호출, KIS와 Toss WTS의 매수·매도·체결 조회·취소·재시작 reconcile은 현재 구현 범위입니다. Toss는 고정 `tossctl` JSON fixture로 검증했으며 실제 계좌 E2E는 수행하지 않았습니다. dashboard core-table 시각화는 후속 과제입니다.
 
 ### 기존 프로필 설정 점검 프롬프트
 

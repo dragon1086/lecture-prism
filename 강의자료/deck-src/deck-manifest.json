@@ -42,8 +42,8 @@
             {"id": "P3-S16", "title": "숫자를 읽는 프롬프트는 계산과 근거를 강제합니다", "promptId": null},
             {"id": "P3-S17", "title": "맥락을 읽는 프롬프트는 출처와 범위를 제한합니다", "promptId": null},
             {"id": "P3-S18", "title": "여섯 보고서는 조건부 투자 전략과 요약으로 합쳐집니다", "promptId": null},
-            {"id": "P3-S19", "title": "여섯 조사 조직을 규칙 네 칸과 선택적 AI 한 번으로 줄였습니다", "promptId": null},
-            {"id": "P3-S20", "title": "analysis.py만 따로 읽고 실행합니다", "promptId": "P3-M2"}
+            {"id": "P3-S19", "title": "강의용도 여섯 전문 에이전트와 편집 에이전트를 조립합니다", "promptId": null},
+            {"id": "P3-S20", "title": "각 에이전트의 질문과 보고서 조립을 따로 읽습니다", "promptId": "P3-M2"}
           ]
         },
         {
@@ -55,7 +55,7 @@
             {"id": "P3-S24", "title": "수익 중인 강한 종목만 추가 진입을 검토합니다", "promptId": null},
             {"id": "P3-S25", "title": "매도는 손실 제한부터 확인합니다", "promptId": null},
             {"id": "P3-S26", "title": "보조 감시 루프가 포지션을 따로 지킵니다", "promptId": null},
-            {"id": "P3-S27", "title": "여러 진입·보호 도구를 청산 우선의 한 안전문으로 줄였습니다", "promptId": null},
+            {"id": "P3-S27", "title": "매수 에이전트의 의견 뒤에 코드 안전문을 둡니다", "promptId": null},
             {"id": "P3-S28", "title": "브로커가 주문을 받았다고 매매가 끝난 것은 아닙니다", "promptId": null},
             {"id": "P3-S29", "title": "진입과 청산을 따로 실행해 봅니다", "promptId": "P3-M3"},
             {"id": "P3-S30", "title": "메인 파이프라인 밖에서도 시스템은 움직입니다", "promptId": null}

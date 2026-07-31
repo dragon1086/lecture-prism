@@ -61,6 +61,17 @@ class DocumentationArchitectureContractTest(unittest.TestCase):
         self.assertIn("규칙이 소유", combined)
         self.assertNotIn("기술·뉴스·전략은 LLM 에이전트", combined)
 
+    def test_course_docs_separate_report_agents_from_buy_agent(self):
+        combined = "\n".join(self.text.values())
+        for filename in ("analysis_agents.py", "buy_agent.py", "trading.py"):
+            self.assertIn(filename, combined)
+        for retired in (
+            "기술·뉴스·리스크의 정성 역할을 한 번의 구조화 호출",
+            "종목당 단일 구조화 호출",
+            "강의용 3-에이전트 경량판",
+        ):
+            self.assertNotIn(retired, combined)
+
     def test_docs_describe_broker_lifecycle_without_overclaiming_live_e2e(self):
         combined = "\n".join(self.text.values())
         for phrase in (
