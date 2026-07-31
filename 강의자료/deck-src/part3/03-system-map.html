@@ -6,7 +6,7 @@
   </div>
   <div class="img">
     <img class="reference-shot" src="../docs/assets/prism-insight/screening-analysis-deep-dive.png" alt="선별된 종목을 여섯 분석 에이전트가 조사하는 흐름">
-    <p class="caption">최종 후보마다 주가·거래량, 투자 주체, 실적·재무, 사업·경쟁력, 뉴스·주도주, 시장·업종의 여섯 보고서를 만듭니다.</p>
+    <p class="caption">최종 후보마다 주가·거래량, 투자 주체, 실적·재무, 사업·경쟁력, 뉴스·주도주, 시장·업종의 여섯 방향의 보고서를 만들고 투자전략과 요약으로 조립합니다.</p>
   </div>
   <div class="pagenum">14</div>
 </section>
@@ -65,15 +65,15 @@
 </section>
 
 <!-- P3-S19 · lecture-prism은 규칙 네 칸과 LLM 세 역할로 줄였습니다 -->
-<section class="slide">
-  <div class="kicker">원본과 강의용 축소판 비교</div>
-  <h2><code>analysis.py</code>는 여섯 에이전트를 한 번의 분석으로 줄였습니다</h2>
-  <div class="pattern-grid">
-    <div class="pattern-card on"><div class="tag">규칙으로 계산</div><h3>수급·재무·산업·시장</h3><p>실데이터나 연습 수치가 있으면 정해진 문장과 점수 규칙으로 해석합니다.</p></div>
-    <div class="pattern-card on"><div class="tag">선택 LLM 1회</div><h3>기술·뉴스·리스크</h3><p>주어진 근거만 풀어 쓰며, BUY를 HOLD로 낮출 수만 있습니다.</p></div>
-    <div class="pattern-card"><div class="tag">경계 정리</div><h3>분석 의견 ≠ 주문 결정</h3><p>추천·참고 목표가·손절가는 분석에 남지만 최종 진입은 <code>trading.py</code>가 정합니다.</p></div>
+<section class="slide comparison-slide">
+  <div class="txt">
+    <div class="kicker">원본과 강의용 축소판 비교</div>
+    <h2>여섯 조사 조직을 규칙 네 칸과 선택적 AI 한 번으로 줄였습니다</h2>
   </div>
-  <div class="takeaway">강의판에는 WiseReport, KRX 수급, Perplexity·Firecrawl, 여섯 번의 독립 LLM 호출이 없습니다.</div>
+  <div class="img">
+    <img class="reference-shot comparison-shot" src="assets/lecture-compare-analysis.png" alt="PRISM Insight 여섯 분석 조직과 lecture-prism analysis.py의 규칙, 선택적 AI, 시나리오 조립 함수 비교">
+    <p class="caption">규칙이 쓰는 네 근거와 선택적 AI 보완, 마지막 시나리오 조립이 한 파일 안에서 어떻게 이어지는지 봅니다.</p>
+  </div>
   <div class="pagenum">19</div>
 </section>
 

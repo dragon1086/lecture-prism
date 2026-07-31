@@ -13,10 +13,11 @@
     --bg: oklch(0.13 0.015 264); --card: oklch(0.17 0.015 264);
     --fg: oklch(0.96 0.005 264); --muted: oklch(0.65 0.01 264);
     --accent: oklch(0.72 0.19 264); --accent2: oklch(0.75 0.15 145);
-    --warn: oklch(0.78 0.15 60);
+    --warn: oklch(0.78 0.15 60); --screen-scale: 1;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
   body { background: oklch(0.09 0.01 264); font-family: 'Apple SD Gothic Neo','Pretendard','Noto Sans KR',system-ui,sans-serif; }
+  body.viewer-open { overflow: hidden; }
 
   .slide {
     width: 1280px; height: 720px; margin: 24px auto; padding: 64px 80px;
@@ -103,36 +104,51 @@
     border-radius: 12px; border: 1px solid oklch(0.3 0.02 264); display: block; }
   .reference-shot { width: 100%; height: 360px; object-fit: contain; object-position: center;
     border-radius: 12px; border: 1px solid oklch(0.3 0.02 264); background: oklch(0.11 0.012 264); display: block; }
-  .source-map-slide { padding: 30px 58px 26px; justify-content: flex-start; }
-  .source-map-slide .kicker { font-size: 17px; margin-bottom: 5px; }
-  .source-map-slide h2 { font-size: 34px; line-height: 1.15; margin-bottom: 10px; }
-  .source-map-slide .reference-shot { height: 515px; max-height: 515px; }
-  .source-map-slide .caption { margin: 7px 8px 0; font-size: 14.5px; }
+  .source-map-slide { padding: 16px 24px 14px; justify-content: flex-start; }
+  .source-map-slide .kicker { font-size: 16px; margin-bottom: 3px; }
+  .source-map-slide h2 { font-size: 29px; line-height: 1.12; margin-bottom: 6px; }
+  .source-map-slide .reference-shot { flex: 1 1 auto; min-height: 0; height: auto; max-height: none; }
+  .source-map-slide .caption { margin: 4px 4px 0; font-size: 13.5px; line-height: 1.3; }
   /* 정보밀도가 높은 원본 화면은 설명 옆 썸네일이 아니라 한 장의 읽을 자료로 보여 준다. */
-  .image-focus { padding: 28px 60px 26px; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 0; }
+  .image-focus { padding: 14px 24px 12px; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 0; }
   .image-focus .txt { flex: none; width: 100%; }
-  .image-focus .txt .kicker { font-size: 16px; margin-bottom: 4px; }
-  .image-focus .txt h2 { font-size: 32px; line-height: 1.12; margin: 0 0 9px; }
+  .image-focus .txt .kicker { font-size: 15px; margin-bottom: 2px; }
+  .image-focus .txt h2 { font-size: 29px; line-height: 1.1; margin: 0 0 5px; }
   .image-focus .txt ul { display: none; }
-  .image-focus .img { flex: 1; width: 100%; min-height: 0; }
-  .image-focus .reference-shot { height: 500px; max-height: 500px; }
-  .image-focus .caption { margin-top: 5px; }
+  .image-focus .img { flex: 1; width: 100%; min-height: 0; display: flex; flex-direction: column; }
+  .image-focus .reference-shot { flex: 1 1 auto; min-height: 0; height: 0; max-height: none; }
+  .image-focus .caption { margin: 3px 2px 0; font-size: 13.5px; line-height: 1.28; }
   /* 정보량이 많은 모듈 지도는 고연령 수강생도 읽을 수 있게 제목보다 그림에 면적을 준다. */
   .large-diagram {
-    padding: 18px 28px 20px; flex-direction: column; align-items: stretch;
+    padding: 12px 20px 10px; flex-direction: column; align-items: stretch;
     justify-content: flex-start; gap: 0;
   }
   .large-diagram .txt { flex: none; width: 100%; }
   .large-diagram .txt .kicker,
-  .large-diagram > .kicker { font-size: 16px; margin-bottom: 2px; }
+  .large-diagram > .kicker { font-size: 15px; margin-bottom: 2px; }
   .large-diagram .txt h2,
-  .large-diagram > h2 { font-size: 28px; line-height: 1.12; margin: 0 0 6px; }
+  .large-diagram > h2 { font-size: 27px; line-height: 1.1; margin: 0 0 5px; }
   .large-diagram .txt ul { display: none; }
-  .large-diagram .img { flex: 1; width: 100%; min-height: 0; }
+  .large-diagram .img { flex: 1; width: 100%; min-height: 0; display: flex; flex-direction: column; }
   .large-diagram .reference-shot {
-    width: 100%; height: 585px; max-height: 585px; object-fit: contain;
+    flex: 1 1 auto; min-height: 0; width: 100%; height: 0; max-height: none; object-fit: contain;
   }
-  .large-diagram .caption { margin: 4px 2px 0; font-size: 13.5px; line-height: 1.3; }
+  .large-diagram .caption { margin: 3px 2px 0; font-size: 13.5px; line-height: 1.28; }
+  .comparison-slide .comparison-shot { border-color: oklch(0.62 0.12 205); }
+  .comparison-slide .caption { color: oklch(0.73 0.02 220); }
+
+  .slide img[data-fullscreenable="true"] { cursor: zoom-in; }
+  .slide img[data-fullscreenable="true"]:focus-visible { outline: 4px solid var(--warn); outline-offset: 3px; }
+  .image-viewer {
+    position: fixed; inset: 0; z-index: 99999; display: none;
+    align-items: center; justify-content: center; padding: 0;
+    background: rgba(0, 0, 0, 0.97);
+  }
+  .image-viewer.open { display: flex; }
+  .image-viewer img {
+    width: auto; height: auto; max-width: 100vw; max-height: 100vh;
+    object-fit: contain; cursor: zoom-out; display: block;
+  }
   .archive-example::after {
     content: "과거 운영 예시 · 현재 추천 아님";
     position: absolute; top: 78px; right: 70px; z-index: 3;
@@ -205,10 +221,15 @@
   .prism-proof li { font-size: 22px; line-height: 1.43; padding: 7px 0 7px 35px; }
   .prism-proof .dashboard-shot { height: 320px; }
 
+  @media screen {
+    .slide { zoom: var(--screen-scale); margin: 6px auto; }
+  }
+
   @media print {
     body { background: none; }
     @page { size: 1280px 720px; margin: 0; }
-    .slide { margin: 0; border-radius: 0; break-after: page; page-break-after: always; }
+    .slide { zoom: 1 !important; margin: 0; border-radius: 0; break-after: page; page-break-after: always; }
+    .image-viewer { display: none !important; }
   }
 </style>
 </head>
@@ -347,7 +368,7 @@
   </div>
   <div class="img">
     <img class="reference-shot" src="../docs/assets/prism-insight/full-pipeline-overview.png" alt="PRISM Insight의 시장, 종목 선별, 분석, 매매, 기록, 기억 전체 파이프라인">
-    <p class="caption">원본 서비스의 전체 흐름입니다. 이번 장에서는 2번 ‘종목 선별’만 먼저 확대합니다.</p>
+    <p class="caption">시장과 후보 선별부터 여섯 분석, 매매, 기록·기억까지 한 흐름으로 연결합니다. 텔레그램·실계좌 주문·보호 도구는 설정에 따라 켜고 끕니다.</p>
   </div>
   <div class="pagenum">6</div>
 </section>
@@ -359,7 +380,7 @@
   </div>
   <div class="img">
     <img class="reference-shot" src="../docs/assets/prism-insight/market-pulse-batch-control-overview.png" alt="PRISM Insight의 오닐식 시장 방향 판단과 오전·오후 배치 제어">
-    <p class="caption">3상태 Market Pulse는 대표지수의 종가·거래량과 분산일을 읽어 오전·오후 분석 배치를 실행할지 정합니다.</p>
+    <p class="caption">Market Pulse는 막연한 변동성이 아니라 CAN SLIM의 M입니다. 대표지수의 종가·거래량으로 3상태를 계산하며, 기본 <code>shadow</code> 모드에서는 기록만 하고 배치를 막지 않습니다.</p>
   </div>
   <div class="pagenum">7</div>
 </section>
@@ -371,7 +392,7 @@
   </div>
   <div class="img">
     <img class="reference-shot" src="../docs/assets/prism-insight/distribution-day-state-transitions.png" alt="분산일 누적과 시장 상태 전이">
-    <p class="caption">최근 25거래일의 분산일이 0–3개면 상승 흐름, 4–5개면 매도 압력 증가, 6개 이상이면 시장 조정으로 봅니다.</p>
+    <p class="caption">대표지수가 전일보다 0.2% 이상 내리고 거래량이 늘면 분산일로 셉니다. 최근 25거래일의 0–3개·4–5개·6개 이상을 상승 흐름·매도 압력 증가·시장 조정으로 구분합니다.</p>
   </div>
   <div class="pagenum">8</div>
 </section>
@@ -383,7 +404,7 @@
   </div>
   <div class="img">
     <img class="reference-shot" src="../docs/assets/prism-insight/trading-regime-entry-overview.png" alt="오닐식 시장 매수 환경과 스크리닝용 시장 체제의 차이">
-    <p class="caption">3상태는 분석 배치 실행 여부를, 5상태는 후보 점수 비중과 주도 업종 자리를 정합니다. 두 결과는 목적이 다릅니다.</p>
+    <p class="caption">PRISM에는 서로 목적이 다른 시장 분류가 있습니다. 오닐식 3상태는 분석 배치를, 스크리닝용 5상태는 후보 점수 비중과 주도 업종 자리를 정합니다.</p>
   </div>
   <div class="pagenum">9</div>
 </section>
@@ -395,7 +416,7 @@
   </div>
   <div class="img">
     <img class="reference-shot" src="../docs/assets/prism-insight/screening-six-triggers-overview.png" alt="오전 세 신호와 오후 세 신호">
-    <p class="caption">오전에는 갭과 초기 거래량을, 오후에는 당일 누적 움직임을 봅니다. 공통 하한을 통과한 종목만 후보가 됩니다.</p>
+    <p class="caption">오전 3개와 오후 3개 조건은 이름만 다른 점수표가 아니라 거래량 급증·갭·자금 집중·상승률·장마감 강세·횡보처럼 서로 다른 움직임을 찾습니다.</p>
   </div>
   <div class="pagenum">10</div>
 </section>
@@ -407,20 +428,20 @@
   </div>
   <div class="img">
     <img class="reference-shot" src="../docs/assets/prism-insight/candidate-screening-reranking-overview.png" alt="여섯 발견 조건에서 모은 후보를 시장 체제에 맞춰 재정렬하는 흐름">
-    <p class="caption">발견 조건 점수·예상 손익비·후보군 상대강도·20일선 과열도를 시장 체제별 비중으로 합쳐 보통 최대 세 종목을 남깁니다.</p>
+    <p class="caption">발견 조건·예상 손익비·후보군 상대강도·20일선 과열도의 네 점수를 시장 체제별 비중으로 합칩니다. 최종 상한은 보통 3종목이며 post-FTD 직후에는 1종목으로 줄 수 있습니다.</p>
   </div>
   <div class="pagenum">11</div>
 </section>
 
-<section data-slide-id="P3-S12" class="slide">
-  <div class="kicker">원본과 강의용 축소판 비교</div>
-  <h2><code>screening.py</code>는 후보 선별의 뼈대만 남겼습니다</h2>
-  <div class="pattern-grid">
-    <div class="pattern-card on"><div class="tag">구현됨</div><h3>공통 하한과 정렬</h3><p>시가총액·거래량·모멘텀 조건을 통과한 후보를 점수순으로 줄입니다.</p></div>
-    <div class="pattern-card on"><div class="tag">작게 구현됨</div><h3>데이터 두 경로</h3><p>연습 데이터가 기본이고, <code>--real</code>에서는 yfinance를 시도한 뒤 안전하게 돌아옵니다.</p></div>
-    <div class="pattern-card"><div class="tag">아직 없음</div><h3>시장별 여섯 신호</h3><p>분산일 상태 전이, 오전·오후 신호, 시장별 자리 배분은 원본에만 있습니다.</p></div>
+<section data-slide-id="P3-S12" class="slide comparison-slide">
+  <div class="txt">
+    <div class="kicker">원본과 강의용 축소판 비교</div>
+    <h2>운영망을 한 파일의 필터 흐름으로 줄였습니다</h2>
   </div>
-  <div class="takeaway">강의판의 목표는 원본을 흉내 내는 것이 아니라, 후보를 넓게 찾고 다음 단계에 적게 넘기는 경계를 익히는 것입니다.</div>
+  <div class="img">
+    <img class="reference-shot comparison-shot" src="assets/lecture-compare-screening.png" alt="PRISM Insight 스크리닝 운영 구조와 lecture-prism의 data_source.py, screening.py 함수 흐름 비교">
+    <p class="caption">큰 역할명부터 읽고, 아래 파일·함수명이 lecture-prism에서 실제로 실행되는 위치인지 확인합니다.</p>
+  </div>
   <div class="pagenum">12</div>
 </section>
 
@@ -451,7 +472,7 @@
   </div>
   <div class="img">
     <img class="reference-shot" src="../docs/assets/prism-insight/screening-analysis-deep-dive.png" alt="선별된 종목을 여섯 분석 에이전트가 조사하는 흐름">
-    <p class="caption">최종 후보마다 주가·거래량, 투자 주체, 실적·재무, 사업·경쟁력, 뉴스·주도주, 시장·업종의 여섯 보고서를 만듭니다.</p>
+    <p class="caption">최종 후보마다 주가·거래량, 투자 주체, 실적·재무, 사업·경쟁력, 뉴스·주도주, 시장·업종의 여섯 방향의 보고서를 만들고 투자전략과 요약으로 조립합니다.</p>
   </div>
   <div class="pagenum">14</div>
 </section>
@@ -505,15 +526,15 @@
   <div class="pagenum">18</div>
 </section>
 
-<section data-slide-id="P3-S19" class="slide">
-  <div class="kicker">원본과 강의용 축소판 비교</div>
-  <h2><code>analysis.py</code>는 여섯 에이전트를 한 번의 분석으로 줄였습니다</h2>
-  <div class="pattern-grid">
-    <div class="pattern-card on"><div class="tag">규칙으로 계산</div><h3>수급·재무·산업·시장</h3><p>실데이터나 연습 수치가 있으면 정해진 문장과 점수 규칙으로 해석합니다.</p></div>
-    <div class="pattern-card on"><div class="tag">선택 LLM 1회</div><h3>기술·뉴스·리스크</h3><p>주어진 근거만 풀어 쓰며, BUY를 HOLD로 낮출 수만 있습니다.</p></div>
-    <div class="pattern-card"><div class="tag">경계 정리</div><h3>분석 의견 ≠ 주문 결정</h3><p>추천·참고 목표가·손절가는 분석에 남지만 최종 진입은 <code>trading.py</code>가 정합니다.</p></div>
+<section data-slide-id="P3-S19" class="slide comparison-slide">
+  <div class="txt">
+    <div class="kicker">원본과 강의용 축소판 비교</div>
+    <h2>여섯 조사 조직을 규칙 네 칸과 선택적 AI 한 번으로 줄였습니다</h2>
   </div>
-  <div class="takeaway">강의판에는 WiseReport, KRX 수급, Perplexity·Firecrawl, 여섯 번의 독립 LLM 호출이 없습니다.</div>
+  <div class="img">
+    <img class="reference-shot comparison-shot" src="assets/lecture-compare-analysis.png" alt="PRISM Insight 여섯 분석 조직과 lecture-prism analysis.py의 규칙, 선택적 AI, 시나리오 조립 함수 비교">
+    <p class="caption">규칙이 쓰는 네 근거와 선택적 AI 보완, 마지막 시나리오 조립이 한 파일 안에서 어떻게 이어지는지 봅니다.</p>
+  </div>
   <div class="pagenum">19</div>
 </section>
 
@@ -541,7 +562,7 @@
   <div class="txt"><div class="kicker">모듈 3 · 신규 진입</div><h2>CAN SLIM의 앞 네 글자는 기업과 수급을 봅니다</h2></div>
   <div class="img">
     <img class="reference-shot" src="../docs/assets/prism-insight/can-slim-company-supply-checks.png" alt="CAN SLIM C A N S 점검">
-    <p class="caption">보고서의 실적·성장·신제품·수급 근거를 신규 진입 질문으로 바꿉니다.</p>
+    <p class="caption">C·A·N·S는 최근 분기, 여러 해 성장, 새로운 계기, 수급을 묻습니다. 모두 프롬프트에 있지만 고전적 EPS 증가율 같은 기준이 전부 코드 하드 게이트인 것은 아닙니다.</p>
   </div>
   <div class="pagenum">21</div>
 </section>
@@ -550,7 +571,7 @@
   <div class="txt"><div class="kicker">모듈 3 · 신규 진입</div><h2>뒤의 세 글자는 리더십과 시장을 봅니다</h2></div>
   <div class="img">
     <img class="reference-shot" src="../docs/assets/prism-insight/can-slim-leadership-market-checks.png" alt="CAN SLIM L I M 점검">
-    <p class="caption">업종 리더인지, 기관 관심이 있는지, 시장 방향이 받쳐 주는지 확인합니다.</p>
+    <p class="caption">L·I·M은 주도주, 기관 관심, 시장 방향을 묻습니다. 상대강도와 시장 상태는 계산이 강하지만 기관 자료와 고전적 RS 등급은 시장·기능 설정에 따라 제약이 있습니다.</p>
   </div>
   <div class="pagenum">22</div>
 </section>
@@ -559,7 +580,7 @@
   <div class="txt"><div class="kicker">모듈 3 · 진입 게이트</div><h2>에이전트가 Enter라고 해도 코드 게이트를 통과해야 합니다</h2></div>
   <div class="img">
     <img class="reference-shot" src="../docs/assets/prism-insight/entry-gates-overview.png" alt="AI 신규 진입 판단 뒤 코드가 다시 확인하는 안전 게이트">
-    <p class="caption">AI 시나리오 뒤에도 최소점수, 하락 추세, 재진입 제한, 중복 보유, 업종 집중, 포트폴리오 자리와 진행 중 주문을 코드가 확인합니다.</p>
+    <p class="caption">AI 시나리오의 최종 결과는 Enter 또는 No Entry입니다. 이후 코드가 최소점수·하락 추세·재진입·중복 보유·업종·포트폴리오·진행 중 주문을 다시 확인하며, 재진입 쿨다운 기본값은 관찰 모드입니다.</p>
   </div>
   <div class="pagenum">23</div>
 </section>
@@ -568,7 +589,7 @@
   <div class="txt"><div class="kicker">모듈 3 · 피라미딩</div><h2>수익 중인 강한 종목만 추가 진입을 검토합니다</h2></div>
   <div class="img">
     <img class="reference-shot" src="../docs/assets/prism-insight/pyramiding-portfolio-overview.png" alt="수익 중인 종목의 피라미딩 조건과 포트폴리오 자리 제한">
-    <p class="caption">원본은 강한 시장에서 기존 포지션 수익률이 5% 이상일 때만 최대 두 번 추가 진입을 검토합니다. 강의판은 중복 매수를 막는 데서 멈춥니다.</p>
+    <p class="caption">피라미딩은 손실 종목의 물타기가 아니라 강한 시장에서 수익률 5% 이상인 보유 종목에만 추가하는 규칙입니다. 최초 진입 뒤 최대 두 번이며 일반 점수·업종·자리 조건도 다시 통과해야 합니다.</p>
   </div>
   <div class="pagenum">24</div>
 </section>
@@ -577,7 +598,7 @@
   <div class="txt"><div class="kicker">모듈 3 · 청산</div><h2>매도는 손실 제한부터 확인합니다</h2></div>
   <div class="img">
     <img class="reference-shot" src="../docs/assets/prism-insight/trading-exit-overview.png" alt="즉시 손절과 추세·실적·뉴스·시장 판단을 합친 매도 흐름">
-    <p class="caption">원본은 중대 사건과 즉시 손절을 먼저 보고, 그 밖에는 추세·실적·뉴스·시장 변화를 함께 판단합니다. 보호 규칙은 여러 도구에 나뉩니다.</p>
+    <p class="caption">중대 사건과 즉시 손절을 먼저 보고, 그 밖에는 추세·실적·뉴스·시장 변화를 함께 봅니다. 손절·추세 이탈·추적 손절 규칙은 하나의 함수가 아니라 여러 도구가 나누어 소유합니다.</p>
   </div>
   <div class="pagenum">25</div>
 </section>
@@ -586,20 +607,20 @@
   <div class="txt"><div class="kicker">모듈 3 · 독립 보호 장치</div><h2>보조 감시 루프가 포지션을 따로 지킵니다</h2></div>
   <div class="img">
     <img class="reference-shot" src="../docs/assets/prism-insight/position-protection-loops.png" alt="포지션을 보호하는 독립 감시 루프">
-    <p class="caption">전체 분석 배치가 돌지 않는 동안에도 손절·상태 확인·체결 복구 같은 보조 작업이 따로 움직입니다.</p>
+    <p class="caption">긴급 손절·추세 이탈·미체결 관리는 독립 실행할 수 있지만 저장소의 <code>docker/crontab</code>에는 등록되어 있지 않습니다. 실제 운영 여부는 서버 cron과 환경 변수를 함께 확인해야 합니다.</p>
   </div>
   <div class="pagenum">26</div>
 </section>
 
-<section data-slide-id="P3-S27" class="slide">
-  <div class="kicker">원본과 강의용 축소판 비교</div>
-  <h2><code>trading.py</code>가 실제 BUY·SELL의 마지막 문을 지킵니다</h2>
-  <div class="pattern-grid">
-    <div class="pattern-card on"><div class="tag">신규 진입</div><h3>다시 검사</h3><p>추천, 0~10점 점수, 가격 배열, 최소 손익비, 현금, 실제 보유 슬롯을 확인합니다.</p></div>
-    <div class="pattern-card on"><div class="tag">청산 우선</div><h3>손절 → 트레일링 → 목표가</h3><p>보유종목을 먼저 검사하고 같은 실행에서 판 종목은 다시 사지 않습니다.</p></div>
-    <div class="pattern-card"><div class="tag">간소화됨</div><h3>피라미딩·섹터 제어 없음</h3><p>강의판은 동일 종목 중복 매수를 막고 가상 현금을 균등 배분하는 수준입니다.</p></div>
+<section data-slide-id="P3-S27" class="slide comparison-slide">
+  <div class="txt">
+    <div class="kicker">원본과 강의용 축소판 비교</div>
+    <h2>여러 진입·보호 도구를 청산 우선의 한 안전문으로 줄였습니다</h2>
   </div>
-  <div class="takeaway">분석의 BUY는 의견입니다. 주문 객체를 만들 수 있는 곳은 모듈 3뿐입니다.</div>
+  <div class="img">
+    <img class="reference-shot comparison-shot" src="assets/lecture-compare-trading.png" alt="PRISM Insight 매매·보호 도구와 lecture-prism trading.py의 청산, 진입, 모의체결 함수 비교">
+    <p class="caption">lecture-prism은 새 BUY보다 청산을 먼저 검사하고, 실주문 경로는 두 안전 플래그 뒤에 둡니다.</p>
+  </div>
   <div class="pagenum">27</div>
 </section>
 
@@ -648,7 +669,7 @@
   <div class="txt"><div class="kicker">모듈 4 · 피드백과 메모리</div><h2>매매가 끝나야 비로소 결과 교훈을 만들 수 있습니다</h2></div>
   <div class="img">
     <img class="reference-shot" src="../docs/assets/prism-insight/feedback-reentry-overview.png" alt="매매일지와 반복 교훈이 다음 판단과 재진입 제한으로 돌아가는 흐름">
-    <p class="caption">원본은 청산이 끝난 뒤 계획과 결과를 비교하고, 반복 교훈과 재진입 제한을 다음 판단에 전달합니다.</p>
+    <p class="caption">이 루프는 자율 강화학습이 아니라 완료된 거래의 계획과 결과에서 교훈을 만들고 다음 판단에 참고자료로 넣는 구조입니다. 프롬프트·주문 규칙 변경은 사람의 검토와 배포가 필요합니다.</p>
   </div>
   <div class="pagenum">31</div>
 </section>
@@ -701,15 +722,15 @@
   <div class="pagenum">34</div>
 </section>
 
-<section data-slide-id="P3-S35" class="slide">
-  <div class="kicker">원본과 강의용 축소판 비교</div>
-  <h2><code>feedback.py</code>와 <code>memory.py</code>가 작은 피드백 루프를 만듭니다</h2>
-  <div class="pattern-grid">
-    <div class="pattern-card on"><div class="tag">청산 뒤 생성</div><h3>단기 교훈</h3><p>BUY 직후에는 결과 교훈을 만들지 않습니다. SELL이 끝난 뒤에 판단 기록을 남깁니다.</p></div>
-    <div class="pattern-card on"><div class="tag">API 키 없음</div><h3>결정론적 압축</h3><p>7일 뒤 중기, 30일 뒤 반복 장기 원칙으로 옮기고 활성 장기 원칙을 20개로 제한합니다.</p></div>
-    <div class="pattern-card on"><div class="tag">다음 진입 참고</div><h3>최대 5개 전달</h3><p>같은 종목의 최근 기록과 반복 장기 원칙을 BUY 결정 기록에 함께 남깁니다.</p></div>
+<section data-slide-id="P3-S35" class="slide comparison-slide">
+  <div class="txt">
+    <div class="kicker">원본과 강의용 축소판 비교</div>
+    <h2>AI 회고와 기억 시스템을 기록·압축·예약 작업의 작은 루프로 줄였습니다</h2>
   </div>
-  <div class="takeaway">강의판에는 LLM 회고, 섹터·트리거 성과 보정, 신뢰도 재계산, 재진입 쿨다운이 없습니다.</div>
+  <div class="img">
+    <img class="reference-shot comparison-shot" src="assets/lecture-compare-feedback.png" alt="PRISM Insight 매매일지·압축·재진입 구조와 lecture-prism feedback.py, memory.py, db.py, operations.py 함수 비교">
+    <p class="caption">청산 결과가 교훈으로 저장되고, 기억 압축과 보조 작업을 거쳐 다음 판단에 다시 연결되는 위치를 봅니다.</p>
+  </div>
   <div class="pagenum">35</div>
 </section>
 
@@ -754,6 +775,17 @@
 </section>
 
 <script>
+  const updateScreenScale = () => {
+    if (window.matchMedia('print').matches) return;
+    const scale = Math.min(
+      (window.innerWidth - 16) / 1280,
+      (window.innerHeight - 16) / 720
+    );
+    document.documentElement.style.setProperty('--screen-scale', String(Math.max(0.25, scale)));
+  };
+  updateScreenScale();
+  window.addEventListener('resize', updateScreenScale, { passive: true });
+
   const archiveAssets = [
     'kr-dashboard-2026-07-10.png', 'kospi.png', 'pdf-report-example.png',
     'new_buy_message.png', 'skip_message.png', 'delay_message.png',
@@ -768,6 +800,60 @@
     if (slide.querySelector('.reference-shot')) slide.classList.add('image-focus');
     const page = slide.querySelector('.pagenum');
     if (page) page.textContent = String(index + 1) + ' / ' + String(slides.length);
+  });
+
+  const imageViewer = document.createElement('div');
+  imageViewer.className = 'image-viewer';
+  imageViewer.setAttribute('aria-hidden', 'true');
+  imageViewer.setAttribute('role', 'dialog');
+  imageViewer.setAttribute('aria-label', '확대된 슬라이드 이미지');
+  const imageViewerContent = document.createElement('img');
+  imageViewer.appendChild(imageViewerContent);
+  document.body.appendChild(imageViewer);
+
+  const closeImageViewer = async (exitFullscreen = true) => {
+    imageViewer.classList.remove('open');
+    imageViewer.setAttribute('aria-hidden', 'true');
+    imageViewerContent.removeAttribute('src');
+    imageViewerContent.alt = '';
+    document.body.classList.remove('viewer-open');
+    if (exitFullscreen && document.fullscreenElement === imageViewer) {
+      try { await document.exitFullscreen(); } catch (_) { /* fixed overlay fallback remains closed */ }
+    }
+  };
+
+  const openImageViewer = async (sourceImage) => {
+    imageViewerContent.src = sourceImage.currentSrc || sourceImage.src;
+    imageViewerContent.alt = sourceImage.alt || '';
+    imageViewer.classList.add('open');
+    imageViewer.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('viewer-open');
+    if (imageViewer.requestFullscreen && !document.fullscreenElement) {
+      try { await imageViewer.requestFullscreen(); } catch (_) { /* fixed overlay is the safe fallback */ }
+    }
+  };
+
+  document.querySelectorAll('section.slide img').forEach((image) => {
+    image.dataset.fullscreenable = 'true';
+    image.tabIndex = 0;
+    image.setAttribute('role', 'button');
+    image.setAttribute('aria-label', `${image.alt || '슬라이드 이미지'} 크게 보기`);
+    image.addEventListener('click', () => openImageViewer(image));
+    image.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      openImageViewer(image);
+    });
+  });
+
+  imageViewer.addEventListener('click', (event) => {
+    if (event.target === imageViewer || event.target === imageViewerContent) closeImageViewer();
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && imageViewer.classList.contains('open')) closeImageViewer();
+  });
+  document.addEventListener('fullscreenchange', () => {
+    if (!document.fullscreenElement && imageViewer.classList.contains('open')) closeImageViewer(false);
   });
 </script>
 </body>

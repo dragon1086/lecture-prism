@@ -11,10 +11,11 @@
     --bg: oklch(0.13 0.015 264); --card: oklch(0.17 0.015 264);
     --fg: oklch(0.96 0.005 264); --muted: oklch(0.65 0.01 264);
     --accent: oklch(0.72 0.19 264); --accent2: oklch(0.75 0.15 145);
-    --warn: oklch(0.78 0.15 60);
+    --warn: oklch(0.78 0.15 60); --screen-scale: 1;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
   body { background: oklch(0.09 0.01 264); font-family: 'Apple SD Gothic Neo','Pretendard','Noto Sans KR',system-ui,sans-serif; }
+  body.viewer-open { overflow: hidden; }
 
   .slide {
     width: 1280px; height: 720px; margin: 24px auto; padding: 64px 80px;
@@ -101,36 +102,51 @@
     border-radius: 12px; border: 1px solid oklch(0.3 0.02 264); display: block; }
   .reference-shot { width: 100%; height: 360px; object-fit: contain; object-position: center;
     border-radius: 12px; border: 1px solid oklch(0.3 0.02 264); background: oklch(0.11 0.012 264); display: block; }
-  .source-map-slide { padding: 30px 58px 26px; justify-content: flex-start; }
-  .source-map-slide .kicker { font-size: 17px; margin-bottom: 5px; }
-  .source-map-slide h2 { font-size: 34px; line-height: 1.15; margin-bottom: 10px; }
-  .source-map-slide .reference-shot { height: 515px; max-height: 515px; }
-  .source-map-slide .caption { margin: 7px 8px 0; font-size: 14.5px; }
+  .source-map-slide { padding: 16px 24px 14px; justify-content: flex-start; }
+  .source-map-slide .kicker { font-size: 16px; margin-bottom: 3px; }
+  .source-map-slide h2 { font-size: 29px; line-height: 1.12; margin-bottom: 6px; }
+  .source-map-slide .reference-shot { flex: 1 1 auto; min-height: 0; height: auto; max-height: none; }
+  .source-map-slide .caption { margin: 4px 4px 0; font-size: 13.5px; line-height: 1.3; }
   /* 정보밀도가 높은 원본 화면은 설명 옆 썸네일이 아니라 한 장의 읽을 자료로 보여 준다. */
-  .image-focus { padding: 28px 60px 26px; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 0; }
+  .image-focus { padding: 14px 24px 12px; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 0; }
   .image-focus .txt { flex: none; width: 100%; }
-  .image-focus .txt .kicker { font-size: 16px; margin-bottom: 4px; }
-  .image-focus .txt h2 { font-size: 32px; line-height: 1.12; margin: 0 0 9px; }
+  .image-focus .txt .kicker { font-size: 15px; margin-bottom: 2px; }
+  .image-focus .txt h2 { font-size: 29px; line-height: 1.1; margin: 0 0 5px; }
   .image-focus .txt ul { display: none; }
-  .image-focus .img { flex: 1; width: 100%; min-height: 0; }
-  .image-focus .reference-shot { height: 500px; max-height: 500px; }
-  .image-focus .caption { margin-top: 5px; }
+  .image-focus .img { flex: 1; width: 100%; min-height: 0; display: flex; flex-direction: column; }
+  .image-focus .reference-shot { flex: 1 1 auto; min-height: 0; height: 0; max-height: none; }
+  .image-focus .caption { margin: 3px 2px 0; font-size: 13.5px; line-height: 1.28; }
   /* 정보량이 많은 모듈 지도는 고연령 수강생도 읽을 수 있게 제목보다 그림에 면적을 준다. */
   .large-diagram {
-    padding: 18px 28px 20px; flex-direction: column; align-items: stretch;
+    padding: 12px 20px 10px; flex-direction: column; align-items: stretch;
     justify-content: flex-start; gap: 0;
   }
   .large-diagram .txt { flex: none; width: 100%; }
   .large-diagram .txt .kicker,
-  .large-diagram > .kicker { font-size: 16px; margin-bottom: 2px; }
+  .large-diagram > .kicker { font-size: 15px; margin-bottom: 2px; }
   .large-diagram .txt h2,
-  .large-diagram > h2 { font-size: 28px; line-height: 1.12; margin: 0 0 6px; }
+  .large-diagram > h2 { font-size: 27px; line-height: 1.1; margin: 0 0 5px; }
   .large-diagram .txt ul { display: none; }
-  .large-diagram .img { flex: 1; width: 100%; min-height: 0; }
+  .large-diagram .img { flex: 1; width: 100%; min-height: 0; display: flex; flex-direction: column; }
   .large-diagram .reference-shot {
-    width: 100%; height: 585px; max-height: 585px; object-fit: contain;
+    flex: 1 1 auto; min-height: 0; width: 100%; height: 0; max-height: none; object-fit: contain;
   }
-  .large-diagram .caption { margin: 4px 2px 0; font-size: 13.5px; line-height: 1.3; }
+  .large-diagram .caption { margin: 3px 2px 0; font-size: 13.5px; line-height: 1.28; }
+  .comparison-slide .comparison-shot { border-color: oklch(0.62 0.12 205); }
+  .comparison-slide .caption { color: oklch(0.73 0.02 220); }
+
+  .slide img[data-fullscreenable="true"] { cursor: zoom-in; }
+  .slide img[data-fullscreenable="true"]:focus-visible { outline: 4px solid var(--warn); outline-offset: 3px; }
+  .image-viewer {
+    position: fixed; inset: 0; z-index: 99999; display: none;
+    align-items: center; justify-content: center; padding: 0;
+    background: rgba(0, 0, 0, 0.97);
+  }
+  .image-viewer.open { display: flex; }
+  .image-viewer img {
+    width: auto; height: auto; max-width: 100vw; max-height: 100vh;
+    object-fit: contain; cursor: zoom-out; display: block;
+  }
   .archive-example::after {
     content: "과거 운영 예시 · 현재 추천 아님";
     position: absolute; top: 78px; right: 70px; z-index: 3;
@@ -203,10 +219,15 @@
   .prism-proof li { font-size: 22px; line-height: 1.43; padding: 7px 0 7px 35px; }
   .prism-proof .dashboard-shot { height: 320px; }
 
+  @media screen {
+    .slide { zoom: var(--screen-scale); margin: 6px auto; }
+  }
+
   @media print {
     body { background: none; }
     @page { size: 1280px 720px; margin: 0; }
-    .slide { margin: 0; border-radius: 0; break-after: page; page-break-after: always; }
+    .slide { zoom: 1 !important; margin: 0; border-radius: 0; break-after: page; page-break-after: always; }
+    .image-viewer { display: none !important; }
   }
 </style>
 </head>

@@ -76,7 +76,7 @@
 
 ## 캡션 교정 원칙
 
-`docs/assets/prism-insight/`의 아키텍처 이미지 14장은 `/Users/aerok/Desktop/rocky/prism-insight/prism-insight/docs/PIPELINE_ARCHITECTURE_ko.md`의 해당 이미지 직후 설명을 기준으로 다시 쓴다.
+`docs/assets/prism-insight/`의 아키텍처 이미지 14장은 원본 `prism-insight/docs/PIPELINE_ARCHITECTURE_ko.md`의 해당 이미지 직후 설명을 기준으로 다시 쓴다.
 
 - 그림이 보여 주는 핵심 한 가지를 먼저 말한다.
 - 기능 플래그, 관찰 모드, 운영 환경 확인처럼 결론을 바꾸는 조건은 생략하지 않는다.
