@@ -52,7 +52,7 @@
 
 **데이터 흐름**: `analysis.py` → `run_analysis()`가 원본 PRISM scenario 형태 dict 반환(`recommendation`/`decision`/`buy_score`/`target_price`/`stop_loss`/`risk_reward_ratio` + 6섹션 요약 `technical/supply/financial/industry/news_summary`·`market_condition` 등) → `trading.py`가 `buy_score`·`current_price`로 매수/수량 결정 → `feedback.py`가 `db.py`를 통해 `prism.db`에 기록 → `dashboard.py`가 읽어 표시. (피드백 루프가 실제로 연결되어 있음.)
 
-**6섹션 분석 (v2 리치 리포트)**: `analysis.py`는 원본 PRISM처럼 기술·수급·재무·산업·뉴스·시장 6개 섹션을 냅니다. **규칙으로 되는 건 규칙으로**(수급·재무·산업·시장 = `data_source` 실데이터 지표 템플릿), **맥락 판단은 LLM으로**(기술·뉴스·전략 = 3-에이전트 체인, 파트4 트랙B). 3계층 동작: ① Tier 0 mock(표준 라이브러리) → ② Tier 1 `pip install yfinance` 실데이터 → ③ Tier 2 `+OPENAI/OAuth` LLM 심층 서술. 각 계층 실패 시 하위로 자동 폴백.
+**6섹션 분석 보고서**: `analysis_agents.py`는 기술·수급·재무·산업·뉴스·시장 전문 에이전트 6개와 편집 에이전트를 정의합니다. `analysis.py`는 공통 근거를 준비하고 에이전트를 조립하며 매수 판단은 하지 않습니다. LLM 연결 시 역할별 개별 호출, 미연결·섹션 실패 시 규칙 보고서 폴백입니다. `buy_agent.py`가 보고서를 읽어 진입 시나리오를 만들고 `trading.py`가 다시 안전 조건을 검사합니다.
 
 ### 핵심 규칙 (헷갈리기 쉬운 것)
 

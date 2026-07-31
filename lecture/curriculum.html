@@ -629,7 +629,7 @@
             </div>
             <div class="chapter-bullets">
               <!-- OAuth 오프닝 임팩트 (첫 5분) -->
-              <div class="cc-cmd"><span class="cc-bubble">Claude Code</span><div><span class="cc-text">"공식 Codex CLI의 ChatGPT 로그인 상태를 확인하고 토큰은 읽지 마. lecture-prism에 LECTURE_LLM_MODE=oauth를 적용한 뒤 삼성전자 분석을 한 번만 실행해줘."</span><div class="cc-result">→ 공식 로그인 재사용 → 종목당 단일 구조화 호출 → 실패하면 규칙 분석으로 안전 폴백</div></div></div>
+              <div class="cc-cmd"><span class="cc-bubble">Claude Code</span><div><span class="cc-text">"공식 Codex CLI의 ChatGPT 로그인 상태를 확인하고 토큰은 읽지 마. lecture-prism에 LECTURE_LLM_MODE=oauth를 적용한 뒤 삼성전자 보고서 에이전트를 실행해줘."</span><div class="cc-result">→ 전문 에이전트 6개 개별 호출 → 편집 에이전트 조립 → 실패한 섹션만 규칙 보고서로 폴백</div></div></div>
               <div class="cc-cmd"><span class="cc-bubble">Claude Code</span><div><span class="cc-text">"KIS API로 삼성전자 현재가를 조회하고 공식 Codex 분석을 붙여줘. 실주문은 보내지 말고 LLM이 점수·목표가·손절가를 바꾸지 못하는지도 확인해줘."</span><div class="cc-result">→ 가격조회 + 정성 분석 + 정량 gate + 매수 시뮬레이션 경계 확인</div></div></div>
               <!-- AI-Native 프레임 -->
               <div class="bullet">알고리즘의 딜레마: 공개 → 파훼 → 공유 문화 없음. LLM은 확률론적 판단 → 복제 불가 → 오픈소스로 공유 가능</div>
@@ -678,14 +678,14 @@
               <span class="time-chip">⏱ 20분</span>
             </div>
             <div class="chapter-desc">
-              코딩 에이전트에게 <code>analysis.py</code> 실행 요청 → 기술·뉴스·리스크 검토 역할을 한 번의 구조화 호출 안에서 분리해 리포트 생성. "역할은 나누되 호출 비용과 정량 통제권은 어떻게 관리하는가"를 결과로 설명.
+              코딩 에이전트에게 <code>analysis_agents.py</code>와 <code>analysis.py</code> 실행 요청 → 여섯 전문 에이전트를 개별 호출하고 편집 에이전트가 리포트를 조립. "역할을 나누면 실패와 프롬프트를 어떻게 격리하는가"를 결과로 설명.
             </div>
             <div class="chapter-tags">
               <span class="tag tag-demo">Claude Code 데모</span>
               <span class="tag tag-lecture">에이전트 비교</span>
             </div>
             <div class="chapter-bullets">
-              <div class="cc-cmd"><span class="cc-bubble">Claude Code</span><div><span class="cc-text">"005930 삼성전자 분석 파이프라인을 실행하고, 한 번의 호출 안에서 기술·뉴스·리스크 역할 결과가 어떻게 나뉘는지 보여줘"</span><div class="cc-result">→ 규칙 근거 생성 → 단일 구조화 LLM 호출 → 세 역할 요약 → 정량 gate 유지</div></div></div>
+              <div class="cc-cmd"><span class="cc-bubble">Claude Code</span><div><span class="cc-text">"005930 삼성전자 분석 보고서를 실행하고, 여섯 전문 에이전트와 편집 에이전트의 입력·출력을 보여줘"</span><div class="cc-result">→ 공통 근거 생성 → 역할별 개별 호출 → 편집장 요약 → 매수 판단은 buy_agent.py로 분리</div></div></div>
               <div class="bullet">무구조 질문 vs 역할이 분리된 구조화 호출: 생략·편향 차이를 비교하되 종목당 호출은 1회로 제한</div>
               <div class="bullet">개념 소개: PRISM 본 시스템은 여기에 <strong>Evaluator-Optimizer</strong>(Summary 생성 → Quality Evaluator 채점 → EXCELLENT까지 루프)를 더해 요약 품질을 보장 — 파트4 트랙B 확장 아이디어로 제시</div>
               <div class="cc-cmd"><span class="cc-bubble">Claude Code</span><div><span class="cc-text">"기술적 분석 역할 프롬프트를 더 보수적으로 수정하고 다시 실행해봐. 정성 요약과 veto가 어떻게 달라지고 정량 점수는 왜 그대로인지 비교해줘"</span><div class="cc-result">→ 공식 Codex 연결 시 정성 서술·veto만 변화, 매수 점수·목표가·손절가는 규칙 엔진이 유지</div></div></div>
@@ -884,7 +884,7 @@
             <div class="chapter-bullets">
               <div class="cc-cmd"><span class="cc-bubble">Claude Code</span><div><span class="cc-text">"현재 screening.py는 거래량 5배 기준이야. RSI 30 이하 + 거래량 3배 조합으로 바꿔줘. 함수 시그니처는 유지해줘."</span><div class="cc-result">→ VOLUME_SURGE_RATIO 수정 + RSI 조건 추가 코드 생성</div></div></div>
               <div class="cc-cmd"><span class="cc-bubble">Claude Code</span><div><span class="cc-text">"이 에러가 났어: KeyError 'score' at trading.py:72. 원인 설명하고 고쳐줘."</span><div class="cc-result">→ 스택트레이스 분석 + 원인 설명 + 수정 코드 제안</div></div></div>
-              <div class="cc-cmd"><span class="cc-bubble">Claude Code</span><div><span class="cc-text">"이 analysis.py 로직이 내 이론을 정확히 반영하는지 확인해줘. 내 이론: RSI 과매도 반등 + 거래량 동반 + 뉴스 촉매 3개 동시 충족 시 매수"</span><div class="cc-result">→ 코드와 이론 갭 분석 + 누락 조건 지적 + 보완 방향 제시</div></div></div>
+              <div class="cc-cmd"><span class="cc-bubble">Claude Code</span><div><span class="cc-text">"analysis_agents.py의 뉴스·기술 분석 관점과 buy_agent.py의 진입 조건을 분리해서 확인해줘. 내 이론: RSI 과매도 반등 + 거래량 동반 + 뉴스 촉매 3개 동시 충족"</span><div class="cc-result">→ 보고서 관점과 매수 조건의 경계 확인 + 누락 조건 지적</div></div></div>
               <div class="bullet"><strong>Bad vs Good:</strong> "코드 좀 고쳐줘" (❌) → "현재 [상태] + [원하는 결과] + [유지할 제약]" (✅)</div>
             </div>
           </div>
@@ -1134,9 +1134,9 @@
         <div class="arch-module-desc">퀀트 필터링으로 전종목 → 3종목. 거래량·모멘텀·시가총액 조건. 알고리즘 영역. 파트4 트랙A의 교체 대상.</div>
       </div>
       <div class="arch-module mod-analysis">
-        <div class="arch-module-name">🟣 analysis.py</div>
+        <div class="arch-module-name">🟣 analysis_agents.py + analysis.py</div>
         <div class="arch-module-file">모듈 2: LLM 분석 파이프라인</div>
-        <div class="arch-module-desc">기술적 분석 → 뉴스 분석 → 투자전략 에이전트 순차 실행 (Prompt Chaining 패턴). 강의용 3-에이전트 경량판. 파트4 트랙B의 교체 대상.</div>
+        <div class="arch-module-desc">기술·수급·재무·산업·뉴스·시장 전문 에이전트 6개를 개별 호출하고 편집 에이전트가 조립합니다. 매수 판단은 buy_agent.py가 별도로 맡습니다.</div>
       </div>
       <div class="arch-module mod-trading">
         <div class="arch-module-name">🟢 trading.py</div>

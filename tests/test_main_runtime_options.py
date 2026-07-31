@@ -241,7 +241,10 @@ class MainRuntimeOptionsTest(unittest.TestCase):
             "screening.run_screening",
             new=mock.AsyncMock(return_value=["005930"]),
         ) as screening, mock.patch(
-            "analysis.run_analysis", new=mock.AsyncMock(return_value=analysis)
+            "analysis.run_analysis_report",
+            new=mock.AsyncMock(return_value={"ticker": "005930", "current_price": 1}),
+        ), mock.patch(
+            "buy_agent.run_buy_agent", new=mock.AsyncMock(return_value=analysis)
         ), mock.patch(
             "report_writer.write_reports", return_value=[]
         ), mock.patch(

@@ -15,7 +15,7 @@ Verify:
 - screening 단독 실행
 - main 데모 실행
 
-## Track B — analysis.py
+## Track B — analysis_agents.py
 
 Good for:
 - 분석 철학, 투자 대가 관점, 뉴스/재무/모멘텀 프롬프트

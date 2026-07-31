@@ -2,8 +2,8 @@
 <section class="slide split large-diagram">
   <div class="txt"><div class="kicker">모듈 4 · 피드백과 메모리</div><h2>매매가 끝나야 비로소 결과 교훈을 만들 수 있습니다</h2></div>
   <div class="img">
-    <img class="reference-shot" src="assets/prism-feedback-reentry-light.png" alt="거래 이력, 회고, 반복 교훈, 다음 판단, 재진입 제한 흐름을 밝은 배경으로 재구성한 강의용 그림">
-    <p class="caption">원본은 청산이 끝난 뒤 계획과 결과를 비교하고, 반복 교훈과 재진입 제한을 다음 판단에 전달합니다.</p>
+    <img class="reference-shot" src="../docs/assets/prism-insight/feedback-reentry-overview.png" alt="매매일지와 반복 교훈이 다음 판단과 재진입 제한으로 돌아가는 흐름">
+    <p class="caption">이 루프는 자율 강화학습이 아니라 완료된 거래의 계획과 결과에서 교훈을 만들고 다음 판단에 참고자료로 넣는 구조입니다. 프롬프트·주문 규칙 변경은 사람의 검토와 배포가 필요합니다.</p>
   </div>
   <div class="pagenum">31</div>
 </section>
@@ -60,15 +60,15 @@
 </section>
 
 <!-- P3-S35 · lecture-prism도 저장에서 재사용까지 한 바퀴 돕니다 -->
-<section class="slide">
-  <div class="kicker">원본과 강의용 축소판 비교</div>
-  <h2><code>feedback.py</code>와 <code>memory.py</code>가 작은 피드백 루프를 만듭니다</h2>
-  <div class="pattern-grid">
-    <div class="pattern-card on"><div class="tag">청산 뒤 생성</div><h3>단기 교훈</h3><p>BUY 직후에는 결과 교훈을 만들지 않습니다. SELL이 끝난 뒤에 판단 기록을 남깁니다.</p></div>
-    <div class="pattern-card on"><div class="tag">API 키 없음</div><h3>결정론적 압축</h3><p>7일 뒤 중기, 30일 뒤 반복 장기 원칙으로 옮기고 활성 장기 원칙을 20개로 제한합니다.</p></div>
-    <div class="pattern-card on"><div class="tag">다음 진입 참고</div><h3>최대 5개 전달</h3><p>같은 종목의 최근 기록과 반복 장기 원칙을 BUY 결정 기록에 함께 남깁니다.</p></div>
+<section class="slide comparison-slide">
+  <div class="txt">
+    <div class="kicker">원본과 강의용 축소판 비교</div>
+    <h2>AI 회고와 기억 시스템을 기록·압축·예약 작업의 작은 루프로 줄였습니다</h2>
   </div>
-  <div class="takeaway">강의판에는 LLM 회고, 섹터·트리거 성과 보정, 신뢰도 재계산, 재진입 쿨다운이 없습니다.</div>
+  <div class="img">
+    <img class="reference-shot comparison-shot" src="assets/lecture-compare-feedback.png" alt="PRISM Insight 매매일지·압축·재진입 구조와 lecture-prism feedback.py, memory.py, db.py, operations.py 함수 비교">
+    <p class="caption">청산 결과가 교훈으로 저장되고, 기억 압축과 보조 작업을 거쳐 다음 판단에 다시 연결되는 위치를 봅니다.</p>
+  </div>
   <div class="pagenum">35</div>
 </section>
 

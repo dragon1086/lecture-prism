@@ -125,7 +125,7 @@ def _trade_scenario_lines(result: dict) -> list[str]:
 
 
 def render_analysis_report(result: dict) -> str:
-    """Render one `analysis.py` scenario dict as a student-readable report."""
+    """Render an analysis report, optionally followed by a buy scenario."""
 
     company = result.get("company_name") or result.get("ticker", "Unknown")
     ticker = result.get("ticker", "UNKNOWN")
@@ -148,15 +148,9 @@ def render_analysis_report(result: dict) -> str:
         lines.append(f"- 주의: {result['data_notice']}")
     lines.extend([
         "",
-        "## 요약",
+        "## 편집장 핵심 요약",
         "",
-        f"- 투자판단: {result.get('recommendation', '-')} -> {result.get('decision', '-')}",
-        f"- 매수점수: {result.get('buy_score', '-')}/{BUY_SCORE_MAX}",
-        f"- 현재가: {_money(result.get('current_price'))}",
-        f"- 목표가: {_money(result.get('target_price'))} ({result.get('expected_return_pct', '-')}%)",
-        f"- 손절가: {_money(result.get('stop_loss'))} (-{result.get('expected_loss_pct', '-')}%)",
-        f"- 손익비: {result.get('risk_reward_ratio', '-')} : 1",
-        f"- 투자기간: {result.get('investment_period', '-')}",
+        _text(result.get("executive_summary")) or "-",
         "",
     ])
     for title, summary_key, provenance_key in (
@@ -172,16 +166,30 @@ def render_analysis_report(result: dict) -> str:
             result.get(summary_key),
             section_provenance.get(provenance_key),
         ))
-    lines.extend(_trade_scenario_lines(result))
+    if "recommendation" in result:
+        lines.extend([
+            "## 매수 시나리오 요약",
+            "",
+            f"- 투자판단: {result.get('recommendation', '-')} -> {result.get('decision', '-')}",
+            f"- 매수점수: {result.get('buy_score', '-')}/{BUY_SCORE_MAX}",
+            f"- 현재가: {_money(result.get('current_price'))}",
+            f"- 목표가: {_money(result.get('target_price'))} ({result.get('expected_return_pct', '-')}%)",
+            f"- 손절가: {_money(result.get('stop_loss'))} (-{result.get('expected_loss_pct', '-')}%)",
+            f"- 손익비: {result.get('risk_reward_ratio', '-')} : 1",
+            "",
+        ])
+        lines.extend(_trade_scenario_lines(result))
+        lines.extend([
+            "## 매수 에이전트 판단",
+            "",
+            _text(result.get("rationale")) or "-",
+            "",
+            "## 주요 리스크",
+            "",
+            _text(result.get("risk")) or "-",
+            "",
+        ])
     lines.extend([
-        "## 종합 판단",
-        "",
-        _text(result.get("rationale")) or "-",
-        "",
-        "## 주요 리스크",
-        "",
-        _text(result.get("risk")) or "-",
-        "",
         "---",
         "",
         "이 보고서는 강의 실습용 자동 생성 결과입니다. 실제 투자 판단은 본인이 별도로 검증해야 합니다.",

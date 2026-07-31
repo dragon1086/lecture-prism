@@ -26,7 +26,8 @@
 | 단계 | 파일 | 쉬운 비유 | 결과 |
 |---|---|---|---|
 | 1 | `screening.py` | 넓은 시장에서 볼 종목을 줄이는 체 | 후보 종목 리스트 |
-| 2 | `analysis.py` | 후보를 읽는 규칙 + 단일 정성 LLM 호출 | 규칙 추천·점수와 정성 근거·veto |
+| 2 | `analysis_agents.py`, `analysis.py` | 여섯 전문 보고서 에이전트 + 편집 에이전트 | 6섹션 보고서와 핵심 요약 |
+| 3 | `buy_agent.py`, `trading.py` | 보고서를 읽는 매수 에이전트 + 코드 안전 게이트 | Enter/No Entry, 점수·가격, 수량·주문 |
 | 3 | `trading.py` | 기존 보유분의 청산을 먼저 보고, 신규 진입 여부와 수량을 정하는 매매 규칙 | SELL/BUY simulation 결과 또는 안전한 broker handoff |
 | 4 | `feedback.py` | 매매일지를 쓰고 교훈을 뽑는 회고 담당 | 다음 판단에 쓸 교훈 |
 | 5 | `dashboard.py` | 결과를 눈으로 보는 화면 | 웹 대시보드 |
@@ -34,7 +35,7 @@
 | 보조 | `memory.py` | 교훈을 단기·중기·장기로 옮기고 장기 기억 수를 제한 | 다음 판단에 넣을 압축 기억 |
 | 선택 | `notifications.py` | 각 단계의 AI 판단과 근거를 Discord에 전달 | 스크리닝·종목별 분석·매매 판단·AI 판단 요약 |
 
-LLM 연결이 없으면 더미 응답으로 동작합니다. 그래서 수업 초반에는 API 키가 없어도 전체 흐름을 먼저 볼 수 있습니다. 추천·점수·목표가·손절가는 규칙이 소유하며, LLM은 BUY를 HOLD로만 veto할 수 있습니다. `analysis.py`가 값을 만들면 `trading.py`가 가격 배열·손익비·포지션 한도를 직접 검사합니다. `report_writer.py`는 같은 분석값을 사람이 읽을 매매 시나리오로 풀고, `feedback.py`는 체결 결과와 분석값으로 다음 판단에 남길 교훈을 만듭니다.
+LLM 연결이 없으면 각 보고서 에이전트가 규칙 기반 작성기로 폴백합니다. 연결하면 여섯 전문 에이전트가 개별 호출되고 편집 에이전트가 마지막에 보고서를 요약합니다. 매수 판단은 별도 `buy_agent.py`가 맡으며 추천·점수·목표가·손절가는 규칙이 소유하고 LLM은 BUY를 HOLD로만 veto할 수 있습니다. `trading.py`는 가격 배열·손익비·포지션 한도를 다시 검사합니다.
 
 `trading.py`는 `trade_history`에서 종목별 최신 BUY 상태를 읽고, 실행할 때마다 매수 이후 최고가를 갱신한 뒤 손절 → 트레일링 스탑 → 목표가 순으로 청산을 먼저 검사합니다. 이미 보유 중인 종목과 같은 실행에서 매도 판단이 난 종목은 다시 사지 않습니다. 이후에만 신규 진입을 봅니다.
 
@@ -57,7 +58,8 @@ Discord 알림은 기본값이 꺼져 있습니다. `LECTURE_NOTIFY_DISCORD=1`�
 처음부터 전체 코드를 다 읽을 필요는 없습니다.
 
 - 진입 조건을 바꾸고 싶다 → `screening.py`
-- AI가 보는 관점을 바꾸고 싶다 → `analysis.py`
+- AI 분석가의 관점과 프롬프트를 바꾸고 싶다 → `analysis_agents.py`
+- 보고서를 읽는 매수 판단을 바꾸고 싶다 → `buy_agent.py`
 - 진입 전에 무엇을 다시 확인하고, 언제 판단을 무효로 볼지 보고서에 적고 싶다 → `report_writer.py`
 - 실제 진입의 가격 배열·손익비 기준을 바꾸고 싶다 → `trading.py`
 - 언제 팔지 바꾸고 싶다 → `trading.py`의 `_decide_exit`
@@ -91,7 +93,7 @@ lecture-prism은 PRISM 본 시스템의 축소판입니다. 아래 링크와 `do
 | 본 시스템에서 배우는 개념 | lecture-prism에서 보는 위치 |
 |---|---|
 | 많은 데이터 중 후보만 추리기 | root `screening.py`, 고급 경로의 `prism_core/screening.py` |
-| 여러 AI 에이전트를 순서대로 연결하기 | 원본 PRISM 참고 자료; lecture-prism은 단일 구조화 호출 |
+| 여러 AI 에이전트를 연결하기 | `analysis_agents.py`의 독립 전문 에이전트 6개와 편집 에이전트 |
 | 공식 Codex 구독 또는 API 키로 실제 LLM 붙이기 | `llm_provider.py`, `analysis.py` |
 | 주문 전 리스크 판단하기 | `trading.py` |
 | 매매일지와 장기 기억 만들기 | `feedback.py`, `memory.py`, `db.py` |
@@ -131,7 +133,7 @@ lecture-prism은 PRISM 본 시스템의 축소판입니다. 아래 링크와 `do
 
 완료와 미완료를 같은 기준으로 구분합니다.
 
-- 완료 — 공식 Codex 구독 호출, 종목당 단일 구조화 분석, 실패 시 규칙 폴백
+- 완료 — 공식 Codex 구독으로 전문 보고서 에이전트 6개와 편집 에이전트 개별 호출, 섹션별 규칙 폴백
 - 완료 — KIS 매수·매도, 주문가능수량·보유수량 제한, 체결 조회, 취소, 재시작 reconcile, UNKNOWN 중복주문 차단
 - 남은 선택 확장 — KIS 정정은 취소 후 재주문으로 처리하며 별도 정정 API 명령은 제공하지 않음
 - 완료 — Toss WTS 선택 어댑터의 매수·매도, 수량 제한, 체결 조회, 취소, 재시작 reconcile, 인증 만료·UNKNOWN 차단 fixture 검증

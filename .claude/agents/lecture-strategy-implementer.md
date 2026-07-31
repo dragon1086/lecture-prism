@@ -19,7 +19,7 @@ lecture-prism 전략 하네스 구현자. 수강생 전략을 최소 파일에 �
 ## 트랙별 수정
 
 - A: `screening.py` 상수, 샘플 데이터, 필터 로직 최소 수정
-- B: `analysis.py`의 분석 프롬프트 최소 수정
+- B: `analysis_agents.py`의 역할별 보고서 프롬프트 하나만 최소 수정
 - C: `trading.py`의 `_decide_exit`와 필요한 청산 상수 최소 수정
 - D: `trading.py`의 리스크 상수 최소 수정
 

@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>lecture-prism 모듈 비교 인포그래픽</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #020812; font-family: "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", sans-serif; }
+  body { display: grid; gap: 80px; padding: 40px 0; justify-content: start; }
+  .canvas {
+    width: 1920px; height: 1080px; position: relative; overflow: hidden;
+    color: #f4f8ff; background: #04152b url("blueprint-background.png") center/cover no-repeat;
+  }
+  .canvas::before { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(2,10,24,.15), rgba(2,10,24,.38)); }
+  .header { position: absolute; z-index: 2; left: 72px; right: 72px; top: 52px; display: flex; align-items: flex-end; justify-content: space-between; }
+  .eyebrow { color: #75dcff; font-size: 24px; font-weight: 800; letter-spacing: 2px; margin-bottom: 8px; }
+  h1 { margin: 0; font-size: 52px; line-height: 1.14; letter-spacing: -1.8px; }
+  .module-no { color: rgba(222,239,255,.62); font-size: 24px; font-weight: 750; letter-spacing: 5px; padding-bottom: 6px; }
+  .comparison { position: absolute; z-index: 2; left: 72px; right: 72px; top: 214px; bottom: 116px; display: grid; grid-template-columns: 760px 190px 1fr; gap: 34px; }
+  .side { position: relative; min-width: 0; }
+  .side-title { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; }
+  .side-title .dot { width: 14px; height: 14px; border-radius: 50%; box-shadow: 0 0 24px currentColor; }
+  .side-title strong { font-size: 30px; letter-spacing: -.5px; }
+  .side-title span { font-size: 20px; color: #a8bad0; }
+  .original .side-title { color: #46d8ff; }
+  .lecture .side-title { color: #d9f65a; }
+  .rail { display: grid; gap: 12px; }
+  .source-row {
+    min-height: 112px; padding: 18px 22px 16px 25px; border-left: 4px solid #35c7f4;
+    background: linear-gradient(90deg, rgba(5,40,72,.92), rgba(5,29,53,.65));
+    box-shadow: inset 0 0 0 1px rgba(83,205,246,.17); border-radius: 0 14px 14px 0;
+  }
+  .source-row strong { display: block; font-size: 25px; line-height: 1.18; margin-bottom: 7px; }
+  .source-row code { color: #77dcff; font: 700 18px/1.3 "SFMono-Regular", "Cascadia Code", monospace; }
+  .source-row p { margin: 6px 0 0; color: #b7c9d9; font-size: 18px; line-height: 1.35; }
+  .source-row.compact { min-height: 93px; padding-top: 14px; padding-bottom: 12px; }
+  .bridge { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: #f7c65c; }
+  .bridge .funnel { font-size: 82px; line-height: 1; text-shadow: 0 0 30px rgba(247,198,92,.55); }
+  .bridge strong { margin-top: 18px; font-size: 23px; line-height: 1.35; }
+  .bridge p { margin: 10px 0 0; font-size: 17px; line-height: 1.45; color: #c9b987; }
+  .flow { display: grid; gap: 16px; }
+  .step {
+    position: relative; min-height: 137px; padding: 21px 25px 18px 76px;
+    background: linear-gradient(100deg, rgba(54,59,28,.9), rgba(17,38,37,.78));
+    border: 1px solid rgba(216,245,91,.36); border-radius: 17px;
+    box-shadow: 0 14px 30px rgba(0,0,0,.16), inset 0 0 32px rgba(116,231,181,.04);
+  }
+  .step::before { content: attr(data-step); position: absolute; left: 20px; top: 20px; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; background: #d9f65a; color: #071420; font-size: 20px; font-weight: 900; box-shadow: 0 0 22px rgba(217,246,90,.35); }
+  .step strong { display: block; font-size: 27px; line-height: 1.18; margin-bottom: 8px; }
+  .step code { color: #f4c760; font: 700 18px/1.35 "SFMono-Regular", "Cascadia Code", monospace; }
+  .step p { margin: 7px 0 0; color: #d3dfcf; font-size: 18px; line-height: 1.35; }
+  .footer { position: absolute; z-index: 2; left: 72px; right: 72px; bottom: 36px; height: 58px; display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 34px; border-top: 1px solid rgba(127,224,255,.28); color: #f4f7df; font-size: 25px; font-weight: 750; letter-spacing: -.3px; }
+  .footer em { color: #d9f65a; font-style: normal; margin: 0 8px; }
+  .two-col { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .two-col .source-row { min-height: 130px; }
+</style>
+</head>
+<body>
+
+<article class="canvas" data-module="screening">
+  <header class="header">
+    <div><div class="eyebrow">원본과 강의용 축소판 비교</div><h1>스크리닝: 시장 전체를 읽는 운영망을<br>한 파일의 필터 흐름으로 줄였습니다</h1></div>
+    <div class="module-no">MODULE 01</div>
+  </header>
+  <div class="comparison">
+    <section class="side original">
+      <div class="side-title"><i class="dot"></i><strong>PRISM Insight 운영형</strong><span>시장·시간대·국가별로 나눈다</span></div>
+      <div class="rail">
+        <div class="source-row compact"><strong>시장이 매수에 유리한가</strong><code>cores/market_pulse.py</code><p>대표지수·거래량·분산일로 오전·오후 배치를 제어</p></div>
+        <div class="source-row compact"><strong>어떤 시장 체제인가</strong><code>cores/regime_policy.py</code><p>5상태 체제로 후보 점수와 자리 배분을 조절</p></div>
+        <div class="source-row compact"><strong>한국 시장의 여섯 발견 조건</strong><code>trigger_batch.py</code><p>오전 3개·오후 3개 조건으로 서로 다른 움직임 탐색</p></div>
+        <div class="source-row compact"><strong>미국 시장의 별도 기준</strong><code>prism-us/us_trigger_batch.py</code><p>같은 여섯 갈래를 달러 거래대금 등 미국 기준으로 실행</p></div>
+        <div class="source-row compact"><strong>후보끼리 상대강도 비교</strong><code>cores/rs_rating.py</code><p>시장 체제와 상대강도로 최대 3종목까지 재정렬</p></div>
+      </div>
+    </section>
+    <div class="bridge"><div class="funnel">⇢</div><strong>운영 분기와<br>시장별 규칙을 덜고</strong><p>필터가 실제로 작동하는<br>교육 핵심만 남김</p></div>
+    <section class="side lecture">
+      <div class="side-title"><i class="dot"></i><strong>lecture-prism 강의형</strong><span>입력 → 필터 → 결과</span></div>
+      <div class="flow">
+        <div class="step" data-step="1"><strong>데이터를 받는 한 입구</strong><code>data_source.py · fetch_stock_data()</code><p>실데이터를 시도하고, 없으면 연습 데이터로 안전하게 돌아옵니다.</p></div>
+        <div class="step" data-step="2"><strong>선별을 시작하는 버튼</strong><code>screening.py · run_screening()</code><p>단일 종목 또는 전체 후보 선별 경로를 고릅니다.</p></div>
+        <div class="step" data-step="3"><strong>같은 조건으로 거르기</strong><code>_filter_candidates() · _filter_with_real_data()</code><p>거래량·시가총액·모멘텀 조건을 연습값과 실데이터에 적용합니다.</p></div>
+        <div class="step" data-step="4"><strong>최대 세 종목만 다음으로</strong><code>MAX_CANDIDATES = 3</code><p>등락률 순으로 줄인 종목코드 목록을 분석 모듈에 넘깁니다.</p></div>
+      </div>
+    </section>
+  </div>
+  <footer class="footer">원본의 핵심 경계인 <em>“넓게 찾고, 적게 넘긴다”</em>는 남기고 시장별 운영 분기는 덜었습니다.</footer>
+</article>
+
+<article class="canvas" data-module="analysis">
+  <header class="header">
+    <div><div class="eyebrow">원본과 강의용 축소판 비교</div><h1>종목 분석: 독립 조사와 편집의 구조를<br>일곱 개의 작은 에이전트로 재현했습니다</h1></div>
+    <div class="module-no">MODULE 02</div>
+  </header>
+  <div class="comparison">
+    <section class="side original">
+      <div class="side-title"><i class="dot"></i><strong>PRISM Insight 운영형</strong><span>여섯 보고서와 전략 조립</span></div>
+      <div class="rail">
+        <div class="source-row"><strong>여섯 방향의 조사 순서를 지휘</strong><code>cores/analysis.py</code><p>주가·수급·실적·사업·뉴스·시장 보고서를 준비하고 호출</p></div>
+        <div class="source-row"><strong>역할마다 다른 AI 조사자</strong><code>cores/agents/</code><p>각 에이전트가 다른 질문·자료·출력 형식으로 보고서를 작성</p></div>
+        <div class="source-row"><strong>보고서와 요약을 조립</strong><code>cores/report_generation.py</code><p>여섯 근거와 투자전략을 사람이 읽는 결과물로 묶음</p></div>
+        <div class="source-row"><strong>미국 데이터에 맞춘 별도 분석</strong><code>prism-us/cores/us_analysis.py</code><p>기관 보유와 미국 시장 자료를 같은 큰 구조에 맞게 처리</p></div>
+      </div>
+    </section>
+    <div class="bridge"><div class="funnel">⇢</div><strong>자료 수집 도구는<br>가볍게 줄이고</strong><p>역할 분리와<br>개별 실패 격리는 유지</p></div>
+    <section class="side lecture">
+      <div class="side-title"><i class="dot"></i><strong>lecture-prism 강의형</strong><span>근거 → 6개 보고서 → 편집</span></div>
+      <div class="flow">
+        <div class="step" data-step="1"><strong>역할과 프롬프트를 한곳에</strong><code>analysis_agents.py · AGENT_SPECS</code><p>기술·수급·재무·산업·뉴스·시장 분석가의 질문과 출력 칸을 명시합니다.</p></div>
+        <div class="step" data-step="2"><strong>전문 에이전트 6개 개별 호출</strong><code>run_report_agents() · asyncio.gather()</code><p>같은 근거 묶음에서 독립 실행하며 한 실패가 다른 보고서를 취소하지 않습니다.</p></div>
+        <div class="step" data-step="3"><strong>편집 에이전트가 마지막 조립</strong><code>EDITOR_PROMPT · executive_summary</code><p>여섯 보고서의 일치·충돌을 요약하되 매수 의견이나 가격을 추가하지 않습니다.</p></div>
+        <div class="step" data-step="4"><strong>분석은 보고서에서 멈춤</strong><code>analysis.py · run_analysis_report()</code><p>Enter / No Entry와 점수·목표가·손절가는 모듈 3의 buy_agent.py로 넘깁니다.</p></div>
+      </div>
+    </section>
+  </div>
+  <footer class="footer">원본의 핵심인 <em>“근거를 나눠 조사하고 마지막에 조립한다”</em>를 유지하되, 데이터 도구와 PDF 제작만 수업용으로 줄였습니다.</footer>
+</article>
+
+<article class="canvas" data-module="trading">
+  <header class="header">
+    <div><div class="eyebrow">원본과 강의용 축소판 비교</div><h1>매매: 여러 진입·보호 도구를<br>청산 우선의 한 안전문으로 줄였습니다</h1></div>
+    <div class="module-no">MODULE 03</div>
+  </header>
+  <div class="comparison">
+    <section class="side original">
+      <div class="side-title"><i class="dot"></i><strong>PRISM Insight 운영형</strong><span>판단·추적·보호를 나눈다</span></div>
+      <div class="rail two-col">
+        <div class="source-row"><strong>AI 진입 시나리오</strong><code>cores/agents/<br>trading_agents.py</code><p>CAN SLIM과 과거 경험으로 Enter / No Entry 판단</p></div>
+        <div class="source-row"><strong>포지션 전체 추적</strong><code>stock_tracking_agent.py</code><p>신규 진입·피라미딩·매도·주문 상태의 중심</p></div>
+        <div class="source-row"><strong>자리와 피라미딩</strong><code>tracking/helpers.py</code><p>수익 중인 강한 종목과 포트폴리오 자리 검사</p></div>
+        <div class="source-row"><strong>결정론적 매도 보호</strong><code>cores/oneil_fallback.py</code><p>손절·추세 이탈·추적 손절의 코드 규칙</p></div>
+        <div class="source-row"><strong>독립 손절·추세 도구</strong><code>tools/*seller.py</code><p>정규 분석과 별도로 포지션 위험을 확인</p></div>
+        <div class="source-row"><strong>미체결 주문 복구</strong><code>tools/fill_chaser.py</code><p>접수 후 끝나지 않은 주문 상태를 다시 확인</p></div>
+      </div>
+    </section>
+    <div class="bridge"><div class="funnel">⇢</div><strong>여러 운영 프로세스를<br>한 파일에 모으고</strong><p>실주문은 이중 안전<br>플래그 뒤에 둠</p></div>
+    <section class="side lecture">
+      <div class="side-title"><i class="dot"></i><strong>lecture-prism 강의형</strong><span>청산 → 진입 → 체결</span></div>
+      <div class="flow">
+        <div class="step" data-step="1"><strong>보고서에서 매수 시나리오로</strong><code>buy_agent.py · run_buy_agent()</code><p>여섯 보고서를 읽고 Enter / No Entry와 근거를 만들며 규칙 숫자는 바꾸지 못합니다.</p></div>
+        <div class="step" data-step="2"><strong>손실 보호를 먼저 검사</strong><code>_decide_exit()</code><p>손절 → 트레일링 스탑 → 목표가 순서로 SELL 여부를 정합니다.</p></div>
+        <div class="step" data-step="3"><strong>신규 진입을 다시 검사</strong><code>_decide_position()</code><p>점수·가격 배열·손익비·현금·보유 슬롯을 통과해야 BUY가 됩니다.</p></div>
+        <div class="step" data-step="4"><strong>기본은 모의 체결</strong><code>_simulate_trade() / _execute_broker_order()</code><p>브로커 연결은 <code>brokers/</code>와 두 실주문 안전 플래그를 모두 통과해야 합니다.</p></div>
+      </div>
+    </section>
+  </div>
+  <footer class="footer">원본의 핵심인 <em>“보고서와 매수 판단을 나누고, AI 의견 뒤에도 코드가 다시 검사한다”</em>는 남겼습니다.</footer>
+</article>
+
+<article class="canvas" data-module="feedback">
+  <header class="header">
+    <div><div class="eyebrow">원본과 강의용 축소판 비교</div><h1>피드백·운영: AI 회고와 기억 시스템을<br>기록·압축·예약 작업의 작은 루프로 줄였습니다</h1></div>
+    <div class="module-no">MODULE 04</div>
+  </header>
+  <div class="comparison">
+    <section class="side original">
+      <div class="side-title"><i class="dot"></i><strong>PRISM Insight 운영형</strong><span>회고·압축·재사용·재진입</span></div>
+      <div class="rail">
+        <div class="source-row"><strong>완료된 거래를 매매일지로</strong><code>tracking/journal.py</code><p>진입 계획과 실제 결과, 수익률, 당시 상황을 함께 저장</p></div>
+        <div class="source-row"><strong>AI가 잘한 점과 교훈을 회고</strong><code>cores/agents/trading_journal_agent.py</code><p>반복 가능한 교훈과 다음 행동을 구조화</p></div>
+        <div class="source-row"><strong>오래된 기록을 계층별 압축</strong><code>tracking/compression.py</code><p>핵심 교훈을 보존하며 단기 기록을 중·장기 기억으로 정리</p></div>
+        <div class="source-row"><strong>성급한 재매수를 제한</strong><code>reentry_cooldown.py</code><p>최근 손실과 반복 손절 이력을 관찰하거나 설정에 따라 차단</p></div>
+      </div>
+    </section>
+    <div class="bridge"><div class="funnel">⇢</div><strong>LLM 회고와<br>복잡한 보정을 덜고</strong><p>API 키 없이도 도는<br>작은 운영 루프를 남김</p></div>
+    <section class="side lecture">
+      <div class="side-title"><i class="dot"></i><strong>lecture-prism 강의형</strong><span>결과 → 교훈 → 다음 판단</span></div>
+      <div class="flow">
+        <div class="step" data-step="1"><strong>청산 뒤에만 교훈 생성</strong><code>feedback.py · run_feedback() / _extract_lesson()</code><p>BUY 직후가 아니라 체결된 SELL 결과에서 규칙 기반 교훈을 만듭니다.</p></div>
+        <div class="step" data-step="2"><strong>공용 SQLite에 저장</strong><code>feedback._save_to_memory() → db.save_lesson()</code><p>분석·매매·교훈을 같은 <code>prism.db</code>에 남겨 다시 읽을 수 있게 합니다.</p></div>
+        <div class="step" data-step="3"><strong>기억을 줄이고 다시 찾기</strong><code>memory.py · compress_memories() / get_relevant_memories()</code><p>7일·30일 기준과 반복 횟수로 압축하고 최대 5개를 다음 판단에 전달합니다.</p></div>
+        <div class="step" data-step="4"><strong>보조 작업을 정해진 때 호출</strong><code>operations.py · monitor / reconcile / compress / run_scheduler()</code><p>기본은 시뮬레이션이며 스케줄러도 명시적으로 켜야만 시작됩니다.</p></div>
+      </div>
+    </section>
+  </div>
+  <footer class="footer">원본의 핵심인 <em>“결과를 기록하고 다음 판단에 다시 넣는다”</em>는 남기고 AI 회고·성과 보정·재진입 차단은 줄였습니다.</footer>
+</article>
+
+</body>
+</html>

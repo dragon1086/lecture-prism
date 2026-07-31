@@ -104,7 +104,7 @@ async def _run_pipeline_scoped(
         return summary
 
     # Step 1: 스크리닝
-    log.info("[1/4] 스크리닝 시작 — 전종목 필터링")
+    log.info("[1/5] 스크리닝 시작 — 전종목 필터링")
     from screening import run_screening
     candidates = await run_screening(target_ticker=target_ticker, use_real=use_real_data)
     log.info(f"      → 선정 종목: {candidates}")
@@ -120,33 +120,49 @@ async def _run_pipeline_scoped(
         log.info("선정 종목 없음. 파이프라인 종료.")
         return
 
-    # Step 2: 분석
-    log.info("[2/4] 분석 파이프라인 시작")
-    from analysis import run_analysis
-    analyses = []
+    # Step 2: 독립 분석 보고서 에이전트
+    log.info("[2/5] 분석 보고서 작성 — 전문 에이전트 6개 + 편집 에이전트")
+    from analysis import run_analysis_report
+    reports = []
     for ticker in candidates:
-        log.info(f"      → {ticker} 분석 중...")
-        result = await run_analysis(ticker)
-        analyses.append(result)
-        log.info(f"      → {ticker} 완료: 추천={result['recommendation']}({result['decision']}), "
-                 f"매수점수={result['buy_score']}/10, 목표가={result['target_price']:,}")
-        await _notify(notifier, "analysis", result)
+        log.info("      → %s 여섯 영역 분석 중...", ticker)
+        report = await run_analysis_report(ticker)
+        reports.append(report)
+        log.info("      → %s 분석 보고서 완료", ticker)
 
     from report_writer import write_reports
-    report_paths = await asyncio.to_thread(write_reports, analyses)
+    report_paths = await asyncio.to_thread(write_reports, reports)
     if report_paths:
         joined = ", ".join(str(path) for path in report_paths)
         log.info(f"      → 분석 보고서 저장: {joined}")
 
-    # Step 3: 매매
-    log.info("[3/4] 매매 의사결정 시작")
+    # Step 3: 매수 시나리오 에이전트
+    log.info("[3/5] 매수 에이전트 — 보고서를 읽고 진입 시나리오 작성")
+    from buy_agent import run_buy_agent
+
+    analyses = []
+    for report in reports:
+        result = await run_buy_agent(report)
+        analyses.append(result)
+        log.info(
+            "      → %s: 추천=%s(%s), 매수점수=%s/10, 목표가=%s",
+            result["ticker"],
+            result["recommendation"],
+            result["decision"],
+            result["buy_score"],
+            f"{result['target_price']:,}",
+        )
+        await _notify(notifier, "analysis", result)
+
+    # Step 4: 매매 실행
+    log.info("[4/5] 포지션·안전 조건 검증과 매매 실행")
     from trading import run_trading
     trade_results = await run_trading(analyses, dry_run=dry_run)
     log.info(f"      → 체결 건수: {len(trade_results)}")
     await _notify(notifier, "trading", analyses, trade_results)
 
-    # Step 4: 피드백
-    log.info("[4/4] 피드백 & 매매일지 기록")
+    # Step 5: 피드백
+    log.info("[5/5] 피드백 & 매매일지 기록")
     from feedback import run_feedback
     await run_feedback(trade_results, analyses)
     log.info("      → 매매일지 저장 완료")

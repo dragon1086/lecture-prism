@@ -16,7 +16,7 @@ Strategy Harness Lite는 이런 표현을 아래 네 트랙 중 하나로 정리
 | 트랙 | 의미 | 파일 |
 |---|---|---|
 | A | 어떤 종목을 후보로 볼까 | `screening.py` |
-| B | AI가 어떤 관점으로 분석할까 | `analysis.py` |
+| B | AI 분석가가 어떤 관점으로 보고서를 쓸까 | `analysis_agents.py` |
 | C | 언제 팔까 | `trading.py` |
 | D | 얼마나 보수적으로 운용할까 | `trading.py` |
 

@@ -1,6 +1,7 @@
 import unittest
 
 import analysis
+import analysis_agents
 import trading
 
 
@@ -30,10 +31,14 @@ class AnalysisTradingBoundaryTest(unittest.TestCase):
         self.assertEqual(decision["action"], "BUY")
 
     def test_technical_prompt_stays_in_evidence_analysis_scope(self):
-        self.assertNotIn("CANSLIM", analysis.TECHNICAL_AGENT_PROMPT.upper())
-        self.assertNotIn("컵&핸들", analysis.TECHNICAL_AGENT_PROMPT)
-        self.assertIn("주가", analysis.TECHNICAL_AGENT_PROMPT)
-        self.assertIn("거래량", analysis.TECHNICAL_AGENT_PROMPT)
+        prompt = analysis_agents.AGENT_SPECS["technical"].prompt
+        self.assertNotIn("CANSLIM", prompt.upper())
+        self.assertNotIn("컵&핸들", prompt)
+        self.assertIn("주가", prompt)
+        self.assertIn("거래량", prompt)
+        self.assertIn("매수·매도 여부", prompt)
+        self.assertIn("판단하지 마세요", prompt)
+        self.assertNotIn("Enter", prompt)
 
     def test_trading_rejects_non_buy_recommendation_even_with_entry_label(self):
         candidate = _buy_analysis(decision="진입")

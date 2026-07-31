@@ -1,7 +1,7 @@
 """
 trading.py — 모듈 3: 매매 실행
 
-분석 결과 → 포지션 사이징 → 선택 브로커 API 주문 → 결과 기록.
+매수 에이전트 시나리오 → 안전 검증 → 포지션 사이징 → 선택 브로커 주문.
 의사결정 트리: 얼마를 살 것인가 / 어떻게 살 것인가 / 체결 안 되면?
 
 실행:
@@ -24,7 +24,7 @@ log = logging.getLogger(__name__)
 # ── 포트폴리오 설정 ──────────────────────────────────────────────
 MAX_SLOTS = 10              # 최대 보유 종목 수
 CASH_RESERVE_RATIO = 0.7    # 현금 비중 (70% 유지)
-BUY_SCORE_THRESHOLD = 6     # 매수 최소 점수 (10점 만점, analysis.MIN_BUY_SCORE와 동일 기준)
+BUY_SCORE_THRESHOLD = 6     # 매수 최소 점수 (10점 만점, buy_agent.MIN_BUY_SCORE와 동일 기준)
 MIN_RISK_REWARD_RATIO = 1.5 # 신규 진입에 필요한 최소 손익비
 
 # ── 손절 기준 ─────────────────────────────────────────────────────
@@ -42,10 +42,10 @@ TRAILING_STOP = 0.08    # 고점 대비 -8% 되돌림 시 트레일링 스탑
 
 async def run_trading(analyses: list[dict], dry_run: bool = True) -> list[dict]:
     """
-    분석 결과 목록을 받아 매매 의사결정 및 주문 실행.
+    매수 에이전트의 진입 시나리오 목록을 받아 검증하고 주문을 실행.
 
     Args:
-        analyses: analysis.py의 run_analysis() 결과 목록
+        analyses: buy_agent.py의 run_buy_agent() 결과 목록
         dry_run: True면 시뮬레이션, False면 실거래
 
     Returns:
@@ -167,7 +167,7 @@ def _decide_position(analysis: dict, portfolio: dict) -> Optional[dict]:
 
     파트4 트랙D에서 수강생이 이 로직을 수정하는 부분.
     """
-    # analysis의 decision은 보고서에 남기는 비구속적 의견이다. 실제 주문 여부는
+    # buy_agent의 decision은 비구속적 시나리오다. 실제 주문 여부는
     # 이 함수가 추천·점수·가격 배열·포트폴리오 조건을 다시 검사해 결정한다.
     # 높은 점수 하나만으로 HOLD/PASS를 주문으로 바꾸지는 않는다.
     if analysis.get("recommendation") != "BUY":

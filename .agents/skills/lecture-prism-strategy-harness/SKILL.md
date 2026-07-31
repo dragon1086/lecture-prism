@@ -59,7 +59,7 @@ description: lecture-prism 수강생이 “내 전략 반영해줘”, “하네
 | 트랙 | 파일 | 선택 조건 | 난이도 |
 |---|---|---|---|
 | A | `screening.py` | RSI, 거래량, 시총, 이동평균, 신고가 등 정량 진입 조건 | 쉬움 |
-| B | `analysis.py` | 피터 린치, 그레이엄, 오닐, 뉴스/재무/모멘텀 관점 등 분석 프롬프트 | 쉬움 |
+| B | `analysis_agents.py` | 기술·수급·재무·산업·뉴스·시장 중 한 보고서 에이전트의 관점 | 쉬움 |
 | C | `trading.py` `_decide_exit` | 목표가, 손절, 트레일링 스탑, 절반 청산 등 청산 규칙 | 보통 |
 | D | `trading.py` 상수 | 최대 종목 수, 현금 비중, 매수 점수, 손절폭 등 리스크 원칙 | 쉬움 |
 
@@ -126,7 +126,7 @@ description: lecture-prism 수강생이 “내 전략 반영해줘”, “하네
 여러 트랙이 필요한 전략이면 이번 사이클에서는 첫 트랙만 수정하고, 나머지 트랙은 보고의 “다음에 바꾸면 좋은 것”에 순서대로 남겨 다음 사이클에서 처리한다.
 
 - A: `screening.py`
-- B: `analysis.py`
+- B: `analysis_agents.py`
 - C: `trading.py`
 - D: `trading.py`
 
