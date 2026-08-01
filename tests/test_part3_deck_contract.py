@@ -90,6 +90,33 @@ class Part3DeckContractTests(unittest.TestCase):
         self.assertNotIn("선택적 AI 한 번으로 줄였습니다", self.sources)
         self.assertNotIn("_run_combined_llm_agent", self.sources)
 
+    def test_slide_34_explains_memory_results_in_plain_investor_language(self):
+        match = re.search(
+            r"<!-- P3-S34\b.*?<section\b.*?</section>",
+            self.sources,
+            flags=re.S,
+        )
+        self.assertIsNotNone(match)
+        slide = match.group(0)
+
+        for phrase in (
+            "AI가 과거 매매 교훈을 읽고 판단한 거래",
+            "수익으로 끝난 거래의 비율",
+            "거래한 시기와 시장 흐름이 달랐을 수 있음",
+            "기억은 정답지가 아닙니다",
+        ):
+            self.assertIn(phrase, slide)
+
+        for phrase in (
+            "메모리 참조 거래",
+            "비참조 거래",
+            "관찰 상관관계",
+            "인과 증명",
+            "표본 선택",
+            "시장 국면",
+        ):
+            self.assertNotIn(phrase, slide)
+
     @staticmethod
     def _png_size(path: Path) -> tuple[int, int]:
         with path.open("rb") as image:
