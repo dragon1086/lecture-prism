@@ -1,3 +1,4 @@
+import json
 import re
 import struct
 import unittest
@@ -35,9 +36,15 @@ class Part3DeckContractTests(unittest.TestCase):
     def setUpClass(cls):
         cls.head = HEAD.read_text(encoding="utf-8")
         cls.tail = TAIL.read_text(encoding="utf-8")
+        manifest = json.loads(
+            (SOURCE_ROOT / "deck-manifest.json").read_text(encoding="utf-8")
+        )
+        part3_files = [
+            SOURCE_ROOT / module["file"]
+            for module in manifest["decks"]["part3"]["modules"]
+        ]
         cls.sources = "\n".join(
-            path.read_text(encoding="utf-8")
-            for path in sorted(PART3_ROOT.glob("*.html"))
+            path.read_text(encoding="utf-8") for path in part3_files
         )
 
     def test_screen_fit_and_fullscreen_viewer_are_declared(self):
@@ -100,6 +107,48 @@ class Part3DeckContractTests(unittest.TestCase):
         self.assertTrue(cover_asset.exists())
         self.assertIn("P3-01 · API 키 없는 첫 성공", slide_4)
         self.assertIn("‘코딩 에이전트에 붙여넣기’ 블록 전체", slide_4)
+
+    def test_module_openings_use_one_investment_decision_throughline(self):
+        expected = {
+            "P3-S07": "어제는 강세장, 오늘은 약세장입니다. 후보를 같은 기준으로 골라도 될까요?",
+            "P3-S14": "이 종목을 사기 전에, 어떤 정보까지 확인하고 싶으세요?",
+            "P3-S21": "AI가 사라고 하면, 그대로 주문해도 될까요?",
+            "P3-S31": "어제 손절한 종목이 오늘 다시 떴습니다. 다시 사도 될까요?",
+        }
+        for slide_id, question in expected.items():
+            self.assertIn(question, self._slide(slide_id), slide_id)
+
+    def test_module_three_starts_with_a_concrete_vote_case_and_keeps_all_assets(self):
+        scenario = self._slide("P3-S21")
+        for phrase in (
+            "BUY 8점",
+            "70,000원",
+            "77,000원",
+            "63,000원",
+            "손익비 1.0",
+            "최소 1.5",
+            "주문한다",
+            "보류한다",
+            "실제 종목 추천이 아닌 연습 사례",
+        ):
+            self.assertIn(phrase, scenario)
+
+        shifted_assets = {
+            "P3-S22": "can-slim-company-supply-checks.png",
+            "P3-S23": "can-slim-leadership-market-checks.png",
+            "P3-S24": "entry-gates-overview.png",
+            "P3-S25": "pyramiding-portfolio-overview.png",
+            "P3-S26": "trading-exit-overview.png",
+            "P3-S27": "position-protection-loops.png",
+            "P3-S28": "lecture-compare-trading.png",
+        }
+        for slide_id, asset in shifted_assets.items():
+            self.assertIn(asset, self._slide(slide_id), slide_id)
+        self.assertIn("주문 의도", self._slide("P3-S29"))
+        self.assertIn("P3-M3 블록 전체", self._slide("P3-S30"))
+
+        slide_ids = re.findall(r"<!-- (P3-S\d{2})\b", self.sources)
+        self.assertEqual([f"P3-S{number:02d}" for number in range(1, 39)], slide_ids)
 
     def test_operations_image_is_reserved_for_the_part_three_summary(self):
         slide_30 = self._slide("P3-S30")

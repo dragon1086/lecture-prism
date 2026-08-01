@@ -38,7 +38,7 @@ APPLICATION_QUESTIONS = {
 PROMPT_SLIDES = {
     "P3-M1": "P3-S13",
     "P3-M2": "P3-S20",
-    "P3-M3": "P3-S29",
+    "P3-M3": "P3-S30",
     "P3-M4": "P3-S36",
 }
 
@@ -106,21 +106,28 @@ class Part3StudentLearningContractTest(unittest.TestCase):
                 self.assertIn(question, block, f"{prompt_id} prompt")
                 self.assertIn(question, slide_text, f"{prompt_id} slide")
 
-    def test_instructor_opens_each_module_with_a_problem_and_keeps_pair_talk(self):
+    def test_instructor_uses_varied_learner_actions_for_each_module(self):
         for question in (
-            "시장이 흔들려도 어제와 같은 기준으로 후보를 골라도 될까요?",
-            "차트가 좋아 보인다는 이유만으로 종목 분석을 끝내도 될까요?",
-            "AI가 BUY 8점을 줬는데 주문이 0건이면 오류일까요?",
-            "방금 샀는데 아직 결과도 모르면서 성공 교훈을 만들어도 될까요?",
+            "어제는 강세장, 오늘은 약세장입니다. 후보를 같은 기준으로 골라도 될까요?",
+            "이 종목을 사기 전에, 어떤 정보까지 확인하고 싶으세요?",
+            "AI가 사라고 하면, 그대로 주문해도 될까요?",
+            "어제 손절한 종목이 오늘 다시 떴습니다. 다시 사도 될까요?",
         ):
             self.assertIn(question, self.instructor)
 
         self.assertGreaterEqual(self.instructor.count("20초 예상"), 4)
-        self.assertGreaterEqual(self.instructor.count("60초 짝 대화"), 4)
+        for learner_action in (
+            "60초 짝 대화",
+            "정보 세 가지",
+            "A/B 투표",
+            "바로 다시 산다 / 하루 더 본다 / 조건을 다시 확인한다",
+            "내 안전선 한 문장",
+        ):
+            self.assertIn(learner_action, self.instructor)
 
     def test_instructor_has_project_answer_anchors_after_pair_talk(self):
         self.assertEqual(
-            self.instructor.count("**짝 대화 뒤 lecture-prism 기준선**"),
+            self.instructor.count("**수강생 판단 뒤 lecture-prism 기준선**"),
             4,
         )
         for answer_anchor in (
@@ -135,6 +142,7 @@ class Part3StudentLearningContractTest(unittest.TestCase):
             "두 번 이상 반복",
             "장기 원칙은 최대 20개",
             "실제 수익률과 청산 사유까지 깊게 비교하지는 않습니다",
+            "다음 날 자동으로 매수를 막는 규칙은 아직 없습니다",
         ):
             self.assertIn(answer_anchor, self.instructor)
 
@@ -149,7 +157,7 @@ class Part3StudentLearningContractTest(unittest.TestCase):
         expected = {
             "P3-S13": "P3-M1",
             "P3-S20": "P3-M2",
-            "P3-S29": "P3-M3",
+            "P3-S30": "P3-M3",
             "P3-S36": "P3-M4",
         }
         for slide_id, prompt_id in expected.items():

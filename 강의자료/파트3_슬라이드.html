@@ -347,7 +347,7 @@
 <section data-slide-id="P3-S07" class="slide split large-diagram">
   <div class="txt">
     <div class="kicker">모듈 1 · 먼저 풀 문제</div>
-    <h2>시장이 흔들려도 어제와 같은 기준으로 후보를 골라도 될까요?</h2>
+    <h2>어제는 강세장, 오늘은 약세장입니다. 후보를 같은 기준으로 골라도 될까요?</h2>
   </div>
   <div class="img">
     <img class="reference-shot" src="../docs/assets/prism-insight/market-pulse-batch-control-overview.png" alt="PRISM Insight의 오닐식 시장 방향 판단과 오전·오후 배치 제어">
@@ -439,7 +439,7 @@
 <section data-slide-id="P3-S14" class="slide split large-diagram">
   <div class="txt">
     <div class="kicker">모듈 2 · 먼저 풀 문제</div>
-    <h2>차트가 좋아 보인다는 이유만으로 종목 분석을 끝내도 될까요?</h2>
+    <h2>이 종목을 사기 전에, 어떤 정보까지 확인하고 싶으세요?</h2>
   </div>
   <div class="img">
     <img class="reference-shot" src="../docs/assets/prism-insight/screening-analysis-deep-dive.png" alt="선별된 종목을 여섯 분석 에이전트가 조사하는 흐름">
@@ -529,61 +529,112 @@
   <div class="pagenum">20</div>
 </section>
 
-<section data-slide-id="P3-S21" class="slide split large-diagram">
-  <div class="txt"><div class="kicker">모듈 3 · 먼저 풀 문제</div><h2>AI가 BUY 8점을 줬는데 주문이 0건이면 오류일까요?</h2></div>
-  <div class="img">
-    <img class="reference-shot" src="../docs/assets/prism-insight/can-slim-company-supply-checks.png" alt="CAN SLIM C A N S 점검">
-    <p class="caption">C·A·N·S는 최근 분기, 여러 해 성장, 새로운 계기, 수급을 묻습니다. 모두 프롬프트에 있지만 고전적 EPS 증가율 같은 기준이 전부 코드 하드 게이트인 것은 아닙니다.</p>
+<section data-slide-id="P3-S21" class="slide">
+  <div class="kicker">모듈 3 · 먼저 판단할 사례</div>
+  <h2>AI가 사라고 하면, 그대로 주문해도 될까요?</h2>
+  <div class="flow" style="margin-top:26px; grid-template-columns:1.05fr 1fr 1fr 1fr;">
+    <div class="step" style="border-color:#8b7cf8; background:#17172a;">
+      <div class="n">AI 의견</div>
+      <div class="t" style="font-size:34px; color:#c9c1ff;">BUY 8점</div>
+      <div class="d">분석 보고서를 읽고 매수 후보라고 제안했습니다.</div>
+    </div>
+    <div class="step">
+      <div class="n">현재가</div>
+      <div class="t">70,000원</div>
+      <div class="d">지금 주문을 검토하는 가격입니다.</div>
+    </div>
+    <div class="step">
+      <div class="n">목표가</div>
+      <div class="t">77,000원</div>
+      <div class="d">오르면 기대하는 폭은 10%입니다.</div>
+    </div>
+    <div class="step">
+      <div class="n">손절가</div>
+      <div class="t">63,000원</div>
+      <div class="d">내리면 감수하는 폭도 10%입니다.</div>
+    </div>
   </div>
+  <div class="flow" style="margin-top:18px; grid-template-columns:1.25fr 1.25fr 1fr 1fr;">
+    <div class="step" style="border-color:#f0b45a;">
+      <div class="n">계산 결과</div>
+      <div class="t" style="color:#f0b45a;">손익비 1.0</div>
+      <div class="d">기대 수익과 감수할 손실이 같습니다.</div>
+    </div>
+    <div class="step" style="border-color:#5ecf9a;">
+      <div class="n">코드 안전문</div>
+      <div class="t" style="color:#5ecf9a;">최소 1.5</div>
+      <div class="d">이 기준보다 낮으면 BUY여도 주문하지 않습니다.</div>
+    </div>
+    <div class="step" style="border-color:#5f6680;">
+      <div class="n">A</div>
+      <div class="t">주문한다</div>
+      <div class="d">AI 8점을 믿고 진행한다.</div>
+    </div>
+    <div class="step" style="border-color:#5ecf9a; background:#10231d;">
+      <div class="n">B</div>
+      <div class="t">보류한다</div>
+      <div class="d">코드 안전문을 우선한다.</div>
+    </div>
+  </div>
+  <div class="takeaway">A와 B 중 하나를 고릅니다. 실제 종목 추천이 아닌 연습 사례이며, 실행 결과는 아직 공개하지 않습니다.</div>
   <div class="pagenum">21</div>
 </section>
 
 <section data-slide-id="P3-S22" class="slide split large-diagram">
-  <div class="txt"><div class="kicker">모듈 3 · 신규 진입</div><h2>뒤의 세 글자는 리더십과 시장을 봅니다</h2></div>
+  <div class="txt"><div class="kicker">모듈 3 · 신규 진입</div><h2>기업 성장과 수급을 함께 봅니다</h2></div>
   <div class="img">
-    <img class="reference-shot" src="../docs/assets/prism-insight/can-slim-leadership-market-checks.png" alt="CAN SLIM L I M 점검">
-    <p class="caption">L·I·M은 주도주, 기관 관심, 시장 방향을 묻습니다. 상대강도와 시장 상태는 계산이 강하지만 기관 자료와 고전적 RS 등급은 시장·기능 설정에 따라 제약이 있습니다.</p>
+    <img class="reference-shot" src="../docs/assets/prism-insight/can-slim-company-supply-checks.png" alt="CAN SLIM C A N S 점검">
+    <p class="caption">C·A·N·S는 최근 분기, 여러 해 성장, 새로운 계기, 수급을 묻습니다. 모두 프롬프트에 있지만 고전적 EPS 증가율 같은 기준이 전부 코드 하드 게이트인 것은 아닙니다.</p>
   </div>
   <div class="pagenum">22</div>
 </section>
 
 <section data-slide-id="P3-S23" class="slide split large-diagram">
-  <div class="txt"><div class="kicker">모듈 3 · 진입 게이트</div><h2>에이전트가 Enter라고 해도 코드 게이트를 통과해야 합니다</h2></div>
+  <div class="txt"><div class="kicker">모듈 3 · 신규 진입</div><h2>뒤의 세 글자는 리더십과 시장을 봅니다</h2></div>
   <div class="img">
-    <img class="reference-shot" src="../docs/assets/prism-insight/entry-gates-overview.png" alt="AI 신규 진입 판단 뒤 코드가 다시 확인하는 안전 게이트">
-    <p class="caption">AI 시나리오의 최종 결과는 Enter 또는 No Entry입니다. 이후 코드가 최소점수·하락 추세·재진입·중복 보유·업종·포트폴리오·진행 중 주문을 다시 확인하며, 재진입 쿨다운 기본값은 관찰 모드입니다.</p>
+    <img class="reference-shot" src="../docs/assets/prism-insight/can-slim-leadership-market-checks.png" alt="CAN SLIM L I M 점검">
+    <p class="caption">L·I·M은 주도주, 기관 관심, 시장 방향을 묻습니다. 상대강도와 시장 상태는 계산이 강하지만 기관 자료와 고전적 RS 등급은 시장·기능 설정에 따라 제약이 있습니다.</p>
   </div>
   <div class="pagenum">23</div>
 </section>
 
 <section data-slide-id="P3-S24" class="slide split large-diagram">
-  <div class="txt"><div class="kicker">모듈 3 · 피라미딩</div><h2>수익 중인 강한 종목만 추가 진입을 검토합니다</h2></div>
+  <div class="txt"><div class="kicker">모듈 3 · 진입 게이트</div><h2>에이전트가 Enter라고 해도 코드 게이트를 통과해야 합니다</h2></div>
   <div class="img">
-    <img class="reference-shot" src="../docs/assets/prism-insight/pyramiding-portfolio-overview.png" alt="수익 중인 종목의 피라미딩 조건과 포트폴리오 자리 제한">
-    <p class="caption">피라미딩은 손실 종목의 물타기가 아니라 강한 시장에서 수익률 5% 이상인 보유 종목에만 추가하는 규칙입니다. 최초 진입 뒤 최대 두 번이며 일반 점수·업종·자리 조건도 다시 통과해야 합니다.</p>
+    <img class="reference-shot" src="../docs/assets/prism-insight/entry-gates-overview.png" alt="AI 신규 진입 판단 뒤 코드가 다시 확인하는 안전 게이트">
+    <p class="caption">AI 시나리오의 최종 결과는 Enter 또는 No Entry입니다. 이후 코드가 최소점수·하락 추세·재진입·중복 보유·업종·포트폴리오·진행 중 주문을 다시 확인하며, 재진입 쿨다운 기본값은 관찰 모드입니다.</p>
   </div>
   <div class="pagenum">24</div>
 </section>
 
 <section data-slide-id="P3-S25" class="slide split large-diagram">
-  <div class="txt"><div class="kicker">모듈 3 · 청산</div><h2>매도는 손실 제한부터 확인합니다</h2></div>
+  <div class="txt"><div class="kicker">모듈 3 · 피라미딩</div><h2>수익 중인 강한 종목만 추가 진입을 검토합니다</h2></div>
   <div class="img">
-    <img class="reference-shot" src="../docs/assets/prism-insight/trading-exit-overview.png" alt="즉시 손절과 추세·실적·뉴스·시장 판단을 합친 매도 흐름">
-    <p class="caption">중대 사건과 즉시 손절을 먼저 보고, 그 밖에는 추세·실적·뉴스·시장 변화를 함께 봅니다. 손절·추세 이탈·추적 손절 규칙은 하나의 함수가 아니라 여러 도구가 나누어 소유합니다.</p>
+    <img class="reference-shot" src="../docs/assets/prism-insight/pyramiding-portfolio-overview.png" alt="수익 중인 종목의 피라미딩 조건과 포트폴리오 자리 제한">
+    <p class="caption">피라미딩은 손실 종목의 물타기가 아니라 강한 시장에서 수익률 5% 이상인 보유 종목에만 추가하는 규칙입니다. 최초 진입 뒤 최대 두 번이며 일반 점수·업종·자리 조건도 다시 통과해야 합니다.</p>
   </div>
   <div class="pagenum">25</div>
 </section>
 
 <section data-slide-id="P3-S26" class="slide split large-diagram">
+  <div class="txt"><div class="kicker">모듈 3 · 청산</div><h2>매도는 손실 제한부터 확인합니다</h2></div>
+  <div class="img">
+    <img class="reference-shot" src="../docs/assets/prism-insight/trading-exit-overview.png" alt="즉시 손절과 추세·실적·뉴스·시장 판단을 합친 매도 흐름">
+    <p class="caption">중대 사건과 즉시 손절을 먼저 보고, 그 밖에는 추세·실적·뉴스·시장 변화를 함께 봅니다. 손절·추세 이탈·추적 손절 규칙은 하나의 함수가 아니라 여러 도구가 나누어 소유합니다.</p>
+  </div>
+  <div class="pagenum">26</div>
+</section>
+
+<section data-slide-id="P3-S27" class="slide split large-diagram">
   <div class="txt"><div class="kicker">모듈 3 · 독립 보호 장치</div><h2>보조 감시 루프가 포지션을 따로 지킵니다</h2></div>
   <div class="img">
     <img class="reference-shot" src="../docs/assets/prism-insight/position-protection-loops.png" alt="포지션을 보호하는 독립 감시 루프">
     <p class="caption">긴급 손절·추세 이탈·미체결 관리는 독립 실행할 수 있지만 저장소의 <code>docker/crontab</code>에는 등록되어 있지 않습니다. 실제 운영 여부는 서버 cron과 환경 변수를 함께 확인해야 합니다.</p>
   </div>
-  <div class="pagenum">26</div>
+  <div class="pagenum">27</div>
 </section>
 
-<section data-slide-id="P3-S27" class="slide comparison-slide" id="p3-s27">
+<section data-slide-id="P3-S28" class="slide comparison-slide" id="p3-s28">
   <div class="txt">
     <div class="kicker">원본과 강의용 축소판 비교</div>
     <h2>매수 에이전트의 의견 뒤에 코드 안전문을 둡니다</h2>
@@ -592,10 +643,10 @@
     <img class="reference-shot comparison-shot" src="assets/lecture-compare-trading.png" alt="PRISM Insight 매매·보호 도구와 lecture-prism buy_agent.py 및 trading.py 비교">
     <p class="caption"><code>buy_agent.py</code>가 보고서에서 Enter / No Entry 시나리오를 만들고, <code>trading.py</code>는 청산을 먼저 확인한 뒤 점수·가격·포트폴리오 조건을 재검사합니다.</p>
   </div>
-  <div class="pagenum">27</div>
+  <div class="pagenum">28</div>
 </section>
 
-<section data-slide-id="P3-S28" class="slide">
+<section data-slide-id="P3-S29" class="slide">
   <div class="kicker">모듈 3 · 주문 수명주기</div>
   <h2>브로커가 주문을 받았다고 매매가 끝난 것은 아닙니다</h2>
   <div class="flow">
@@ -605,13 +656,13 @@
     <div class="step"><div class="n">4</div><div class="t">완료·재조회</div><div class="d">미결 주문은 새 주문 없이 상태만 다시 확인합니다.</div></div>
   </div>
   <div class="takeaway"><code>operations.py reconcile</code>은 KIS·Toss 미결 주문을 조회만 합니다. Kiwoom 강의 어댑터에는 아직 같은 복구 루프가 없습니다.</div>
-  <div class="pagenum">28</div>
+  <div class="pagenum">29</div>
 </section>
 
-<section data-slide-id="P3-S29" class="slide prompt-screen">
+<section data-slide-id="P3-S30" class="slide prompt-screen">
   <div class="kicker">모듈 3 · 구조 질문과 단독 실행</div>
   <h2>프롬프트 파일에서 P3-M3 블록 전체를 복사합니다</h2>
-  <div class="prompt-lead">지금부터 처음으로 매수 시나리오와 가상 실행을 봅니다. 수강생용 프롬프트의 완성된 블록을 씁니다.</div>
+  <div class="prompt-lead">매수 시나리오와 가상 실행을 봅니다. 수강생용 프롬프트의 완성된 블록을 씁니다.</div>
   <div class="prompt-columns">
     <div class="prompt-panel">
       <p><span class="num">1.</span> <strong>수강생 붙여넣기 프롬프트 · 파트 3</strong> 파일을 엽니다.</p>
@@ -625,23 +676,11 @@
     </div>
   </div>
   <div class="prompt-branch">실제 주문은 보내지 않습니다. 보고서 작성 → 매수 의견 → 안전 검사의 세 경계만 읽습니다.</div>
-  <div class="pagenum">29</div>
-</section>
-
-<section data-slide-id="P3-S30" class="slide">
-  <div class="kicker">모듈 3에서 모듈 4로</div>
-  <h2>장 시작 때 한 번 돌렸다고 자동매매가 끝나지는 않습니다</h2>
-  <div class="flow">
-    <div class="step"><div class="n">장중</div><div class="t">보유 종목 감시</div><div class="d">가격이 바뀌면 손절·수익 보호·목표가 조건을 다시 확인합니다.</div></div>
-    <div class="step"><div class="n">주문 뒤</div><div class="t">체결 상태 확인</div><div class="d">접수·부분체결·완료를 구분하고 미결 주문은 상태만 다시 읽습니다.</div></div>
-    <div class="step"><div class="n">거래가 닫히면</div><div class="t">피드백 준비</div><div class="d">처음 계획과 실제 결과를 연결해 다음 모듈로 넘깁니다.</div></div>
-  </div>
-  <div class="takeaway">이제 매매가 끝난 뒤 무엇을 기록하고, 어떤 교훈을 다음 판단에 남길지 봅니다.</div>
   <div class="pagenum">30</div>
 </section>
 
 <section data-slide-id="P3-S31" class="slide split large-diagram">
-  <div class="txt"><div class="kicker">모듈 4 · 먼저 풀 문제</div><h2>방금 샀는데 아직 결과도 모르면서 성공 교훈을 만들어도 될까요?</h2></div>
+  <div class="txt"><div class="kicker">모듈 4 · 먼저 풀 문제</div><h2>어제 손절한 종목이 오늘 다시 떴습니다. 다시 사도 될까요?</h2></div>
   <div class="img">
     <img class="reference-shot" src="../docs/assets/prism-insight/feedback-reentry-overview.png" alt="매매일지와 반복 교훈이 다음 판단과 재진입 제한으로 돌아가는 흐름">
     <p class="caption">이 루프는 자율 강화학습이 아니라 완료된 거래의 계획과 결과에서 교훈을 만들고 다음 판단에 참고자료로 넣는 구조입니다. 프롬프트·주문 규칙 변경은 사람의 검토와 배포가 필요합니다.</p>
