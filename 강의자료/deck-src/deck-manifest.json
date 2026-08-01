@@ -31,7 +31,7 @@
             {"id": "P3-S10", "title": "오전과 오후는 서로 다른 움직임을 찾습니다", "promptId": null},
             {"id": "P3-S11", "title": "후보를 다시 점수 매겨 최대 세 종목만 넘깁니다", "promptId": null},
             {"id": "P3-S12", "title": "운영망을 한 파일의 필터 흐름으로 줄였습니다", "promptId": null},
-            {"id": "P3-S13", "title": "screening.py만 따로 읽고 실행합니다", "promptId": "P3-M1"}
+            {"id": "P3-S13", "title": "프롬프트 파일에서 P3-M1 전체를 복사합니다", "promptId": "P3-M1"}
           ]
         },
         {
@@ -43,7 +43,7 @@
             {"id": "P3-S17", "title": "맥락을 읽는 프롬프트는 출처와 범위를 제한합니다", "promptId": null},
             {"id": "P3-S18", "title": "여섯 보고서는 조건부 투자 전략과 요약으로 합쳐집니다", "promptId": null},
             {"id": "P3-S19", "title": "강의용도 여섯 전문 에이전트와 편집 에이전트를 조립합니다", "promptId": null},
-            {"id": "P3-S20", "title": "각 에이전트의 질문과 보고서 조립을 따로 읽습니다", "promptId": "P3-M2"}
+            {"id": "P3-S20", "title": "프롬프트 파일에서 P3-M2 블록 전체를 복사합니다", "promptId": "P3-M2"}
           ]
         },
         {
@@ -57,7 +57,7 @@
             {"id": "P3-S26", "title": "보조 감시 루프가 포지션을 따로 지킵니다", "promptId": null},
             {"id": "P3-S27", "title": "매수 에이전트의 의견 뒤에 코드 안전문을 둡니다", "promptId": null},
             {"id": "P3-S28", "title": "브로커가 주문을 받았다고 매매가 끝난 것은 아닙니다", "promptId": null},
-            {"id": "P3-S29", "title": "진입과 청산을 따로 실행해 봅니다", "promptId": "P3-M3"},
+            {"id": "P3-S29", "title": "프롬프트 파일에서 P3-M3 블록 전체를 복사합니다", "promptId": "P3-M3"},
             {"id": "P3-S30", "title": "메인 파이프라인 밖에서도 시스템은 움직입니다", "promptId": null}
           ]
         },
@@ -69,7 +69,7 @@
             {"id": "P3-S33", "title": "실제 운영에서는 매주 기록을 압축합니다", "promptId": null},
             {"id": "P3-S34", "title": "기억을 참고했다고 성과가 자동으로 좋아지지는 않았습니다", "promptId": null},
             {"id": "P3-S35", "title": "AI 회고와 기억 시스템을 기록·압축·예약 작업의 작은 루프로 줄였습니다", "promptId": null},
-            {"id": "P3-S36", "title": "메인 파이프라인 밖의 작업도 하나씩 확인합니다", "promptId": "P3-M4"},
+            {"id": "P3-S36", "title": "프롬프트 파일에서 P3-M4 블록 전체를 복사합니다", "promptId": "P3-M4"},
             {"id": "P3-S37", "title": "자동매매는 메인 로직과 보조 운영이 함께 있어야 돌아갑니다", "promptId": null}
           ]
         },

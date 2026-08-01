@@ -123,7 +123,7 @@ class PrismCoreFoundationContractTest(unittest.TestCase):
                 self.assertIn(phrase, text)
         self.assertNotIn("trading.py --live", text)
 
-    def test_course_prompts_use_the_coaching_first_learning_loop(self):
+    def test_course_prompts_use_the_coaching_loop_at_the_right_stage(self):
         part3 = (
             ROOT / "lecture/exercises/수강생_붙여넣기_프롬프트_파트3.md"
         ).read_text(encoding="utf-8")
@@ -131,9 +131,11 @@ class PrismCoreFoundationContractTest(unittest.TestCase):
             ROOT / "lecture/exercises/수강생_붙여넣기_프롬프트_파트4.md"
         ).read_text(encoding="utf-8")
         for text in (part3, part4):
-            for phrase in ("북극성", "질문한다", "예측한다", "실행한다", "증거", "회고한다"):
+            for phrase in ("질문한다", "예측한다", "실행한다", "증거", "회고한다"):
                 with self.subTest(phrase=phrase):
                     self.assertIn(phrase, text)
+        self.assertNotIn("북극성", part3)
+        self.assertIn("북극성", part4)
 
     def test_part4_selection_and_scheduler_prompts_do_not_mutate_during_class(self):
         text = (
