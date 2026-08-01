@@ -118,6 +118,26 @@ class Part3StudentLearningContractTest(unittest.TestCase):
         self.assertGreaterEqual(self.instructor.count("20초 예상"), 4)
         self.assertGreaterEqual(self.instructor.count("60초 짝 대화"), 4)
 
+    def test_instructor_has_project_answer_anchors_after_pair_talk(self):
+        self.assertEqual(
+            self.instructor.count("**짝 대화 뒤 lecture-prism 기준선**"),
+            4,
+        )
+        for answer_anchor in (
+            "거래량 5배·시가총액 5,000억·상승 여부",
+            "등락률이 높은 순서로 최대 세 종목",
+            "그 섹션만 규칙 보고서로 바뀝니다",
+            "목표가 > 현재가 > 손절가",
+            "손익비 1.5 이상",
+            "손절 → 트레일링 스탑 → 목표가",
+            "7일이 지나면 중기",
+            "30일이 지난 중기 교훈",
+            "두 번 이상 반복",
+            "장기 원칙은 최대 20개",
+            "실제 수익률과 청산 사유까지 깊게 비교하지는 않습니다",
+        ):
+            self.assertIn(answer_anchor, self.instructor)
+
     def test_slide_13_points_to_the_complete_prompt_block(self):
         slide_13 = _slide(self.slides, "P3-S13")
         self.assertIn("P3-M1 블록 전체", slide_13)
