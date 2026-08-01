@@ -1,6 +1,6 @@
-<!-- P3-S21 · CAN SLIM의 앞 네 글자는 기업과 수급을 봅니다 -->
+<!-- P3-S21 · AI가 BUY 8점을 줬는데 주문이 0건이면 오류일까요 -->
 <section class="slide split large-diagram">
-  <div class="txt"><div class="kicker">모듈 3 · 신규 진입</div><h2>CAN SLIM의 앞 네 글자는 기업과 수급을 봅니다</h2></div>
+  <div class="txt"><div class="kicker">모듈 3 · 먼저 풀 문제</div><h2>AI가 BUY 8점을 줬는데 주문이 0건이면 오류일까요?</h2></div>
   <div class="img">
     <img class="reference-shot" src="../docs/assets/prism-insight/can-slim-company-supply-checks.png" alt="CAN SLIM C A N S 점검">
     <p class="caption">C·A·N·S는 최근 분기, 여러 해 성장, 새로운 계기, 수급을 묻습니다. 모두 프롬프트에 있지만 고전적 EPS 증가율 같은 기준이 전부 코드 하드 게이트인 것은 아닙니다.</p>
@@ -97,21 +97,24 @@
       <p><span class="num">3.</span> ‘코딩 에이전트에 붙여넣기’ 코드 블록 <strong>전체</strong>를 복사해 한 번만 붙여넣습니다.</p>
     </div>
     <div class="prompt-panel">
-      <p><span class="num">확인 1</span> <code>buy_agent.py</code>가 보고서를 읽고 Enter / No Entry 의견을 만드는지</p>
-      <p><span class="num">확인 2</span> <code>trading.py</code>가 손익비·중복 보유·위험 한도를 다시 검사하는지</p>
-      <p><span class="num">확인 3</span> 손절·트레일링·목표가를 가상 시나리오로만 확인했는지</p>
+      <p><span class="num">내 전략에 대입 1</span> AI가 좋다고 해도 코드가 반드시 막아야 할 진입은 무엇일까?</p>
+      <p><span class="num">내 전략에 대입 2</span> 내 전략에서는 손절·수익 보호·목표가를 어떤 순서로 확인할까?</p>
+      <p><span class="num">내 전략에 대입 3</span> 체결 상태가 불분명할 때 새 주문 전에 무엇을 확인할까?</p>
     </div>
   </div>
   <div class="prompt-branch">실제 주문은 보내지 않습니다. 보고서 작성 → 매수 의견 → 안전 검사의 세 경계만 읽습니다.</div>
   <div class="pagenum">29</div>
 </section>
 
-<!-- P3-S30 · 메인 파이프라인 밖에서도 시스템은 움직입니다 -->
-<section class="slide split large-diagram">
-  <div class="txt"><div class="kicker">모듈 3에서 모듈 4로</div><h2>메인 파이프라인 밖에서도 시스템은 움직입니다</h2></div>
-  <div class="img">
-    <img class="reference-shot" src="assets/prism-auxiliary-operations-loop.png" alt="전체 배치 주변의 보유종목 감시, 체결 확인, 메모리 압축, 다음 진입 참고 루프">
-    <p class="caption">강의용 예시 시각입니다. 실제 운영 시각은 배포 환경과 시장에 맞춰 별도로 관리합니다.</p>
+<!-- P3-S30 · 장 시작 때 한 번 돌렸다고 자동매매가 끝나지는 않습니다 -->
+<section class="slide">
+  <div class="kicker">모듈 3에서 모듈 4로</div>
+  <h2>장 시작 때 한 번 돌렸다고 자동매매가 끝나지는 않습니다</h2>
+  <div class="flow">
+    <div class="step"><div class="n">장중</div><div class="t">보유 종목 감시</div><div class="d">가격이 바뀌면 손절·수익 보호·목표가 조건을 다시 확인합니다.</div></div>
+    <div class="step"><div class="n">주문 뒤</div><div class="t">체결 상태 확인</div><div class="d">접수·부분체결·완료를 구분하고 미결 주문은 상태만 다시 읽습니다.</div></div>
+    <div class="step"><div class="n">거래가 닫히면</div><div class="t">피드백 준비</div><div class="d">처음 계획과 실제 결과를 연결해 다음 모듈로 넘깁니다.</div></div>
   </div>
+  <div class="takeaway">이제 매매가 끝난 뒤 무엇을 기록하고, 어떤 교훈을 다음 판단에 남길지 봅니다.</div>
   <div class="pagenum">30</div>
 </section>

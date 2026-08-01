@@ -11,6 +11,38 @@ PART3_SOURCE = ROOT / "강의자료" / "deck-src" / "part3"
 INSTRUCTOR_SCRIPT = ROOT / "강의자료" / "강사용_실습진행_스크립트.md"
 
 
+APPLICATION_QUESTIONS = {
+    "P3-M1": (
+        "내 전략이라면 후보를 가장 먼저 어떤 조건으로 거를까?",
+        "후보가 너무 많다면 무엇을 우선해 순서를 정할까?",
+        "screening.py에서 바꿀 한 가지와 그대로 둘 안전장치는 무엇일까?",
+    ),
+    "P3-M2": (
+        "내 전략에서 숫자로 확인할 근거와 맥락으로 읽을 근거는 각각 무엇일까?",
+        "여섯 역할 중 반드시 남길 분석가와 새로 보태고 싶은 분석가는 무엇일까?",
+        "어떤 근거가 빠지면 매수 판단을 다음 단계로 넘기지 않을까?",
+    ),
+    "P3-M3": (
+        "AI가 좋다고 해도 코드가 반드시 막아야 할 진입은 무엇일까?",
+        "내 전략에서는 손절·수익 보호·목표가를 어떤 순서로 확인할까?",
+        "체결 상태가 불분명할 때 새 주문 전에 무엇을 확인할까?",
+    ),
+    "P3-M4": (
+        "거래가 끝나면 처음 계획과 실제 결과 중 무엇을 비교해 남길까?",
+        "같은 실수가 몇 번 반복되면 장기 원칙으로 만들까?",
+        "오늘의 교훈 중 다음 거래에는 넣지 말아야 할 일회성 상황은 무엇일까?",
+    ),
+}
+
+
+PROMPT_SLIDES = {
+    "P3-M1": "P3-S13",
+    "P3-M2": "P3-S20",
+    "P3-M3": "P3-S29",
+    "P3-M4": "P3-S36",
+}
+
+
 def _markdown_block(source: str, prompt_id: str) -> str:
     match = re.search(
         rf"^## {re.escape(prompt_id)}\b.*?(?=^## |\Z)",
@@ -57,15 +89,34 @@ class Part3StudentLearningContractTest(unittest.TestCase):
             for phrase in forbidden:
                 self.assertNotIn(phrase, block, f"{prompt_id}: {phrase}")
 
-    def test_module_one_questions_match_what_students_have_learned(self):
-        block = _markdown_block(self.prompts, "P3-M1")
+    def test_every_module_ends_with_unanswered_strategy_application_questions(self):
+        for prompt_id, questions in APPLICATION_QUESTIONS.items():
+            block = _markdown_block(self.prompts, prompt_id)
+            slide = _slide(self.slides, PROMPT_SLIDES[prompt_id])
+            slide_text = re.sub(r"<[^>]+>", "", slide)
 
-        self.assertNotIn("뒤의 매수 방식과 왜 잘 맞는가", block)
-        self.assertNotIn("이미지 생성", block)
-        self.assertNotIn("로컬 HTML", block)
-        self.assertIn("어떤 조건이 종목을 가장 먼저 걸러냈는가?", block)
-        self.assertIn("남은 후보는 어떤 기준으로 순서가 정해졌는가?", block)
-        self.assertIn("후보로 뽑힌 것과 실제 매수 결정은 왜 다른가?", block)
+            self.assertIn(
+                "마지막에는 내가 직접 답할 아래 질문 세 개를 질문만 남겨줘",
+                block,
+                prompt_id,
+            )
+            self.assertIn("답을 대신 쓰지 마", block, prompt_id)
+            self.assertIn("내 전략에 대입", slide_text, prompt_id)
+            for question in questions:
+                self.assertIn(question, block, f"{prompt_id} prompt")
+                self.assertIn(question, slide_text, f"{prompt_id} slide")
+
+    def test_instructor_opens_each_module_with_a_problem_and_keeps_pair_talk(self):
+        for question in (
+            "시장이 흔들려도 어제와 같은 기준으로 후보를 골라도 될까요?",
+            "차트가 좋아 보인다는 이유만으로 종목 분석을 끝내도 될까요?",
+            "AI가 BUY 8점을 줬는데 주문이 0건이면 오류일까요?",
+            "방금 샀는데 아직 결과도 모르면서 성공 교훈을 만들어도 될까요?",
+        ):
+            self.assertIn(question, self.instructor)
+
+        self.assertGreaterEqual(self.instructor.count("20초 예상"), 4)
+        self.assertGreaterEqual(self.instructor.count("60초 짝 대화"), 4)
 
     def test_slide_13_points_to_the_complete_prompt_block(self):
         slide_13 = _slide(self.slides, "P3-S13")

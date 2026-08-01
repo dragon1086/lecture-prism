@@ -237,40 +237,11 @@
 
 <!-- S1 표지 -->
 
-<section data-slide-id="P3-S01" class="slide cover">
-  <div class="kicker">패스트캠퍼스 · AI 네이티브 자동매매 시스템 구축</div>
-  <h1>파트 3<br>실전 자동매매 시스템의<br>구현 패턴</h1>
-  <p class="sub">강사 문상록 · PRISM Insight 개발·운영자</p>
-  <svg viewBox="0 0 900 190" style="width:70%; margin-top:36px; display:block;" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="AI 에이전트들이 협업해 차트를 분석하는 일러스트">
-    <defs>
-      <linearGradient id="c3grad" x1="0" y1="0" x2="1" y2="0">
-        <stop offset="0" stop-color="#8b7cf8"/><stop offset="1" stop-color="#5ecf9a"/>
-      </linearGradient>
-    </defs>
-    <rect x="1" y="1" width="898" height="188" rx="14" fill="#171a2b" stroke="#2c3050"/>
-    <g stroke="#20243c" stroke-width="1">
-      <line x1="36" y1="56" x2="864" y2="56"/><line x1="36" y1="98" x2="864" y2="98"/><line x1="36" y1="140" x2="864" y2="140"/>
-    </g>
-    <g opacity="0.85">
-      <rect x="80" y="112" width="9" height="34" rx="2" fill="#2f5d4c"/>
-      <rect x="120" y="96" width="9" height="42" rx="2" fill="#5a3a3a"/>
-      <rect x="160" y="104" width="9" height="30" rx="2" fill="#2f5d4c"/>
-      <rect x="200" y="86" width="9" height="40" rx="2" fill="#2f5d4c"/>
-      <rect x="240" y="94" width="9" height="30" rx="2" fill="#5a3a3a"/>
-      <rect x="680" y="70" width="9" height="34" rx="2" fill="#2f5d4c"/>
-      <rect x="720" y="58" width="9" height="38" rx="2" fill="#2f5d4c"/>
-      <rect x="760" y="66" width="9" height="26" rx="2" fill="#5a3a3a"/>
-    </g>
-    <path d="M48 152 C140 146 200 92 296 98 S470 134 556 94 726 40 852 54" fill="none" stroke="url(#c3grad)" stroke-width="3.5" stroke-linecap="round"/>
-    <g font-size="14" text-anchor="middle">
-      <circle cx="296" cy="98" r="16" fill="#20243a" stroke="#8b7cf8" stroke-width="2"/><text x="296" y="103">📈</text>
-      <circle cx="556" cy="94" r="16" fill="#20243a" stroke="#8b7cf8" stroke-width="2"/><text x="556" y="99">📰</text>
-      <circle cx="852" cy="54" r="16" fill="#20243a" stroke="#5ecf9a" stroke-width="2"/><text x="852" y="59">🧠</text>
-    </g>
-    <g font-size="12.5" fill="#9ba0b8" text-anchor="middle">
-      <text x="296" y="132">기술 분석</text><text x="556" y="128">뉴스 분석</text><text x="838" y="88">전략 종합</text>
-    </g>
-  </svg>
+<section data-slide-id="P3-S01" class="slide cover" style="justify-content:flex-start; padding-top:62px;">
+  <img src="assets/part3-cover-ai-console.png" alt="보라색 데이터 신호가 청록색으로 이어지는 AI 시스템 콘솔" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; border:0; z-index:0; pointer-events:none;">
+  <div class="kicker" style="position:relative; z-index:1;">패스트캠퍼스 · AI 네이티브 자동매매 시스템 구축</div>
+  <h1 style="position:relative; z-index:1;">파트 3<br>실전 자동매매 시스템의<br>구현 패턴</h1>
+  <p class="sub" style="position:relative; z-index:1;">강사 문상록 · PRISM Insight 개발·운영자</p>
   <div class="pagenum">1</div>
 </section>
 
@@ -315,8 +286,8 @@
     <p class="note">오늘은 결과를 길게 뽑기보다, 다섯 단계가 실제로 이어지는지 먼저 봅니다. 그래서 보고서는 수업용으로 짧게 만들었습니다.</p>
     <ul>
       <li>수업 시작 전 안내에 따라 복제한 <strong>lecture-prism</strong> 폴더를 엽니다.</li>
-      <li>수강생 붙여넣기 프롬프트 파일은 메모장이나 텍스트 편집기에 따로 엽니다.</li>
-      <li>강사가 부르는 첫 번째 공통 프롬프트를 코딩 에이전트에 붙여넣습니다.</li>
+      <li>수강생 붙여넣기 프롬프트 파일에서 <strong>P3-01 · API 키 없는 첫 성공</strong>을 찾습니다.</li>
+      <li><strong>‘코딩 에이전트에 붙여넣기’ 블록 전체</strong>를 복사해 한 번 붙여넣습니다.</li>
       <li>답변에서 실제로 어느 단계가 실행됐는지 눈으로 확인합니다.</li>
     </ul>
   </div>
@@ -341,8 +312,8 @@
         <text x="54" y="238" font-size="21">③</text><text x="96" y="233" font-size="18" font-weight="800" fill="#eceef6">가상 매매 판단 → 기록</text>
         <text x="96" y="249" font-size="12.5" fill="#9ba0b8">trading.py → feedback.py · 실제 주문은 보내지 않습니다</text>
       </g>
-      <text x="220" y="294" text-anchor="middle" font-size="14.5" font-weight="700" fill="#f0b45a">내가 생각한 자동매매에서는 이 판단을 어디에 두고 있나?</text>
-      <text x="220" y="318" text-anchor="middle" font-size="14.5" font-weight="700" fill="#f0b45a">떠오르는 질문은 따로 적어 둡니다.</text>
+      <text x="220" y="294" text-anchor="middle" font-size="13.5" font-weight="700" fill="#f0b45a">‘P3-01 · API 키 없는 첫 성공’을 찾고</text>
+      <text x="220" y="318" text-anchor="middle" font-size="13.5" font-weight="700" fill="#f0b45a">‘코딩 에이전트에 붙여넣기’ 블록 전체를 복사합니다.</text>
     </svg>
   </div>
   <div class="pagenum">4</div>
@@ -375,8 +346,8 @@
 
 <section data-slide-id="P3-S07" class="slide split large-diagram">
   <div class="txt">
-    <div class="kicker">모듈 1 · 스크리닝</div>
-    <h2>시장 상태가 오전·오후 분석 실행 여부를 정합니다</h2>
+    <div class="kicker">모듈 1 · 먼저 풀 문제</div>
+    <h2>시장이 흔들려도 어제와 같은 기준으로 후보를 골라도 될까요?</h2>
   </div>
   <div class="img">
     <img class="reference-shot" src="../docs/assets/prism-insight/market-pulse-batch-control-overview.png" alt="PRISM Insight의 오닐식 시장 방향 판단과 오전·오후 배치 제어">
@@ -456,9 +427,9 @@
       <p><span class="num">3.</span> 코딩 에이전트에 한 번 붙여넣고 실행이 끝날 때까지 기다립니다.</p>
     </div>
     <div class="prompt-panel">
-      <p><span class="num">확인 1.</span> 어떤 조건에서 종목이 빠졌는지 찾습니다.</p>
-      <p><span class="num">확인 2.</span> 남은 후보의 순서가 어떻게 정해졌는지 봅니다.</p>
-      <p><span class="num">확인 3.</span> 후보 선정이 아직 매수 확정은 아닌지 확인합니다.</p>
+      <p><span class="num">내 전략에 대입 1</span> 내 전략이라면 후보를 가장 먼저 어떤 조건으로 거를까?</p>
+      <p><span class="num">내 전략에 대입 2</span> 후보가 너무 많다면 무엇을 우선해 순서를 정할까?</p>
+      <p><span class="num">내 전략에 대입 3</span> <code>screening.py</code>에서 바꿀 한 가지와 그대로 둘 안전장치는 무엇일까?</p>
     </div>
   </div>
   <div class="prompt-branch">코드는 고치지 않고 연습 데이터로 한 번만 실행합니다. 조건을 바꾸는 실습은 파트 4에서 합니다.</div>
@@ -467,8 +438,8 @@
 
 <section data-slide-id="P3-S14" class="slide split large-diagram">
   <div class="txt">
-    <div class="kicker">모듈 2 · 종목 분석</div>
-    <h2>선별이 끝나면 한 종목을 여섯 방향에서 봅니다</h2>
+    <div class="kicker">모듈 2 · 먼저 풀 문제</div>
+    <h2>차트가 좋아 보인다는 이유만으로 종목 분석을 끝내도 될까요?</h2>
   </div>
   <div class="img">
     <img class="reference-shot" src="../docs/assets/prism-insight/screening-analysis-deep-dive.png" alt="선별된 종목을 여섯 분석 에이전트가 조사하는 흐름">
@@ -549,9 +520,9 @@
       <p><span class="num">3.</span> ‘코딩 에이전트에 붙여넣기’ 코드 블록 <strong>전체</strong>를 복사해 한 번만 붙여넣습니다.</p>
     </div>
     <div class="prompt-panel">
-      <p><span class="num">확인 1</span> 여섯 전문 에이전트가 서로 다른 근거를 읽는지</p>
-      <p><span class="num">확인 2</span> 편집 에이전트가 여섯 섹션을 한 보고서로 묶는지</p>
-      <p><span class="num">확인 3</span> 이 단계에서는 매수를 결정하지 않고 보고서 작성에서 멈추는지</p>
+      <p><span class="num">내 전략에 대입 1</span> 내 전략에서 숫자로 확인할 근거와 맥락으로 읽을 근거는 각각 무엇일까?</p>
+      <p><span class="num">내 전략에 대입 2</span> 여섯 역할 중 반드시 남길 분석가와 새로 보태고 싶은 분석가는 무엇일까?</p>
+      <p><span class="num">내 전략에 대입 3</span> 어떤 근거가 빠지면 매수 판단을 다음 단계로 넘기지 않을까?</p>
     </div>
   </div>
   <div class="prompt-branch">코드는 고치지 않습니다. 연습 데이터로 한 번 실행하고, 보고서와 매수 판단의 경계만 읽습니다.</div>
@@ -559,7 +530,7 @@
 </section>
 
 <section data-slide-id="P3-S21" class="slide split large-diagram">
-  <div class="txt"><div class="kicker">모듈 3 · 신규 진입</div><h2>CAN SLIM의 앞 네 글자는 기업과 수급을 봅니다</h2></div>
+  <div class="txt"><div class="kicker">모듈 3 · 먼저 풀 문제</div><h2>AI가 BUY 8점을 줬는데 주문이 0건이면 오류일까요?</h2></div>
   <div class="img">
     <img class="reference-shot" src="../docs/assets/prism-insight/can-slim-company-supply-checks.png" alt="CAN SLIM C A N S 점검">
     <p class="caption">C·A·N·S는 최근 분기, 여러 해 성장, 새로운 계기, 수급을 묻습니다. 모두 프롬프트에 있지만 고전적 EPS 증가율 같은 기준이 전부 코드 하드 게이트인 것은 아닙니다.</p>
@@ -648,26 +619,29 @@
       <p><span class="num">3.</span> ‘코딩 에이전트에 붙여넣기’ 코드 블록 <strong>전체</strong>를 복사해 한 번만 붙여넣습니다.</p>
     </div>
     <div class="prompt-panel">
-      <p><span class="num">확인 1</span> <code>buy_agent.py</code>가 보고서를 읽고 Enter / No Entry 의견을 만드는지</p>
-      <p><span class="num">확인 2</span> <code>trading.py</code>가 손익비·중복 보유·위험 한도를 다시 검사하는지</p>
-      <p><span class="num">확인 3</span> 손절·트레일링·목표가를 가상 시나리오로만 확인했는지</p>
+      <p><span class="num">내 전략에 대입 1</span> AI가 좋다고 해도 코드가 반드시 막아야 할 진입은 무엇일까?</p>
+      <p><span class="num">내 전략에 대입 2</span> 내 전략에서는 손절·수익 보호·목표가를 어떤 순서로 확인할까?</p>
+      <p><span class="num">내 전략에 대입 3</span> 체결 상태가 불분명할 때 새 주문 전에 무엇을 확인할까?</p>
     </div>
   </div>
   <div class="prompt-branch">실제 주문은 보내지 않습니다. 보고서 작성 → 매수 의견 → 안전 검사의 세 경계만 읽습니다.</div>
   <div class="pagenum">29</div>
 </section>
 
-<section data-slide-id="P3-S30" class="slide split large-diagram">
-  <div class="txt"><div class="kicker">모듈 3에서 모듈 4로</div><h2>메인 파이프라인 밖에서도 시스템은 움직입니다</h2></div>
-  <div class="img">
-    <img class="reference-shot" src="assets/prism-auxiliary-operations-loop.png" alt="전체 배치 주변의 보유종목 감시, 체결 확인, 메모리 압축, 다음 진입 참고 루프">
-    <p class="caption">강의용 예시 시각입니다. 실제 운영 시각은 배포 환경과 시장에 맞춰 별도로 관리합니다.</p>
+<section data-slide-id="P3-S30" class="slide">
+  <div class="kicker">모듈 3에서 모듈 4로</div>
+  <h2>장 시작 때 한 번 돌렸다고 자동매매가 끝나지는 않습니다</h2>
+  <div class="flow">
+    <div class="step"><div class="n">장중</div><div class="t">보유 종목 감시</div><div class="d">가격이 바뀌면 손절·수익 보호·목표가 조건을 다시 확인합니다.</div></div>
+    <div class="step"><div class="n">주문 뒤</div><div class="t">체결 상태 확인</div><div class="d">접수·부분체결·완료를 구분하고 미결 주문은 상태만 다시 읽습니다.</div></div>
+    <div class="step"><div class="n">거래가 닫히면</div><div class="t">피드백 준비</div><div class="d">처음 계획과 실제 결과를 연결해 다음 모듈로 넘깁니다.</div></div>
   </div>
+  <div class="takeaway">이제 매매가 끝난 뒤 무엇을 기록하고, 어떤 교훈을 다음 판단에 남길지 봅니다.</div>
   <div class="pagenum">30</div>
 </section>
 
 <section data-slide-id="P3-S31" class="slide split large-diagram">
-  <div class="txt"><div class="kicker">모듈 4 · 피드백과 메모리</div><h2>매매가 끝나야 비로소 결과 교훈을 만들 수 있습니다</h2></div>
+  <div class="txt"><div class="kicker">모듈 4 · 먼저 풀 문제</div><h2>방금 샀는데 아직 결과도 모르면서 성공 교훈을 만들어도 될까요?</h2></div>
   <div class="img">
     <img class="reference-shot" src="../docs/assets/prism-insight/feedback-reentry-overview.png" alt="매매일지와 반복 교훈이 다음 판단과 재진입 제한으로 돌아가는 흐름">
     <p class="caption">이 루프는 자율 강화학습이 아니라 완료된 거래의 계획과 결과에서 교훈을 만들고 다음 판단에 참고자료로 넣는 구조입니다. 프롬프트·주문 규칙 변경은 사람의 검토와 배포가 필요합니다.</p>
@@ -698,32 +672,14 @@
 </section>
 
 <section data-slide-id="P3-S34" class="slide">
-  <div class="kicker">실제 매매 기록에서 확인한 점</div>
-  <h2>과거 교훈을 읽었다고 매매 결과가 저절로 좋아지지는 않았습니다</h2>
-  <div class="code-grid">
-    <div class="code-card">
-      <h3>무엇을 비교했나</h3>
-      <p class="plain">AI가 과거 매매 교훈을 읽고 판단한 거래와, 과거 교훈 없이 판단한 거래를 나눴습니다.</p>
-      <pre>최근 90일 거래 기록
-
-한국: 교훈을 읽음 70건 / 읽지 않음 29건
-미국: 교훈을 읽음 29건 / 읽지 않음 45건
-
-각 그룹의 평균 수익률과
-수익으로 끝난 거래의 비율을 비교했습니다.</pre>
-    </div>
-    <div class="code-card">
-      <h3>실제 결과는 어땠나</h3>
-      <p class="plain">두 시장 모두 이 기간에는 과거 교훈을 읽은 거래 쪽 결과가 더 낮았습니다.</p>
-      <pre>그렇다고 과거 교훈이 손실의 원인이라고
-바로 결론 내릴 수는 없습니다.
-
-처음부터 어려운 거래였을 수 있음
-거래한 시기와 시장 흐름이 달랐을 수 있음
-두 그룹의 거래 수가 서로 다름</pre>
-    </div>
+  <div class="kicker">기억을 쓸 만하게 관리하는 법</div>
+  <h2>기억은 많이 쌓는 것보다 쓸 만하게 유지하는 게 중요합니다</h2>
+  <div class="flow">
+    <div class="step"><div class="n">최근 교훈</div><div class="t">상세하게 남김</div><div class="d">같은 종목의 최근 판단과 결과는 다음 거래에서 먼저 참고합니다.</div></div>
+    <div class="step"><div class="n">반복 교훈</div><div class="t">짧은 원칙으로 압축</div><div class="d">서로 다른 거래에서 같은 실수가 반복될 때만 장기 원칙으로 올립니다.</div></div>
+    <div class="step"><div class="n">오래됐거나 도움이 안 되는 교훈</div><div class="t">뒤로 물리거나 비활성화</div><div class="d">오래된 기록은 중기 요약으로 옮기고, 장기 기억 한도를 넘는 약한 원칙은 다음 판단에서 빼둡니다.</div></div>
   </div>
-  <div class="takeaway">기억은 정답지가 아닙니다. 실제 매매 결과를 보며 도움이 안 되는 교훈은 줄이고, 도움이 되는 교훈만 남깁니다.</div>
+  <div class="takeaway">메모리 압축은 삭제가 목적이 아닙니다. 다음 판단에 필요한 교훈을 먼저 꺼내기 위한 정리입니다.</div>
   <div class="pagenum">34</div>
 </section>
 
@@ -750,32 +706,30 @@
       <p><span class="num">3.</span> ‘코딩 에이전트에 붙여넣기’ 코드 블록 <strong>전체</strong>를 복사해 한 번만 붙여넣습니다.</p>
     </div>
     <div class="prompt-panel">
-      <p><span class="num">확인 1</span> BUY 직후 기록과 SELL 뒤 결과 교훈이 다른지</p>
-      <p><span class="num">확인 2</span> 오래된 교훈이 지워지지 않고 압축 요약으로 남는지</p>
-      <p><span class="num">확인 3</span> 보유 점검·체결 재조회·압축을 예약 실행하지 않고 한 번씩만 실험했는지</p>
+      <p><span class="num">내 전략에 대입 1</span> 거래가 끝나면 처음 계획과 실제 결과 중 무엇을 비교해 남길까?</p>
+      <p><span class="num">내 전략에 대입 2</span> 같은 실수가 몇 번 반복되면 장기 원칙으로 만들까?</p>
+      <p><span class="num">내 전략에 대입 3</span> 오늘의 교훈 중 다음 거래에는 넣지 말아야 할 일회성 상황은 무엇일까?</p>
     </div>
   </div>
   <div class="prompt-branch">예약 시각과 실제 주문 설정은 바꾸지 않습니다. <code>schedule</code>은 구조만 읽고 수업 중에는 켜지 않습니다.</div>
   <div class="pagenum">36</div>
 </section>
 
-<section data-slide-id="P3-S37" class="slide">
-  <div class="kicker">파트 3 마무리</div>
-  <h2>자동매매는 메인 로직과 보조 운영이 함께 있어야 돌아갑니다</h2>
-  <div class="loop-grid">
-    <div class="loop-card"><div class="tag">모듈 1</div><h3>후보 선별</h3><p>넓은 시장에서 깊이 볼 종목만 남깁니다.</p></div>
-    <div class="loop-card"><div class="tag">모듈 2</div><h3>근거 분석</h3><p>여섯 방향의 사실과 조건부 의견을 만듭니다.</p></div>
-    <div class="loop-card"><div class="tag">모듈 3</div><h3>진입·청산</h3><p>코드 게이트와 주문 상태가 실제 행동을 정합니다.</p></div>
-    <div class="loop-card"><div class="tag">모듈 4</div><h3>기록·압축</h3><p>청산 결과에서 교훈을 남기고 다시 꺼내 씁니다.</p></div>
-    <div class="loop-card"><div class="tag">보조 운영</div><h3>계속 확인</h3><p>배치·보유 감시·체결 재조회·압축이 빈틈을 메웁니다.</p></div>
+<section data-slide-id="P3-S37" class="slide split large-diagram">
+  <div class="txt"><div class="kicker">파트 3 마무리</div><h2>자동매매는 메인 로직과 보조 운영이 함께 있어야 돌아갑니다</h2></div>
+  <div class="img">
+    <img class="reference-shot" src="assets/prism-auxiliary-operations-loop.png" alt="네 모듈 주변에서 보유종목 감시, 체결 확인, 메모리 압축, 다음 진입 참고가 계속 도는 구조">
+    <p class="caption">가운데 네 모듈은 한 번의 판단 흐름입니다. 바깥의 보유 감시·체결 확인·기억 압축·다음 진입 참고는 실행 사이의 빈틈을 메웁니다. 강의용 <code>operations.py</code>는 이 작업을 안전한 일회 실행과 선택 예약으로 나눕니다.</p>
   </div>
-  <div class="takeaway">파트 4에서는 이 중 한 규칙만 골라 내 전략으로 바꾸고, 전후 증거를 남깁니다.</div>
   <div class="pagenum">37</div>
 </section>
 
 <section data-slide-id="P3-S38" class="slide cover">
-  <h1>Q&amp;A</h1>
-  <p class="sub">질문 환영<br>쉬는 시간에도, 텔레그램 커뮤니티에서도 괜찮습니다</p>
+  <div class="kicker">파트 3 · 적용하고 닫기</div>
+  <h1>오늘 바로 바꿔 볼<br>한 가지는 무엇입니까?</h1>
+  <p class="sub">후보 조건 · 분석 역할 · 진입과 청산 · 기록과 운영 중 하나를 고릅니다.</p>
+  <div class="takeaway" style="width:78%; margin-top:30px; text-align:left;">내 전략에서 ___을 먼저 바꿔 보고 싶다. 이유는 ___이다.</div>
+  <p class="source" style="margin-top:18px;">이 문장을 한 번 말한 뒤 질문을 이어 갑니다.</p>
   <div class="pagenum">38</div>
 </section>
 

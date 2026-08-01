@@ -1,6 +1,6 @@
-<!-- P3-S31 · 매매가 끝나야 비로소 결과 교훈을 만들 수 있습니다 -->
+<!-- P3-S31 · 방금 샀는데 아직 결과도 모르면서 성공 교훈을 만들어도 될까요 -->
 <section class="slide split large-diagram">
-  <div class="txt"><div class="kicker">모듈 4 · 피드백과 메모리</div><h2>매매가 끝나야 비로소 결과 교훈을 만들 수 있습니다</h2></div>
+  <div class="txt"><div class="kicker">모듈 4 · 먼저 풀 문제</div><h2>방금 샀는데 아직 결과도 모르면서 성공 교훈을 만들어도 될까요?</h2></div>
   <div class="img">
     <img class="reference-shot" src="../docs/assets/prism-insight/feedback-reentry-overview.png" alt="매매일지와 반복 교훈이 다음 판단과 재진입 제한으로 돌아가는 흐름">
     <p class="caption">이 루프는 자율 강화학습이 아니라 완료된 거래의 계획과 결과에서 교훈을 만들고 다음 판단에 참고자료로 넣는 구조입니다. 프롬프트·주문 규칙 변경은 사람의 검토와 배포가 필요합니다.</p>
@@ -32,34 +32,16 @@
   <div class="pagenum">33</div>
 </section>
 
-<!-- P3-S34 · 과거 교훈을 읽어도 매매 결과가 저절로 좋아지지는 않았습니다 -->
+<!-- P3-S34 · 기억은 많이 쌓는 것보다 쓸 만하게 유지하는 게 중요합니다 -->
 <section class="slide">
-  <div class="kicker">실제 매매 기록에서 확인한 점</div>
-  <h2>과거 교훈을 읽었다고 매매 결과가 저절로 좋아지지는 않았습니다</h2>
-  <div class="code-grid">
-    <div class="code-card">
-      <h3>무엇을 비교했나</h3>
-      <p class="plain">AI가 과거 매매 교훈을 읽고 판단한 거래와, 과거 교훈 없이 판단한 거래를 나눴습니다.</p>
-      <pre>최근 90일 거래 기록
-
-한국: 교훈을 읽음 70건 / 읽지 않음 29건
-미국: 교훈을 읽음 29건 / 읽지 않음 45건
-
-각 그룹의 평균 수익률과
-수익으로 끝난 거래의 비율을 비교했습니다.</pre>
-    </div>
-    <div class="code-card">
-      <h3>실제 결과는 어땠나</h3>
-      <p class="plain">두 시장 모두 이 기간에는 과거 교훈을 읽은 거래 쪽 결과가 더 낮았습니다.</p>
-      <pre>그렇다고 과거 교훈이 손실의 원인이라고
-바로 결론 내릴 수는 없습니다.
-
-처음부터 어려운 거래였을 수 있음
-거래한 시기와 시장 흐름이 달랐을 수 있음
-두 그룹의 거래 수가 서로 다름</pre>
-    </div>
+  <div class="kicker">기억을 쓸 만하게 관리하는 법</div>
+  <h2>기억은 많이 쌓는 것보다 쓸 만하게 유지하는 게 중요합니다</h2>
+  <div class="flow">
+    <div class="step"><div class="n">최근 교훈</div><div class="t">상세하게 남김</div><div class="d">같은 종목의 최근 판단과 결과는 다음 거래에서 먼저 참고합니다.</div></div>
+    <div class="step"><div class="n">반복 교훈</div><div class="t">짧은 원칙으로 압축</div><div class="d">서로 다른 거래에서 같은 실수가 반복될 때만 장기 원칙으로 올립니다.</div></div>
+    <div class="step"><div class="n">오래됐거나 도움이 안 되는 교훈</div><div class="t">뒤로 물리거나 비활성화</div><div class="d">오래된 기록은 중기 요약으로 옮기고, 장기 기억 한도를 넘는 약한 원칙은 다음 판단에서 빼둡니다.</div></div>
   </div>
-  <div class="takeaway">기억은 정답지가 아닙니다. 실제 매매 결과를 보며 도움이 안 되는 교훈은 줄이고, 도움이 되는 교훈만 남깁니다.</div>
+  <div class="takeaway">메모리 압축은 삭제가 목적이 아닙니다. 다음 판단에 필요한 교훈을 먼저 꺼내기 위한 정리입니다.</div>
   <div class="pagenum">34</div>
 </section>
 
@@ -88,26 +70,21 @@
       <p><span class="num">3.</span> ‘코딩 에이전트에 붙여넣기’ 코드 블록 <strong>전체</strong>를 복사해 한 번만 붙여넣습니다.</p>
     </div>
     <div class="prompt-panel">
-      <p><span class="num">확인 1</span> BUY 직후 기록과 SELL 뒤 결과 교훈이 다른지</p>
-      <p><span class="num">확인 2</span> 오래된 교훈이 지워지지 않고 압축 요약으로 남는지</p>
-      <p><span class="num">확인 3</span> 보유 점검·체결 재조회·압축을 예약 실행하지 않고 한 번씩만 실험했는지</p>
+      <p><span class="num">내 전략에 대입 1</span> 거래가 끝나면 처음 계획과 실제 결과 중 무엇을 비교해 남길까?</p>
+      <p><span class="num">내 전략에 대입 2</span> 같은 실수가 몇 번 반복되면 장기 원칙으로 만들까?</p>
+      <p><span class="num">내 전략에 대입 3</span> 오늘의 교훈 중 다음 거래에는 넣지 말아야 할 일회성 상황은 무엇일까?</p>
     </div>
   </div>
   <div class="prompt-branch">예약 시각과 실제 주문 설정은 바꾸지 않습니다. <code>schedule</code>은 구조만 읽고 수업 중에는 켜지 않습니다.</div>
   <div class="pagenum">36</div>
 </section>
 
-<!-- P3-S37 · 네 모듈과 네 보조 작업이 자동매매 한 사이클을 만듭니다 -->
-<section class="slide">
-  <div class="kicker">파트 3 마무리</div>
-  <h2>자동매매는 메인 로직과 보조 운영이 함께 있어야 돌아갑니다</h2>
-  <div class="loop-grid">
-    <div class="loop-card"><div class="tag">모듈 1</div><h3>후보 선별</h3><p>넓은 시장에서 깊이 볼 종목만 남깁니다.</p></div>
-    <div class="loop-card"><div class="tag">모듈 2</div><h3>근거 분석</h3><p>여섯 방향의 사실과 조건부 의견을 만듭니다.</p></div>
-    <div class="loop-card"><div class="tag">모듈 3</div><h3>진입·청산</h3><p>코드 게이트와 주문 상태가 실제 행동을 정합니다.</p></div>
-    <div class="loop-card"><div class="tag">모듈 4</div><h3>기록·압축</h3><p>청산 결과에서 교훈을 남기고 다시 꺼내 씁니다.</p></div>
-    <div class="loop-card"><div class="tag">보조 운영</div><h3>계속 확인</h3><p>배치·보유 감시·체결 재조회·압축이 빈틈을 메웁니다.</p></div>
+<!-- P3-S37 · 네 모듈과 보조 운영이 자동매매 한 사이클을 만듭니다 -->
+<section class="slide split large-diagram">
+  <div class="txt"><div class="kicker">파트 3 마무리</div><h2>자동매매는 메인 로직과 보조 운영이 함께 있어야 돌아갑니다</h2></div>
+  <div class="img">
+    <img class="reference-shot" src="assets/prism-auxiliary-operations-loop.png" alt="네 모듈 주변에서 보유종목 감시, 체결 확인, 메모리 압축, 다음 진입 참고가 계속 도는 구조">
+    <p class="caption">가운데 네 모듈은 한 번의 판단 흐름입니다. 바깥의 보유 감시·체결 확인·기억 압축·다음 진입 참고는 실행 사이의 빈틈을 메웁니다. 강의용 <code>operations.py</code>는 이 작업을 안전한 일회 실행과 선택 예약으로 나눕니다.</p>
   </div>
-  <div class="takeaway">파트 4에서는 이 중 한 규칙만 골라 내 전략으로 바꾸고, 전후 증거를 남깁니다.</div>
   <div class="pagenum">37</div>
 </section>
