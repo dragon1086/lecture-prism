@@ -31,7 +31,7 @@
 | P3-S25 | — | `part3/04-guided-practice.html` | 수익 중인 강한 종목만 추가 진입을 검토합니다 |
 | P3-S26 | — | `part3/04-guided-practice.html` | 매도는 손실 제한부터 확인합니다 |
 | P3-S27 | — | `part3/04-guided-practice.html` | 보조 감시 루프가 포지션을 따로 지킵니다 |
-| P3-S28 | — | `part3/04-guided-practice.html` | 매수 에이전트의 의견 뒤에 코드 안전문을 둡니다 |
+| P3-S28 | — | `part3/04-guided-practice.html` | AI가 매수를 제안해도 코드가 주문 조건을 다시 확인합니다 |
 | P3-S29 | — | `part3/04-guided-practice.html` | 브로커가 주문을 받았다고 매매가 끝난 것은 아닙니다 |
 | P3-S30 | P3-M3 | `part3/04-guided-practice.html` | 프롬프트 파일에서 P3-M3 블록 전체를 복사합니다 |
 | P3-S31 | — | `part3/05-bridge.html` | 어제 손절한 종목이 오늘 다시 떴습니다. 다시 사도 될까요? |

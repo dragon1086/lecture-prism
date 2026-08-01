@@ -124,6 +124,7 @@ class Part3StudentLearningContractTest(unittest.TestCase):
             "내 안전선 한 문장",
         ):
             self.assertIn(learner_action, self.instructor)
+        self.assertNotIn("안전문", self.instructor)
 
     def test_instructor_has_project_answer_anchors_after_pair_talk(self):
         self.assertEqual(

@@ -129,9 +129,10 @@ class Part3DeckContractTests(unittest.TestCase):
             "최소 1.5",
             "주문한다",
             "보류한다",
-            "실제 종목 추천이 아닌 연습 사례",
+            "수업을 위해 만든 가상 사례",
         ):
             self.assertIn(phrase, scenario)
+        self.assertNotIn("안전문", self.sources)
 
         shifted_assets = {
             "P3-S22": "can-slim-company-supply-checks.png",

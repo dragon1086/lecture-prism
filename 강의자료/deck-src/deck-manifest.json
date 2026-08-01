@@ -56,7 +56,7 @@
             {"id": "P3-S25", "title": "수익 중인 강한 종목만 추가 진입을 검토합니다", "promptId": null},
             {"id": "P3-S26", "title": "매도는 손실 제한부터 확인합니다", "promptId": null},
             {"id": "P3-S27", "title": "보조 감시 루프가 포지션을 따로 지킵니다", "promptId": null},
-            {"id": "P3-S28", "title": "매수 에이전트의 의견 뒤에 코드 안전문을 둡니다", "promptId": null},
+            {"id": "P3-S28", "title": "AI가 매수를 제안해도 코드가 주문 조건을 다시 확인합니다", "promptId": null},
             {"id": "P3-S29", "title": "브로커가 주문을 받았다고 매매가 끝난 것은 아닙니다", "promptId": null},
             {"id": "P3-S30", "title": "프롬프트 파일에서 P3-M3 블록 전체를 복사합니다", "promptId": "P3-M3"}
           ]
