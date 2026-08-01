@@ -1,38 +1,9 @@
 <!-- P3-S01 · 파트 3 · 실전 자동매매 시스템의 · 구현 패턴 -->
-<section class="slide cover">
-  <div class="kicker">패스트캠퍼스 · AI 네이티브 자동매매 시스템 구축</div>
-  <h1>파트 3<br>실전 자동매매 시스템의<br>구현 패턴</h1>
-  <p class="sub">강사 문상록 · PRISM Insight 개발·운영자</p>
-  <svg viewBox="0 0 900 190" style="width:70%; margin-top:36px; display:block;" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="AI 에이전트들이 협업해 차트를 분석하는 일러스트">
-    <defs>
-      <linearGradient id="c3grad" x1="0" y1="0" x2="1" y2="0">
-        <stop offset="0" stop-color="#8b7cf8"/><stop offset="1" stop-color="#5ecf9a"/>
-      </linearGradient>
-    </defs>
-    <rect x="1" y="1" width="898" height="188" rx="14" fill="#171a2b" stroke="#2c3050"/>
-    <g stroke="#20243c" stroke-width="1">
-      <line x1="36" y1="56" x2="864" y2="56"/><line x1="36" y1="98" x2="864" y2="98"/><line x1="36" y1="140" x2="864" y2="140"/>
-    </g>
-    <g opacity="0.85">
-      <rect x="80" y="112" width="9" height="34" rx="2" fill="#2f5d4c"/>
-      <rect x="120" y="96" width="9" height="42" rx="2" fill="#5a3a3a"/>
-      <rect x="160" y="104" width="9" height="30" rx="2" fill="#2f5d4c"/>
-      <rect x="200" y="86" width="9" height="40" rx="2" fill="#2f5d4c"/>
-      <rect x="240" y="94" width="9" height="30" rx="2" fill="#5a3a3a"/>
-      <rect x="680" y="70" width="9" height="34" rx="2" fill="#2f5d4c"/>
-      <rect x="720" y="58" width="9" height="38" rx="2" fill="#2f5d4c"/>
-      <rect x="760" y="66" width="9" height="26" rx="2" fill="#5a3a3a"/>
-    </g>
-    <path d="M48 152 C140 146 200 92 296 98 S470 134 556 94 726 40 852 54" fill="none" stroke="url(#c3grad)" stroke-width="3.5" stroke-linecap="round"/>
-    <g font-size="14" text-anchor="middle">
-      <circle cx="296" cy="98" r="16" fill="#20243a" stroke="#8b7cf8" stroke-width="2"/><text x="296" y="103">📈</text>
-      <circle cx="556" cy="94" r="16" fill="#20243a" stroke="#8b7cf8" stroke-width="2"/><text x="556" y="99">📰</text>
-      <circle cx="852" cy="54" r="16" fill="#20243a" stroke="#5ecf9a" stroke-width="2"/><text x="852" y="59">🧠</text>
-    </g>
-    <g font-size="12.5" fill="#9ba0b8" text-anchor="middle">
-      <text x="296" y="132">기술 분석</text><text x="556" y="128">뉴스 분석</text><text x="838" y="88">전략 종합</text>
-    </g>
-  </svg>
+<section class="slide cover" style="justify-content:flex-start; padding-top:62px;">
+  <img src="assets/part3-cover-ai-console.png" alt="보라색 데이터 신호가 청록색으로 이어지는 AI 시스템 콘솔" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; border:0; z-index:0; pointer-events:none;">
+  <div class="kicker" style="position:relative; z-index:1;">패스트캠퍼스 · AI 네이티브 자동매매 시스템 구축</div>
+  <h1 style="position:relative; z-index:1;">파트 3<br>실전 자동매매 시스템의<br>구현 패턴</h1>
+  <p class="sub" style="position:relative; z-index:1;">강사 문상록 · PRISM Insight 개발·운영자</p>
   <div class="pagenum">1</div>
 </section>
 
@@ -77,11 +48,11 @@
   <div class="txt">
     <div class="kicker">오늘의 첫 실행</div>
     <h2>자동매매는 이렇게<br>한 바퀴 돕니다</h2>
-    <p class="note">오늘은 결과를 길게 뽑기보다, 네 단계가 실제로 이어지는지 먼저 봅니다. 그래서 보고서는 수업용으로 짧게 만들었습니다.</p>
+    <p class="note">오늘은 결과를 길게 뽑기보다, 다섯 단계가 실제로 이어지는지 먼저 봅니다. 그래서 보고서는 수업용으로 짧게 만들었습니다.</p>
     <ul>
       <li>수업 시작 전 안내에 따라 복제한 <strong>lecture-prism</strong> 폴더를 엽니다.</li>
-      <li>수강생 붙여넣기 프롬프트 파일은 메모장이나 텍스트 편집기에 따로 엽니다.</li>
-      <li>강사가 부르는 첫 번째 공통 프롬프트를 코딩 에이전트에 붙여넣습니다.</li>
+      <li>수강생 붙여넣기 프롬프트 파일에서 <strong>P3-01 · API 키 없는 첫 성공</strong>을 찾습니다.</li>
+      <li><strong>‘코딩 에이전트에 붙여넣기’ 블록 전체</strong>를 복사해 한 번 붙여넣습니다.</li>
       <li>답변에서 실제로 어느 단계가 실행됐는지 눈으로 확인합니다.</li>
     </ul>
   </div>
@@ -106,8 +77,8 @@
         <text x="54" y="238" font-size="21">③</text><text x="96" y="233" font-size="18" font-weight="800" fill="#eceef6">가상 매매 판단 → 기록</text>
         <text x="96" y="249" font-size="12.5" fill="#9ba0b8">trading.py → feedback.py · 실제 주문은 보내지 않습니다</text>
       </g>
-      <text x="220" y="294" text-anchor="middle" font-size="14.5" font-weight="700" fill="#f0b45a">내가 생각한 자동매매에서는 이 판단을 어디에 두고 있나?</text>
-      <text x="220" y="318" text-anchor="middle" font-size="14.5" font-weight="700" fill="#f0b45a">떠오르는 질문은 따로 적어 둡니다.</text>
+      <text x="220" y="294" text-anchor="middle" font-size="13.5" font-weight="700" fill="#f0b45a">‘P3-01 · API 키 없는 첫 성공’을 찾고</text>
+      <text x="220" y="318" text-anchor="middle" font-size="13.5" font-weight="700" fill="#f0b45a">‘코딩 에이전트에 붙여넣기’ 블록 전체를 복사합니다.</text>
     </svg>
   </div>
   <div class="pagenum">4</div>

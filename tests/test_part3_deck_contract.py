@@ -90,6 +90,66 @@ class Part3DeckContractTests(unittest.TestCase):
         self.assertNotIn("선택적 AI 한 번으로 줄였습니다", self.sources)
         self.assertNotIn("_run_combined_llm_agent", self.sources)
 
+    def test_cover_and_first_run_use_polished_visual_and_exact_prompt_route(self):
+        slide_1 = self._slide("P3-S01")
+        slide_4 = self._slide("P3-S04")
+        cover_asset = DECK_ROOT / "assets" / "part3-cover-ai-console.png"
+
+        self.assertIn("assets/part3-cover-ai-console.png", slide_1)
+        self.assertNotIn("<svg", slide_1)
+        self.assertTrue(cover_asset.exists())
+        self.assertIn("P3-01 · API 키 없는 첫 성공", slide_4)
+        self.assertIn("‘코딩 에이전트에 붙여넣기’ 블록 전체", slide_4)
+
+    def test_operations_image_is_reserved_for_the_part_three_summary(self):
+        slide_30 = self._slide("P3-S30")
+        slide_37 = self._slide("P3-S37")
+
+        self.assertNotIn("prism-auxiliary-operations-loop.png", slide_30)
+        self.assertIn("prism-auxiliary-operations-loop.png", slide_37)
+        self.assertEqual(
+            1,
+            self.sources.count("prism-auxiliary-operations-loop.png"),
+        )
+
+    def test_slide_34_teaches_memory_hygiene_without_performance_statistics(self):
+        slide = self._slide("P3-S34")
+
+        for phrase in (
+            "기억은 많이 쌓는 것보다",
+            "최근 교훈",
+            "반복 교훈",
+            "오래됐거나 도움이 안 되는 교훈",
+        ):
+            self.assertIn(phrase, slide)
+
+        for phrase in (
+            "최근 90일 거래 기록",
+            "교훈을 읽음 70건",
+            "교훈을 읽음 29건",
+            "수익으로 끝난 거래의 비율",
+            "손실의 원인",
+        ):
+            self.assertNotIn(phrase, slide)
+
+    def test_final_slide_ends_with_one_immediate_application(self):
+        slide = self._slide("P3-S38")
+
+        self.assertIn("오늘 바로 바꿔 볼 한 가지", slide)
+        self.assertIn("내 전략에서 ___을 먼저 바꿔 보고 싶다", slide)
+        self.assertNotIn("<h1>Q&amp;A</h1>", slide)
+
+    @classmethod
+    def _slide(cls, slide_id: str) -> str:
+        match = re.search(
+            rf"<!-- {re.escape(slide_id)}\b.*?<section\b.*?</section>",
+            cls.sources,
+            flags=re.S,
+        )
+        if match is None:
+            raise AssertionError(f"missing slide: {slide_id}")
+        return match.group(0)
+
     @staticmethod
     def _png_size(path: Path) -> tuple[int, int]:
         with path.open("rb") as image:
