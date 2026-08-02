@@ -24,7 +24,7 @@
 | P3-S18 | — | `part3/03-system-map.html` | 여섯 보고서는 조건부 투자 전략과 요약으로 합쳐집니다 |
 | P3-S19 | — | `part3/03-system-map.html` | 강의용도 여섯 전문 에이전트와 편집 에이전트를 조립합니다 |
 | P3-S20 | P3-M2 | `part3/03-system-map.html` | 프롬프트 파일에서 P3-M2 블록 전체를 복사합니다 |
-| P3-S21 | — | `part3/04-guided-practice.html` | AI가 사라고 하면, 그대로 주문해도 될까요? |
+| P3-S21 | — | `part3/04-guided-practice.html` | AI가 매수를 추천했습니다. 이 의견만 믿고 주문해도 될까요? |
 | P3-S22 | — | `part3/04-guided-practice.html` | 기업 성장과 수급을 함께 봅니다 |
 | P3-S23 | — | `part3/04-guided-practice.html` | 뒤의 세 글자는 리더십과 시장을 봅니다 |
 | P3-S24 | — | `part3/04-guided-practice.html` | 에이전트가 Enter라고 해도 코드 게이트를 통과해야 합니다 |

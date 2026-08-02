@@ -110,7 +110,7 @@ class Part3StudentLearningContractTest(unittest.TestCase):
         for question in (
             "어제는 강세장, 오늘은 약세장입니다. 후보를 같은 기준으로 골라도 될까요?",
             "이 종목을 사기 전에, 어떤 정보까지 확인하고 싶으세요?",
-            "AI가 사라고 하면, 그대로 주문해도 될까요?",
+            "AI가 매수를 추천했습니다. 이 의견만 믿고 주문해도 될까요?",
             "어제 손절한 종목이 오늘 다시 떴습니다. 다시 사도 될까요?",
         ):
             self.assertIn(question, self.instructor)

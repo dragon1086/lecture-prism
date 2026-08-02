@@ -112,7 +112,7 @@ class Part3DeckContractTests(unittest.TestCase):
         expected = {
             "P3-S07": "어제는 강세장, 오늘은 약세장입니다. 후보를 같은 기준으로 골라도 될까요?",
             "P3-S14": "이 종목을 사기 전에, 어떤 정보까지 확인하고 싶으세요?",
-            "P3-S21": "AI가 사라고 하면, 그대로 주문해도 될까요?",
+            "P3-S21": "AI가 매수를 추천했습니다. 이 의견만 믿고 주문해도 될까요?",
             "P3-S31": "어제 손절한 종목이 오늘 다시 떴습니다. 다시 사도 될까요?",
         }
         for slide_id, question in expected.items():
@@ -129,6 +129,8 @@ class Part3DeckContractTests(unittest.TestCase):
             "최소 1.5",
             "주문한다",
             "보류한다",
+            "AI의 매수 의견만 보고 주문한다",
+            "손익비를 확인한 뒤 주문을 보류한다",
             "수업을 위해 만든 가상 사례",
         ):
             self.assertIn(phrase, scenario)
