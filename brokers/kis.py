@@ -14,6 +14,7 @@ from .base import (
     BrokerOrder,
     BrokerQuote,
     BrokerQuoteError,
+    real_mode_mutation_block,
     validate_broker_quote,
 )
 from .config import normalize_mode
@@ -105,6 +106,9 @@ class KISBrokerAdapter:
         }
 
     async def place_order(self, order: BrokerOrder) -> dict[str, Any]:
+        blocked = real_mode_mutation_block(self.name, self.mode)
+        if blocked is not None:
+            return blocked
         try:
             client, gate = self._dependencies()
             market_status = await asyncio.to_thread(
@@ -213,6 +217,9 @@ class KISBrokerAdapter:
         )
 
     async def cancel_order(self, order_no: str, **details) -> dict[str, Any]:
+        blocked = real_mode_mutation_block(self.name, self.mode)
+        if blocked is not None:
+            return blocked
         client, _ = self._dependencies()
         return await asyncio.to_thread(
             client.cancel_order, order_no, **details

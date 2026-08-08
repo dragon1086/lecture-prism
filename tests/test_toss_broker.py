@@ -204,6 +204,56 @@ class TossctlClientTest(unittest.TestCase):
 
 
 class TossBrokerAdapterTest(unittest.TestCase):
+    def setUp(self):
+        self._env = patch.dict(
+            os.environ,
+            {
+                "LECTURE_ENABLE_LIVE_BROKER": "1",
+                "LECTURE_ALLOW_REAL_BROKER": "1",
+                "LECTURE_ENABLE_LIVE_TOSS": "1",
+                "LECTURE_ALLOW_REAL_TOSS": "1",
+            },
+            clear=False,
+        )
+        self._env.start()
+
+    def tearDown(self):
+        self._env.stop()
+
+    def test_real_place_and_cancel_block_without_live_gates_before_wts_access(self):
+        client = FakeTossctl(
+            [
+                AssertionError("Toss auth must not run"),
+                AssertionError("Toss order lookup must not run"),
+            ]
+        )
+        adapter = TossBrokerAdapter(
+            mode="real",
+            client=client,
+            clock=lambda: datetime(2026, 7, 20, tzinfo=timezone.utc),
+        )
+
+        with patch.dict(
+            os.environ,
+            {
+                "LECTURE_ENABLE_LIVE_BROKER": "0",
+                "LECTURE_ALLOW_REAL_BROKER": "0",
+                "LECTURE_ENABLE_LIVE_TOSS": "0",
+                "LECTURE_ALLOW_REAL_TOSS": "0",
+            },
+            clear=False,
+        ):
+            place = asyncio.run(
+                adapter.place_order(BrokerOrder("BUY", "005930", 1, 70000))
+            )
+            cancel = asyncio.run(adapter.cancel_order("2026-07-20/10", "005930"))
+
+        self.assertEqual(place["status"], "blocked")
+        self.assertEqual(place["mode"], "toss_real_live_gate_blocked")
+        self.assertEqual(cancel["status"], "blocked")
+        self.assertEqual(cancel["mode"], "toss_real_live_gate_blocked")
+        self.assertEqual(client.calls, [])
+
     def test_expired_auth_blocks_before_preview_or_mutation(self):
         client = FakeTossctl(
             [{**ACTIVE_AUTH, "expired": True, "valid": False}]
@@ -573,6 +623,32 @@ class TossOfficialOpenAPIAdapterTest(unittest.TestCase):
 
         self.assertEqual(result["status"], "blocked")
         self.assertEqual(result["mode"], "toss_official_paper_unavailable")
+        self.assertEqual(client.calls, [])
+        self.assertEqual(client.order_calls, [])
+
+    def test_official_real_place_and_cancel_block_without_live_gates(self):
+        client = self._official_client()
+        adapter = TossOfficialOpenAPIAdapter(mode="real", client=client)
+
+        with patch.dict(
+            os.environ,
+            {
+                "LECTURE_ENABLE_LIVE_BROKER": "0",
+                "LECTURE_ALLOW_REAL_BROKER": "0",
+                "LECTURE_ENABLE_LIVE_TOSS": "0",
+                "LECTURE_ALLOW_REAL_TOSS": "0",
+            },
+            clear=False,
+        ):
+            place = asyncio.run(
+                adapter.place_order(BrokerOrder("BUY", "005930", 1, 70000))
+            )
+            cancel = asyncio.run(adapter.cancel_order("ord-1"))
+
+        self.assertEqual(place["status"], "blocked")
+        self.assertEqual(place["mode"], "toss_official_real_live_gate_blocked")
+        self.assertEqual(cancel["status"], "blocked")
+        self.assertEqual(cancel["mode"], "toss_official_real_live_gate_blocked")
         self.assertEqual(client.calls, [])
         self.assertEqual(client.order_calls, [])
 

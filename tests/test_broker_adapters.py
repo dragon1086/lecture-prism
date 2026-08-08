@@ -284,6 +284,46 @@ class BrokerAdapterTest(unittest.TestCase):
         self.assertEqual(result["mode"], "kis_demo_weekend")
         self.assertTrue(result["terminal"])
 
+    def test_kis_real_place_and_cancel_block_without_live_gates(self):
+        calls = []
+
+        class Client:
+            def place_cash_order(self, *args):
+                calls.append(("place", args))
+                raise AssertionError("real KIS order POST must not run")
+
+            def cancel_order(self, *args, **kwargs):
+                calls.append(("cancel", args, kwargs))
+                raise AssertionError("real KIS cancel POST must not run")
+
+        class Gate:
+            def check(self, now):
+                calls.append(("gate", now))
+                raise AssertionError("market gate must not run before live gate")
+
+        adapter = KISBrokerAdapter(
+            mode="real",
+            client=Client(),
+            gate=Gate(),
+            clock=lambda: datetime(2026, 7, 20, 10, 0, tzinfo=KST),
+        )
+
+        place = asyncio.run(
+            adapter.place_order(BrokerOrder("BUY", "005930", 1, 70000))
+        )
+        cancel = asyncio.run(
+            adapter.cancel_order(
+                "42", quantity=1, order_date="20260720", org_no="12345"
+            )
+        )
+
+        self.assertEqual(place["status"], "blocked")
+        self.assertEqual(place["mode"], "kis_real_live_gate_blocked")
+        self.assertTrue(place["terminal"])
+        self.assertEqual(cancel["status"], "blocked")
+        self.assertEqual(cancel["mode"], "kis_real_live_gate_blocked")
+        self.assertEqual(calls, [])
+
     def test_kis_adapter_treats_post_boundary_exception_as_unknown(self):
         class Client:
             def place_cash_order(self, *args):
@@ -369,6 +409,31 @@ class BrokerAdapterTest(unittest.TestCase):
         self.assertEqual(result["requested_qty"], 2)
         self.assertEqual(result["filled_qty"], 0)
         self.assertEqual(result["remaining_qty"], 2)
+
+    def test_kiwoom_real_place_and_cancel_block_without_live_gates(self):
+        os.environ["KIWOOM_ACCESS_TOKEN"] = "token"
+        adapter = KiwoomBrokerAdapter(mode="real")
+        calls = []
+
+        def fake_request(path, payload, *, headers):
+            calls.append((path, payload, headers))
+            raise AssertionError("real Kiwoom mutation POST must not run")
+
+        adapter._request_json = fake_request  # type: ignore[method-assign]
+
+        place = asyncio.run(
+            adapter.place_order(BrokerOrder("BUY", "005930", 1, 70000))
+        )
+        cancel = asyncio.run(
+            adapter.cancel_order("KW1001", ticker="005930", quantity=1)
+        )
+
+        self.assertEqual(place["status"], "blocked")
+        self.assertEqual(place["mode"], "kiwoom_real_live_gate_blocked")
+        self.assertTrue(place["terminal"])
+        self.assertEqual(cancel["status"], "blocked")
+        self.assertEqual(cancel["mode"], "kiwoom_real_live_gate_blocked")
+        self.assertEqual(calls, [])
 
     def test_trading_blocks_live_broker_until_explicitly_enabled(self):
         os.environ["LECTURE_BROKER"] = "kiwoom"

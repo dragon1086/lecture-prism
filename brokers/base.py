@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
+import os
 from typing import Any, Iterable, Protocol
 
 
@@ -46,6 +47,53 @@ class BrokerQuote:
 
 class BrokerQuoteError(RuntimeError):
     """Raised when a broker quote is missing, stale, or unsafe to use."""
+
+
+def _truthy(value: str | None) -> bool:
+    return str(value or "").strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+def real_mode_mutation_block(
+    broker_name: str,
+    mode: str,
+    *,
+    mode_prefix: str | None = None,
+) -> dict[str, Any] | None:
+    """Return a fail-closed result unless real-money mutation gates are set.
+
+    Read-only broker methods use their own readiness checks. This guard is only
+    for direct place/cancel boundaries that can mutate a real account.
+    """
+
+    if str(mode).strip().lower() != "real":
+        return None
+    broker = str(broker_name).strip().upper()
+    enabled = any(
+        _truthy(os.getenv(key))
+        for key in ("LECTURE_ENABLE_LIVE_BROKER", f"LECTURE_ENABLE_LIVE_{broker}")
+    )
+    allowed = any(
+        _truthy(os.getenv(key))
+        for key in ("LECTURE_ALLOW_REAL_BROKER", f"LECTURE_ALLOW_REAL_{broker}")
+    )
+    if enabled and allowed:
+        return None
+    prefix = mode_prefix or str(broker_name).strip().lower()
+    return {
+        "success": False,
+        "status": "blocked",
+        "accepted": False,
+        "executed": False,
+        "terminal": True,
+        "mode": f"{prefix}_real_live_gate_blocked",
+        "order_no": None,
+        "message": (
+            f"{prefix} real mutation blocked: set "
+            f"LECTURE_ENABLE_LIVE_BROKER=1 and "
+            f"LECTURE_ALLOW_REAL_BROKER=1, or the matching "
+            f"broker-specific live gates, before direct place/cancel calls."
+        ),
+    }
 
 
 def _utc(value: datetime) -> datetime:

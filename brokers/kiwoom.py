@@ -21,7 +21,7 @@ import urllib.error
 import urllib.request
 from typing import Any
 
-from .base import BrokerOrder, BrokerQuote
+from .base import BrokerOrder, BrokerQuote, real_mode_mutation_block
 from .config import mask_secret, normalize_mode
 
 
@@ -366,6 +366,9 @@ class KiwoomBrokerAdapter:
         self, order_no: str, *, ticker: str, quantity: int, **details
     ) -> dict[str, Any]:
         del details
+        blocked = real_mode_mutation_block(self.name, self.mode)
+        if blocked is not None:
+            return blocked
         token = await self._access_token()
         if not token:
             return {
@@ -411,6 +414,9 @@ class KiwoomBrokerAdapter:
         }
 
     async def place_order(self, order: BrokerOrder) -> dict[str, Any]:
+        blocked = real_mode_mutation_block(self.name, self.mode)
+        if blocked is not None:
+            return blocked
         if order.side not in {"BUY", "SELL"}:
             return {
                 "success": False,

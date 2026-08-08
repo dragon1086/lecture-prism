@@ -9,7 +9,7 @@ import os
 import re
 from typing import Any
 
-from .base import BrokerOrder, BrokerQuote
+from .base import BrokerOrder, BrokerQuote, real_mode_mutation_block
 from .config import normalize_mode
 from .tossctl import (
     TossctlClient,
@@ -329,6 +329,9 @@ class TossBrokerAdapter:
                 "Toss WTS에는 모의투자 backend가 없어 real 모드에서만 주문할 수 있습니다.",
                 mode="mode_blocked",
             )
+        blocked = real_mode_mutation_block(self.name, self.mode)
+        if blocked is not None:
+            return blocked
         auth = await self.check_auth()
         if not auth.get("success"):
             return auth
@@ -439,6 +442,9 @@ class TossBrokerAdapter:
                 "Toss WTS 취소는 real 모드에서만 실행할 수 있습니다.",
                 mode="mode_blocked",
             )
+        blocked = real_mode_mutation_block(self.name, self.mode)
+        if blocked is not None:
+            return blocked
         auth = await self.check_auth()
         if not auth.get("success"):
             return auth
@@ -797,6 +803,11 @@ class TossOfficialOpenAPIAdapter:
                 "Toss official Open API has no paper/demo environment.",
                 mode="paper_unavailable",
             )
+        blocked = real_mode_mutation_block(
+            "toss", self.mode, mode_prefix="toss_official"
+        )
+        if blocked is not None:
+            return blocked
         return _official_block(
             "Toss official live order E2E is not approved in lecture-prism.",
             mode="order_e2e_required",
@@ -809,6 +820,11 @@ class TossOfficialOpenAPIAdapter:
                 "Toss official Open API has no paper/demo environment.",
                 mode="paper_unavailable",
             )
+        blocked = real_mode_mutation_block(
+            "toss", self.mode, mode_prefix="toss_official"
+        )
+        if blocked is not None:
+            return blocked
         return _official_block(
             "Toss official live cancel E2E is not approved in lecture-prism.",
             mode="order_e2e_required",
