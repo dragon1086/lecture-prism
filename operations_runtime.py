@@ -492,24 +492,34 @@ class SchedulerLock:
         return value if isinstance(value, dict) else {"pid": -1, "heartbeat_at": None}
 
     def _metadata_is_recoverable(self, existing: Mapping[str, Any]) -> bool:
+        try:
+            owner_pid = int(existing.get("pid") or 0)
+        except (TypeError, ValueError):
+            return False
+        if owner_pid <= 0:
+            return False
+
+        owner_identity = existing.get("process_identity")
+        owner_project = str(existing.get("project_path") or "")
+        if not self.pid_alive(owner_pid):
+            return True
+        observed_identity: str | None = None
+        if owner_identity:
+            observed_identity = self.process_identity(owner_pid)
+            if observed_identity is None:
+                return False
+            if str(observed_identity) != str(owner_identity):
+                return True
+
         heartbeat = _parse_datetime(existing.get("heartbeat_at"))
         if heartbeat is None:
             return False
         stale = (self._now() - heartbeat).total_seconds() > self.stale_after_seconds
         if not stale:
             return False
-
-        owner_pid = int(existing.get("pid") or 0)
-        owner_identity = existing.get("process_identity")
-        owner_project = str(existing.get("project_path") or "")
-        if not self.pid_alive(owner_pid):
-            return True
         if not owner_identity:
             return True
 
-        observed_identity = self.process_identity(owner_pid)
-        if observed_identity is None:
-            return False
         same_owner = (
             owner_project == str(self.project_path)
             and str(observed_identity) == str(owner_identity)
