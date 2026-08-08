@@ -16,7 +16,7 @@ class PrismCoreFoundationContractTest(unittest.TestCase):
     def test_runtime_docs_distinguish_stateful_classroom_from_backtest(self):
         text = (ROOT / "docs/runtime-profiles.md").read_text(encoding="utf-8")
         profile_section = self._section(
-            text, "## 3. mock 첫 실행과 classroom 상태 재생"
+            text, "## 4. mock 첫 실행과 classroom 상태 재생"
         )
         self.assertIn("classroom", profile_section)
         self.assertIn("PaperBroker", profile_section)
@@ -30,7 +30,7 @@ class PrismCoreFoundationContractTest(unittest.TestCase):
     def test_runtime_docs_scope_high_water_and_unknown_mutations(self):
         text = (ROOT / "docs/runtime-profiles.md").read_text(encoding="utf-8")
         profile_section = self._section(
-            text, "## 3. mock 첫 실행과 classroom 상태 재생"
+            text, "## 4. mock 첫 실행과 classroom 상태 재생"
         )
         self.assertRegex(
             profile_section,
