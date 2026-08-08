@@ -421,6 +421,58 @@ class KISClient:
             tr_cont = "N"
         raise KISRequestError("KIS order-status pagination exceeded max_pages")
 
+    def get_pending_orders(
+        self,
+        *,
+        business_date: str,
+        max_pages: int = 10,
+    ) -> dict[str, Any]:
+        params = {
+            "CANO": self.config.account_no,
+            "ACNT_PRDT_CD": self.config.product_code,
+            "INQR_STRT_DT": business_date,
+            "INQR_END_DT": business_date,
+            "SLL_BUY_DVSN_CD": "00",
+            "PDNO": "",
+            "CCLD_DVSN": "02",
+            "INQR_DVSN": "00",
+            "INQR_DVSN_3": "00",
+            "ORD_GNO_BRNO": "",
+            "ODNO": "",
+            "INQR_DVSN_1": "",
+            "CTX_AREA_FK100": "",
+            "CTX_AREA_NK100": "",
+        }
+        rows: list[dict[str, Any]] = []
+        summaries: list[dict[str, Any]] = []
+        tr_cont = ""
+        for _ in range(max_pages):
+            body, headers = self._call(
+                "GET",
+                "/uapi/domestic-stock/v1/trading/inquire-daily-ccld",
+                "VTTC0081R" if self._paper else "TTTC0081R",
+                params=params,
+                tr_cont=tr_cont,
+                require_output=False,
+            )
+            output1 = body.get("output1", [])
+            output2 = body.get("output2", {})
+            if not isinstance(output1, list) or not isinstance(output2, Mapping):
+                raise KISRequestError("KIS pending-order response has invalid output shape")
+            rows.extend(dict(row) for row in output1 if isinstance(row, Mapping))
+            summaries.append(dict(output2))
+            continuation = str(headers.get("tr_cont", headers.get("TR_CONT", ""))).upper()
+            if continuation not in {"M", "F"}:
+                return {"rows": rows, "summary": summaries}
+            fk = str(body.get("ctx_area_fk100", ""))
+            nk = str(body.get("ctx_area_nk100", ""))
+            if not fk and not nk:
+                raise KISRequestError("KIS pending-order continuation keys are missing")
+            params["CTX_AREA_FK100"] = fk
+            params["CTX_AREA_NK100"] = nk
+            tr_cont = "N"
+        raise KISRequestError("KIS pending-order pagination exceeded max_pages")
+
     def get_market_day(self, business_date: str) -> dict[str, Any]:
         body, _ = self._call(
             "GET",

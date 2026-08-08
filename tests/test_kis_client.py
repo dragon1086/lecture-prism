@@ -9,6 +9,7 @@ from urllib.error import URLError
 from unittest.mock import patch
 
 from brokers.kis_client import KISClient, KISConfig, KISRequestError, _URLTransport
+from brokers.kis_client import PAPER_BASE_URL, REAL_BASE_URL
 
 
 @dataclass
@@ -65,6 +66,15 @@ class KISConfigTest(unittest.TestCase):
         self.assertEqual((real.app_key, real.app_secret, real.account_no),
                          ("real-key", "real-secret", "99999999"))
         self.assertNotEqual(paper.base_url, real.base_url)
+
+    def test_paper_and_real_modes_use_separate_official_hosts(self):
+        paper = KISConfig("paper", "paper-key", "paper-secret", "paper-account")
+        real = KISConfig("real", "real-key", "real-secret", "real-account")
+
+        self.assertEqual(paper.base_url, PAPER_BASE_URL)
+        self.assertEqual(real.base_url, REAL_BASE_URL)
+        self.assertIn("openapivts", paper.base_url)
+        self.assertNotIn("openapivts", real.base_url)
 
     def test_config_repr_redacts_credentials_and_account(self):
         config = KISConfig("paper", "public-app-key", "top-secret", "12345678")
@@ -196,6 +206,32 @@ class KISClientRequestContractTest(unittest.TestCase):
         self.assertEqual(transport.calls[2]["headers"]["tr_cont"], "N")
         self.assertEqual(transport.calls[2]["params"]["CTX_AREA_FK100"], "NEXT-FK")
         self.assertEqual(len(result["rows"]), 2)
+
+    def test_pending_order_inquiry_uses_daily_ccld_without_order_number(self):
+        client, transport = self.authenticated_client(
+            FakeResponse(
+                {
+                    "rt_cd": "0",
+                    "output1": [{"odno": "42", "rmn_qty": "1"}],
+                    "output2": {"tot_ord_qty": "1"},
+                    "ctx_area_fk100": "",
+                    "ctx_area_nk100": "",
+                },
+                {"tr_cont": "D"},
+            )
+        )
+
+        result = client.get_pending_orders(business_date="20260720")
+
+        call = transport.calls[1]
+        self.assertEqual(call["method"], "GET")
+        self.assertEqual(call["path"], "/uapi/domestic-stock/v1/trading/inquire-daily-ccld")
+        self.assertEqual(call["headers"]["tr_id"], "VTTC0081R")
+        self.assertEqual(call["params"]["INQR_STRT_DT"], "20260720")
+        self.assertEqual(call["params"]["INQR_END_DT"], "20260720")
+        self.assertEqual(call["params"]["ODNO"], "")
+        self.assertEqual(call["params"]["CCLD_DVSN"], "02")
+        self.assertEqual(result["rows"], [{"odno": "42", "rmn_qty": "1"}])
 
     def test_market_day_uses_holiday_contract_and_opnd_yn(self):
         client, transport = self.authenticated_client(ok([{"bass_dt": "20260720", "opnd_yn": "N"}]))

@@ -157,6 +157,11 @@ class KISBrokerAdapter:
         client, _ = self._dependencies()
         return await asyncio.to_thread(client.get_balance)
 
+    async def check_authentication(self) -> dict[str, Any]:
+        client = self._client_dependency()
+        await asyncio.to_thread(client.authenticate)
+        return {"authenticated": True}
+
     async def get_quote(self, ticker: str) -> BrokerQuote:
         client = self._client_dependency()
         try:
@@ -190,6 +195,20 @@ class KISBrokerAdapter:
         return await asyncio.to_thread(
             client.get_order_status,
             order_no,
+            business_date=selected_date,
+        )
+
+    async def get_pending_orders(
+        self, *, business_date: str | None = None
+    ) -> dict[str, Any]:
+        client, _ = self._dependencies()
+        from market_calendar import KST
+
+        selected_date = business_date or self._clock().astimezone(KST).strftime(
+            "%Y%m%d"
+        )
+        return await asyncio.to_thread(
+            client.get_pending_orders,
             business_date=selected_date,
         )
 

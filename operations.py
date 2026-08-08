@@ -908,7 +908,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "command",
-        choices=("batch", "monitor", "reconcile", "compress", "schedule", "status"),
+        choices=("batch", "monitor", "reconcile", "compress", "schedule", "status", "doctor"),
     )
     parser.add_argument("--ticker", help="batch에서 분석할 단일 종목")
     parser.add_argument(
@@ -946,6 +946,12 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 async def _main(args: argparse.Namespace) -> None:
+    if args.command == "doctor":
+        from operations_doctor import print_doctor
+
+        await print_doctor(profile=getattr(args, "profile", None))
+        return
+
     config, policy = _load_runtime_context_without_env_mutation(
         getattr(args, "profile", None),
         execute_broker=bool(getattr(args, "execute_broker", False)),
