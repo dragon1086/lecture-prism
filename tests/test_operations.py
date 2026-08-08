@@ -54,6 +54,37 @@ class OperationsTest(unittest.TestCase):
         self.assertEqual([row["action"] for row in results], ["SELL"])
         run_feedback.assert_awaited_once_with(results, [])
 
+    def test_holding_monitor_broker_execution_blocks_missing_quote_without_data_source(self):
+        holdings = [
+            {
+                "ticker": "005930",
+                "entry_price": 80_000,
+                "quantity": 2,
+                "high_since_entry": 82_000,
+            }
+        ]
+
+        with mock.patch(
+            "operations.trading._get_exit_holdings",
+            new=mock.AsyncMock(return_value=holdings),
+        ), mock.patch(
+            "brokers.factory.get_broker_adapter",
+            return_value=object(),
+        ), mock.patch(
+            "data_source.fetch_stock_data",
+            side_effect=AssertionError("broker monitor exits must not use data_source"),
+        ), mock.patch(
+            "feedback.run_feedback",
+            new=mock.AsyncMock(),
+        ) as run_feedback:
+            results = asyncio.run(operations.run_holding_monitor(dry_run=False))
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["status"], "blocked")
+        self.assertEqual(results[0]["mode"], "broker_quote_unavailable")
+        self.assertTrue(results[0]["operational_alert"])
+        run_feedback.assert_awaited_once_with(results, [])
+
     def test_reconciliation_is_read_only_and_isolates_provider_failure(self):
         with mock.patch(
             "operations.trading.reconcile_pending_kis_orders",

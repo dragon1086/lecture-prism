@@ -190,7 +190,7 @@ async def run_holding_monitor(*, dry_run: bool = True) -> list[dict]:
     """보유 종목만 다시 읽어 청산 조건을 검사합니다."""
 
     holdings = await trading._get_exit_holdings()
-    prices = await trading._load_holding_prices(holdings)
+    prices = await trading._load_holding_prices(holdings, dry_run=dry_run)
     await trading._persist_holding_highs(holdings, prices)
     decisions = await trading.run_exit_check(holdings, prices)
     results = [
@@ -438,11 +438,24 @@ def _is_reconciliation_failure(command: str, result: object) -> bool:
 
 
 def _is_stale_data_result(result: object) -> bool:
+    if isinstance(result, list):
+        return any(_is_stale_data_result(item) for item in result)
     if not isinstance(result, dict):
         return False
     status = str(result.get("status") or "").strip().lower()
     reason_code = str(result.get("reason_code") or "").strip().lower()
-    return status in _STALE_DATA_STATUSES or reason_code in _STALE_DATA_REASON_CODES
+    mode = str(result.get("mode") or "").strip().lower()
+    operational_alert = bool(result.get("operational_alert"))
+    quote_blocked = (
+        operational_alert
+        and status == "blocked"
+        and mode.startswith("broker_quote_")
+    )
+    return (
+        status in _STALE_DATA_STATUSES
+        or reason_code in _STALE_DATA_REASON_CODES
+        or quote_blocked
+    )
 
 
 async def _record_reconciliation_failure(

@@ -4,6 +4,7 @@ import os
 import socket
 import unittest
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from urllib.error import URLError
 from unittest.mock import patch
 
@@ -219,6 +220,65 @@ class KISClientRequestContractTest(unittest.TestCase):
         self.assertEqual(call["params"]["FID_INPUT_DATE_1"], "20260701")
         self.assertEqual(call["params"]["FID_INPUT_DATE_2"], "20260720")
         self.assertEqual(rows[0]["stck_bsop_date"], "20260720")
+
+    def test_current_quote_uses_official_inquire_price_contract(self):
+        observed = datetime(2026, 7, 20, 1, 5, 6, tzinfo=timezone.utc)
+        transport = FakeTransport(
+            FakeResponse({"access_token": "paper-token", "expires_in": 3600}),
+            ok(
+                {
+                    "stck_prpr": "70100",
+                    "stck_shrn_iscd": "005930",
+                    "rprs_mrkt_kor_name": "KOSPI",
+                }
+            ),
+        )
+        client = KISClient(
+            self.config(),
+            transport=transport,
+            clock=lambda: observed,
+        )
+
+        quote = client.get_quote("005930")
+
+        call = transport.calls[1]
+        self.assertEqual(call["method"], "GET")
+        self.assertEqual(call["path"], "/uapi/domestic-stock/v1/quotations/inquire-price")
+        self.assertEqual(call["headers"]["tr_id"], "FHKST01010100")
+        self.assertEqual(
+            call["params"],
+            {"FID_COND_MRKT_DIV_CODE": "J", "FID_INPUT_ISCD": "005930"},
+        )
+        self.assertEqual(quote.ticker, "005930")
+        self.assertEqual(quote.price, 70100)
+        self.assertEqual(quote.currency, "KRW")
+        self.assertEqual(quote.market, "KRX")
+        self.assertEqual(quote.observed_at, observed)
+        self.assertEqual(quote.source, "kis.inquire-price")
+
+    def test_current_quote_rejects_mismatched_kis_ticker(self):
+        client, _ = self.authenticated_client(
+            ok({"stck_prpr": "70100", "stck_shrn_iscd": "000660"})
+        )
+
+        with self.assertRaises(KISRequestError):
+            client.get_quote("005930")
+
+    def test_current_quote_rejects_non_integral_domestic_price(self):
+        client, _ = self.authenticated_client(
+            ok({"stck_prpr": "70100.5", "stck_shrn_iscd": "005930"})
+        )
+
+        with self.assertRaises(KISRequestError):
+            client.get_quote("005930")
+
+    def test_current_quote_transport_timeout_is_not_converted_to_mock_price(self):
+        client, transport = self.authenticated_client(TimeoutError("quote timed out"))
+
+        with self.assertRaises(TimeoutError):
+            client.get_quote("005930")
+
+        self.assertEqual(len(transport.calls), 2)
 
     def test_cancel_uses_official_endpoint_tr_id_and_uppercase_string_payload(self):
         client, transport = self.authenticated_client(ok({"ODNO": "42"}))

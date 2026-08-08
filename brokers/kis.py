@@ -9,7 +9,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from .base import BrokerOrder
+from .base import (
+    DEFAULT_QUOTE_MAX_AGE,
+    BrokerOrder,
+    BrokerQuote,
+    BrokerQuoteError,
+    validate_broker_quote,
+)
 from .config import normalize_mode
 
 _DEFAULT_KIS_CONFIG = Path(__file__).resolve().parents[1] / "trading" / "trading" / "config" / "kis_devlp.yaml"
@@ -63,12 +69,16 @@ class KISBrokerAdapter:
         self._gate = gate
         self._clock = clock or (lambda: datetime.now(timezone.utc))
 
-    def _dependencies(self):
+    def _client_dependency(self):
         if self._client is None:
             from .kis_client import KISClient, KISConfig
 
             config_mode = "paper" if self.mode == "demo" else "real"
             self._client = KISClient(KISConfig.from_env(config_mode))
+        return self._client
+
+    def _dependencies(self):
+        self._client_dependency()
         if self._gate is None:
             import db
             from market_calendar import MarketGate
@@ -146,6 +156,21 @@ class KISBrokerAdapter:
     async def get_account(self) -> dict[str, Any]:
         client, _ = self._dependencies()
         return await asyncio.to_thread(client.get_balance)
+
+    async def get_quote(self, ticker: str) -> BrokerQuote:
+        client = self._client_dependency()
+        try:
+            quote = await asyncio.to_thread(client.get_quote, ticker)
+            return validate_broker_quote(
+                quote,
+                expected_ticker=ticker,
+                now=self._clock(),
+                max_age=DEFAULT_QUOTE_MAX_AGE,
+            )
+        except BrokerQuoteError:
+            raise
+        except Exception as exc:
+            raise BrokerQuoteError(f"KIS quote unavailable: {exc}") from exc
 
     async def get_orderable_quantity(self, ticker: str, price: int) -> int:
         client, _ = self._dependencies()

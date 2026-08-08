@@ -8,7 +8,12 @@ small teaching wrappers so students can add another broker without rewriting
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Protocol
+from datetime import datetime, timedelta, timezone
+from decimal import Decimal, InvalidOperation
+from typing import Any, Iterable, Protocol
+
+
+DEFAULT_QUOTE_MAX_AGE = timedelta(minutes=5)
 
 
 @dataclass(frozen=True)
@@ -27,6 +32,72 @@ class BrokerOrder:
         return str(self.action).strip().upper()
 
 
+@dataclass(frozen=True)
+class BrokerQuote:
+    """Fresh broker-sourced price used for paper/live trading decisions."""
+
+    ticker: str
+    price: int | float
+    currency: str
+    market: str
+    observed_at: datetime
+    source: str
+
+
+class BrokerQuoteError(RuntimeError):
+    """Raised when a broker quote is missing, stale, or unsafe to use."""
+
+
+def _utc(value: datetime) -> datetime:
+    if not isinstance(value, datetime):
+        raise BrokerQuoteError("quote observed_at must be a datetime")
+    if value.tzinfo is None:
+        raise BrokerQuoteError("quote observed_at must include timezone")
+    return value.astimezone(timezone.utc)
+
+
+def validate_broker_quote(
+    quote: BrokerQuote,
+    *,
+    expected_ticker: str,
+    now: datetime | None = None,
+    max_age: timedelta = DEFAULT_QUOTE_MAX_AGE,
+    allowed_markets: Iterable[str] = ("KRX", "KR"),
+) -> BrokerQuote:
+    """Validate the shared quote contract for domestic broker execution paths."""
+
+    if not isinstance(quote, BrokerQuote):
+        raise BrokerQuoteError("broker quote must be a BrokerQuote")
+    expected = str(expected_ticker).strip()
+    if not expected or str(quote.ticker).strip() != expected:
+        raise BrokerQuoteError(
+            f"quote ticker mismatch: expected {expected}, got {quote.ticker}"
+        )
+    if str(quote.currency).strip().upper() != "KRW":
+        raise BrokerQuoteError(f"unsupported quote currency: {quote.currency}")
+    market = str(quote.market).strip().upper()
+    if market not in {str(item).strip().upper() for item in allowed_markets}:
+        raise BrokerQuoteError(f"unsupported quote market: {quote.market}")
+    try:
+        price = Decimal(str(quote.price))
+    except (InvalidOperation, TypeError, ValueError) as exc:
+        raise BrokerQuoteError("quote price must be numeric") from exc
+    if price <= 0:
+        raise BrokerQuoteError("quote price must be positive")
+    if price != price.to_integral_value():
+        raise BrokerQuoteError("KRW domestic quote price must be integral")
+
+    observed_at = _utc(quote.observed_at)
+    checked_at = _utc(now or datetime.now(timezone.utc))
+    if checked_at - observed_at > max_age:
+        raise BrokerQuoteError("quote is stale")
+    if observed_at - checked_at > timedelta(seconds=5):
+        raise BrokerQuoteError("quote timestamp is in the future")
+    if not str(quote.source).strip():
+        raise BrokerQuoteError("quote source is required")
+    return quote
+
+
 class BrokerAdapter(Protocol):
     """Minimal interface every broker module must implement."""
 
@@ -35,6 +106,9 @@ class BrokerAdapter(Protocol):
 
     async def place_order(self, order: BrokerOrder) -> dict[str, Any]:
         """Place an order and return a normalized result dictionary."""
+
+    async def get_quote(self, ticker: str) -> BrokerQuote:
+        """Return a fresh broker-sourced quote for a domestic ticker."""
 
 
 class BrokerConfigError(RuntimeError):

@@ -1,12 +1,12 @@
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import os
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
-from brokers.base import BrokerOrder
+from brokers.base import BrokerOrder, BrokerQuote, BrokerQuoteError, validate_broker_quote
 from brokers.config import load_env_file
 from brokers.kis import KISBrokerAdapter, selected_kis_mode
 from brokers.kiwoom import KiwoomBrokerAdapter
@@ -168,6 +168,83 @@ class BrokerAdapterTest(unittest.TestCase):
         self.assertTrue(buy["accepted"])
         self.assertFalse(buy["executed"])
         self.assertEqual(sell["order_no"], "2")
+
+    def test_broker_quote_validator_accepts_fresh_domestic_krw_quote(self):
+        observed = datetime(2026, 7, 20, 1, 5, tzinfo=timezone.utc)
+        quote = BrokerQuote(
+            ticker="005930",
+            price=70100,
+            currency="KRW",
+            market="KRX",
+            observed_at=observed,
+            source="kis.inquire-price",
+        )
+
+        validated = validate_broker_quote(
+            quote,
+            expected_ticker="005930",
+            now=observed + timedelta(seconds=30),
+            max_age=timedelta(minutes=1),
+        )
+
+        self.assertEqual(validated.price, 70100)
+
+    def test_broker_quote_validator_rejects_bad_domestic_quote_contracts(self):
+        observed = datetime(2026, 7, 20, 1, 5, tzinfo=timezone.utc)
+        valid = {
+            "ticker": "005930",
+            "price": 70100,
+            "currency": "KRW",
+            "market": "KRX",
+            "observed_at": observed,
+            "source": "kis.inquire-price",
+        }
+        cases = [
+            ("wrong ticker", {"ticker": "000660"}),
+            ("non-KRW", {"currency": "USD"}),
+            ("zero price", {"price": 0}),
+            ("negative price", {"price": -1}),
+            ("non-integral price", {"price": 70100.5}),
+            ("stale timestamp", {"observed_at": observed - timedelta(minutes=2)}),
+        ]
+        for name, override in cases:
+            with self.subTest(name=name):
+                quote = BrokerQuote(**{**valid, **override})
+                with self.assertRaises(BrokerQuoteError):
+                    validate_broker_quote(
+                        quote,
+                        expected_ticker="005930",
+                        now=observed,
+                        max_age=timedelta(minutes=1),
+                    )
+
+    def test_kis_adapter_get_quote_uses_client_quote_and_validation(self):
+        observed = datetime(2026, 7, 20, 1, 5, tzinfo=timezone.utc)
+
+        class Client:
+            def get_quote(self, ticker):
+                self.ticker = ticker
+                return BrokerQuote(
+                    ticker=ticker,
+                    price=70100,
+                    currency="KRW",
+                    market="KRX",
+                    observed_at=observed,
+                    source="kis.inquire-price",
+                )
+
+        client = Client()
+        adapter = KISBrokerAdapter(
+            mode="demo",
+            client=client,
+            gate=object(),
+            clock=lambda: observed + timedelta(seconds=10),
+        )
+
+        quote = asyncio.run(adapter.get_quote("005930"))
+
+        self.assertEqual(client.ticker, "005930")
+        self.assertEqual(quote.price, 70100)
 
     def test_kis_adapter_market_block_happens_before_order_post(self):
         class Client:

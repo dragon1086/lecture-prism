@@ -428,6 +428,61 @@ class OperationsScheduleTest(unittest.TestCase):
         self.assertIn("71200", rendered)
         self.assertEqual([event for event, _ in notifier.events], ["stale_data"])
 
+    def test_blocked_quote_monitor_result_is_persisted_logged_and_notified(self):
+        job = operations.JobSpec(
+            name="monitor",
+            at="10:00",
+            weekdays=(0,),
+            command="monitor",
+        )
+        notifier = RecordingNotifier()
+        with tempfile.TemporaryDirectory() as tmp:
+            logger = operations_runtime.configure_operations_logger(
+                "tests.operations.blocked_quote",
+                Path(tmp),
+                max_bytes=10_000,
+                now=lambda: datetime.fromisoformat("2026-08-03T10:00:00+09:00"),
+            )
+            store = operations_runtime.OperationsStateStore(Path(tmp) / "state")
+            with mock.patch(
+                "operations.run_job",
+                new=mock.AsyncMock(
+                    return_value=[
+                        {
+                            "status": "blocked",
+                            "mode": "broker_quote_unavailable",
+                            "ticker": "005930",
+                            "message": "kis adapter does not provide fresh quotes",
+                            "operational_alert": True,
+                        }
+                    ]
+                ),
+            ):
+                result = asyncio.run(
+                    operations.run_scheduled_job(
+                        job,
+                        state_store=store,
+                        active_jobs=set(),
+                        notifier=notifier,
+                        operations_logger=logger,
+                        now=lambda: datetime.fromisoformat("2026-08-03T10:00:00+09:00"),
+                    )
+                )
+            for handler in logger.handlers:
+                handler.flush()
+            state = store.read()
+            rendered = "\n".join(
+                path.read_text(encoding="utf-8")
+                for path in Path(tmp).glob("operations-*.log*")
+            )
+
+        self.assertEqual(result["status"], "stale_data")
+        self.assertEqual(state["jobs"]["monitor"]["status"], "failure")
+        self.assertEqual(state["jobs"]["monitor"]["error_type"], "StaleData")
+        self.assertIn("event=stale_data", rendered)
+        self.assertIn("broker_quote_unavailable", rendered)
+        self.assertEqual([event for event, _ in notifier.events], ["stale_data"])
+
     def test_typed_stale_data_signal_is_persisted_logged_and_notified(self):
         job = operations.JobSpec(
             name="batch",
