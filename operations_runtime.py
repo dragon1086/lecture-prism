@@ -7,14 +7,16 @@ import logging
 import os
 import re
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 from tempfile import NamedTemporaryFile, gettempdir
 from typing import Any, Callable, Mapping
 from uuid import uuid4
+from zoneinfo import ZoneInfo
 
 
 LIVE_BROKER_UNATTENDED_ACK = "I_ACCEPT_REAL_ORDERS"
+KST = ZoneInfo("Asia/Seoul")
 
 _ACCEPTED_PROFILES = frozenset(
     {"mock", "classroom", "real_data", "research", "backtest", "paper", "live"}
@@ -570,6 +572,19 @@ _SENSITIVE_FIELD_PARTS = (
     "authorization",
 )
 _URL_RE = re.compile(r"https?://\S+", re.IGNORECASE)
+_LABELED_SECRET_RE = re.compile(
+    r"(?i)\b("
+    r"(?:[a-z0-9]+_)*(?:api|app|access|refresh)?_?"
+    r"(?:key|secret|token)"
+    r"|authorization"
+    r"|discord_webhook_url"
+    r"|webhook_url"
+    r"|account_number"
+    r"|account"
+    r")\s*[:=]\s*[^\s,;]+"
+)
+_BEARER_RE = re.compile(r"(?i)\bAuthorization\s*:\s*Bearer\s+[^\s,;]+")
+_SK_RE = re.compile(r"\bsk-[A-Za-z0-9._-]+")
 
 
 def _redact_value(key: str, value: Any) -> Any:
@@ -595,15 +610,33 @@ def sanitize_operations_value(key: str, value: Any) -> Any:
         return type(value).__name__
     if any(part in lowered_key for part in _SENSITIVE_FIELD_PARTS):
         return "<redacted>"
+    if isinstance(value, str):
+        if value == LIVE_BROKER_UNATTENDED_ACK:
+            return "<redacted>"
+        text = _BEARER_RE.sub("Authorization: Bearer <redacted>", value)
+        text = _LABELED_SECRET_RE.sub(
+            "<redacted>",
+            text,
+        )
+        text = _SK_RE.sub("<redacted>", text)
+        text = _URL_RE.sub("<redacted>", text)
+        lowered = value.lower()
+        if "account" in lowered or "balance" in lowered or "token" in lowered:
+            if text == value:
+                return "<redacted>"
+        return text
+    if isinstance(value, Mapping):
+        return {
+            str(item_key): sanitize_operations_value(str(item_key), item_value)
+            for item_key, item_value in value.items()
+        }
+    if isinstance(value, tuple):
+        return tuple(sanitize_operations_value(key, item) for item in value)
+    if isinstance(value, list):
+        return [sanitize_operations_value(key, item) for item in value]
     redacted = _redact_value(key, value)
     if redacted == "<redacted>":
         return redacted
-    if isinstance(value, str):
-        if _URL_RE.search(value):
-            return _URL_RE.sub("<redacted>", value)
-        lowered = value.lower()
-        if "account" in lowered or "balance" in lowered or "token" in lowered:
-            return "<redacted>"
     return value
 
 
@@ -670,7 +703,7 @@ class DailySizeRotatingOperationsHandler(logging.Handler):
     def _current_path(self) -> Path:
         current = self.now()
         if current.tzinfo is not None:
-            current = current.astimezone(timezone(timedelta(hours=9)))
+            current = current.astimezone(KST)
         date_key = current.strftime("%Y-%m-%d")
         return self.directory / f"operations-{date_key}.log"
 

@@ -312,6 +312,30 @@ class DiscordMessageFormatTest(unittest.TestCase):
         self.assertNotIn("token-value", joined)
         self.assertNotIn("raw network failure", joined)
 
+    def test_operational_message_redacts_secret_patterns_under_neutral_string_keys(self):
+        message = notifications.format_operational_message(
+            "job_failure",
+            {
+                "profile": "paper",
+                "job": "monitor",
+                "error": (
+                    "api_key=sk-neutral-secret app_key=KISAPP123 "
+                    "app_secret=KISSECRET456 Authorization: Bearer bearer-secret "
+                    "DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/123/raw-token "
+                    "account_number=123-456-789 normal ticker 005930 price 71200"
+                ),
+            },
+        )
+
+        self.assertNotIn("sk-neutral-secret", message)
+        self.assertNotIn("KISAPP123", message)
+        self.assertNotIn("KISSECRET456", message)
+        self.assertNotIn("bearer-secret", message)
+        self.assertNotIn("raw-token", message)
+        self.assertNotIn("123-456-789", message)
+        self.assertIn("005930", message)
+        self.assertIn("71200", message)
+
 
 class DiscordDocumentationContractTest(unittest.TestCase):
     def test_example_and_architecture_document_optional_decision_notifications(self):

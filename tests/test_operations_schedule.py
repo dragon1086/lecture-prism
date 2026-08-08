@@ -6,9 +6,19 @@ from pathlib import Path
 import tempfile
 import unittest
 from unittest import mock
+from zoneinfo import ZoneInfo
 
 import operations
 import operations_runtime
+
+
+class RecordingNotifier:
+    def __init__(self) -> None:
+        self.events = []
+
+    async def operational(self, event, context=None):
+        self.events.append((event, context or {}))
+        return True
 
 
 class OperationsScheduleTest(unittest.TestCase):
@@ -68,6 +78,25 @@ class OperationsScheduleTest(unittest.TestCase):
         self.assertEqual(reconcile_times[:3], ["10:00", "10:45", "11:30"])
         self.assertIn("15:20", monitor_times)
         self.assertNotIn("15:35", monitor_times)
+
+    def test_build_schedule_has_unique_command_minutes(self):
+        jobs = operations.build_schedule()
+        command_minutes = [(job.command, job.at) for job in jobs]
+
+        self.assertEqual(len(command_minutes), len(set(command_minutes)))
+
+    def test_due_jobs_runs_one_command_once_when_names_collide_in_same_minute(self):
+        jobs = [
+            operations.JobSpec("legacy monitor", "14:55", (0,), "monitor"),
+            operations.JobSpec("interval monitor", "14:55", (0,), "monitor"),
+        ]
+        seen = set()
+
+        first = operations.due_jobs(datetime(2026, 8, 3, 14, 55), jobs, seen=seen)
+        second = operations.due_jobs(datetime(2026, 8, 3, 14, 55), jobs, seen=seen)
+
+        self.assertEqual([job.command for job in first], ["monitor"])
+        self.assertEqual(second, [])
 
     def test_next_run_after_skips_weekends_in_kst(self):
         job = operations.JobSpec(
@@ -292,6 +321,169 @@ class OperationsScheduleTest(unittest.TestCase):
         self.assertIn("event=job_start", rendered)
         self.assertIn("event=job_success", rendered)
         self.assertIn("job=monitor", rendered)
+
+    def test_reconciliation_unavailable_is_persisted_logged_and_notified_as_failure(self):
+        job = operations.JobSpec(
+            name="reconcile",
+            at="10:00",
+            weekdays=(0,),
+            command="reconcile",
+        )
+        notifier = RecordingNotifier()
+        with tempfile.TemporaryDirectory() as tmp:
+            logger = operations_runtime.configure_operations_logger(
+                "tests.operations.reconcile_failure",
+                Path(tmp),
+                max_bytes=10_000,
+                now=lambda: datetime.fromisoformat("2026-08-03T10:00:00+09:00"),
+            )
+            store = operations_runtime.OperationsStateStore(Path(tmp) / "state")
+            with mock.patch(
+                "operations.run_order_reconciliation",
+                new=mock.AsyncMock(
+                    return_value={
+                        "broker": "kis",
+                        "status": "unavailable",
+                        "orders": [],
+                        "error_type": "TimeoutError",
+                        "raw": "api_key=leak Authorization: Bearer leak-token",
+                    }
+                ),
+            ):
+                result = asyncio.run(
+                    operations.run_scheduled_job(
+                        job,
+                        state_store=store,
+                        active_jobs=set(),
+                        notifier=notifier,
+                        operations_logger=logger,
+                        now=lambda: datetime.fromisoformat("2026-08-03T10:00:00+09:00"),
+                    )
+                )
+            for handler in logger.handlers:
+                handler.flush()
+            state = store.read()
+            rendered = "\n".join(
+                path.read_text(encoding="utf-8")
+                for path in Path(tmp).glob("operations-*.log*")
+            )
+
+        self.assertEqual(result["status"], "failure")
+        self.assertEqual(state["jobs"]["reconcile"]["status"], "failure")
+        self.assertEqual(state["jobs"]["reconcile"]["error_type"], "ReconciliationFailure")
+        self.assertIn("event=reconciliation_failure", rendered)
+        self.assertNotIn("leak-token", rendered)
+        self.assertEqual([event for event, _ in notifier.events], ["reconciliation_failure"])
+
+    def test_stale_data_result_is_persisted_logged_and_notified_without_prose_parsing(self):
+        job = operations.JobSpec(
+            name="monitor",
+            at="10:00",
+            weekdays=(0,),
+            command="monitor",
+        )
+        notifier = RecordingNotifier()
+        with tempfile.TemporaryDirectory() as tmp:
+            logger = operations_runtime.configure_operations_logger(
+                "tests.operations.stale_data",
+                Path(tmp),
+                max_bytes=10_000,
+                now=lambda: datetime.fromisoformat("2026-08-03T10:00:00+09:00"),
+            )
+            store = operations_runtime.OperationsStateStore(Path(tmp) / "state")
+            with mock.patch(
+                "operations.run_job",
+                new=mock.AsyncMock(
+                    return_value={
+                        "status": "blocked_stale_data",
+                        "reason_code": "stale_data",
+                        "ticker": "005930",
+                        "message": "normal ticker 005930 price 71200 remains visible",
+                    }
+                ),
+            ):
+                result = asyncio.run(
+                    operations.run_scheduled_job(
+                        job,
+                        state_store=store,
+                        active_jobs=set(),
+                        notifier=notifier,
+                        operations_logger=logger,
+                        now=lambda: datetime.fromisoformat("2026-08-03T10:00:00+09:00"),
+                    )
+                )
+            for handler in logger.handlers:
+                handler.flush()
+            state = store.read()
+            rendered = "\n".join(
+                path.read_text(encoding="utf-8")
+                for path in Path(tmp).glob("operations-*.log*")
+            )
+
+        self.assertEqual(result["status"], "stale_data")
+        self.assertEqual(state["jobs"]["monitor"]["status"], "failure")
+        self.assertEqual(state["jobs"]["monitor"]["error_type"], "StaleData")
+        self.assertIn("event=stale_data", rendered)
+        self.assertIn("005930", rendered)
+        self.assertIn("71200", rendered)
+        self.assertEqual([event for event, _ in notifier.events], ["stale_data"])
+
+    def test_typed_stale_data_signal_is_persisted_logged_and_notified(self):
+        job = operations.JobSpec(
+            name="batch",
+            at="10:00",
+            weekdays=(0,),
+            command="batch",
+        )
+        notifier = RecordingNotifier()
+        with tempfile.TemporaryDirectory() as tmp:
+            logger = operations_runtime.configure_operations_logger(
+                "tests.operations.stale_signal",
+                Path(tmp),
+                max_bytes=10_000,
+                now=lambda: datetime.fromisoformat("2026-08-03T10:00:00+09:00"),
+            )
+            store = operations_runtime.OperationsStateStore(Path(tmp) / "state")
+            with mock.patch(
+                "operations.run_job",
+                new=mock.AsyncMock(
+                    side_effect=operations.StaleDataSignal(
+                        reason_code="stale_data",
+                        last_data_at="2026-08-01T09:00:00+09:00",
+                    )
+                ),
+            ):
+                result = asyncio.run(
+                    operations.run_scheduled_job(
+                        job,
+                        state_store=store,
+                        active_jobs=set(),
+                        notifier=notifier,
+                        operations_logger=logger,
+                        now=lambda: datetime.fromisoformat("2026-08-03T10:00:00+09:00"),
+                    )
+                )
+            state = store.read()
+
+        self.assertEqual(result["status"], "stale_data")
+        self.assertEqual(state["jobs"]["batch"]["status"], "failure")
+        self.assertEqual(state["jobs"]["batch"]["error_type"], "StaleData")
+        self.assertEqual([event for event, _ in notifier.events], ["stale_data"])
+
+    def test_log_rotation_uses_zoneinfo_asia_seoul(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            handler = operations_runtime.DailySizeRotatingOperationsHandler(
+                Path(tmp),
+                now=lambda: datetime.fromisoformat("2026-08-03T15:00:00+00:00"),
+            )
+            try:
+                path = handler._current_path()
+            finally:
+                handler.close()
+
+        self.assertEqual(path.name, "operations-2026-08-04.log")
+        self.assertIsInstance(operations_runtime.KST, ZoneInfo)
+        self.assertEqual(operations_runtime.KST.key, "Asia/Seoul")
 
     def test_schedule_once_still_requires_explicit_scheduler_enable(self):
         with mock.patch.dict(os.environ, {"LECTURE_ENABLE_SCHEDULER": "0"}):

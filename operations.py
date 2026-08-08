@@ -36,6 +36,23 @@ log = logging.getLogger(__name__)
 _COMMANDS = {"batch", "monitor", "reconcile", "compress"}
 KST = ZoneInfo("Asia/Seoul")
 _WEEKDAYS = (0, 1, 2, 3, 4)
+_RECONCILIATION_FAILURE_STATUSES = {"unavailable", "unsupported", "error", "failure"}
+_STALE_DATA_STATUSES = {"stale_data", "blocked_stale_data"}
+_STALE_DATA_REASON_CODES = {"stale_data", "blocked_stale"}
+
+
+class StaleDataSignal(RuntimeError):
+    """Typed scheduler signal for stale market/pipeline data."""
+
+    def __init__(
+        self,
+        *,
+        reason_code: str = "stale_data",
+        last_data_at: str | None = None,
+    ) -> None:
+        super().__init__("stale_data")
+        self.reason_code = reason_code
+        self.last_data_at = last_data_at
 
 
 @dataclass(frozen=True)
@@ -98,11 +115,18 @@ def build_schedule(
     """Return default jobs plus configurable KST intraday checks."""
 
     interval_jobs: list[JobSpec] = []
+    occupied = {(job.command, job.at) for job in DEFAULT_JOBS}
     for at in _minutes_between("09:35", "15:20", monitor_interval_minutes):
+        if ("monitor", at) in occupied:
+            continue
+        occupied.add(("monitor", at))
         interval_jobs.append(
             JobSpec(f"장중 보유 종목 점검 {at}", at, _WEEKDAYS, "monitor")
         )
     for at in _minutes_between("10:00", "15:00", reconcile_interval_minutes):
+        if ("reconcile", at) in occupied:
+            continue
+        occupied.add(("reconcile", at))
         interval_jobs.append(
             JobSpec(f"장중 미체결 주문 확인 {at}", at, _WEEKDAYS, "reconcile")
         )
@@ -153,7 +177,7 @@ def due_jobs(
     for job in jobs:
         if current.weekday() not in job.weekdays or current.strftime("%H:%M") != job.at:
             continue
-        marker = (minute_key, job.name)
+        marker = (minute_key, job.command)
         if seen is not None and marker in seen:
             continue
         if seen is not None:
@@ -324,11 +348,24 @@ async def run_scheduled_job(
             started_at=started_at,
         )
     try:
-        await run_job(
+        result = await run_job(
             job.command,
             policy=policy,
             config=config,
             notifier=notifier,
+        )
+    except StaleDataSignal as exc:
+        return await _record_stale_data(
+            job_key,
+            state_store=state_store,
+            notifier=notifier,
+            operations_logger=operations_logger,
+            now=now,
+            context={
+                "reason_code": exc.reason_code,
+                "last_data_at": exc.last_data_at,
+                "profile": getattr(config, "profile", None),
+            },
         )
     except Exception as exc:
         finished_at = _as_kst(now()).isoformat(timespec="seconds")
@@ -356,6 +393,29 @@ async def run_scheduled_job(
         )
         raise
     else:
+        if _is_reconciliation_failure(job.command, result):
+            return await _record_reconciliation_failure(
+                job_key,
+                state_store=state_store,
+                notifier=notifier,
+                operations_logger=operations_logger,
+                now=now,
+                result=result,
+                profile=getattr(config, "profile", None),
+            )
+        if _is_stale_data_result(result):
+            return await _record_stale_data(
+                job_key,
+                state_store=state_store,
+                notifier=notifier,
+                operations_logger=operations_logger,
+                now=now,
+                context={
+                    "profile": getattr(config, "profile", None),
+                    "result": result,
+                    **(result if isinstance(result, dict) else {}),
+                },
+            )
         finished_at = _as_kst(now()).isoformat(timespec="seconds")
         state_store.record_job_success(job_key, finished_at)
         if operations_logger is not None:
@@ -368,6 +428,88 @@ async def run_scheduled_job(
         return {"job": job_key, "status": "success"}
     finally:
         active_jobs.discard(job_key)
+
+
+def _is_reconciliation_failure(command: str, result: object) -> bool:
+    if command != "reconcile" or not isinstance(result, dict):
+        return False
+    status = str(result.get("status") or "").strip().lower()
+    return status in _RECONCILIATION_FAILURE_STATUSES
+
+
+def _is_stale_data_result(result: object) -> bool:
+    if not isinstance(result, dict):
+        return False
+    status = str(result.get("status") or "").strip().lower()
+    reason_code = str(result.get("reason_code") or "").strip().lower()
+    return status in _STALE_DATA_STATUSES or reason_code in _STALE_DATA_REASON_CODES
+
+
+async def _record_reconciliation_failure(
+    job_key: str,
+    *,
+    state_store: operations_runtime.OperationsStateStore,
+    notifier,
+    operations_logger: logging.Logger | None,
+    now,
+    result: dict,
+    profile: str | None,
+) -> dict:
+    finished_at = _as_kst(now()).isoformat(timespec="seconds")
+    state_store.record_job_failure(
+        job_key,
+        finished_at,
+        error_type="ReconciliationFailure",
+    )
+    context = {
+        "job": job_key,
+        "profile": profile,
+        "status": result.get("status"),
+        "broker": result.get("broker"),
+        "error_type": result.get("error_type") or "ReconciliationFailure",
+        "result": result,
+        "finished_at": finished_at,
+    }
+    if operations_logger is not None:
+        operations_runtime.log_operation(
+            operations_logger,
+            "reconciliation_failure",
+            **context,
+        )
+    await _notify_operational(notifier, "reconciliation_failure", context)
+    return {"job": job_key, "status": "failure", "error_type": "ReconciliationFailure"}
+
+
+async def _record_stale_data(
+    job_key: str,
+    *,
+    state_store: operations_runtime.OperationsStateStore,
+    notifier,
+    operations_logger: logging.Logger | None,
+    now,
+    context: dict,
+) -> dict:
+    finished_at = _as_kst(now()).isoformat(timespec="seconds")
+    state_store.record_job_failure(
+        job_key,
+        finished_at,
+        error_type="StaleData",
+    )
+    payload = {
+        "job": job_key,
+        "status": "stale_data",
+        "error_type": "StaleData",
+        "finished_at": finished_at,
+        **context,
+    }
+    if operations_logger is not None:
+        operations_runtime.log_operation(
+            operations_logger,
+            "stale_data",
+            **payload,
+        )
+    await _notify_operational(notifier, "stale_data", payload)
+    return {"job": job_key, "status": "stale_data", "error_type": "StaleData"}
 
 
 async def _notify_operational(notifier, event: str, context: dict) -> bool:
