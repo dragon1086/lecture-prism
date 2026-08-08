@@ -11,6 +11,9 @@ SOURCE_ROOT = DECK_ROOT / "deck-src"
 PART3_ROOT = SOURCE_ROOT / "part3"
 HEAD = SOURCE_ROOT / "shared" / "part3-head.html"
 TAIL = SOURCE_ROOT / "shared" / "part3-tail.html"
+ASSEMBLED_PART3 = DECK_ROOT / "파트3_슬라이드.html"
+PART3_INDEX = SOURCE_ROOT / "part3-index.md"
+CURRICULUM = ROOT / "lecture" / "curriculum.html"
 
 
 EXPECTED_CAPTION_PHRASES = {
@@ -46,6 +49,10 @@ class Part3DeckContractTests(unittest.TestCase):
         cls.sources = "\n".join(
             path.read_text(encoding="utf-8") for path in part3_files
         )
+        cls.manifest = manifest
+        cls.assembled = ASSEMBLED_PART3.read_text(encoding="utf-8")
+        cls.index = PART3_INDEX.read_text(encoding="utf-8")
+        cls.curriculum = CURRICULUM.read_text(encoding="utf-8")
 
     def test_screen_fit_and_fullscreen_viewer_are_declared(self):
         self.assertIn("--screen-scale", self.head)
@@ -99,7 +106,7 @@ class Part3DeckContractTests(unittest.TestCase):
 
     def test_cover_and_first_run_use_polished_visual_and_exact_prompt_route(self):
         slide_1 = self._slide("P3-S01")
-        slide_4 = self._slide("P3-S04")
+        slide_4 = self._slide("P3-S05")
         cover_asset = DECK_ROOT / "assets" / "part3-cover-ai-console.png"
 
         self.assertIn("assets/part3-cover-ai-console.png", slide_1)
@@ -108,18 +115,30 @@ class Part3DeckContractTests(unittest.TestCase):
         self.assertIn("P3-01 · API 키 없는 첫 성공", slide_4)
         self.assertIn("‘코딩 에이전트에 붙여넣기’ 블록 전체", slide_4)
 
+    def test_learning_outcomes_are_visible_before_the_first_execution(self):
+        slide = self._slide("P3-S04")
+
+        for phrase in (
+            "후보 찾기·분석·매매·기록",
+            "각 단계의 파일",
+            "AI 의견, 진입 판단, 주문 접수와 체결 확인",
+            "감시·대사·기억 압축",
+            "연습 데이터와 가상 체결",
+        ):
+            self.assertIn(phrase, slide)
+
     def test_module_openings_use_one_investment_decision_throughline(self):
         expected = {
-            "P3-S07": "어제는 강세장, 오늘은 약세장입니다. 후보를 같은 기준으로 골라도 될까요?",
-            "P3-S14": "이 종목을 사기 전에, 어떤 정보까지 확인하고 싶으세요?",
-            "P3-S21": "AI가 매수를 추천했습니다. 이 의견만 믿고 주문해도 될까요?",
-            "P3-S31": "어제 손절한 종목이 오늘 다시 떴습니다. 다시 사도 될까요?",
+            "P3-S08": "어제는 강세장, 오늘은 약세장입니다. 후보를 같은 기준으로 골라도 될까요?",
+            "P3-S15": "이 종목을 사기 전에, 어떤 정보까지 확인하고 싶으세요?",
+            "P3-S23": "AI가 매수를 추천했습니다. 이 의견만 믿고 주문해도 될까요?",
+            "P3-S33": "어제 손절한 종목이 오늘 다시 떴습니다. 다시 사도 될까요?",
         }
         for slide_id, question in expected.items():
             self.assertIn(question, self._slide(slide_id), slide_id)
 
     def test_module_three_starts_with_a_concrete_vote_case_and_keeps_all_assets(self):
-        scenario = self._slide("P3-S21")
+        scenario = self._slide("P3-S23")
         for phrase in (
             "BUY 8점",
             "70,000원",
@@ -137,25 +156,41 @@ class Part3DeckContractTests(unittest.TestCase):
         self.assertNotIn("안전문", self.sources)
 
         shifted_assets = {
-            "P3-S22": "can-slim-company-supply-checks.png",
-            "P3-S23": "can-slim-leadership-market-checks.png",
-            "P3-S24": "entry-gates-overview.png",
-            "P3-S25": "pyramiding-portfolio-overview.png",
-            "P3-S26": "trading-exit-overview.png",
-            "P3-S27": "position-protection-loops.png",
-            "P3-S28": "lecture-compare-trading.png",
+            "P3-S24": "can-slim-company-supply-checks.png",
+            "P3-S25": "can-slim-leadership-market-checks.png",
+            "P3-S26": "entry-gates-overview.png",
+            "P3-S27": "pyramiding-portfolio-overview.png",
+            "P3-S28": "trading-exit-overview.png",
+            "P3-S29": "position-protection-loops.png",
+            "P3-S30": "lecture-compare-trading.png",
         }
         for slide_id, asset in shifted_assets.items():
             self.assertIn(asset, self._slide(slide_id), slide_id)
-        self.assertIn("주문 의도", self._slide("P3-S29"))
-        self.assertIn("P3-M3 블록 전체", self._slide("P3-S30"))
+        self.assertIn("주문 의도", self._slide("P3-S31"))
+        self.assertIn("P3-M3 블록 전체", self._slide("P3-S32"))
 
         slide_ids = re.findall(r"<!-- (P3-S\d{2})\b", self.sources)
-        self.assertEqual([f"P3-S{number:02d}" for number in range(1, 39)], slide_ids)
+        self.assertEqual([f"P3-S{number:02d}" for number in range(1, 43)], slide_ids)
+
+    def test_module_two_names_data_limits_and_a_safe_extension_sequence(self):
+        slide = self._slide("P3-S22")
+
+        for phrase in (
+            "더 좋은 LLM이 아니라 알맞은 데이터",
+            "가격 · 거래량 · 기본 재무",
+            "수급 · 공시 · 기사 본문 · 거시지표",
+            "빈칸 찾기",
+            "출처 고르기",
+            "필드만 추리기",
+            "담당 칸에 넣기",
+            "달라진 판단 확인",
+            "기준 시각·단위·갱신 주기·실패 시 동작",
+        ):
+            self.assertIn(phrase, slide)
 
     def test_operations_image_is_reserved_for_the_part_three_summary(self):
-        slide_30 = self._slide("P3-S30")
-        slide_37 = self._slide("P3-S37")
+        slide_30 = self._slide("P3-S32")
+        slide_37 = self._slide("P3-S39")
 
         self.assertNotIn("prism-auxiliary-operations-loop.png", slide_30)
         self.assertIn("prism-auxiliary-operations-loop.png", slide_37)
@@ -164,8 +199,73 @@ class Part3DeckContractTests(unittest.TestCase):
             self.sources.count("prism-auxiliary-operations-loop.png"),
         )
 
+    def test_operations_readiness_slides_follow_auxiliary_operations_summary(self):
+        slide_40 = self._slide("P3-S40")
+        slide_41 = self._slide("P3-S41")
+
+        for phrase in (
+            "다섯 작업",
+            "전체 배치",
+            "보유 감시",
+            "주문 대사",
+            "기억 압축",
+            "상태·알림",
+            "service manager",
+            "operations.py schedule",
+            "main.py를 터미널에 계속 띄워 두는 일",
+        ):
+            self.assertIn(phrase, slide_40, phrase)
+
+        for phrase in (
+            "mock",
+            "real_data",
+            "research",
+            "paper",
+            "live",
+            "doctor → simulation → paper → live",
+            "LECTURE_ENABLE_LIVE_BROKER",
+            "LECTURE_ALLOW_REAL_BROKER",
+            "KIS",
+            "Kiwoom",
+            "Toss",
+            "공식 Open API",
+            "WTS",
+        ):
+            self.assertIn(phrase, slide_41, phrase)
+
+    def test_part_three_operations_ids_are_synced_across_manifest_index_curriculum_and_assembled_deck(self):
+        manifest_rows = [
+            slide
+            for module in self.manifest["decks"]["part3"]["modules"]
+            for slide in module["slides"]
+        ]
+        manifest_ids = [slide["id"] for slide in manifest_rows]
+        self.assertEqual([f"P3-S{number:02d}" for number in range(1, 43)], manifest_ids)
+
+        expected_titles = {
+            "P3-S40": "24시간 운영은 한 프로그램이 아니라 다섯 작업을 지키는 일입니다",
+            "P3-S41": "내가 켤 옵션은 운영 단계에 따라 달라집니다",
+            "P3-S42": "오늘 바로 바꿔 볼 한 가지는 무엇입니까?",
+        }
+        for slide_id, title in expected_titles.items():
+            with self.subTest(slide_id=slide_id):
+                self.assertIn(slide_id, self.index)
+                self.assertIn(title, self.index)
+                self.assertIn(f'data-slide-id="{slide_id}"', self.assembled)
+                self.assertIn(title, self.assembled)
+
+        for phrase in (
+            "P3-M5",
+            "doctor → simulation → paper → live",
+            "mock / real_data / research / paper / live",
+            "KIS 기준선",
+            "Kiwoom 조건부",
+            "Toss 공식 Open API와 WTS",
+        ):
+            self.assertIn(phrase, self.curriculum, phrase)
+
     def test_slide_34_teaches_memory_hygiene_without_performance_statistics(self):
-        slide = self._slide("P3-S34")
+        slide = self._slide("P3-S36")
 
         for phrase in (
             "기억은 많이 쌓는 것보다",
@@ -185,9 +285,10 @@ class Part3DeckContractTests(unittest.TestCase):
             self.assertNotIn(phrase, slide)
 
     def test_final_slide_ends_with_one_immediate_application(self):
-        slide = self._slide("P3-S38")
+        slide = self._slide("P3-S42")
 
         self.assertIn("오늘 바로 바꿔 볼 한 가지", slide)
+        self.assertIn("데이터 근거", slide)
         self.assertIn("내 전략에서 ___을 먼저 바꿔 보고 싶다", slide)
         self.assertNotIn("<h1>Q&amp;A</h1>", slide)
 

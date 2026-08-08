@@ -1,14 +1,14 @@
-<!-- P3-S31 · 어제 손절한 종목이 오늘 다시 떴습니다. 다시 사도 될까요 -->
+<!-- P3-S33 · 어제 손절한 종목이 오늘 다시 떴습니다. 다시 사도 될까요 -->
 <section class="slide split large-diagram">
   <div class="txt"><div class="kicker">모듈 4 · 먼저 풀 문제</div><h2>어제 손절한 종목이 오늘 다시 떴습니다. 다시 사도 될까요?</h2></div>
   <div class="img">
     <img class="reference-shot" src="../docs/assets/prism-insight/feedback-reentry-overview.png" alt="매매일지와 반복 교훈이 다음 판단과 재진입 제한으로 돌아가는 흐름">
     <p class="caption">이 루프는 자율 강화학습이 아니라 완료된 거래의 계획과 결과에서 교훈을 만들고 다음 판단에 참고자료로 넣는 구조입니다. 프롬프트·주문 규칙 변경은 사람의 검토와 배포가 필요합니다.</p>
   </div>
-  <div class="pagenum">31</div>
+  <div class="pagenum">33</div>
 </section>
 
-<!-- P3-S32 · 기억은 저장만 해서는 루프가 되지 않습니다 -->
+<!-- P3-S34 · 기억은 저장만 해서는 루프가 되지 않습니다 -->
 <section class="slide">
   <div class="kicker">원본 PRISM의 닫힌 피드백 루프</div>
   <h2>기억은 저장만 해서는 다음 판단에 영향을 주지 못합니다</h2>
@@ -19,20 +19,20 @@
     <div class="step"><div class="n">재사용</div><div class="t">다음 진입</div><div class="d">같은 종목·섹터·트리거 이력과 장기 원칙을 프롬프트에 넣습니다.</div></div>
   </div>
   <div class="takeaway">원본은 과거 기록을 참고했는지와 이후 성과도 따로 비교합니다. 기억 역시 검증 대상입니다.</div>
-  <div class="pagenum">32</div>
+  <div class="pagenum">34</div>
 </section>
 
-<!-- P3-S33 · 실제 운영에서는 매주 기록을 압축합니다 -->
+<!-- P3-S35 · 실제 운영에서는 매주 기록을 압축합니다 -->
 <section class="slide split large-diagram">
   <div class="txt"><div class="kicker">모듈 4 · 실제 운영 배치</div><h2>실제 운영에서는 매주 기록을 압축합니다</h2></div>
   <div class="img">
     <img class="reference-shot" src="assets/prism-memory-compression-operations.png" alt="단기, 중기, 장기 메모리 압축과 정리 게이트">
     <p class="caption">실제 서버의 일요일 03:00 배치와 2026-07-26 로그를 바탕으로 만든 설명 그림입니다. 압축은 성과 보장이 아닙니다.</p>
   </div>
-  <div class="pagenum">33</div>
+  <div class="pagenum">35</div>
 </section>
 
-<!-- P3-S34 · 기억은 많이 쌓는 것보다 쓸 만하게 유지하는 게 중요합니다 -->
+<!-- P3-S36 · 기억은 많이 쌓는 것보다 쓸 만하게 유지하는 게 중요합니다 -->
 <section class="slide">
   <div class="kicker">기억을 쓸 만하게 관리하는 법</div>
   <h2>기억은 많이 쌓는 것보다 쓸 만하게 유지하는 게 중요합니다</h2>
@@ -42,10 +42,10 @@
     <div class="step"><div class="n">오래됐거나 도움이 안 되는 교훈</div><div class="t">뒤로 물리거나 비활성화</div><div class="d">오래된 기록은 중기 요약으로 옮기고, 장기 기억 한도를 넘는 약한 원칙은 다음 판단에서 빼둡니다.</div></div>
   </div>
   <div class="takeaway">메모리 압축은 삭제가 목적이 아닙니다. 다음 판단에 필요한 교훈을 먼저 꺼내기 위한 정리입니다.</div>
-  <div class="pagenum">34</div>
+  <div class="pagenum">36</div>
 </section>
 
-<!-- P3-S35 · lecture-prism도 저장에서 재사용까지 한 바퀴 돕니다 -->
+<!-- P3-S37 · lecture-prism도 저장에서 재사용까지 한 바퀴 돕니다 -->
 <section class="slide comparison-slide">
   <div class="txt">
     <div class="kicker">원본과 강의용 축소판 비교</div>
@@ -55,10 +55,10 @@
     <img class="reference-shot comparison-shot" src="assets/lecture-compare-feedback.png" alt="PRISM Insight 매매일지·압축·재진입 구조와 lecture-prism feedback.py, memory.py, db.py, operations.py 함수 비교">
     <p class="caption">청산 결과가 교훈으로 저장되고, 기억 압축과 보조 작업을 거쳐 다음 판단에 다시 연결되는 위치를 봅니다.</p>
   </div>
-  <div class="pagenum">35</div>
+  <div class="pagenum">37</div>
 </section>
 
-<!-- P3-S36 · 프롬프트 파일에서 P3-M4 전체를 복사합니다 -->
+<!-- P3-S38 · 프롬프트 파일에서 P3-M4 전체를 복사합니다 -->
 <section class="slide prompt-screen">
   <div class="kicker">모듈 4 · 구조 질문과 보조 작업 실행</div>
   <h2>프롬프트 파일에서 P3-M4 블록 전체를 복사합니다</h2>
@@ -76,15 +76,68 @@
     </div>
   </div>
   <div class="prompt-branch">예약 시각과 실제 주문 설정은 바꾸지 않습니다. <code>schedule</code>은 구조만 읽고 수업 중에는 켜지 않습니다.</div>
-  <div class="pagenum">36</div>
+  <div class="pagenum">38</div>
 </section>
 
-<!-- P3-S37 · 네 모듈과 보조 운영이 자동매매 한 사이클을 만듭니다 -->
+<!-- P3-S39 · 네 모듈과 보조 운영이 자동매매 한 사이클을 만듭니다 -->
 <section class="slide split large-diagram">
   <div class="txt"><div class="kicker">파트 3 마무리</div><h2>자동매매는 메인 로직과 보조 운영이 함께 있어야 돌아갑니다</h2></div>
   <div class="img">
     <img class="reference-shot" src="assets/prism-auxiliary-operations-loop.png" alt="네 모듈 주변에서 보유종목 감시, 체결 확인, 메모리 압축, 다음 진입 참고가 계속 도는 구조">
     <p class="caption">가운데 네 모듈은 한 번의 판단 흐름입니다. 바깥의 보유 감시·체결 확인·기억 압축·다음 진입 참고는 실행 사이의 빈틈을 메웁니다. 강의용 <code>operations.py</code>는 이 작업을 안전한 일회 실행과 선택 예약으로 나눕니다.</p>
   </div>
-  <div class="pagenum">37</div>
+  <div class="pagenum">39</div>
+</section>
+
+<!-- P3-S40 · 24시간 운영은 한 프로그램이 아니라 다섯 작업을 지키는 일입니다 -->
+<section class="slide">
+  <div class="kicker">모듈 5 · 운영 준비의 오해 바로잡기</div>
+  <h2>24시간 운영은 한 프로그램이 아니라 다섯 작업을 지키는 일입니다</h2>
+  <div class="flow" style="margin-top:20px; grid-template-columns:repeat(5, 1fr); gap:10px;">
+    <div class="step"><div class="n">전체 배치</div><div class="t" style="font-size:20px;">후보·분석</div><div class="d">정해진 시각에 한 번의 판단 흐름을 새로 시작합니다.</div></div>
+    <div class="step"><div class="n">보유 감시</div><div class="t" style="font-size:20px;">손절·추세</div><div class="d">이미 산 종목의 위험을 장중에 다시 봅니다.</div></div>
+    <div class="step"><div class="n">주문 대사</div><div class="t" style="font-size:20px;">미체결 확인</div><div class="d">결과가 불명확할 때 새 주문 전에 상태를 읽습니다.</div></div>
+    <div class="step"><div class="n">기억 압축</div><div class="t" style="font-size:20px;">교훈 정리</div><div class="d">오래된 기록을 줄여 다음 판단에 넣을 것만 남깁니다.</div></div>
+    <div class="step"><div class="n">상태·알림</div><div class="t" style="font-size:20px;">사람 확인</div><div class="d">성공·실패·중단 이유를 로그와 알림으로 남깁니다.</div></div>
+  </div>
+  <div class="flow" style="margin-top:18px; grid-template-columns:1fr 1fr;">
+    <div class="step" style="border-color:#f0b45a; background:#271d12;">
+      <div class="n">오해</div>
+      <div class="t">main.py를 터미널에 계속 띄워 두는 일</div>
+      <div class="d">한 번의 판단 흐름을 오래 켜 둔다고 운영 책임이 해결되지는 않습니다.</div>
+    </div>
+    <div class="step" style="border-color:#5ecf9a; background:#10231d;">
+      <div class="n">운영</div>
+      <div class="t"><code>operations.py schedule</code> + service manager</div>
+      <div class="d">long-lived service process는 launchd, systemd, Windows Task Scheduler가 관리합니다.</div>
+    </div>
+  </div>
+  <div class="takeaway">수업에서는 service manager 등록을 하지 않습니다. 먼저 읽기 전용으로 준비 상태를 봅니다.</div>
+  <div class="pagenum">40</div>
+</section>
+
+<!-- P3-S41 · 내가 켤 옵션은 운영 단계에 따라 달라집니다 -->
+<section class="slide prompt-screen">
+  <div class="kicker">모듈 5 · 읽기 전용 감사와 목표 단계 계획</div>
+  <h2>내가 켤 옵션은 운영 단계에 따라 달라집니다</h2>
+  <div class="prompt-lead">프롬프트 파일에서 <strong>P3-M5 블록 전체</strong>를 복사합니다. 먼저 감사하고, 그다음 목표 단계 계획만 세웁니다.</div>
+  <div class="prompt-columns" style="grid-template-columns:0.9fr 1fr 1.1fr;">
+    <div class="prompt-panel">
+      <p style="font-size:17px;"><span class="num">프로필</span> <code>mock</code> · <code>real_data</code> · <code>research</code> · <code>paper</code> · <code>live</code></p>
+      <p style="font-size:17px;"><span class="num">사다리</span> <code>doctor → simulation → paper → live</code></p>
+      <p style="font-size:17px;"><span class="num">live gate</span> <code>LECTURE_ENABLE_LIVE_BROKER</code> · <code>LECTURE_ALLOW_REAL_BROKER</code></p>
+    </div>
+    <div class="prompt-panel">
+      <p style="font-size:17px;"><span class="num">KIS</span> 강의용 기준선. 읽기 전용 doctor 뒤에 simulation부터 확인합니다.</p>
+      <p style="font-size:17px;"><span class="num">Kiwoom</span> 조건부. 기능과 주문 수명주기 경계를 따로 봅니다.</p>
+      <p style="font-size:17px;"><span class="num">Toss</span> 공식 Open API와 WTS를 분리합니다. WTS 단독 live는 READY가 아닙니다.</p>
+    </div>
+    <div class="prompt-panel">
+      <p style="font-size:17px;"><span class="num">내 전략에 대입 1</span> 내 컴퓨터는 지금 어느 운영 단계까지 안전하게 갈 수 있을까?</p>
+      <p style="font-size:17px;"><span class="num">내 전략에 대입 2</span> service manager가 대신 지켜야 할 일은 무엇일까?</p>
+      <p style="font-size:17px;"><span class="num">내 전략에 대입 3</span> 브로커 준비 상태가 CONDITIONAL이면 다음 행동은 무엇일까?</p>
+    </div>
+  </div>
+  <div class="prompt-branch">시크릿 출력, 서비스 등록, 플래그 변경, 실제 주문·취소 없이 configured / missing만 봅니다.</div>
+  <div class="pagenum">41</div>
 </section>

@@ -729,11 +729,11 @@
           <div class="chapter-main">
             <div class="chapter-header">
               <span class="chapter-num">CH 05</span>
-              <span class="chapter-title">모듈 4: 피드백 & 메모리 — AI가 인간 투자자를 닮아가는 법</span>
+              <span class="chapter-title">모듈 4–5: 피드백·메모리와 운영 준비 — 기록 뒤에는 운영 사다리가 남습니다</span>
               <span class="time-chip">⏱ 15분</span>
             </div>
             <div class="chapter-desc">
-              매매일지의 단기/중기/장기 메모리 구조와 자기개선 루프. "인간 투자자가 매매일지 쓰는 이유와 완전히 같다"는 관점으로 설명. 판단 오류 vs 실행 오류 구분법도 포함.
+              매매일지의 단기/중기/장기 메모리 구조를 본 뒤 P3-M5로 운영 준비를 읽기 전용 감사한다. `mock / real_data / research / paper / live` 프로필을 구분하고, `doctor → simulation → paper → live` 순서와 service manager 책임을 설명한다.
             </div>
             <div class="chapter-tags">
               <span class="tag tag-lecture">개념 강의</span>
@@ -742,7 +742,8 @@
             <div class="chapter-bullets">
               <div class="bullet">단기 메모리(당일): 오늘 매매 패턴 / 중기(주간): 섹터·트렌드 / 장기(월간): 시장 체제 판단</div>
               <div class="bullet">교훈 추출 → 다음 매매 프롬프트에 자동 반영하는 자기개선 루프</div>
-              <div class="bullet">시뮬레이터 vs 실거래 병행: 판단 오류(에이전트 문제) vs 실행 오류(API 문제) 분리</div>
+              <div class="bullet">P3-M5 운영 감사: configured / missing만 보고, 시크릿 출력·서비스 등록·플래그 변경·실제 주문은 하지 않음</div>
+              <div class="bullet">KIS 기준선, Kiwoom 조건부, Toss 공식 Open API와 WTS 분리. live 전에는 <code>LECTURE_ENABLE_LIVE_BROKER</code>와 <code>LECTURE_ALLOW_REAL_BROKER</code> gate가 남음</div>
               <div class="cc-cmd"><span class="cc-bubble">Claude Code</span><div><span class="cc-text">"로컬 대시보드 실행해줘. 오늘 시뮬레이션 매매 내역이랑 의사결정 이유 보고 싶어"</span><div class="cc-result">→ dashboard.py 실행 → localhost:8080 → 매매현황·의사결정 내역·교훈 리스트 확인</div></div></div>
               <div class="bullet">파트4 사전과제 안내: "본인의 매매 이론을 3줄로 정리해오기 (진입/청산/리스크)"</div>
             </div>
