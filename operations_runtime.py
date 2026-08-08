@@ -7,10 +7,11 @@ from dataclasses import dataclass
 from typing import Mapping
 
 
-LIVE_BROKER_UNATTENDED_ACK = (
-    "I UNDERSTAND THIS LECTURE-PRISM RUN MAY SEND UNATTENDED REAL BROKER ORDERS"
-)
+LIVE_BROKER_UNATTENDED_ACK = "I_ACCEPT_REAL_ORDERS"
 
+_ACCEPTED_PROFILES = frozenset(
+    {"mock", "classroom", "real_data", "research", "backtest", "paper", "live"}
+)
 _SIMULATION_PROFILES = frozenset({"mock", "classroom", "real_data", "research", "backtest"})
 _ACCOUNT_MODES = {
     "paper": "demo",
@@ -33,7 +34,7 @@ def _truthy(value: object) -> bool:
 
 
 def _profile(value: str) -> str:
-    return str(value or "mock").strip().lower().replace("-", "_").replace(" ", "_")
+    return str(value or "mock").strip().lower().replace(" ", "_")
 
 
 def resolve_execution_policy(
@@ -52,6 +53,16 @@ def resolve_execution_policy(
     selected_profile = _profile(profile)
     requested = bool(execute_broker)
     source = env if env is not None else os.environ
+
+    if selected_profile not in _ACCEPTED_PROFILES:
+        return ExecutionPolicy(
+            profile=selected_profile,
+            account_mode="simulation",
+            requested_broker_execution=requested,
+            broker_execution_allowed=False,
+            dry_run=True,
+            blocked_reasons=("unknown_profile",),
+        )
 
     if selected_profile in _SIMULATION_PROFILES:
         return ExecutionPolicy(

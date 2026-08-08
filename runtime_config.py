@@ -7,7 +7,6 @@ the project from `.env` without installing extra configuration packages.
 from __future__ import annotations
 
 import os
-import sys
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
@@ -239,8 +238,7 @@ def load_runtime_config(profile: str | None = None) -> RuntimeConfig:
     if profile is None and scoped is not None:
         return scoped
 
-    if "unittest" not in sys.modules:
-        load_dotenv_once()
+    load_dotenv_once()
     profile = _profile(profile)
     defaults = _PROFILE_DEFAULTS[profile]
 
