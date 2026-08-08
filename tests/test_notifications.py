@@ -223,6 +223,95 @@ class DiscordMessageFormatTest(unittest.TestCase):
         self.assertNotIn("account", message.lower())
         self.assertNotIn("계좌", message)
 
+    def test_feedback_message_marks_saved_records_without_inventing_buy_lesson(self):
+        self.assertTrue(hasattr(notifications, "format_feedback_message"))
+        message = notifications.format_feedback_message(
+            [analysis()],
+            [
+                {
+                    "ticker": "005930",
+                    "action": "BUY",
+                    "status": "filled",
+                    "executed": True,
+                    "filled_qty": 3,
+                }
+            ],
+        )
+
+        self.assertIn("피드백 저장 완료", message)
+        self.assertIn("분석 이력 1건", message)
+        self.assertIn("가상 체결 기록 1건", message)
+        self.assertIn("결과 교훈 0건", message)
+        self.assertIn("SELL 뒤", message)
+        self.assertIn("prism.db", message)
+
+    def test_operational_messages_cover_events_without_raw_sensitive_payloads(self):
+        self.assertTrue(hasattr(notifications, "format_operational_message"))
+        sensitive_context = {
+            "profile": "live",
+            "job": "reconcile",
+            "error": RuntimeError(
+                "raw outage sk-secret-ops https://broker.example/token "
+                "account 123-456 balance 987654321"
+            ),
+            "account_number": "123-456",
+            "balance": 987654321,
+            "token": "ops-token-value",
+            "webhook_url": VALID_WEBHOOK,
+            "last_data_at": "2026-08-01T09:00:00+09:00",
+        }
+        events = (
+            "service_start",
+            "service_stop",
+            "job_failure",
+            "stale_data",
+            "reconciliation_failure",
+            "blocked_unattended_gate",
+        )
+
+        for event in events:
+            with self.subTest(event=event):
+                message = notifications.format_operational_message(
+                    event,
+                    sensitive_context,
+                )
+
+                self.assertIn(event, message)
+                self.assertIn("live", message)
+                self.assertNotIn("raw outage", message)
+                self.assertNotIn("sk-secret-ops", message)
+                self.assertNotIn("https://broker.example", message)
+                self.assertNotIn("123-456", message)
+                self.assertNotIn("987654321", message)
+                self.assertNotIn("ops-token-value", message)
+                self.assertNotIn("token-value", message)
+                self.assertLessEqual(len(message), 2_000)
+
+    def test_operational_discord_notification_is_fail_open(self):
+        self.assertTrue(hasattr(notifications.DiscordNotifier, "operational"))
+        failure = OSError("webhook token-value raw network failure")
+        notifier = notifications.DiscordNotifier(
+            VALID_WEBHOOK,
+            opener=FakeOpener(failure),
+        )
+
+        with self.assertLogs("notifications", level="WARNING") as captured:
+            sent = asyncio.run(
+                notifier.operational(
+                    "job_failure",
+                    {
+                        "profile": "paper",
+                        "error": failure,
+                        "webhook_url": VALID_WEBHOOK,
+                    },
+                )
+            )
+
+        self.assertFalse(sent)
+        joined = "\n".join(captured.output)
+        self.assertNotIn("token-value", joined)
+        self.assertNotIn("raw network failure", joined)
+
 
 class DiscordDocumentationContractTest(unittest.TestCase):
     def test_example_and_architecture_document_optional_decision_notifications(self):
@@ -234,6 +323,8 @@ class DiscordDocumentationContractTest(unittest.TestCase):
         self.assertIn('DISCORD_WEBHOOK_URL=""', env_example)
         self.assertIn("notifications.py", architecture)
         self.assertIn("AI 판단 요약", runtime_profiles)
+        self.assertIn("피드백 저장", architecture)
+        self.assertIn("피드백 저장", runtime_profiles)
         self.assertIn("계좌 잔고", runtime_profiles)
         self.assertIn("보내지", runtime_profiles)
 

@@ -1,5 +1,8 @@
 import asyncio
+import argparse
+from datetime import datetime
 from io import StringIO
+import os
 from pathlib import Path
 import tempfile
 import unittest
@@ -106,6 +109,103 @@ class OperationsTest(unittest.TestCase):
         self.assertNotIn("sk-secret-operations-status", text)
         self.assertNotIn("kis-secret-operations-status", text)
         self.assertNotIn(operations_runtime.LIVE_BROKER_UNATTENDED_ACK, text)
+
+    def test_scheduled_batch_uses_policy_dry_run_without_mutating_profile_environment(self):
+        job = operations.JobSpec(
+            name="analysis",
+            at="09:30",
+            weekdays=(0,),
+            command="batch",
+        )
+        policy = operations_runtime.resolve_execution_policy(
+            "paper",
+            execute_broker=True,
+            env={"LECTURE_ENABLE_LIVE_BROKER": "1"},
+        )
+        before = os.environ.get("LECTURE_PROFILE")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch(
+                "operations.run_analysis_batch",
+                new=mock.AsyncMock(return_value={"ok": True}),
+            ) as batch:
+                asyncio.run(
+                    operations.run_scheduled_job(
+                        job,
+                        state_store=operations_runtime.OperationsStateStore(Path(tmp)),
+                        active_jobs=set(),
+                        policy=policy,
+                        config=mock.Mock(profile="paper"),
+                        now=lambda: datetime.fromisoformat(
+                            "2026-08-03T09:30:00+09:00"
+                        ),
+                    )
+                )
+
+        batch.assert_awaited_once()
+        self.assertFalse(batch.await_args.kwargs["dry_run"])
+        self.assertEqual(os.environ.get("LECTURE_PROFILE"), before)
+
+    def test_scheduled_execute_broker_keeps_non_operating_profiles_in_simulation(self):
+        job = operations.JobSpec(
+            name="monitor",
+            at="09:35",
+            weekdays=(0,),
+            command="monitor",
+        )
+        policy = operations_runtime.resolve_execution_policy(
+            "research",
+            execute_broker=True,
+            env={"LECTURE_ENABLE_LIVE_BROKER": "1"},
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch(
+                "operations.run_holding_monitor",
+                new=mock.AsyncMock(return_value=[]),
+            ) as monitor:
+                asyncio.run(
+                    operations.run_scheduled_job(
+                        job,
+                        state_store=operations_runtime.OperationsStateStore(Path(tmp)),
+                        active_jobs=set(),
+                        policy=policy,
+                        config=mock.Mock(profile="research"),
+                        now=lambda: datetime.fromisoformat(
+                            "2026-08-03T09:35:00+09:00"
+                        ),
+                    )
+                )
+
+        monitor.assert_awaited_once()
+        self.assertTrue(monitor.await_args.kwargs["dry_run"])
+
+    def test_cli_profile_selects_runtime_config_without_setting_secret_environment(self):
+        args = argparse.Namespace(
+            command="batch",
+            ticker="005930",
+            broker=None,
+            profile="paper",
+            execute_broker=True,
+            once=False,
+            monitor_interval_minutes=10,
+            reconcile_interval_minutes=30,
+        )
+        before = {
+            "LECTURE_PROFILE": os.environ.get("LECTURE_PROFILE"),
+            "KIS_APP_SECRET": os.environ.get("KIS_APP_SECRET"),
+        }
+
+        with mock.patch(
+            "operations.run_analysis_batch",
+            new=mock.AsyncMock(return_value={"ok": True}),
+        ) as batch, mock.patch("builtins.print"):
+            asyncio.run(operations._main(args))
+
+        batch.assert_awaited_once()
+        self.assertEqual(batch.await_args.kwargs["config"].profile, "paper")
+        self.assertEqual(os.environ.get("LECTURE_PROFILE"), before["LECTURE_PROFILE"])
+        self.assertEqual(os.environ.get("KIS_APP_SECRET"), before["KIS_APP_SECRET"])
 
 
 if __name__ == "__main__":

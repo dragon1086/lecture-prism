@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
+import re
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from tempfile import NamedTemporaryFile, gettempdir
 from typing import Any, Callable, Mapping
@@ -320,6 +322,13 @@ class OperationsStateStore:
     ) -> None:
         self._record_job_finished(job, "skipped_overlap", finished_at)
 
+    def record_job_skipped_market_closed(
+        self,
+        job: str,
+        finished_at: datetime | str | None = None,
+    ) -> None:
+        self._record_job_finished(job, "skipped_market_closed", finished_at)
+
     def _record_job_finished(
         self,
         job: str,
@@ -551,6 +560,16 @@ class SchedulerLock:
 
 
 _SECRET_KEY_PARTS = ("secret", "token", "password", "api_key", "app_key", "ack")
+_SENSITIVE_FIELD_PARTS = (
+    *_SECRET_KEY_PARTS,
+    "account",
+    "balance",
+    "cash",
+    "url",
+    "webhook",
+    "authorization",
+)
+_URL_RE = re.compile(r"https?://\S+", re.IGNORECASE)
 
 
 def _redact_value(key: str, value: Any) -> Any:
@@ -566,6 +585,149 @@ def _redact_value(key: str, value: Any) -> Any:
         ):
             return "<redacted>"
     return value
+
+
+def sanitize_operations_value(key: str, value: Any) -> Any:
+    """Return a log/notification-safe value without raw secrets or payloads."""
+
+    lowered_key = key.lower()
+    if isinstance(value, BaseException):
+        return type(value).__name__
+    if any(part in lowered_key for part in _SENSITIVE_FIELD_PARTS):
+        return "<redacted>"
+    redacted = _redact_value(key, value)
+    if redacted == "<redacted>":
+        return redacted
+    if isinstance(value, str):
+        if _URL_RE.search(value):
+            return _URL_RE.sub("<redacted>", value)
+        lowered = value.lower()
+        if "account" in lowered or "balance" in lowered or "token" in lowered:
+            return "<redacted>"
+    return value
+
+
+def sanitize_operations_fields(fields: Mapping[str, Any]) -> dict[str, Any]:
+    safe: dict[str, Any] = {}
+    for key, value in fields.items():
+        if value is None:
+            continue
+        safe[str(key)] = serialize_status(sanitize_operations_value(str(key), value))
+    return safe
+
+
+def _format_field_value(value: Any) -> str:
+    if isinstance(value, (list, tuple)):
+        text = ",".join(str(item) for item in value)
+    elif isinstance(value, dict):
+        text = json.dumps(value, ensure_ascii=False, sort_keys=True)
+    else:
+        text = str(value)
+    return " ".join(text.split())
+
+
+def format_operations_log_line(event: str, **fields: Any) -> str:
+    safe = sanitize_operations_fields(fields)
+    parts = [f"event={event}"]
+    for key in sorted(safe):
+        parts.append(f"{key}={_format_field_value(safe[key])}")
+    return " ".join(parts)
+
+
+class DailySizeRotatingOperationsHandler(logging.Handler):
+    """Rotate operation logs when the KST date changes or max size is exceeded."""
+
+    def __init__(
+        self,
+        directory: Path | str,
+        *,
+        max_bytes: int = 1_000_000,
+        now: Callable[[], datetime] | None = None,
+    ) -> None:
+        super().__init__(logging.INFO)
+        self.directory = Path(directory)
+        self.max_bytes = int(max_bytes)
+        self.now = now or _utcnow
+        self._stream = None
+        self._path: Path | None = None
+        self.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            message = self.format(record) + "\n"
+            stream = self._stream_for_message(message)
+            stream.write(message)
+            stream.flush()
+        except Exception:
+            self.handleError(record)
+
+    def close(self) -> None:
+        if self._stream is not None:
+            self._stream.close()
+            self._stream = None
+        super().close()
+
+    def _current_path(self) -> Path:
+        current = self.now()
+        if current.tzinfo is not None:
+            current = current.astimezone(timezone(timedelta(hours=9)))
+        date_key = current.strftime("%Y-%m-%d")
+        return self.directory / f"operations-{date_key}.log"
+
+    def _stream_for_message(self, message: str):
+        path = self._current_path()
+        self.directory.mkdir(parents=True, exist_ok=True)
+        if self._path != path:
+            if self._stream is not None:
+                self._stream.close()
+            self._path = path
+            self._stream = path.open("a", encoding="utf-8")
+        if (
+            self.max_bytes > 0
+            and path.exists()
+            and path.stat().st_size + len(message.encode("utf-8")) > self.max_bytes
+            and path.stat().st_size > 0
+        ):
+            if self._stream is not None:
+                self._stream.close()
+            self._rotate_size(path)
+            self._stream = path.open("a", encoding="utf-8")
+        return self._stream
+
+    @staticmethod
+    def _rotate_size(path: Path) -> None:
+        index = 1
+        while path.with_name(f"{path.name}.{index}").exists():
+            index += 1
+        path.rename(path.with_name(f"{path.name}.{index}"))
+
+
+def configure_operations_logger(
+    logger_name: str = "lecture_prism.operations",
+    directory: Path | str = Path("logs"),
+    *,
+    max_bytes: int = 1_000_000,
+    now: Callable[[], datetime] | None = None,
+) -> logging.Logger:
+    logger = logging.getLogger(logger_name)
+    for handler in list(logger.handlers):
+        if getattr(handler, "_lecture_prism_operations_handler", False):
+            logger.removeHandler(handler)
+            handler.close()
+    handler = DailySizeRotatingOperationsHandler(
+        directory,
+        max_bytes=max_bytes,
+        now=now,
+    )
+    handler._lecture_prism_operations_handler = True
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+    logger.propagate = False
+    return logger
+
+
+def log_operation(logger: logging.Logger, event: str, **fields: Any) -> None:
+    logger.info(format_operations_log_line(event, **fields))
 
 
 def serialize_status(value: Any, *, key: str = "") -> Any:

@@ -18,14 +18,15 @@ from __future__ import annotations
 import argparse
 import asyncio
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, time, timedelta
 import logging
 import os
 from pathlib import Path
 import signal
 import sqlite3
 import sys
-from typing import Iterable, Sequence
+from typing import Sequence
+from zoneinfo import ZoneInfo
 
 import operations_runtime
 import trading
@@ -33,6 +34,8 @@ import trading
 log = logging.getLogger(__name__)
 
 _COMMANDS = {"batch", "monitor", "reconcile", "compress"}
+KST = ZoneInfo("Asia/Seoul")
+_WEEKDAYS = (0, 1, 2, 3, 4)
 
 
 @dataclass(frozen=True)
@@ -67,6 +70,75 @@ DEFAULT_JOBS = (
 )
 
 
+def _as_kst(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=KST)
+    return value.astimezone(KST)
+
+
+def _minutes_between(start: str, end: str, interval_minutes: int) -> list[str]:
+    if interval_minutes <= 0:
+        raise ValueError("interval_minutes는 1 이상이어야 합니다")
+    start_hour, start_minute = (int(part) for part in start.split(":", maxsplit=1))
+    end_hour, end_minute = (int(part) for part in end.split(":", maxsplit=1))
+    current = datetime(2000, 1, 3, start_hour, start_minute, tzinfo=KST)
+    last = datetime(2000, 1, 3, end_hour, end_minute, tzinfo=KST)
+    values: list[str] = []
+    while current <= last:
+        values.append(current.strftime("%H:%M"))
+        current += timedelta(minutes=interval_minutes)
+    return values
+
+
+def build_schedule(
+    *,
+    monitor_interval_minutes: int = 10,
+    reconcile_interval_minutes: int = 30,
+) -> tuple[JobSpec, ...]:
+    """Return default jobs plus configurable KST intraday checks."""
+
+    interval_jobs: list[JobSpec] = []
+    for at in _minutes_between("09:35", "15:20", monitor_interval_minutes):
+        interval_jobs.append(
+            JobSpec(f"장중 보유 종목 점검 {at}", at, _WEEKDAYS, "monitor")
+        )
+    for at in _minutes_between("10:00", "15:00", reconcile_interval_minutes):
+        interval_jobs.append(
+            JobSpec(f"장중 미체결 주문 확인 {at}", at, _WEEKDAYS, "reconcile")
+        )
+    return (*DEFAULT_JOBS, *interval_jobs)
+
+
+def next_run_after(now: datetime, jobs: Sequence[JobSpec] = DEFAULT_JOBS) -> datetime:
+    """Return the next scheduled run after ``now`` in Asia/Seoul time."""
+
+    current = _as_kst(now).replace(second=0, microsecond=0)
+    candidates: list[datetime] = []
+    for offset in range(14):
+        day = current.date() + timedelta(days=offset)
+        for job in jobs:
+            hour_text, minute_text = job.at.split(":", maxsplit=1)
+            candidate = datetime.combine(
+                day,
+                time(int(hour_text), int(minute_text), tzinfo=KST),
+            )
+            if candidate.weekday() in job.weekdays and candidate > current:
+                candidates.append(candidate)
+    if not candidates:
+        raise ValueError("향후 14일 안에 실행할 작업이 없습니다")
+    return min(candidates)
+
+
+def is_korean_market_open(now: datetime) -> bool:
+    """Best-effort KST market-hours check for unattended broker execution."""
+
+    current = _as_kst(now)
+    if current.weekday() not in _WEEKDAYS:
+        return False
+    current_time = current.time().replace(tzinfo=None)
+    return time(9, 0) <= current_time <= time(15, 30)
+
+
 def due_jobs(
     now: datetime,
     jobs: Sequence[JobSpec] = DEFAULT_JOBS,
@@ -75,10 +147,11 @@ def due_jobs(
 ) -> list[JobSpec]:
     """현재 분에 해당하며 아직 실행하지 않은 작업을 반환합니다."""
 
-    minute_key = now.strftime("%Y-%m-%d %H:%M")
+    current = _as_kst(now)
+    minute_key = current.strftime("%Y-%m-%d %H:%M")
     due: list[JobSpec] = []
     for job in jobs:
-        if now.weekday() not in job.weekdays or now.strftime("%H:%M") != job.at:
+        if current.weekday() not in job.weekdays or current.strftime("%H:%M") != job.at:
             continue
         marker = (minute_key, job.name)
         if seen is not None and marker in seen:
@@ -131,12 +204,29 @@ async def run_order_reconciliation(broker_name: str | None = None) -> dict:
     return {"broker": broker, "status": "ok", "orders": orders}
 
 
-async def run_analysis_batch(*, target_ticker: str | None = None) -> object:
+async def run_analysis_batch(
+    *,
+    target_ticker: str | None = None,
+    dry_run: bool = True,
+    config=None,
+    notifier=None,
+) -> object:
     """기본 시뮬레이션으로 메인 파이프라인을 한 번 실행합니다."""
 
     from main import run_pipeline
 
-    return await run_pipeline(dry_run=True, target_ticker=target_ticker)
+    use_real_data = bool(
+        config is not None
+        and config.profile not in {"classroom", "backtest"}
+        and config.screening_mode == "real"
+    )
+    return await run_pipeline(
+        dry_run=dry_run,
+        target_ticker=target_ticker,
+        use_real_data=use_real_data,
+        config=config,
+        notifier=notifier,
+    )
 
 
 async def run_memory_compression() -> dict:
@@ -147,13 +237,24 @@ async def run_memory_compression() -> dict:
     return await asyncio.to_thread(compress_memories)
 
 
-async def run_job(command: str) -> object:
+async def run_job(
+    command: str,
+    *,
+    policy: operations_runtime.ExecutionPolicy | None = None,
+    config=None,
+    notifier=None,
+) -> object:
     """스케줄 명세의 명령 하나를 실행합니다."""
 
+    dry_run = True if policy is None else policy.dry_run
     if command == "batch":
-        return await run_analysis_batch()
+        return await run_analysis_batch(
+            dry_run=dry_run,
+            config=config,
+            notifier=notifier,
+        )
     if command == "monitor":
-        return await run_holding_monitor(dry_run=True)
+        return await run_holding_monitor(dry_run=dry_run)
     if command == "reconcile":
         return await run_order_reconciliation()
     if command == "compress":
@@ -166,6 +267,11 @@ async def run_scheduled_job(
     *,
     state_store: operations_runtime.OperationsStateStore,
     active_jobs: set[str],
+    policy: operations_runtime.ExecutionPolicy | None = None,
+    config=None,
+    notifier=None,
+    market_open_checker=None,
+    operations_logger: logging.Logger | None = None,
     now=datetime.now,
 ) -> dict:
     """Run one due job with a non-blocking same-command overlap guard."""
@@ -174,25 +280,107 @@ async def run_scheduled_job(
     if job_key in active_jobs or job.name in active_jobs:
         finished_at = now().isoformat(timespec="seconds")
         state_store.record_job_skipped_overlap(job_key, finished_at)
+        if operations_logger is not None:
+            operations_runtime.log_operation(
+                operations_logger,
+                "job_skipped_overlap",
+                job=job_key,
+                finished_at=finished_at,
+            )
         return {"job": job_key, "status": "skipped_overlap"}
 
+    current = _as_kst(now())
+    if (
+        policy is not None
+        and policy.profile in {"paper", "live"}
+        and not policy.dry_run
+    ):
+        checker = market_open_checker or is_korean_market_open
+        if bool(checker(current)):
+            pass
+        else:
+            finished_at = current.isoformat(timespec="seconds")
+            state_store.record_job_skipped_market_closed(job_key, finished_at)
+            if operations_logger is not None:
+                operations_runtime.log_operation(
+                    operations_logger,
+                    "job_skipped_market_closed",
+                    job=job_key,
+                    profile=policy.profile,
+                    finished_at=finished_at,
+                )
+            return {"job": job_key, "status": "skipped_market_closed"}
+
     active_jobs.add(job_key)
-    started_at = now().isoformat(timespec="seconds")
+    started_at = _as_kst(now()).isoformat(timespec="seconds")
     state_store.record_job_start(job_key, started_at)
+    if operations_logger is not None:
+        operations_runtime.log_operation(
+            operations_logger,
+            "job_start",
+            job=job_key,
+            profile=getattr(config, "profile", None),
+            dry_run=None if policy is None else policy.dry_run,
+            started_at=started_at,
+        )
     try:
-        await run_job(job.command)
+        await run_job(
+            job.command,
+            policy=policy,
+            config=config,
+            notifier=notifier,
+        )
     except Exception as exc:
+        finished_at = _as_kst(now()).isoformat(timespec="seconds")
         state_store.record_job_failure(
             job_key,
-            now().isoformat(timespec="seconds"),
+            finished_at,
             error_type=type(exc).__name__,
+        )
+        if operations_logger is not None:
+            operations_runtime.log_operation(
+                operations_logger,
+                "job_failure",
+                job=job_key,
+                error=exc,
+                finished_at=finished_at,
+            )
+        await _notify_operational(
+            notifier,
+            "job_failure",
+            {
+                "job": job_key,
+                "profile": getattr(config, "profile", None),
+                "error": exc,
+            },
         )
         raise
     else:
-        state_store.record_job_success(job_key, now().isoformat(timespec="seconds"))
+        finished_at = _as_kst(now()).isoformat(timespec="seconds")
+        state_store.record_job_success(job_key, finished_at)
+        if operations_logger is not None:
+            operations_runtime.log_operation(
+                operations_logger,
+                "job_success",
+                job=job_key,
+                finished_at=finished_at,
+            )
         return {"job": job_key, "status": "success"}
     finally:
         active_jobs.discard(job_key)
+
+
+async def _notify_operational(notifier, event: str, context: dict) -> bool:
+    if notifier is None:
+        return False
+    method = getattr(notifier, "operational", None)
+    if method is None:
+        return False
+    try:
+        return bool(await method(event, context))
+    except Exception as exc:  # noqa: BLE001 - 운영 알림은 스케줄 결과와 분리
+        log.warning("운영 알림 실패: %s", type(exc).__name__)
+        return False
 
 
 def request_scheduler_stop(
@@ -261,6 +449,14 @@ async def run_scheduler(
     stop_event: asyncio.Event | None = None,
     now_func=datetime.now,
     sleep=asyncio.sleep,
+    profile: str | None = None,
+    execute_broker: bool = False,
+    once: bool = False,
+    monitor_interval_minutes: int = 10,
+    reconcile_interval_minutes: int = 30,
+    market_open_checker=None,
+    notifier=None,
+    operations_logger: logging.Logger | None = None,
 ) -> None:
     """명시적으로 켰을 때만 동작하는 단순 분 단위 스케줄러."""
 
@@ -273,6 +469,19 @@ async def run_scheduler(
         runtime_path = operations_runtime.default_runtime_dir()
     else:
         runtime_path = Path(runtime_dir)
+    if jobs is DEFAULT_JOBS:
+        jobs = build_schedule(
+            monitor_interval_minutes=monitor_interval_minutes,
+            reconcile_interval_minutes=reconcile_interval_minutes,
+        )
+    config, policy = _load_runtime_context_without_env_mutation(
+        profile,
+        execute_broker=execute_broker,
+    )
+    if operations_logger is None:
+        operations_logger = operations_runtime.configure_operations_logger(
+            directory=runtime_path / "logs",
+        )
     state = state_store or operations_runtime.OperationsStateStore(runtime_path)
     lock = operations_runtime.SchedulerLock(runtime_path, state_store=state)
     event = stop_event or asyncio.Event()
@@ -280,6 +489,32 @@ async def run_scheduler(
     seen: set[tuple[str, str]] = set()
     lock.acquire()
     _install_signal_handlers(event, state, lock)
+    operations_runtime.log_operation(
+        operations_logger,
+        "service_start",
+        profile=config.profile,
+        dry_run=policy.dry_run,
+        account_mode=policy.account_mode,
+        blocked_reasons=policy.blocked_reasons,
+    )
+    await _notify_operational(
+        notifier,
+        "service_start",
+        {
+            "profile": config.profile,
+            "status": "running",
+            "blocked_reasons": policy.blocked_reasons,
+        },
+    )
+    if execute_broker and policy.blocked_reasons:
+        await _notify_operational(
+            notifier,
+            "blocked_unattended_gate",
+            {
+                "profile": config.profile,
+                "blocked_reasons": policy.blocked_reasons,
+            },
+        )
     try:
         while not event.is_set():
             lock.heartbeat()
@@ -293,14 +528,22 @@ async def run_scheduler(
                         job,
                         state_store=state,
                         active_jobs=active_jobs,
+                        policy=policy,
+                        config=config,
+                        notifier=notifier,
+                        market_open_checker=market_open_checker,
+                        operations_logger=operations_logger,
                         now=now_func,
                     )
                 except Exception as exc:  # noqa: BLE001 - 다음 예약 작업은 계속 실행
                     log.warning("예약 작업 실패 [%s]: %s", job.name, type(exc).__name__)
-            current_minute = now.strftime("%Y-%m-%d %H:%M")
+            current_minute = _as_kst(now).strftime("%Y-%m-%d %H:%M")
             seen.intersection_update(
                 marker for marker in seen if marker[0] == current_minute
             )
+            if once:
+                event.set()
+                break
             await sleep(max(1, poll_seconds))
     finally:
         if lock.owns_metadata():
@@ -320,6 +563,19 @@ async def run_scheduler(
                 process_identity=lock.process_identity_token,
             )
         lock.release()
+        operations_runtime.log_operation(
+            operations_logger,
+            "service_stop",
+            profile=config.profile,
+        )
+        await _notify_operational(
+            notifier,
+            "service_stop",
+            {
+                "profile": config.profile,
+                "status": "stopped",
+            },
+        )
 
 
 def _table_exists(conn: sqlite3.Connection, name: str) -> bool:
@@ -452,6 +708,45 @@ def print_status(
     output.write(format_status(snapshot))
 
 
+def _restore_environment(snapshot: dict[str, str]) -> None:
+    for key in tuple(os.environ):
+        if key not in snapshot:
+            os.environ.pop(key, None)
+    os.environ.update(snapshot)
+
+
+def _reset_dotenv_loaded_marker() -> None:
+    try:
+        from brokers import config as broker_config
+
+        env_path = broker_config.project_root() / ".env"
+        broker_config._LOADED_ENV_FILES.discard(env_path.resolve())  # noqa: SLF001
+    except Exception:  # noqa: BLE001 - env restoration must not block operations
+        return
+
+
+def _load_runtime_context_without_env_mutation(
+    profile: str | None,
+    *,
+    execute_broker: bool,
+):
+    from runtime_config import load_runtime_config
+
+    before = dict(os.environ)
+    try:
+        config = load_runtime_config(profile)
+        loaded_env = dict(os.environ)
+    finally:
+        _restore_environment(before)
+        _reset_dotenv_loaded_marker()
+    policy = operations_runtime.resolve_execution_policy(
+        config.profile,
+        execute_broker=execute_broker,
+        env=loaded_env,
+    )
+    return config, policy
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="lecture-prism 보조 운영 작업을 한 번씩 실행합니다."
@@ -466,23 +761,68 @@ def _build_parser() -> argparse.ArgumentParser:
         choices=("kis", "kiwoom", "toss", "custom"),
         help="reconcile에서 확인할 브로커",
     )
+    parser.add_argument(
+        "--profile",
+        help="이번 operations 실행에만 적용할 런타임 프로필",
+    )
+    parser.add_argument(
+        "--execute-broker",
+        action="store_true",
+        help="ExecutionPolicy가 허용할 때만 schedule/batch/monitor의 dry_run을 해제",
+    )
+    parser.add_argument(
+        "--once",
+        action="store_true",
+        help="schedule 루프를 한 번만 평가해 테스트 가능한 실행으로 제한",
+    )
+    parser.add_argument(
+        "--monitor-interval-minutes",
+        type=int,
+        default=10,
+        help="장중 보유종목 점검 간격(분)",
+    )
+    parser.add_argument(
+        "--reconcile-interval-minutes",
+        type=int,
+        default=30,
+        help="장중 미체결 주문 확인 간격(분)",
+    )
     return parser
 
 
 async def _main(args: argparse.Namespace) -> None:
+    config, policy = _load_runtime_context_without_env_mutation(
+        getattr(args, "profile", None),
+        execute_broker=bool(getattr(args, "execute_broker", False)),
+    )
     if args.command == "batch":
-        result = await run_analysis_batch(target_ticker=args.ticker)
+        result = await run_analysis_batch(
+            target_ticker=args.ticker,
+            dry_run=policy.dry_run,
+            config=config,
+        )
     elif args.command == "monitor":
-        result = await run_holding_monitor(dry_run=True)
+        result = await run_holding_monitor(dry_run=policy.dry_run)
     elif args.command == "reconcile":
         result = await run_order_reconciliation(args.broker)
     elif args.command == "compress":
         result = await run_memory_compression()
     elif args.command == "status":
-        print_status()
+        print_status(
+            profile=config.profile,
+            execute_broker=bool(getattr(args, "execute_broker", False)),
+        )
         return
     else:
-        await run_scheduler()
+        await run_scheduler(
+            profile=config.profile,
+            execute_broker=bool(getattr(args, "execute_broker", False)),
+            once=bool(getattr(args, "once", False)),
+            monitor_interval_minutes=int(getattr(args, "monitor_interval_minutes", 10)),
+            reconcile_interval_minutes=int(
+                getattr(args, "reconcile_interval_minutes", 30)
+            ),
+        )
         return
     print(result)
 

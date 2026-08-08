@@ -34,6 +34,54 @@ class OperationsScheduleTest(unittest.TestCase):
             ["analysis"],
         )
 
+    def test_due_jobs_interpret_aware_datetimes_in_kst(self):
+        job = operations.JobSpec(
+            name="analysis",
+            at="09:30",
+            weekdays=(0, 1, 2, 3, 4),
+            command="batch",
+        )
+        monday_utc = datetime.fromisoformat("2026-08-03T00:30:00+00:00")
+
+        self.assertEqual(
+            [item.name for item in operations.due_jobs(monday_utc, [job])],
+            ["analysis"],
+        )
+
+    def test_build_schedule_uses_configurable_intraday_intervals(self):
+        jobs = operations.build_schedule(
+            monitor_interval_minutes=15,
+            reconcile_interval_minutes=45,
+        )
+        monitor_times = [
+            job.at
+            for job in jobs
+            if job.command == "monitor" and job.name.startswith("장중")
+        ]
+        reconcile_times = [
+            job.at
+            for job in jobs
+            if job.command == "reconcile" and job.name.startswith("장중")
+        ]
+
+        self.assertEqual(monitor_times[:3], ["09:35", "09:50", "10:05"])
+        self.assertEqual(reconcile_times[:3], ["10:00", "10:45", "11:30"])
+        self.assertIn("15:20", monitor_times)
+        self.assertNotIn("15:35", monitor_times)
+
+    def test_next_run_after_skips_weekends_in_kst(self):
+        job = operations.JobSpec(
+            name="analysis",
+            at="09:30",
+            weekdays=(0, 1, 2, 3, 4),
+            command="batch",
+        )
+        friday_after_close = datetime.fromisoformat("2026-08-07T16:00:00+09:00")
+
+        next_run = operations.next_run_after(friday_after_close, [job])
+
+        self.assertEqual(next_run.isoformat(), "2026-08-10T09:30:00+09:00")
+
     def test_due_jobs_do_not_repeat_in_same_minute(self):
         job = operations.JobSpec(
             name="monitor",
@@ -83,6 +131,172 @@ class OperationsScheduleTest(unittest.TestCase):
         self.assertEqual(result["status"], "skipped_overlap")
         self.assertEqual(state["jobs"]["monitor"]["status"], "skipped_overlap")
         run_job.assert_not_awaited()
+
+    def test_market_closed_blocks_broker_executing_paper_job_but_not_simulation(self):
+        job = operations.JobSpec(
+            name="monitor",
+            at="09:35",
+            weekdays=(0,),
+            command="monitor",
+        )
+        paper_policy = operations_runtime.resolve_execution_policy(
+            "paper",
+            execute_broker=True,
+            env={"LECTURE_ENABLE_LIVE_BROKER": "1"},
+        )
+        mock_policy = operations_runtime.resolve_execution_policy(
+            "mock",
+            execute_broker=True,
+            env={"LECTURE_ENABLE_LIVE_BROKER": "1"},
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            store = operations_runtime.OperationsStateStore(Path(tmp))
+            with mock.patch("operations.run_job", new=mock.AsyncMock()) as run_job:
+                blocked = asyncio.run(
+                    operations.run_scheduled_job(
+                        job,
+                        state_store=store,
+                        active_jobs=set(),
+                        policy=paper_policy,
+                        config=mock.Mock(profile="paper"),
+                        market_open_checker=lambda _now: False,
+                        now=lambda: datetime.fromisoformat("2026-08-03T09:35:00+09:00"),
+                    )
+                )
+                simulated = asyncio.run(
+                    operations.run_scheduled_job(
+                        job,
+                        state_store=store,
+                        active_jobs=set(),
+                        policy=mock_policy,
+                        config=mock.Mock(profile="mock"),
+                        market_open_checker=lambda _now: False,
+                        now=lambda: datetime.fromisoformat("2026-08-03T09:35:00+09:00"),
+                    )
+                )
+
+        self.assertEqual(blocked["status"], "skipped_market_closed")
+        self.assertEqual(simulated["status"], "success")
+        run_job.assert_awaited_once()
+
+    def test_market_closed_check_defaults_to_kst_market_hours_for_broker_execution(self):
+        job = operations.JobSpec(
+            name="monitor",
+            at="08:59",
+            weekdays=(0,),
+            command="monitor",
+        )
+        policy = operations_runtime.resolve_execution_policy(
+            "paper",
+            execute_broker=True,
+            env={"LECTURE_ENABLE_LIVE_BROKER": "1"},
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            store = operations_runtime.OperationsStateStore(Path(tmp))
+            with mock.patch("operations.run_job", new=mock.AsyncMock()) as run_job:
+                result = asyncio.run(
+                    operations.run_scheduled_job(
+                        job,
+                        state_store=store,
+                        active_jobs=set(),
+                        policy=policy,
+                        config=mock.Mock(profile="paper"),
+                        now=lambda: datetime.fromisoformat("2026-08-03T08:59:00+09:00"),
+                    )
+                )
+
+        self.assertEqual(result["status"], "skipped_market_closed")
+        run_job.assert_not_awaited()
+
+    def test_operations_log_rotates_by_kst_date_and_size_and_sanitizes_fields(self):
+        current = [datetime.fromisoformat("2026-08-03T09:00:00+09:00")]
+        with tempfile.TemporaryDirectory() as tmp:
+            logger = operations_runtime.configure_operations_logger(
+                "tests.operations.rotating",
+                Path(tmp),
+                max_bytes=160,
+                now=lambda: current[0],
+            )
+            operations_runtime.log_operation(
+                logger,
+                "service_start",
+                profile="live",
+                account_number="123-456",
+                balance=987654321,
+                token="ops-token-value",
+                webhook_url="https://broker.example/secret",
+                error=RuntimeError("raw outage sk-secret-ops"),
+            )
+            operations_runtime.log_operation(logger, "job_success", job="monitor")
+            current[0] = datetime.fromisoformat("2026-08-04T09:00:00+09:00")
+            operations_runtime.log_operation(logger, "service_stop", profile="live")
+            for handler in logger.handlers:
+                handler.flush()
+
+            files = sorted(path.name for path in Path(tmp).glob("operations-*.log*"))
+            rendered = "\n".join(
+                path.read_text(encoding="utf-8")
+                for path in sorted(Path(tmp).glob("operations-*.log*"))
+            )
+
+        self.assertIn("operations-2026-08-03.log", files)
+        self.assertIn("operations-2026-08-04.log", files)
+        self.assertGreaterEqual(
+            len([name for name in files if name.startswith("operations-2026-08-03")]),
+            2,
+        )
+        self.assertIn("event=service_start", rendered)
+        self.assertIn("event=service_stop", rendered)
+        self.assertIn("profile=live", rendered)
+        self.assertIn("<redacted>", rendered)
+        self.assertNotIn("123-456", rendered)
+        self.assertNotIn("987654321", rendered)
+        self.assertNotIn("ops-token-value", rendered)
+        self.assertNotIn("https://broker.example", rendered)
+        self.assertNotIn("raw outage", rendered)
+
+    def test_scheduled_job_writes_structured_operations_log_lines(self):
+        job = operations.JobSpec(
+            name="monitor",
+            at="09:35",
+            weekdays=(0,),
+            command="monitor",
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            logger = operations_runtime.configure_operations_logger(
+                "tests.operations.joblog",
+                Path(tmp),
+                max_bytes=10_000,
+                now=lambda: datetime.fromisoformat("2026-08-03T09:35:00+09:00"),
+            )
+            store = operations_runtime.OperationsStateStore(Path(tmp) / "state")
+            with mock.patch("operations.run_job", new=mock.AsyncMock()):
+                asyncio.run(
+                    operations.run_scheduled_job(
+                        job,
+                        state_store=store,
+                        active_jobs=set(),
+                        operations_logger=logger,
+                        now=lambda: datetime.fromisoformat("2026-08-03T09:35:00+09:00"),
+                    )
+                )
+            for handler in logger.handlers:
+                handler.flush()
+            rendered = "\n".join(
+                path.read_text(encoding="utf-8")
+                for path in Path(tmp).glob("operations-*.log*")
+            )
+
+        self.assertIn("event=job_start", rendered)
+        self.assertIn("event=job_success", rendered)
+        self.assertIn("job=monitor", rendered)
+
+    def test_schedule_once_still_requires_explicit_scheduler_enable(self):
+        with mock.patch.dict(os.environ, {"LECTURE_ENABLE_SCHEDULER": "0"}):
+            with self.assertRaises(RuntimeError):
+                asyncio.run(operations.run_scheduler((), once=True))
 
     def test_scheduler_stop_callback_records_stopping_without_sending_signals(self):
         self.assertTrue(hasattr(operations, "request_scheduler_stop"))
