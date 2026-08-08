@@ -38,7 +38,32 @@ KIS와 Toss의 현재 구현 범위는 매수·매도·조회·취소·재시작
 
 수업 중에는 `LECTURE_ALLOW_REAL_BROKER=1`을 쓰지 않는 것이 원칙입니다.
 
-## 3. 키움증권 어댑터
+## 3. 운영 준비 사다리
+
+브로커를 운영 서비스에 붙일 때도 순서는 `doctor → simulation → paper → live`입니다. `operations.py doctor`는 읽기 전용 준비 상태만 확인하고, 주문·취소는 호출하지 않습니다. 상태는 `READY`, `CONDITIONAL`, `BLOCKED`로 닫히며, 하나라도 `BLOCKED`이면 service manager가 `operations.py schedule`을 오래 띄워도 브로커 실행으로 올리지 않습니다.
+
+| 단계 | 의미 |
+|---|---|
+| `doctor` | `.env`, 런타임 디렉터리, 미해결 주문, 브로커 read-only capability 확인 |
+| `simulation` | service template 기본값. `--execute-broker` 없이 `operations.py schedule` 실행 |
+| `paper` | market provider fail-closed와 브로커 읽기 전용 준비 상태를 통과한 뒤 모의투자 API 호출 허용 |
+| `live` | 실전 이중 플래그와 `LECTURE_UNATTENDED_LIVE_ACK`까지 맞춘 뒤에도 실제 주문 E2E 별도 승인 필요 |
+
+KIS는 인증, 시장일, 계좌 접근, 보유 수량, 주문가능수량, fresh quote, 미체결 주문 조회가 읽기 전용으로 확인되어야 합니다. 키움은 공식 REST 기준 인증, 계좌, 주문가능수량, 보유/매도가능수량, 현재가, 미체결·체결 조회, 취소 capability가 있어야 합니다. 정정은 별도 명령으로 추측하지 않고 **취소 후 새 주문** 정책으로 설명합니다. KIS와 키움 모두 주문 결과가 불명확하면 `UNKNOWN`을 보존하고 재시작 reconcile 전까지 새 주문을 막습니다.
+
+Toss는 공식 Open API와 WTS를 분리합니다. 공식 Open API는 승인된 read-only client가 주입되지 않으면 자격 증명이 있어도 `BLOCKED`입니다. Toss paper/demo backend는 없으므로 paper는 열지 않습니다. WTS는 `tossctl 0.24.1` JSON fixture와 비공식 세션 경계를 검증하지만, 세션 만료와 수동 복구 책임 때문에 읽기 전용 점검이 통과해도 live `READY`로 보지 않습니다. Toss의 실제 주문 E2E는 수행했다는 뜻이 아니며, 별도 사용자 승인 없이는 실행하지 않습니다.
+
+```text
+lecture-prism의 브로커 운영 준비 상태를 doctor → simulation → paper → live 순서로 점검해줘.
+조건:
+1. operations.py doctor의 KIS, 키움, Toss readiness check가 무엇을 읽기 전용으로 확인하는지 표로 보여줘.
+2. READY, CONDITIONAL, BLOCKED 의미를 설명하고 BLOCKED가 있으면 service manager 템플릿을 broker 실행으로 올리지 마.
+3. KIS와 키움의 UNKNOWN 주문 차단과 취소 후 새 주문 정책을 설명해줘.
+4. Toss 공식 Open API와 WTS/tossctl 경계를 구분하고, Toss paper/demo backend가 없다는 점을 명시해줘.
+5. 실제 주문 E2E, 주문, 취소, 계좌 API 호출은 실행하지 마.
+```
+
+## 4. 키움증권 어댑터
 
 공식 키움 REST API 가이드에서 확인한 핵심은 다음과 같습니다.
 
@@ -65,11 +90,11 @@ lecture-prism에서 KIS 대신 키움증권 어댑터를 쓰게 설정해줘.
 5. 키움 공식 문서의 /oauth2/token, /api/dostk/ordr, kt10000/kt10001 필드와 코드가 맞는지 점검해줘.
 ```
 
-## 4. 토스증권 어댑터
+## 5. 토스증권 어댑터
 
 토스 연동은 두 갈래를 일부러 분리합니다. **공식 Open API**는 토스증권이 공개한 REST API이고, **WTS**는 오픈소스 `tossinvest-cli`의 비공식 웹 세션 경로입니다. 둘을 같은 준비 상태로 보지 않습니다.
 
-### 4-1. 공식 Open API 경계
+### 5-1. 공식 Open API 경계
 
 공식 Open API는 `client_id`와 `client_secret`으로 OAuth2 client credentials 토큰을 받고, 계좌·보유·시세·미체결 주문 같은 계좌 API에는 계좌 식별 헤더가 추가로 필요합니다. 공개 스펙 기준으로 REST only이며, 조회 그룹별 rate limit이 있습니다. 예를 들어 계좌 조회는 매우 낮은 초당 한도를 가지므로 operations doctor는 429나 rate-limit 오류를 **준비 실패**로 닫습니다.
 
@@ -91,7 +116,7 @@ lecture-prism의 Toss 공식 Open API 준비 상태를 읽기 전용으로 점�
 6. 실제 주문과 취소는 절대 호출하지 말고, 공식 live는 주문 E2E 승인 전까지 CONDITIONAL 이하로만 보고해줘.
 ```
 
-### 4-2. WTS / tossctl 경계
+### 5-2. WTS / tossctl 경계
 
 WTS 경로는 공식 공개 주문 API가 아니라 오픈소스 `tossinvest-cli`의 **비공식 WTS 세션**을 사용합니다. WTS 내부 endpoint와 cookie를 lecture-prism이 직접 다루지 않고, 검증한 `tossctl 0.24.1`의 JSON 출력만 읽습니다.
 
@@ -113,7 +138,7 @@ lecture-prism의 Toss WTS 선택 연동을 읽기 전용으로 점검해줘.
 6. 설정이 부족하면 주문을 열지 말고 필요한 사용자 승인만 설명해줘.
 ```
 
-## 5. 완전히 다른 증권사 붙이기
+## 6. 완전히 다른 증권사 붙이기
 
 새 브로커는 `BrokerOrder`를 받아 `dict` 결과를 돌려주면 됩니다.
 
@@ -144,7 +169,7 @@ lecture-prism에 내가 가져온 증권사 API 문서를 기반으로 새 브�
 5. README와 docs/api-keys.md에 수강생용 프롬프트 방식으로 사용법을 추가해줘.
 ```
 
-## 6. 공식 참고 링크
+## 7. 공식 참고 링크
 
 - 키움 REST API 가이드: <https://openapi.kiwoom.com/guide/apiguide>
 - 키움 REST API 테스트 샘플: <https://openapi.kiwoom.com/guide/guideTestSample>

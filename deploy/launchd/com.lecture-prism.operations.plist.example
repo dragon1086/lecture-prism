@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.lecture-prism.operations</string>
+
+  <key>WorkingDirectory</key>
+  <string>{{PROJECT_DIR}}</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>LECTURE_ENABLE_SCHEDULER</key>
+    <string>1</string>
+    <key>LECTURE_PROFILE</key>
+    <string>mock</string>
+    <key>LECTURE_OPERATIONS_RUNTIME_DIR</key>
+    <string>{{OPERATIONS_RUNTIME_DIR}}</string>
+  </dict>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>{{PROJECT_DIR}}/.venv/bin/python</string>
+    <string>operations.py</string>
+    <string>schedule</string>
+    <string>--profile</string>
+    <string>mock</string>
+    <string>--monitor-interval-minutes</string>
+    <string>{{MONITOR_INTERVAL_MINUTES}}</string>
+    <string>--reconcile-interval-minutes</string>
+    <string>{{RECONCILE_INTERVAL_MINUTES}}</string>
+  </array>
+
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>{{OPERATIONS_RUNTIME_DIR}}/logs/launchd-stdout.log</string>
+  <key>StandardErrorPath</key>
+  <string>{{OPERATIONS_RUNTIME_DIR}}/logs/launchd-stderr.log</string>
+</dict>
+</plist>

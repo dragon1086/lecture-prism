@@ -1,0 +1,17 @@
+[Unit]
+Description=lecture-prism operations scheduler
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory={{PROJECT_DIR}}
+Environment=LECTURE_ENABLE_SCHEDULER=1
+Environment=LECTURE_PROFILE=mock
+Environment=LECTURE_OPERATIONS_RUNTIME_DIR={{OPERATIONS_RUNTIME_DIR}}
+ExecStart={{PROJECT_DIR}}/.venv/bin/python operations.py schedule --profile mock --monitor-interval-minutes {{MONITOR_INTERVAL_MINUTES}} --reconcile-interval-minutes {{RECONCILE_INTERVAL_MINUTES}}
+Restart=on-failure
+RestartSec=60
+
+[Install]
+WantedBy=multi-user.target
