@@ -707,8 +707,9 @@ async def _toss_wts_readiness_checks(
 
     async def fresh_quote():
         method = getattr(adapter, "get_quote", None)
-        if callable(method):
-            await method(ticker)
+        if not callable(method):
+            raise RuntimeError("Toss WTS quote capability missing")
+        await method(ticker)
 
     async def pending_order_inquiry():
         pending = await adapter.get_pending_orders()
@@ -763,10 +764,21 @@ async def _toss_wts_readiness_checks(
 
 def _default_kis_adapter_factory(profile: str, env: Mapping[str, str]):
     def build():
+        import db
         from brokers.kis import KISBrokerAdapter
+        from brokers.kis_client import KISClient, KISConfig
+        from market_calendar import MarketGate
 
         mode = "real" if _kis_prefix(profile, env) == "KIS_REAL" else "demo"
-        return KISBrokerAdapter(mode=mode)
+        config_mode = "paper" if mode == "demo" else "real"
+        client = KISClient(KISConfig.from_env(config_mode))
+        gate = MarketGate(
+            client,
+            cache_get=db.get_market_day,
+            cache_save=None,
+            mode=mode,
+        )
+        return KISBrokerAdapter(mode=mode, client=client, gate=gate)
 
     return build
 
