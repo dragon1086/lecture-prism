@@ -160,6 +160,52 @@ class OperationsScheduleTest(unittest.TestCase):
 
         self.assertEqual(state["scheduler"]["status"], "lost_lock")
 
+    def test_scheduler_does_not_write_lost_lock_over_replacement_state_owner(self):
+        async def run_once(runtime_dir, store):
+            stop_event = asyncio.Event()
+
+            async def replace_owner_then_stop(_seconds):
+                metadata_path = runtime_dir / "scheduler.lock"
+                metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+                metadata.update(
+                    {
+                        "pid": 7777,
+                        "project_path": str(runtime_dir),
+                        "owner_token": "replacement-token",
+                    }
+                )
+                metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+                store.record_scheduler_status(
+                    "running",
+                    pid=7777,
+                    project_path=runtime_dir,
+                    heartbeat_at="2026-08-03T10:00:30",
+                    owner_token="replacement-token",
+                )
+                stop_event.set()
+
+            with mock.patch("operations._install_signal_handlers"):
+                await operations.run_scheduler(
+                    (),
+                    poll_seconds=1,
+                    runtime_dir=runtime_dir,
+                    state_store=store,
+                    stop_event=stop_event,
+                    now_func=lambda: datetime(2026, 8, 3, 10, 0),
+                    sleep=replace_owner_then_stop,
+                )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            runtime_dir = Path(tmp)
+            store = operations_runtime.OperationsStateStore(runtime_dir)
+            with mock.patch.dict(os.environ, {"LECTURE_ENABLE_SCHEDULER": "1"}):
+                asyncio.run(run_once(runtime_dir, store))
+            state = store.read()
+
+        self.assertEqual(state["scheduler"]["status"], "running")
+        self.assertEqual(state["scheduler"]["pid"], 7777)
+        self.assertEqual(state["scheduler"]["owner_token"], "replacement-token")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -200,16 +200,30 @@ def request_scheduler_stop(
     state_store: operations_runtime.OperationsStateStore,
     *,
     pid: int | None = None,
+    project_path: str | Path | None = None,
+    owner_token: str | None = None,
+    process_identity: str | None = None,
 ) -> None:
     """Signal-safe stop callback used by SIGINT/SIGTERM handlers and tests."""
 
     stop_event.set()
-    state_store.record_scheduler_status("stopping", pid=pid or os.getpid())
+    selected_pid = pid or os.getpid()
+    if project_path is not None and owner_token is not None:
+        state_store.record_scheduler_status_if_owner(
+            "stopping",
+            pid=selected_pid,
+            project_path=project_path,
+            owner_token=owner_token,
+            process_identity=process_identity,
+        )
+    else:
+        state_store.record_scheduler_status("stopping", pid=selected_pid)
 
 
 def _install_signal_handlers(
     stop_event: asyncio.Event,
     state_store: operations_runtime.OperationsStateStore,
+    lock: operations_runtime.SchedulerLock,
 ) -> None:
     loop = asyncio.get_running_loop()
     for signum in (signal.SIGINT, signal.SIGTERM):
@@ -220,12 +234,20 @@ def _install_signal_handlers(
                 stop_event,
                 state_store,
                 pid=os.getpid(),
+                project_path=lock.project_path,
+                owner_token=lock.owner_token,
+                process_identity=lock.process_identity_token,
             )
         except (NotImplementedError, RuntimeError):
             signal.signal(
                 signum,
                 lambda _signum, _frame: request_scheduler_stop(
-                    stop_event, state_store, pid=os.getpid()
+                    stop_event,
+                    state_store,
+                    pid=os.getpid(),
+                    project_path=lock.project_path,
+                    owner_token=lock.owner_token,
+                    process_identity=lock.process_identity_token,
                 ),
             )
 
@@ -257,7 +279,7 @@ async def run_scheduler(
     active_jobs: set[str] = set()
     seen: set[tuple[str, str]] = set()
     lock.acquire()
-    _install_signal_handlers(event, state)
+    _install_signal_handlers(event, state, lock)
     try:
         while not event.is_set():
             lock.heartbeat()
@@ -282,9 +304,21 @@ async def run_scheduler(
             await sleep(max(1, poll_seconds))
     finally:
         if lock.owns_metadata():
-            state.record_scheduler_status("stopped", pid=os.getpid())
+            state.record_scheduler_status_if_owner(
+                "stopped",
+                pid=lock.pid,
+                project_path=lock.project_path,
+                owner_token=lock.owner_token,
+                process_identity=lock.process_identity_token,
+            )
         else:
-            state.record_scheduler_status("lost_lock", pid=os.getpid())
+            state.record_scheduler_status_if_owner(
+                "lost_lock",
+                pid=lock.pid,
+                project_path=lock.project_path,
+                owner_token=lock.owner_token,
+                process_identity=lock.process_identity_token,
+            )
         lock.release()
 
 

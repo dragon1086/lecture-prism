@@ -207,6 +207,7 @@ class OperationsStateStore:
         project_path: str | Path | None = None,
         heartbeat_at: datetime | str | None = None,
         owner_token: str | None = None,
+        process_identity: str | None = None,
     ) -> None:
         state = self.read()
         scheduler = dict(state.get("scheduler") or {})
@@ -218,6 +219,8 @@ class OperationsStateStore:
             scheduler["project_path"] = str(project_path)
         if owner_token is not None:
             scheduler["owner_token"] = owner_token
+        if process_identity is not None:
+            scheduler["process_identity"] = process_identity
         if status in {"running", "stopping"}:
             scheduler["heartbeat_at"] = now
         if status == "running" and not scheduler.get("started_at"):
@@ -234,6 +237,7 @@ class OperationsStateStore:
         project_path: str | Path | None = None,
         heartbeat_at: datetime | str | None = None,
         owner_token: str | None = None,
+        process_identity: str | None = None,
     ) -> None:
         self.record_scheduler_status(
             "running",
@@ -241,7 +245,48 @@ class OperationsStateStore:
             project_path=project_path,
             heartbeat_at=heartbeat_at,
             owner_token=owner_token,
+            process_identity=process_identity,
         )
+
+    def scheduler_owner_matches(
+        self,
+        *,
+        pid: int,
+        project_path: str | Path,
+        owner_token: str,
+    ) -> bool:
+        scheduler = dict(self.read().get("scheduler") or {})
+        return (
+            int(scheduler.get("pid") or 0) == int(pid)
+            and str(scheduler.get("project_path") or "") == str(project_path)
+            and str(scheduler.get("owner_token") or "") == str(owner_token)
+        )
+
+    def record_scheduler_status_if_owner(
+        self,
+        status: str,
+        *,
+        pid: int,
+        project_path: str | Path,
+        owner_token: str,
+        heartbeat_at: datetime | str | None = None,
+        process_identity: str | None = None,
+    ) -> bool:
+        if not self.scheduler_owner_matches(
+            pid=pid,
+            project_path=project_path,
+            owner_token=owner_token,
+        ):
+            return False
+        self.record_scheduler_status(
+            status,
+            pid=pid,
+            project_path=project_path,
+            heartbeat_at=heartbeat_at,
+            owner_token=owner_token,
+            process_identity=process_identity,
+        )
+        return True
 
     def record_job_start(self, job: str, started_at: datetime | str | None = None) -> None:
         state = self.read()
@@ -325,6 +370,30 @@ def _parse_datetime(value: object) -> datetime | None:
     return parsed
 
 
+def _process_identity(pid: int) -> str | None:
+    """Best-effort stable identity for a live process.
+
+    Linux exposes process start ticks through /proc. Platforms without a
+    standard-library-safe way to inspect another process return None, and
+    callers fail closed when identity is required.
+    """
+
+    if pid <= 0:
+        return None
+    stat_path = Path("/proc") / str(pid) / "stat"
+    try:
+        text = stat_path.read_text(encoding="utf-8")
+    except OSError:
+        return None
+    end = text.rfind(")")
+    if end < 0:
+        return None
+    fields = text[end + 2 :].split()
+    if len(fields) <= 19:
+        return None
+    return f"proc-start:{fields[19]}"
+
+
 class SchedulerLock:
     """Single-instance scheduler lock with PID and heartbeat checks."""
 
@@ -337,6 +406,7 @@ class SchedulerLock:
         stale_after_seconds: int | float = 120,
         now: Callable[[], datetime] | None = None,
         pid_alive: Callable[[int], bool] | None = None,
+        process_identity: Callable[[int], str | None] | None = None,
         state_store: OperationsStateStore | None = None,
     ) -> None:
         self.runtime_dir = (
@@ -349,8 +419,10 @@ class SchedulerLock:
         self.stale_after_seconds = float(stale_after_seconds)
         self.now = now or _utcnow
         self.pid_alive = pid_alive or _pid_is_alive
+        self.process_identity = process_identity or _process_identity
         self.state_store = state_store or OperationsStateStore(self.runtime_dir)
         self.owner_token = uuid4().hex
+        self.process_identity_token: str | None = None
         self.acquired_at: str | None = None
         self._held = False
 
@@ -358,7 +430,11 @@ class SchedulerLock:
         self.runtime_dir.mkdir(parents=True, exist_ok=True)
         self._advisory.acquire()
         try:
+            existing = self._read_lock()
+            if existing and not self._metadata_is_recoverable(existing):
+                raise SchedulerAlreadyRunning("scheduler metadata owner is still active")
             self.acquired_at = _iso(self._now())
+            self.process_identity_token = self.process_identity(self.pid)
             self._write_lock(acquired_at=self.acquired_at, heartbeat_at=self.acquired_at)
             self._held = True
             self.state_store.record_scheduler_status(
@@ -367,6 +443,7 @@ class SchedulerLock:
                 project_path=self.project_path,
                 heartbeat_at=self.acquired_at,
                 owner_token=self.owner_token,
+                process_identity=self.process_identity_token,
             )
         except Exception:
             self.release()
@@ -386,6 +463,7 @@ class SchedulerLock:
             project_path=self.project_path,
             heartbeat_at=heartbeat_at,
             owner_token=self.owner_token,
+            process_identity=self.process_identity_token,
         )
 
     def release(self) -> None:
@@ -413,11 +491,37 @@ class SchedulerLock:
             return {"pid": -1, "heartbeat_at": None}
         return value if isinstance(value, dict) else {"pid": -1, "heartbeat_at": None}
 
+    def _metadata_is_recoverable(self, existing: Mapping[str, Any]) -> bool:
+        heartbeat = _parse_datetime(existing.get("heartbeat_at"))
+        if heartbeat is None:
+            return False
+        stale = (self._now() - heartbeat).total_seconds() > self.stale_after_seconds
+        if not stale:
+            return False
+
+        owner_pid = int(existing.get("pid") or 0)
+        owner_identity = existing.get("process_identity")
+        owner_project = str(existing.get("project_path") or "")
+        if not self.pid_alive(owner_pid):
+            return True
+        if not owner_identity:
+            return True
+
+        observed_identity = self.process_identity(owner_pid)
+        if observed_identity is None:
+            return False
+        same_owner = (
+            owner_project == str(self.project_path)
+            and str(observed_identity) == str(owner_identity)
+        )
+        return not same_owner
+
     def _write_lock(self, *, acquired_at: str, heartbeat_at: str) -> None:
         payload = {
             "pid": self.pid,
             "project_path": str(self.project_path),
             "owner_token": self.owner_token,
+            "process_identity": self.process_identity_token,
             "acquired_at": acquired_at,
             "heartbeat_at": heartbeat_at,
         }

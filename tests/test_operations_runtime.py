@@ -5,6 +5,7 @@ import subprocess
 import sys
 import tempfile
 import textwrap
+import types
 from pathlib import Path
 import unittest
 from unittest import mock
@@ -304,6 +305,153 @@ class OperationsStateStoreTest(unittest.TestCase):
 
 
 class SchedulerLockTest(unittest.TestCase):
+    def test_acquire_rejects_fresh_live_matching_metadata_after_advisory_claim(self):
+        self.assertTrue(hasattr(operations_runtime, "SchedulerLock"))
+        now = datetime(2026, 8, 8, 9, 30, tzinfo=timezone.utc)
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "scheduler.lock").write_text(
+                json.dumps(
+                    {
+                        "pid": 999,
+                        "project_path": "/project",
+                        "owner_token": "owner-token",
+                        "process_identity": "pid-999-start-1",
+                        "acquired_at": "2026-08-08T09:00:00+00:00",
+                        "heartbeat_at": "2026-08-08T09:29:30+00:00",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            duplicate = operations_runtime.SchedulerLock(
+                Path(tmp),
+                project_path=Path("/project"),
+                pid=1000,
+                now=lambda: now,
+                pid_alive=lambda pid: True,
+                process_identity=lambda pid: "pid-999-start-1",
+                stale_after_seconds=120,
+            )
+
+            with self.assertRaises(operations_runtime.SchedulerAlreadyRunning):
+                duplicate.acquire()
+
+            metadata = json.loads((Path(tmp) / "scheduler.lock").read_text(encoding="utf-8"))
+
+        self.assertEqual(metadata["owner_token"], "owner-token")
+
+    def test_acquire_rejects_stale_live_matching_metadata_after_advisory_claim(self):
+        self.assertTrue(hasattr(operations_runtime, "SchedulerLock"))
+        now = datetime(2026, 8, 8, 9, 30, tzinfo=timezone.utc)
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "scheduler.lock").write_text(
+                json.dumps(
+                    {
+                        "pid": 999,
+                        "project_path": "/project",
+                        "owner_token": "owner-token",
+                        "process_identity": "pid-999-start-1",
+                        "acquired_at": "2026-08-08T09:00:00+00:00",
+                        "heartbeat_at": "2026-08-08T09:00:00+00:00",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            duplicate = operations_runtime.SchedulerLock(
+                Path(tmp),
+                project_path=Path("/project"),
+                pid=1000,
+                now=lambda: now,
+                pid_alive=lambda pid: True,
+                process_identity=lambda pid: "pid-999-start-1",
+                stale_after_seconds=60,
+            )
+
+            with self.assertRaises(operations_runtime.SchedulerAlreadyRunning):
+                duplicate.acquire()
+
+            metadata = json.loads((Path(tmp) / "scheduler.lock").read_text(encoding="utf-8"))
+
+        self.assertEqual(metadata["owner_token"], "owner-token")
+
+    def test_acquire_recovers_stale_metadata_when_pid_identity_mismatches(self):
+        self.assertTrue(hasattr(operations_runtime, "SchedulerLock"))
+        now = datetime(2026, 8, 8, 9, 30, tzinfo=timezone.utc)
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "scheduler.lock").write_text(
+                json.dumps(
+                    {
+                        "pid": 999,
+                        "project_path": "/project",
+                        "owner_token": "old-owner-token",
+                        "process_identity": "pid-999-old-start",
+                        "acquired_at": "2026-08-08T09:00:00+00:00",
+                        "heartbeat_at": "2026-08-08T09:00:00+00:00",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            replacement = operations_runtime.SchedulerLock(
+                Path(tmp),
+                project_path=Path("/project"),
+                pid=1000,
+                now=lambda: now,
+                pid_alive=lambda pid: True,
+                process_identity=lambda pid: "pid-999-new-start",
+                stale_after_seconds=60,
+            )
+
+            self.assertTrue(replacement.acquire())
+            metadata = json.loads((Path(tmp) / "scheduler.lock").read_text(encoding="utf-8"))
+            replacement.release()
+
+        self.assertEqual(metadata["pid"], 1000)
+        self.assertNotEqual(metadata["owner_token"], "old-owner-token")
+        self.assertEqual(metadata["process_identity"], "pid-999-new-start")
+
+    def test_acquire_fails_closed_for_fresh_dead_or_missing_owner_metadata(self):
+        self.assertTrue(hasattr(operations_runtime, "SchedulerLock"))
+        now = datetime(2026, 8, 8, 9, 30, tzinfo=timezone.utc)
+        cases = [
+            {
+                "pid": 999,
+                "project_path": "/project",
+                "owner_token": "dead-owner-token",
+                "process_identity": "pid-999-old-start",
+                "acquired_at": "2026-08-08T09:29:00+00:00",
+                "heartbeat_at": "2026-08-08T09:29:30+00:00",
+            },
+            {
+                "pid": 999,
+                "project_path": "/project",
+                "owner_token": "missing-identity-token",
+                "acquired_at": "2026-08-08T09:29:00+00:00",
+                "heartbeat_at": "2026-08-08T09:29:30+00:00",
+            },
+        ]
+        for metadata in cases:
+            with self.subTest(owner_token=metadata["owner_token"]):
+                with tempfile.TemporaryDirectory() as tmp:
+                    (Path(tmp) / "scheduler.lock").write_text(
+                        json.dumps(metadata),
+                        encoding="utf-8",
+                    )
+                    replacement = operations_runtime.SchedulerLock(
+                        Path(tmp),
+                        project_path=Path("/project"),
+                        pid=1000,
+                        now=lambda: now,
+                        pid_alive=lambda pid: False,
+                        process_identity=lambda pid: None,
+                        stale_after_seconds=60,
+                    )
+
+                    with self.assertRaises(operations_runtime.SchedulerAlreadyRunning):
+                        replacement.acquire()
+
+                    after = json.loads((Path(tmp) / "scheduler.lock").read_text(encoding="utf-8"))
+
+                self.assertEqual(after["owner_token"], metadata["owner_token"])
+
     def test_lock_recovers_when_metadata_is_stale_after_advisory_owner_exits(self):
         self.assertTrue(hasattr(operations_runtime, "SchedulerLock"))
         now = datetime(2026, 8, 8, 9, 30, tzinfo=timezone.utc)
@@ -337,6 +485,7 @@ class SchedulerLockTest(unittest.TestCase):
 
         self.assertEqual(state["pid"], 1000)
         self.assertEqual(state["project_path"], "/project")
+        self.assertIn("process_identity", state)
 
     def test_lock_rejects_live_advisory_owner_even_when_heartbeat_is_stale(self):
         self.assertTrue(hasattr(operations_runtime, "SchedulerLock"))
@@ -538,6 +687,24 @@ class SchedulerLockTest(unittest.TestCase):
 
         self.assertEqual(outputs.count("acquired"), 1)
         self.assertEqual(outputs.count("blocked"), 7)
+
+    def test_fake_msvcrt_lock_and_unlock_path(self):
+        self.assertTrue(hasattr(operations_runtime, "_AdvisoryLock"))
+        calls = []
+
+        fake_msvcrt = types.SimpleNamespace(
+            LK_NBLCK=10,
+            LK_UNLCK=20,
+            locking=lambda fd, mode, size: calls.append((mode, size)),
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            lock = operations_runtime._AdvisoryLock(Path(tmp) / "scheduler.lock.advisory")
+            with mock.patch.object(operations_runtime.os, "name", "nt"):
+                with mock.patch.dict(sys.modules, {"msvcrt": fake_msvcrt}):
+                    lock.acquire()
+                    lock.release()
+
+        self.assertEqual(calls, [(10, 1), (20, 1)])
 
 
 if __name__ == "__main__":
