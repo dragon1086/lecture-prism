@@ -1,5 +1,9 @@
+from datetime import datetime, timedelta, timezone
+import json
+import tempfile
 from pathlib import Path
 import unittest
+from unittest import mock
 
 import operations_runtime
 import runtime_config
@@ -191,6 +195,153 @@ class ExecutionPolicyTest(unittest.TestCase):
             f"{runtime_config.LIVE_BROKER_UNATTENDED_ACK}",
             env_example,
         )
+
+
+class OperationsStateStoreTest(unittest.TestCase):
+    def test_state_store_writes_json_atomically_and_preserves_previous_state_on_replace_failure(self):
+        self.assertTrue(hasattr(operations_runtime, "OperationsStateStore"))
+        with tempfile.TemporaryDirectory() as tmp:
+            store = operations_runtime.OperationsStateStore(Path(tmp))
+            store.record_scheduler_status("running", pid=111, heartbeat_at="2026-08-08T09:00:00+00:00")
+            before = json.loads((Path(tmp) / "operations-state.json").read_text(encoding="utf-8"))
+
+            with mock.patch("operations_runtime.os.replace", side_effect=RuntimeError("disk full")):
+                with self.assertRaises(RuntimeError):
+                    store.record_scheduler_status("stopping", pid=111)
+
+            after = json.loads((Path(tmp) / "operations-state.json").read_text(encoding="utf-8"))
+
+        self.assertEqual(before, after)
+        self.assertEqual(after["scheduler"]["status"], "running")
+        self.assertEqual(after["scheduler"]["pid"], 111)
+
+    def test_state_store_records_job_lifecycle_and_heartbeat_timestamps(self):
+        self.assertTrue(hasattr(operations_runtime, "OperationsStateStore"))
+        with tempfile.TemporaryDirectory() as tmp:
+            store = operations_runtime.OperationsStateStore(Path(tmp))
+            store.record_scheduler_status("running", pid=222, heartbeat_at="2026-08-08T09:00:00+00:00")
+            store.record_job_start("monitor", "2026-08-08T09:01:00+00:00")
+            store.record_job_success("monitor", "2026-08-08T09:02:00+00:00")
+            store.record_job_start("reconcile", "2026-08-08T09:03:00+00:00")
+            store.record_job_failure(
+                "reconcile",
+                "2026-08-08T09:04:00+00:00",
+                error_type="TimeoutError",
+            )
+            state = store.read()
+
+        self.assertEqual(state["scheduler"]["heartbeat_at"], "2026-08-08T09:00:00+00:00")
+        self.assertEqual(state["jobs"]["monitor"]["status"], "success")
+        self.assertEqual(state["jobs"]["monitor"]["started_at"], "2026-08-08T09:01:00+00:00")
+        self.assertEqual(state["jobs"]["monitor"]["finished_at"], "2026-08-08T09:02:00+00:00")
+        self.assertEqual(state["jobs"]["reconcile"]["status"], "failure")
+        self.assertEqual(state["jobs"]["reconcile"]["error_type"], "TimeoutError")
+
+    def test_status_snapshot_redacts_secret_like_values(self):
+        self.assertTrue(hasattr(operations_runtime, "OperationsStateStore"))
+        self.assertTrue(hasattr(operations_runtime, "serialize_status"))
+        with tempfile.TemporaryDirectory() as tmp:
+            store = operations_runtime.OperationsStateStore(Path(tmp))
+            store.record_scheduler_status("running", pid=333, heartbeat_at="2026-08-08T09:00:00+00:00")
+            status = operations_runtime.serialize_status(
+                {
+                    "profile": "live",
+                    "broker": "kis",
+                    "account_mode": "real",
+                    "scheduler": store.read()["scheduler"],
+                    "jobs": {"monitor": {"status": "success"}},
+                    "blocked_reasons": ("token-secret-42",),
+                    "api_key": "sk-live-secret-42",
+                    "nested": {"refresh_token": "refresh-secret-42"},
+                }
+            )
+
+        rendered = json.dumps(status, ensure_ascii=False, sort_keys=True)
+        self.assertIn("<redacted>", rendered)
+        self.assertNotIn("sk-live-secret-42", rendered)
+        self.assertNotIn("refresh-secret-42", rendered)
+        self.assertNotIn("token-secret-42", rendered)
+
+
+class SchedulerLockTest(unittest.TestCase):
+    def test_lock_recovers_only_when_pid_is_dead_and_heartbeat_is_stale(self):
+        self.assertTrue(hasattr(operations_runtime, "SchedulerLock"))
+        now = datetime(2026, 8, 8, 9, 30, tzinfo=timezone.utc)
+        with tempfile.TemporaryDirectory() as tmp:
+            store = operations_runtime.OperationsStateStore(Path(tmp))
+            lock = operations_runtime.SchedulerLock(
+                Path(tmp),
+                project_path=Path("/project"),
+                pid=999,
+                now=lambda: now - timedelta(minutes=10),
+                pid_alive=lambda pid: False,
+            )
+            lock.acquire()
+            stale = operations_runtime.SchedulerLock(
+                Path(tmp),
+                project_path=Path("/project"),
+                pid=1000,
+                now=lambda: now,
+                pid_alive=lambda pid: False,
+                stale_after_seconds=60,
+                state_store=store,
+            )
+
+            self.assertTrue(stale.acquire())
+            state = json.loads((Path(tmp) / "scheduler.lock").read_text(encoding="utf-8"))
+
+        self.assertEqual(state["pid"], 1000)
+        self.assertEqual(state["project_path"], "/project")
+
+    def test_lock_rejects_live_pid_even_when_heartbeat_is_stale(self):
+        self.assertTrue(hasattr(operations_runtime, "SchedulerLock"))
+        now = datetime(2026, 8, 8, 9, 30, tzinfo=timezone.utc)
+        with tempfile.TemporaryDirectory() as tmp:
+            first = operations_runtime.SchedulerLock(
+                Path(tmp),
+                project_path=Path("/project"),
+                pid=999,
+                now=lambda: now - timedelta(hours=3),
+                pid_alive=lambda pid: True,
+            )
+            first.acquire()
+            duplicate = operations_runtime.SchedulerLock(
+                Path(tmp),
+                project_path=Path("/project"),
+                pid=1000,
+                now=lambda: now,
+                pid_alive=lambda pid: True,
+                stale_after_seconds=60,
+            )
+
+            with self.assertRaises(operations_runtime.SchedulerAlreadyRunning):
+                duplicate.acquire()
+
+            state = json.loads((Path(tmp) / "scheduler.lock").read_text(encoding="utf-8"))
+
+        self.assertEqual(state["pid"], 999)
+
+    def test_lock_release_removes_only_the_owner_lock(self):
+        self.assertTrue(hasattr(operations_runtime, "SchedulerLock"))
+        with tempfile.TemporaryDirectory() as tmp:
+            first = operations_runtime.SchedulerLock(
+                Path(tmp),
+                project_path=Path("/project"),
+                pid=999,
+                pid_alive=lambda pid: False,
+            )
+            first.acquire()
+            second = operations_runtime.SchedulerLock(
+                Path(tmp),
+                project_path=Path("/project"),
+                pid=1000,
+                pid_alive=lambda pid: False,
+            )
+
+            second.release()
+            self.assertTrue((Path(tmp) / "scheduler.lock").exists())
+            first.release()
+            self.assertFalse((Path(tmp) / "scheduler.lock").exists())
 
 
 if __name__ == "__main__":

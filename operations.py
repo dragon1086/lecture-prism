@@ -21,8 +21,13 @@ from dataclasses import dataclass
 from datetime import datetime
 import logging
 import os
+from pathlib import Path
+import signal
+import sqlite3
+import sys
 from typing import Iterable, Sequence
 
+import operations_runtime
 import trading
 
 log = logging.getLogger(__name__)
@@ -156,10 +161,84 @@ async def run_job(command: str) -> object:
     raise ValueError(f"지원하지 않는 작업: {command}")
 
 
+async def run_scheduled_job(
+    job: JobSpec,
+    *,
+    state_store: operations_runtime.OperationsStateStore,
+    active_jobs: set[str],
+    now=datetime.now,
+) -> dict:
+    """Run one due job with a non-blocking same-command overlap guard."""
+
+    job_key = job.command
+    if job_key in active_jobs or job.name in active_jobs:
+        finished_at = now().isoformat(timespec="seconds")
+        state_store.record_job_skipped_overlap(job_key, finished_at)
+        return {"job": job_key, "status": "skipped_overlap"}
+
+    active_jobs.add(job_key)
+    started_at = now().isoformat(timespec="seconds")
+    state_store.record_job_start(job_key, started_at)
+    try:
+        await run_job(job.command)
+    except Exception as exc:
+        state_store.record_job_failure(
+            job_key,
+            now().isoformat(timespec="seconds"),
+            error_type=type(exc).__name__,
+        )
+        raise
+    else:
+        state_store.record_job_success(job_key, now().isoformat(timespec="seconds"))
+        return {"job": job_key, "status": "success"}
+    finally:
+        active_jobs.discard(job_key)
+
+
+def request_scheduler_stop(
+    stop_event: asyncio.Event,
+    state_store: operations_runtime.OperationsStateStore,
+    *,
+    pid: int | None = None,
+) -> None:
+    """Signal-safe stop callback used by SIGINT/SIGTERM handlers and tests."""
+
+    stop_event.set()
+    state_store.record_scheduler_status("stopping", pid=pid or os.getpid())
+
+
+def _install_signal_handlers(
+    stop_event: asyncio.Event,
+    state_store: operations_runtime.OperationsStateStore,
+) -> None:
+    loop = asyncio.get_running_loop()
+    for signum in (signal.SIGINT, signal.SIGTERM):
+        try:
+            loop.add_signal_handler(
+                signum,
+                request_scheduler_stop,
+                stop_event,
+                state_store,
+                pid=os.getpid(),
+            )
+        except (NotImplementedError, RuntimeError):
+            signal.signal(
+                signum,
+                lambda _signum, _frame: request_scheduler_stop(
+                    stop_event, state_store, pid=os.getpid()
+                ),
+            )
+
+
 async def run_scheduler(
     jobs: Sequence[JobSpec] = DEFAULT_JOBS,
     *,
     poll_seconds: int = 20,
+    runtime_dir: str | Path | None = None,
+    state_store: operations_runtime.OperationsStateStore | None = None,
+    stop_event: asyncio.Event | None = None,
+    now_func=datetime.now,
+    sleep=asyncio.sleep,
 ) -> None:
     """명시적으로 켰을 때만 동작하는 단순 분 단위 스케줄러."""
 
@@ -168,20 +247,172 @@ async def run_scheduler(
             "스케줄러는 기본적으로 꺼져 있습니다. "
             "LECTURE_ENABLE_SCHEDULER=1일 때만 실행하세요."
         )
+    if runtime_dir is None:
+        runtime_path = operations_runtime.default_runtime_dir()
+    else:
+        runtime_path = Path(runtime_dir)
+    state = state_store or operations_runtime.OperationsStateStore(runtime_path)
+    lock = operations_runtime.SchedulerLock(runtime_path, state_store=state)
+    event = stop_event or asyncio.Event()
+    active_jobs: set[str] = set()
     seen: set[tuple[str, str]] = set()
-    while True:
-        now = datetime.now()
-        for job in due_jobs(now, jobs, seen=seen):
-            log.info("예약 작업 시작: %s", job.name)
-            try:
-                await run_job(job.command)
-            except Exception as exc:  # noqa: BLE001 - 다음 예약 작업은 계속 실행
-                log.warning("예약 작업 실패 [%s]: %s", job.name, type(exc).__name__)
-        current_minute = now.strftime("%Y-%m-%d %H:%M")
-        seen.intersection_update(
-            marker for marker in seen if marker[0] == current_minute
-        )
-        await asyncio.sleep(max(1, poll_seconds))
+    lock.acquire()
+    _install_signal_handlers(event, state)
+    try:
+        while not event.is_set():
+            lock.heartbeat()
+            now = now_func()
+            for job in due_jobs(now, jobs, seen=seen):
+                if event.is_set():
+                    break
+                log.info("예약 작업 시작: %s", job.name)
+                try:
+                    await run_scheduled_job(
+                        job,
+                        state_store=state,
+                        active_jobs=active_jobs,
+                        now=now_func,
+                    )
+                except Exception as exc:  # noqa: BLE001 - 다음 예약 작업은 계속 실행
+                    log.warning("예약 작업 실패 [%s]: %s", job.name, type(exc).__name__)
+            current_minute = now.strftime("%Y-%m-%d %H:%M")
+            seen.intersection_update(
+                marker for marker in seen if marker[0] == current_minute
+            )
+            await sleep(max(1, poll_seconds))
+    finally:
+        state.record_scheduler_status("stopped", pid=os.getpid())
+        lock.release()
+
+
+def _table_exists(conn: sqlite3.Connection, name: str) -> bool:
+    row = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
+        (name,),
+    ).fetchone()
+    return row is not None
+
+
+def _unresolved_order_count() -> int:
+    import db
+
+    if not db.DB_PATH.exists():
+        return 0
+    with sqlite3.connect(db.DB_PATH) as conn:
+        if not _table_exists(conn, "broker_orders"):
+            return 0
+        row = conn.execute(
+            "SELECT COUNT(*) FROM broker_orders "
+            "WHERE status NOT IN ('FILLED', 'REJECTED', 'CANCELED')"
+        ).fetchone()
+    return int(row[0] if row else 0)
+
+
+def _last_data_timestamp() -> str | None:
+    import db
+
+    if not db.DB_PATH.exists():
+        return None
+    timestamps: list[str] = []
+    with sqlite3.connect(db.DB_PATH) as conn:
+        for table in ("analysis_decisions", "trade_history", "feedback_lessons"):
+            if not _table_exists(conn, table):
+                continue
+            row = conn.execute(f"SELECT MAX(timestamp) FROM {table}").fetchone()  # noqa: S608
+            if row and row[0]:
+                timestamps.append(str(row[0]))
+    return max(timestamps) if timestamps else None
+
+
+def build_status_snapshot(
+    *,
+    state_store: operations_runtime.OperationsStateStore | None = None,
+    profile: str | None = None,
+    execute_broker: bool = False,
+    env: dict[str, str] | None = None,
+    unresolved_order_count=_unresolved_order_count,
+    last_data_timestamp=_last_data_timestamp,
+    now=lambda: datetime.now().isoformat(timespec="seconds"),
+) -> dict:
+    source = env if env is not None else os.environ
+    selected_profile = (
+        profile
+        or source.get("LECTURE_PROFILE")
+        or source.get("PRISM_PROFILE")
+        or "mock"
+    )
+    policy = operations_runtime.resolve_execution_policy(
+        selected_profile,
+        execute_broker=execute_broker,
+        env=source,
+    )
+    state = (state_store or operations_runtime.OperationsStateStore()).read()
+    broker = str(source.get("LECTURE_BROKER") or "kis").strip().lower()
+    return operations_runtime.serialize_status(
+        {
+            "profile": policy.profile,
+            "broker": broker,
+            "account_mode": policy.account_mode,
+            "dry_run": policy.dry_run,
+            "blocked_reasons": policy.blocked_reasons,
+            "scheduler": state.get("scheduler", {}),
+            "jobs": state.get("jobs", {}),
+            "unresolved_order_count": unresolved_order_count(),
+            "last_data_timestamp": last_data_timestamp(),
+            "next_jobs": [
+                {"name": job.name, "command": job.command, "at": job.at}
+                for job in DEFAULT_JOBS
+            ],
+            "generated_at": now(),
+        }
+    )
+
+
+def format_status(snapshot: dict) -> str:
+    scheduler = snapshot.get("scheduler") or {}
+    jobs = snapshot.get("jobs") or {}
+    lines = [
+        f"profile: {snapshot.get('profile')}",
+        f"broker: {snapshot.get('broker')}",
+        f"account_mode: {snapshot.get('account_mode')}",
+        f"dry_run: {snapshot.get('dry_run')}",
+        f"scheduler_status: {scheduler.get('status')}",
+        f"scheduler_pid: {scheduler.get('pid')}",
+        f"scheduler_heartbeat: {scheduler.get('heartbeat_at')}",
+        f"unresolved_order_count: {snapshot.get('unresolved_order_count')}",
+        f"last_data_timestamp: {snapshot.get('last_data_timestamp')}",
+        "jobs:",
+    ]
+    for name in sorted(jobs):
+        job = jobs[name] or {}
+        lines.append(f"  {name}: {job.get('status')}")
+    lines.append("next_jobs:")
+    for job in snapshot.get("next_jobs") or []:
+        lines.append(f"  {job['at']} {job['command']} ({job['name']})")
+    return "\n".join(lines) + "\n"
+
+
+def print_status(
+    *,
+    state_store: operations_runtime.OperationsStateStore | None = None,
+    output=sys.stdout,
+    profile: str | None = None,
+    execute_broker: bool = False,
+    env: dict[str, str] | None = None,
+    unresolved_order_count=_unresolved_order_count,
+    last_data_timestamp=_last_data_timestamp,
+    now=lambda: datetime.now().isoformat(timespec="seconds"),
+) -> None:
+    snapshot = build_status_snapshot(
+        state_store=state_store,
+        profile=profile,
+        execute_broker=execute_broker,
+        env=env,
+        unresolved_order_count=unresolved_order_count,
+        last_data_timestamp=last_data_timestamp,
+        now=now,
+    )
+    output.write(format_status(snapshot))
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -190,7 +421,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "command",
-        choices=("batch", "monitor", "reconcile", "compress", "schedule"),
+        choices=("batch", "monitor", "reconcile", "compress", "schedule", "status"),
     )
     parser.add_argument("--ticker", help="batch에서 분석할 단일 종목")
     parser.add_argument(
@@ -210,6 +441,9 @@ async def _main(args: argparse.Namespace) -> None:
         result = await run_order_reconciliation(args.broker)
     elif args.command == "compress":
         result = await run_memory_compression()
+    elif args.command == "status":
+        print_status()
+        return
     else:
         await run_scheduler()
         return

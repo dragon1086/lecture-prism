@@ -1,8 +1,12 @@
 import asyncio
+from io import StringIO
+from pathlib import Path
+import tempfile
 import unittest
 from unittest import mock
 
 import operations
+import operations_runtime
 
 
 class OperationsTest(unittest.TestCase):
@@ -64,6 +68,44 @@ class OperationsTest(unittest.TestCase):
         self.assertEqual(result["broker"], "kiwoom")
         self.assertEqual(result["status"], "unsupported")
         self.assertEqual(result["orders"], [])
+
+    def test_status_output_reports_operations_snapshot_without_secret_values(self):
+        self.assertTrue(hasattr(operations, "print_status"))
+        with tempfile.TemporaryDirectory() as tmp:
+            store = operations_runtime.OperationsStateStore(Path(tmp))
+            store.record_scheduler_status("running", pid=9876, heartbeat_at="2026-08-08T09:30:00+00:00")
+            store.record_job_success("monitor", "2026-08-08T09:31:00+00:00")
+            out = StringIO()
+
+            operations.print_status(
+                state_store=store,
+                output=out,
+                profile="live",
+                execute_broker=True,
+                env={
+                    "LECTURE_ENABLE_LIVE_BROKER": "1",
+                    "LECTURE_ALLOW_REAL_BROKER": "1",
+                    "LECTURE_UNATTENDED_LIVE_ACK": operations_runtime.LIVE_BROKER_UNATTENDED_ACK,
+                    "OPENAI_API_KEY": "sk-secret-operations-status",
+                    "KIS_APP_SECRET": "kis-secret-operations-status",
+                },
+                unresolved_order_count=lambda: 2,
+                last_data_timestamp=lambda: "2026-08-08T09:29:00+00:00",
+                now=lambda: "2026-08-08T09:32:00+00:00",
+            )
+
+        text = out.getvalue()
+        self.assertIn("profile: live", text)
+        self.assertIn("account_mode: real", text)
+        self.assertIn("scheduler_pid: 9876", text)
+        self.assertIn("scheduler_heartbeat: 2026-08-08T09:30:00+00:00", text)
+        self.assertIn("monitor: success", text)
+        self.assertIn("unresolved_order_count: 2", text)
+        self.assertIn("last_data_timestamp: 2026-08-08T09:29:00+00:00", text)
+        self.assertIn("next_jobs:", text)
+        self.assertNotIn("sk-secret-operations-status", text)
+        self.assertNotIn("kis-secret-operations-status", text)
+        self.assertNotIn(operations_runtime.LIVE_BROKER_UNATTENDED_ACK, text)
 
 
 if __name__ == "__main__":
