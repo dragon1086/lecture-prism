@@ -321,6 +321,9 @@ class DiscordMessageFormatTest(unittest.TestCase):
                 "error": (
                     "api_key=sk-neutral-secret app_key=KISAPP123 "
                     "app_secret=KISSECRET456 Authorization: Bearer bearer-secret "
+                    "authorization=Bearer equals-token "
+                    "AUTHORIZATION:Bearer colon-token "
+                    "Authorization : Bearer spaced-token "
                     "DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/123/raw-token "
                     "account_number=123-456-789 normal ticker 005930 price 71200"
                 ),
@@ -331,6 +334,9 @@ class DiscordMessageFormatTest(unittest.TestCase):
         self.assertNotIn("KISAPP123", message)
         self.assertNotIn("KISSECRET456", message)
         self.assertNotIn("bearer-secret", message)
+        self.assertNotIn("equals-token", message)
+        self.assertNotIn("colon-token", message)
+        self.assertNotIn("spaced-token", message)
         self.assertNotIn("raw-token", message)
         self.assertNotIn("123-456-789", message)
         self.assertIn("005930", message)

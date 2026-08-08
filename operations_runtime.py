@@ -583,7 +583,7 @@ _LABELED_SECRET_RE = re.compile(
     r"|account"
     r")\s*[:=]\s*[^\s,;]+"
 )
-_BEARER_RE = re.compile(r"(?i)\bAuthorization\s*:\s*Bearer\s+[^\s,;]+")
+_BEARER_RE = re.compile(r"(?i)\bAuthorization\s*[:=]\s*Bearer\s+[^\s,;]+")
 _SK_RE = re.compile(r"\bsk-[A-Za-z0-9._-]+")
 
 
