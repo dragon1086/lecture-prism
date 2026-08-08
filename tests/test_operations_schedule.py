@@ -1,5 +1,6 @@
 import asyncio
 from datetime import datetime
+import json
 import os
 from pathlib import Path
 import tempfile
@@ -127,6 +128,37 @@ class OperationsScheduleTest(unittest.TestCase):
 
         self.assertEqual(state["scheduler"]["status"], "stopped")
         self.assertFalse((runtime_dir / "scheduler.lock").exists())
+
+    def test_scheduler_records_lost_lock_when_metadata_owner_changes_before_finally(self):
+        async def run_once(runtime_dir, store):
+            stop_event = asyncio.Event()
+
+            async def replace_owner_then_stop(_seconds):
+                metadata_path = runtime_dir / "scheduler.lock"
+                metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+                metadata["owner_token"] = "replacement-token"
+                metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+                operations.request_scheduler_stop(stop_event, store, pid=os.getpid())
+
+            with mock.patch("operations._install_signal_handlers"):
+                await operations.run_scheduler(
+                    (),
+                    poll_seconds=1,
+                    runtime_dir=runtime_dir,
+                    state_store=store,
+                    stop_event=stop_event,
+                    now_func=lambda: datetime(2026, 8, 3, 10, 0),
+                    sleep=replace_owner_then_stop,
+                )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            runtime_dir = Path(tmp)
+            store = operations_runtime.OperationsStateStore(runtime_dir)
+            with mock.patch.dict(os.environ, {"LECTURE_ENABLE_SCHEDULER": "1"}):
+                asyncio.run(run_once(runtime_dir, store))
+            state = store.read()
+
+        self.assertEqual(state["scheduler"]["status"], "lost_lock")
 
 
 if __name__ == "__main__":

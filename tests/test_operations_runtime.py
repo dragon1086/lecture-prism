@@ -1,6 +1,10 @@
 from datetime import datetime, timedelta, timezone
 import json
+import os
+import subprocess
+import sys
 import tempfile
+import textwrap
 from pathlib import Path
 import unittest
 from unittest import mock
@@ -214,6 +218,42 @@ class OperationsStateStoreTest(unittest.TestCase):
         self.assertEqual(before, after)
         self.assertEqual(after["scheduler"]["status"], "running")
         self.assertEqual(after["scheduler"]["pid"], 111)
+        self.assertEqual(list(Path(tmp).glob(".operations-state-*.tmp")), [])
+
+    def test_state_store_cleans_temp_file_when_replace_fails(self):
+        self.assertTrue(hasattr(operations_runtime, "OperationsStateStore"))
+        with tempfile.TemporaryDirectory() as tmp:
+            store = operations_runtime.OperationsStateStore(Path(tmp))
+
+            with mock.patch("operations_runtime.os.replace", side_effect=RuntimeError("disk full")):
+                with self.assertRaises(RuntimeError):
+                    store.record_scheduler_status("running", pid=111)
+
+            leftovers = list(Path(tmp).glob(".operations-state-*.tmp"))
+
+        self.assertEqual(leftovers, [])
+
+    def test_state_store_fsyncs_temp_file_before_replace(self):
+        self.assertTrue(hasattr(operations_runtime, "OperationsStateStore"))
+        events = []
+        real_replace = os.replace
+
+        def fake_fsync(_fd):
+            events.append("fsync")
+
+        def fake_replace(source, target):
+            events.append("replace")
+            real_replace(source, target)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            store = operations_runtime.OperationsStateStore(Path(tmp))
+            with mock.patch("operations_runtime.os.fsync", side_effect=fake_fsync):
+                with mock.patch("operations_runtime.os.replace", side_effect=fake_replace):
+                    store.record_scheduler_status("running", pid=111)
+
+        self.assertIn("replace", events)
+        self.assertIn("fsync", events)
+        self.assertLess(events.index("fsync"), events.index("replace"))
 
     def test_state_store_records_job_lifecycle_and_heartbeat_timestamps(self):
         self.assertTrue(hasattr(operations_runtime, "OperationsStateStore"))
@@ -264,19 +304,23 @@ class OperationsStateStoreTest(unittest.TestCase):
 
 
 class SchedulerLockTest(unittest.TestCase):
-    def test_lock_recovers_only_when_pid_is_dead_and_heartbeat_is_stale(self):
+    def test_lock_recovers_when_metadata_is_stale_after_advisory_owner_exits(self):
         self.assertTrue(hasattr(operations_runtime, "SchedulerLock"))
         now = datetime(2026, 8, 8, 9, 30, tzinfo=timezone.utc)
         with tempfile.TemporaryDirectory() as tmp:
             store = operations_runtime.OperationsStateStore(Path(tmp))
-            lock = operations_runtime.SchedulerLock(
-                Path(tmp),
-                project_path=Path("/project"),
-                pid=999,
-                now=lambda: now - timedelta(minutes=10),
-                pid_alive=lambda pid: False,
+            (Path(tmp) / "scheduler.lock").write_text(
+                json.dumps(
+                    {
+                        "pid": 999,
+                        "project_path": "/project",
+                        "owner_token": "crashed-owner-token",
+                        "acquired_at": "2026-08-08T09:00:00+00:00",
+                        "heartbeat_at": "2026-08-08T09:00:00+00:00",
+                    }
+                ),
+                encoding="utf-8",
             )
-            lock.acquire()
             stale = operations_runtime.SchedulerLock(
                 Path(tmp),
                 project_path=Path("/project"),
@@ -289,11 +333,12 @@ class SchedulerLockTest(unittest.TestCase):
 
             self.assertTrue(stale.acquire())
             state = json.loads((Path(tmp) / "scheduler.lock").read_text(encoding="utf-8"))
+            stale.release()
 
         self.assertEqual(state["pid"], 1000)
         self.assertEqual(state["project_path"], "/project")
 
-    def test_lock_rejects_live_pid_even_when_heartbeat_is_stale(self):
+    def test_lock_rejects_live_advisory_owner_even_when_heartbeat_is_stale(self):
         self.assertTrue(hasattr(operations_runtime, "SchedulerLock"))
         now = datetime(2026, 8, 8, 9, 30, tzinfo=timezone.utc)
         with tempfile.TemporaryDirectory() as tmp:
@@ -318,10 +363,11 @@ class SchedulerLockTest(unittest.TestCase):
                 duplicate.acquire()
 
             state = json.loads((Path(tmp) / "scheduler.lock").read_text(encoding="utf-8"))
+            first.release()
 
         self.assertEqual(state["pid"], 999)
 
-    def test_lock_release_removes_only_the_owner_lock(self):
+    def test_release_requires_pid_project_path_and_owner_token(self):
         self.assertTrue(hasattr(operations_runtime, "SchedulerLock"))
         with tempfile.TemporaryDirectory() as tmp:
             first = operations_runtime.SchedulerLock(
@@ -334,7 +380,7 @@ class SchedulerLockTest(unittest.TestCase):
             second = operations_runtime.SchedulerLock(
                 Path(tmp),
                 project_path=Path("/project"),
-                pid=1000,
+                pid=999,
                 pid_alive=lambda pid: False,
             )
 
@@ -342,6 +388,156 @@ class SchedulerLockTest(unittest.TestCase):
             self.assertTrue((Path(tmp) / "scheduler.lock").exists())
             first.release()
             self.assertFalse((Path(tmp) / "scheduler.lock").exists())
+
+    def test_heartbeat_preserves_acquired_at_and_replaces_owner_token_after_reacquire(self):
+        self.assertTrue(hasattr(operations_runtime, "SchedulerLock"))
+        current = datetime(2026, 8, 8, 9, 0, tzinfo=timezone.utc)
+        with tempfile.TemporaryDirectory() as tmp:
+            first = operations_runtime.SchedulerLock(
+                Path(tmp),
+                project_path=Path("/project"),
+                pid=999,
+                now=lambda: current,
+            )
+            first.acquire()
+            initial = json.loads((Path(tmp) / "scheduler.lock").read_text(encoding="utf-8"))
+            current = datetime(2026, 8, 8, 9, 5, tzinfo=timezone.utc)
+            first.heartbeat()
+            after_heartbeat = json.loads((Path(tmp) / "scheduler.lock").read_text(encoding="utf-8"))
+            first.release()
+
+            current = datetime(2026, 8, 8, 9, 10, tzinfo=timezone.utc)
+            second = operations_runtime.SchedulerLock(
+                Path(tmp),
+                project_path=Path("/project"),
+                pid=999,
+                now=lambda: current,
+            )
+            second.acquire()
+            replacement = json.loads((Path(tmp) / "scheduler.lock").read_text(encoding="utf-8"))
+            second.release()
+
+        self.assertEqual(after_heartbeat["acquired_at"], initial["acquired_at"])
+        self.assertEqual(after_heartbeat["heartbeat_at"], "2026-08-08T09:05:00+00:00")
+        self.assertNotEqual(replacement["owner_token"], initial["owner_token"])
+        self.assertEqual(replacement["acquired_at"], "2026-08-08T09:10:00+00:00")
+
+    def test_real_concurrent_process_cannot_acquire_held_advisory_lock(self):
+        self.assertTrue(hasattr(operations_runtime, "SchedulerLock"))
+        holder = textwrap.dedent(
+            """
+            import pathlib
+            import sys
+            import time
+            import operations_runtime
+
+            runtime = pathlib.Path(sys.argv[1])
+            sentinel = pathlib.Path(sys.argv[2])
+            lock = operations_runtime.SchedulerLock(runtime, project_path=runtime)
+            lock.acquire()
+            print("acquired", flush=True)
+            deadline = time.time() + 10
+            while not sentinel.exists() and time.time() < deadline:
+                time.sleep(0.05)
+            lock.release()
+            """
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            runtime_dir = Path(tmp)
+            sentinel = runtime_dir / "release"
+            process = subprocess.Popen(
+                [sys.executable, "-c", holder, str(runtime_dir), str(sentinel)],
+                cwd=str(Path(__file__).resolve().parents[1]),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+            try:
+                first_line = process.stdout.readline().strip()
+                if first_line != "acquired":
+                    _, stderr = process.communicate(timeout=10)
+                    self.fail(f"holder did not acquire lock: stdout={first_line!r} stderr={stderr}")
+                metadata_path = runtime_dir / "scheduler.lock"
+                metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+                metadata["heartbeat_at"] = "2000-01-01T00:00:00+00:00"
+                metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+
+                duplicate = operations_runtime.SchedulerLock(
+                    runtime_dir,
+                    project_path=runtime_dir,
+                    stale_after_seconds=1,
+                )
+                with self.assertRaises(operations_runtime.SchedulerAlreadyRunning):
+                    duplicate.acquire()
+            finally:
+                sentinel.touch()
+                stdout, stderr = process.communicate(timeout=10)
+
+        self.assertEqual(process.returncode, 0, stderr)
+
+    def test_real_concurrent_process_startup_allows_only_one_acquirer(self):
+        self.assertTrue(hasattr(operations_runtime, "SchedulerLock"))
+        contender = textwrap.dedent(
+            """
+            import pathlib
+            import sys
+            import time
+            import operations_runtime
+
+            runtime = pathlib.Path(sys.argv[1])
+            start = pathlib.Path(sys.argv[2])
+            ready = pathlib.Path(sys.argv[3])
+            ready.touch()
+            deadline = time.time() + 10
+            while not start.exists() and time.time() < deadline:
+                time.sleep(0.001)
+            lock = operations_runtime.SchedulerLock(runtime, project_path=runtime)
+            try:
+                lock.acquire()
+            except operations_runtime.SchedulerAlreadyRunning:
+                print("blocked", flush=True)
+                raise SystemExit(0)
+            print("acquired", flush=True)
+            time.sleep(0.2)
+            lock.release()
+            """
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            runtime_dir = Path(tmp)
+            start = runtime_dir / "start"
+            processes = []
+            for index in range(8):
+                ready = runtime_dir / f"ready-{index}"
+                processes.append(
+                    subprocess.Popen(
+                        [
+                            sys.executable,
+                            "-c",
+                            contender,
+                            str(runtime_dir),
+                            str(start),
+                            str(ready),
+                        ],
+                        cwd=str(Path(__file__).resolve().parents[1]),
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        text=True,
+                    )
+                )
+
+            deadline = datetime.now().timestamp() + 10
+            while datetime.now().timestamp() < deadline:
+                if all((runtime_dir / f"ready-{index}").exists() for index in range(8)):
+                    break
+            start.touch()
+            outputs = []
+            for process in processes:
+                stdout, stderr = process.communicate(timeout=10)
+                self.assertEqual(process.returncode, 0, stderr)
+                outputs.append(stdout.strip())
+
+        self.assertEqual(outputs.count("acquired"), 1)
+        self.assertEqual(outputs.count("blocked"), 7)
 
 
 if __name__ == "__main__":

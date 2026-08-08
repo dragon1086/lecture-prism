@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from tempfile import NamedTemporaryFile, gettempdir
 from typing import Any, Callable, Mapping
+from uuid import uuid4
 
 
 LIVE_BROKER_UNATTENDED_ACK = "I_ACCEPT_REAL_ORDERS"
@@ -35,6 +36,60 @@ class ExecutionPolicy:
 
 class SchedulerAlreadyRunning(RuntimeError):
     """Raised when another scheduler instance owns the local runtime lock."""
+
+
+class _AdvisoryLock:
+    def __init__(self, path: Path) -> None:
+        self.path = path
+        self.handle = None
+        self._backend = ""
+
+    def acquire(self) -> None:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        handle = self.path.open("a+b")
+        try:
+            if os.name == "nt":
+                import msvcrt
+
+                handle.seek(0, os.SEEK_END)
+                if handle.tell() == 0:
+                    handle.write(b"\0")
+                    handle.flush()
+                handle.seek(0)
+                try:
+                    msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+                except OSError as exc:
+                    raise SchedulerAlreadyRunning("scheduler already running") from exc
+                self._backend = "msvcrt"
+            else:
+                import fcntl
+
+                try:
+                    fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                except OSError as exc:
+                    raise SchedulerAlreadyRunning("scheduler already running") from exc
+                self._backend = "fcntl"
+        except Exception:
+            handle.close()
+            raise
+        self.handle = handle
+
+    def release(self) -> None:
+        if self.handle is None:
+            return
+        try:
+            if self._backend == "msvcrt":
+                import msvcrt
+
+                self.handle.seek(0)
+                msvcrt.locking(self.handle.fileno(), msvcrt.LK_UNLCK, 1)
+            elif self._backend == "fcntl":
+                import fcntl
+
+                fcntl.flock(self.handle.fileno(), fcntl.LOCK_UN)
+        finally:
+            self.handle.close()
+            self.handle = None
 
 
 def _utcnow() -> datetime:
@@ -74,6 +129,50 @@ def _default_state() -> dict[str, Any]:
     }
 
 
+def _fsync_directory(path: Path) -> None:
+    if os.name == "nt":
+        return
+    flags = getattr(os, "O_DIRECTORY", 0) | os.O_RDONLY
+    try:
+        fd = os.open(path, flags)
+    except OSError:
+        return
+    try:
+        os.fsync(fd)
+    except OSError:
+        pass
+    finally:
+        os.close(fd)
+
+
+def _atomic_write_json(path: Path, state: Mapping[str, Any], *, prefix: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp_name = ""
+    try:
+        with NamedTemporaryFile(
+            "w",
+            encoding="utf-8",
+            dir=path.parent,
+            prefix=prefix,
+            suffix=".tmp",
+            delete=False,
+        ) as handle:
+            json.dump(state, handle, ensure_ascii=False, indent=2, sort_keys=True)
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+            temp_name = handle.name
+        os.replace(temp_name, path)
+        temp_name = ""
+        _fsync_directory(path.parent)
+    finally:
+        if temp_name:
+            try:
+                Path(temp_name).unlink()
+            except FileNotFoundError:
+                pass
+
+
 class OperationsStateStore:
     """Atomic JSON state store for local scheduler/status data."""
 
@@ -98,19 +197,7 @@ class OperationsStateStore:
         return state
 
     def _write(self, state: Mapping[str, Any]) -> None:
-        self.runtime_dir.mkdir(parents=True, exist_ok=True)
-        with NamedTemporaryFile(
-            "w",
-            encoding="utf-8",
-            dir=self.runtime_dir,
-            prefix=".operations-state-",
-            suffix=".tmp",
-            delete=False,
-        ) as handle:
-            json.dump(state, handle, ensure_ascii=False, indent=2, sort_keys=True)
-            handle.write("\n")
-            temp_name = handle.name
-        os.replace(temp_name, self.path)
+        _atomic_write_json(self.path, state, prefix=".operations-state-")
 
     def record_scheduler_status(
         self,
@@ -119,6 +206,7 @@ class OperationsStateStore:
         pid: int | None = None,
         project_path: str | Path | None = None,
         heartbeat_at: datetime | str | None = None,
+        owner_token: str | None = None,
     ) -> None:
         state = self.read()
         scheduler = dict(state.get("scheduler") or {})
@@ -128,6 +216,8 @@ class OperationsStateStore:
             scheduler["pid"] = int(pid)
         if project_path is not None:
             scheduler["project_path"] = str(project_path)
+        if owner_token is not None:
+            scheduler["owner_token"] = owner_token
         if status in {"running", "stopping"}:
             scheduler["heartbeat_at"] = now
         if status == "running" and not scheduler.get("started_at"):
@@ -143,12 +233,14 @@ class OperationsStateStore:
         pid: int | None = None,
         project_path: str | Path | None = None,
         heartbeat_at: datetime | str | None = None,
+        owner_token: str | None = None,
     ) -> None:
         self.record_scheduler_status(
             "running",
             pid=pid,
             project_path=project_path,
             heartbeat_at=heartbeat_at,
+            owner_token=owner_token,
         )
 
     def record_job_start(self, job: str, started_at: datetime | str | None = None) -> None:
@@ -251,52 +343,59 @@ class SchedulerLock:
             Path(runtime_dir) if runtime_dir is not None else default_runtime_dir()
         )
         self.path = self.runtime_dir / "scheduler.lock"
+        self._advisory = _AdvisoryLock(self.runtime_dir / "scheduler.lock.advisory")
         self.project_path = Path(project_path or Path.cwd()).resolve()
         self.pid = int(pid if pid is not None else os.getpid())
         self.stale_after_seconds = float(stale_after_seconds)
         self.now = now or _utcnow
         self.pid_alive = pid_alive or _pid_is_alive
         self.state_store = state_store or OperationsStateStore(self.runtime_dir)
+        self.owner_token = uuid4().hex
+        self.acquired_at: str | None = None
         self._held = False
 
     def acquire(self) -> bool:
         self.runtime_dir.mkdir(parents=True, exist_ok=True)
-        existing = self._read_lock()
-        if existing:
-            owner_pid = int(existing.get("pid") or 0)
-            heartbeat = _parse_datetime(existing.get("heartbeat_at"))
-            age = None if heartbeat is None else (self._now() - heartbeat).total_seconds()
-            stale = heartbeat is None or age is None or age > self.stale_after_seconds
-            alive = self.pid_alive(owner_pid)
-            if alive or not stale:
-                raise SchedulerAlreadyRunning(
-                    f"scheduler already running with pid {owner_pid}"
-                )
-        self._write_lock()
-        self._held = True
-        self.state_store.record_scheduler_status(
-            "running",
-            pid=self.pid,
-            project_path=self.project_path,
-            heartbeat_at=self._now(),
-        )
+        self._advisory.acquire()
+        try:
+            self.acquired_at = _iso(self._now())
+            self._write_lock(acquired_at=self.acquired_at, heartbeat_at=self.acquired_at)
+            self._held = True
+            self.state_store.record_scheduler_status(
+                "running",
+                pid=self.pid,
+                project_path=self.project_path,
+                heartbeat_at=self.acquired_at,
+                owner_token=self.owner_token,
+            )
+        except Exception:
+            self.release()
+            raise
         return True
 
     def heartbeat(self) -> None:
-        if not self._owns_lock():
+        if not self.owns_metadata():
             raise SchedulerAlreadyRunning("scheduler lock is not owned by this process")
-        self._write_lock()
+        heartbeat_at = _iso(self._now())
+        self._write_lock(
+            acquired_at=self.acquired_at or heartbeat_at,
+            heartbeat_at=heartbeat_at,
+        )
         self.state_store.record_heartbeat(
             pid=self.pid,
             project_path=self.project_path,
-            heartbeat_at=self._now(),
+            heartbeat_at=heartbeat_at,
+            owner_token=self.owner_token,
         )
 
     def release(self) -> None:
-        if not self._owns_lock():
-            return
-        self.path.unlink()
-        self._held = False
+        try:
+            if self.owns_metadata():
+                self.path.unlink()
+                _fsync_directory(self.runtime_dir)
+        finally:
+            self._advisory.release()
+            self._held = False
 
     def _now(self) -> datetime:
         current = self.now()
@@ -314,29 +413,27 @@ class SchedulerLock:
             return {"pid": -1, "heartbeat_at": None}
         return value if isinstance(value, dict) else {"pid": -1, "heartbeat_at": None}
 
-    def _write_lock(self) -> None:
+    def _write_lock(self, *, acquired_at: str, heartbeat_at: str) -> None:
         payload = {
             "pid": self.pid,
             "project_path": str(self.project_path),
-            "acquired_at": _iso(self._now()),
-            "heartbeat_at": _iso(self._now()),
+            "owner_token": self.owner_token,
+            "acquired_at": acquired_at,
+            "heartbeat_at": heartbeat_at,
         }
-        with NamedTemporaryFile(
-            "w",
-            encoding="utf-8",
-            dir=self.runtime_dir,
-            prefix=".scheduler-lock-",
-            suffix=".tmp",
-            delete=False,
-        ) as handle:
-            json.dump(payload, handle, ensure_ascii=False, indent=2, sort_keys=True)
-            handle.write("\n")
-            temp_name = handle.name
-        os.replace(temp_name, self.path)
+        _atomic_write_json(self.path, payload, prefix=".scheduler-lock-")
+
+    def owns_metadata(self) -> bool:
+        existing = self._read_lock()
+        return bool(
+            existing
+            and int(existing.get("pid") or 0) == self.pid
+            and str(existing.get("project_path") or "") == str(self.project_path)
+            and str(existing.get("owner_token") or "") == self.owner_token
+        )
 
     def _owns_lock(self) -> bool:
-        existing = self._read_lock()
-        return bool(existing and int(existing.get("pid") or 0) == self.pid)
+        return self.owns_metadata()
 
 
 _SECRET_KEY_PARTS = ("secret", "token", "password", "api_key", "app_key", "ack")

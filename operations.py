@@ -281,7 +281,10 @@ async def run_scheduler(
             )
             await sleep(max(1, poll_seconds))
     finally:
-        state.record_scheduler_status("stopped", pid=os.getpid())
+        if lock.owns_metadata():
+            state.record_scheduler_status("stopped", pid=os.getpid())
+        else:
+            state.record_scheduler_status("lost_lock", pid=os.getpid())
         lock.release()
 
 
