@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 from datetime import datetime, timedelta, timezone
 import json
@@ -9,8 +11,13 @@ import unittest
 from unittest.mock import AsyncMock, patch
 
 import db
-from brokers.base import BrokerOrder
-from brokers.toss import TossBrokerAdapter
+from brokers.base import BrokerOrder, BrokerQuote
+from brokers.toss import (
+    TossBrokerAdapter,
+    TossOfficialOpenAPIAdapter,
+    TossOfficialRateLimitError,
+    TossOfficialSchemaError,
+)
 from brokers.tossctl import (
     TossctlClient,
     TossctlConfigurationError,
@@ -46,6 +53,53 @@ class FakeTossctl:
         if isinstance(response, Exception):
             raise response
         return response
+
+
+class FakeOfficialOpenAPI:
+    def __init__(self, responses=None, *, fail_at: str | None = None, error=None):
+        self.responses = dict(responses or {})
+        self.fail_at = fail_at
+        self.error = error or RuntimeError("official read failed")
+        self.calls = []
+        self.order_calls = []
+
+    def _response(self, name):
+        self.calls.append(name)
+        if self.fail_at == name:
+            raise self.error
+        return self.responses[name]
+
+    async def accounts(self):
+        return self._response("accounts")
+
+    async def holdings(self, symbol=None):
+        self.calls.append(("holdings", symbol))
+        if self.fail_at == "holdings":
+            raise self.error
+        return self.responses["holdings"]
+
+    async def quote(self, symbol):
+        self.calls.append(("quote", symbol))
+        if self.fail_at == "quote":
+            raise self.error
+        return self.responses["quote"]
+
+    async def pending_orders(self):
+        return self._response("pending_orders")
+
+    async def order_status(self, order_id):
+        self.calls.append(("order_status", order_id))
+        if self.fail_at == "order_status":
+            raise self.error
+        return self.responses["order_status"]
+
+    async def place_order(self, order):
+        self.order_calls.append(("place_order", order))
+        raise AssertionError("official order E2E is not approved")
+
+    async def cancel_order(self, order_id):
+        self.order_calls.append(("cancel_order", order_id))
+        raise AssertionError("official cancel E2E is not approved")
 
 
 class TossctlClientTest(unittest.TestCase):
@@ -411,6 +465,176 @@ class TossBrokerAdapterTest(unittest.TestCase):
 
         with self.assertRaisesRegex(RuntimeError, "orderable_amount_krw"):
             asyncio.run(adapter.get_orderable_quantity("005930", 70000))
+
+    def test_wts_pending_orders_reject_malformed_payload(self):
+        client = FakeTossctl([ACTIVE_AUTH, {"orders": []}])
+        adapter = TossBrokerAdapter(
+            mode="real",
+            client=client,
+            clock=lambda: datetime(2026, 7, 20, tzinfo=timezone.utc),
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "pending orders JSON"):
+            asyncio.run(adapter.get_pending_orders())
+
+    def test_wts_unknown_order_status_fails_closed(self):
+        client = FakeTossctl(
+            [
+                ACTIVE_AUTH,
+                {
+                    "id": "2026-07-20/10",
+                    "symbol": "005930",
+                    "market": "kr",
+                    "side": "buy",
+                    "status": "처리불명",
+                    "quantity": 2,
+                    "filled_quantity": 0,
+                    "price": 70000,
+                    "order_date": "2026-07-20",
+                },
+            ]
+        )
+        adapter = TossBrokerAdapter(
+            mode="real",
+            client=client,
+            clock=lambda: datetime(2026, 7, 20, tzinfo=timezone.utc),
+        )
+
+        result = asyncio.run(adapter.get_order_status("2026-07-20/10"))
+
+        self.assertEqual(result["status"], "unknown")
+        self.assertFalse(result["accepted"])
+        self.assertFalse(result["terminal"])
+
+
+class TossOfficialOpenAPIAdapterTest(unittest.TestCase):
+    def _official_client(self):
+        return FakeOfficialOpenAPI(
+            {
+                "accounts": [
+                    {
+                        "accountSeq": 7,
+                        "accountType": "BROKERAGE",
+                    }
+                ],
+                "holdings": [
+                    {
+                        "symbol": "005930",
+                        "marketCountry": "KR",
+                        "currency": "KRW",
+                        "quantity": "3",
+                        "lastPrice": "70100",
+                    }
+                ],
+                "quote": {
+                    "symbol": "005930",
+                    "price": "70100",
+                    "currency": "KRW",
+                    "market": "KOSPI",
+                    "observedAt": "2026-07-20T00:00:00Z",
+                },
+                "pending_orders": [
+                    {
+                        "orderId": "ord-1",
+                        "symbol": "005930",
+                        "side": "BUY",
+                        "status": "OPEN",
+                        "quantity": "3",
+                        "price": "70000",
+                        "orderedAt": "2026-07-20T00:00:00Z",
+                        "execution": {
+                            "filledQuantity": "0",
+                        },
+                    }
+                ],
+                "order_status": {
+                    "orderId": "ord-1",
+                    "symbol": "005930",
+                    "side": "BUY",
+                    "status": "CLOSED",
+                    "quantity": "3",
+                    "price": "70000",
+                    "orderedAt": "2026-07-20T00:00:00Z",
+                    "execution": {
+                        "filledQuantity": "3",
+                        "averageFilledPrice": "69900",
+                    },
+                },
+            }
+        )
+
+    def test_official_paper_is_blocked_without_client_calls(self):
+        client = self._official_client()
+        adapter = TossOfficialOpenAPIAdapter(mode="paper", client=client)
+
+        result = asyncio.run(
+            adapter.place_order(BrokerOrder("BUY", "005930", 1, 70000))
+        )
+
+        self.assertEqual(result["status"], "blocked")
+        self.assertEqual(result["mode"], "toss_official_paper_unavailable")
+        self.assertEqual(client.calls, [])
+        self.assertEqual(client.order_calls, [])
+
+    def test_official_readonly_account_holdings_quote_pending_and_lifecycle_contract(self):
+        client = self._official_client()
+        adapter = TossOfficialOpenAPIAdapter(
+            mode="real",
+            client=client,
+            clock=lambda: datetime(2026, 7, 20, tzinfo=timezone.utc),
+        )
+
+        account = asyncio.run(adapter.get_account())
+        sellable = asyncio.run(adapter.get_sellable_quantity("005930"))
+        quote = asyncio.run(adapter.get_quote("005930"))
+        pending = asyncio.run(adapter.get_pending_orders())
+        status = asyncio.run(adapter.get_order_status("ord-1"))
+
+        self.assertEqual(account["accounts_count"], 1)
+        self.assertEqual(sellable, 3)
+        self.assertIsInstance(quote, BrokerQuote)
+        self.assertEqual(quote.price, 70100)
+        self.assertEqual(pending[0]["status"], "accepted")
+        self.assertEqual(status["status"], "filled")
+        self.assertEqual(status["filled_qty"], 3)
+        self.assertEqual(client.order_calls, [])
+
+    def test_official_rate_limit_fails_closed(self):
+        client = FakeOfficialOpenAPI(
+            {"accounts": []},
+            fail_at="accounts",
+            error=TossOfficialRateLimitError("ACCOUNT group exceeded"),
+        )
+        adapter = TossOfficialOpenAPIAdapter(mode="real", client=client)
+
+        with self.assertRaises(TossOfficialRateLimitError):
+            asyncio.run(adapter.get_account())
+
+    def test_official_malformed_payload_fails_closed(self):
+        client = FakeOfficialOpenAPI({"accounts": [{"accountSeq": None}]})
+        adapter = TossOfficialOpenAPIAdapter(mode="real", client=client)
+
+        with self.assertRaises(TossOfficialSchemaError):
+            asyncio.run(adapter.get_account())
+
+    def test_official_unknown_order_status_fails_closed(self):
+        adapter = TossOfficialOpenAPIAdapter(mode="real", client=self._official_client())
+
+        result = adapter.normalize_order_snapshot(
+            {
+                "orderId": "ord-unknown",
+                "symbol": "005930",
+                "side": "BUY",
+                "status": "SURPRISE",
+                "quantity": "3",
+                "price": "70000",
+                "execution": {"filledQuantity": "0"},
+            }
+        )
+
+        self.assertEqual(result["status"], "unknown")
+        self.assertFalse(result["accepted"])
+        self.assertFalse(result["terminal"])
 
 
 class TossTradingLifecycleTest(unittest.TestCase):

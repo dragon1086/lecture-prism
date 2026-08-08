@@ -126,6 +126,110 @@ class FakeKiwoomDoctorAdapter:
         raise AssertionError("doctor must not cancel orders")
 
 
+class FakeTossOfficialDoctorAdapter:
+    integration = "official_open_api"
+
+    def __init__(self, *, fail_at: str | None = None, unknown_status: bool = False) -> None:
+        self.fail_at = fail_at
+        self.unknown_status = unknown_status
+        self.calls: list[str] = []
+        self.order_calls: list[str] = []
+
+    def _record(self, name: str):
+        self.calls.append(name)
+        if self.fail_at == name:
+            raise RuntimeError("official read-only failure raw secret detail")
+
+    async def check_authentication(self):
+        self._record("authentication")
+        return {"authenticated": True}
+
+    async def get_account(self):
+        self._record("account_access")
+        return {"accounts_count": 1}
+
+    async def get_sellable_quantity(self, ticker):
+        self._record("holdings")
+        return 2
+
+    async def get_quote(self, ticker):
+        self._record("fresh_quote")
+        return object()
+
+    async def get_pending_orders(self):
+        self._record("pending_order_inquiry")
+        return [{"order_no": "ord-1", "status": "accepted"}]
+
+    async def get_order_status(self, order_no):
+        self._record("lifecycle_fixture")
+        if self.unknown_status:
+            return {"status": "unknown", "terminal": False}
+        return {"status": "accepted", "terminal": False}
+
+    async def place_order(self, order):
+        self.order_calls.append("place_order")
+        raise AssertionError("doctor must not place orders")
+
+    async def cancel_order(self, order_no, **details):
+        self.order_calls.append("cancel_order")
+        raise AssertionError("doctor must not cancel orders")
+
+
+class FakeTossWTSDoctorAdapter:
+    integration = "wts"
+
+    def __init__(
+        self,
+        *,
+        expired: bool = False,
+        malformed_pending: bool = False,
+        unknown_status: bool = False,
+    ) -> None:
+        self.expired = expired
+        self.malformed_pending = malformed_pending
+        self.unknown_status = unknown_status
+        self.calls: list[str] = []
+        self.order_calls: list[str] = []
+
+    async def check_auth(self):
+        self.calls.append("authentication")
+        if self.expired:
+            return {"success": False, "status": "blocked", "message": "session expired"}
+        return {"success": True, "status": "active"}
+
+    async def get_account(self):
+        self.calls.append("account_access")
+        return {"orderable_amount_krw": 100000}
+
+    async def get_sellable_quantity(self, ticker):
+        self.calls.append("holdings")
+        return 2
+
+    async def get_quote(self, ticker):
+        self.calls.append("fresh_quote")
+        return object()
+
+    async def get_pending_orders(self):
+        self.calls.append("pending_order_inquiry")
+        if self.malformed_pending:
+            return {"orders": []}
+        return [{"id": "2026-07-20/10", "status": "accepted"}]
+
+    async def get_order_status(self, order_no):
+        self.calls.append("lifecycle_fixture")
+        if self.unknown_status:
+            return {"status": "unknown", "terminal": False}
+        return {"status": "accepted", "terminal": False}
+
+    async def place_order(self, order):
+        self.order_calls.append("place_order")
+        raise AssertionError("doctor must not place orders")
+
+    async def cancel_order(self, order_no, **details):
+        self.order_calls.append("cancel_order")
+        raise AssertionError("doctor must not cancel orders")
+
+
 class OperationsDoctorReportTest(unittest.TestCase):
     def test_report_verdict_uses_highest_severity_check(self):
         from operations_doctor import CheckResult, DoctorReport
@@ -601,6 +705,316 @@ class OperationsDoctorKiwoomReadinessTest(unittest.TestCase):
         self.assertEqual(report.verdict, "BLOCKED")
         self.assertEqual(checks["kiwoom_credentials"].status, "BLOCKED")
         self.assertFalse(factory.called)
+
+
+class OperationsDoctorTossReadinessTest(unittest.TestCase):
+    def _official_live_env(self):
+        return {
+            "LECTURE_PROFILE": "live",
+            "LECTURE_BROKER": "toss",
+            "LECTURE_TOSS_INTEGRATION": "official",
+            "LECTURE_ENABLE_LIVE_BROKER": "1",
+            "LECTURE_ALLOW_REAL_BROKER": "1",
+            "LECTURE_UNATTENDED_LIVE_ACK": "I_ACCEPT_REAL_ORDERS",
+            "TOSS_OPENAPI_CLIENT_ID": "client-id",
+            "TOSS_OPENAPI_CLIENT_SECRET": "client-secret",
+            "TOSS_OPENAPI_ACCOUNT_SEQ": "7",
+            "OPENAI_API_KEY": "sk-test",
+            "PERPLEXITY_API_KEY": "pplx-test",
+            "FIRECRAWL_API_KEY": "fc-test",
+        }
+
+    def _wts_live_env(self):
+        return {
+            "LECTURE_PROFILE": "live",
+            "LECTURE_BROKER": "toss",
+            "LECTURE_TOSS_INTEGRATION": "wts",
+            "LECTURE_ENABLE_LIVE_BROKER": "1",
+            "LECTURE_ALLOW_REAL_BROKER": "1",
+            "LECTURE_UNATTENDED_LIVE_ACK": "I_ACCEPT_REAL_ORDERS",
+            "TOSSCTL_PATH": "/safe/fake/tossctl",
+            "OPENAI_API_KEY": "sk-test",
+            "PERPLEXITY_API_KEY": "pplx-test",
+            "FIRECRAWL_API_KEY": "fc-test",
+        }
+
+    def test_toss_paper_is_blocked_without_building_adapter(self):
+        from operations_doctor import run_doctor
+
+        class Factory:
+            called = False
+
+            def __call__(self):
+                self.called = True
+                raise AssertionError("Toss paper has no demo adapter")
+
+        official_factory = Factory()
+        wts_factory = Factory()
+
+        report = asyncio.run(
+            run_doctor(
+                profile="paper",
+                env={
+                    "LECTURE_PROFILE": "paper",
+                    "LECTURE_BROKER": "toss",
+                    "LECTURE_ENABLE_LIVE_BROKER": "1",
+                },
+                toss_official_adapter_factory=official_factory,
+                toss_wts_adapter_factory=wts_factory,
+                unresolved_order_count=lambda: 0,
+                directory_writable=lambda _path: True,
+            )
+        )
+
+        checks = {check.name: check for check in report.checks}
+        self.assertEqual(report.verdict, "BLOCKED")
+        self.assertEqual(checks["toss_paper"].status, "BLOCKED")
+        self.assertFalse(official_factory.called)
+        self.assertFalse(wts_factory.called)
+
+    def test_official_toss_live_runs_read_only_checks_and_remains_conditional(self):
+        from operations_doctor import run_doctor
+
+        adapter = FakeTossOfficialDoctorAdapter()
+        report = asyncio.run(
+            run_doctor(
+                profile="live",
+                env=self._official_live_env(),
+                toss_official_adapter_factory=lambda: adapter,
+                unresolved_order_count=lambda: 0,
+                directory_writable=lambda _path: True,
+            )
+        )
+
+        checks = {check.name: check for check in report.checks}
+        self.assertEqual(report.verdict, "CONDITIONAL")
+        self.assertEqual(checks["toss_official_credentials"].status, "READY")
+        self.assertEqual(checks["toss_official_order_e2e"].status, "CONDITIONAL")
+        self.assertEqual(
+            adapter.calls,
+            [
+                "authentication",
+                "account_access",
+                "holdings",
+                "fresh_quote",
+                "pending_order_inquiry",
+                "lifecycle_fixture",
+            ],
+        )
+        self.assertEqual(adapter.order_calls, [])
+
+    def test_official_toss_default_factory_blocks_unwired_read_client_without_outputting_credentials(self):
+        from operations_doctor import format_doctor_report, run_doctor
+
+        env = self._official_live_env()
+        report = asyncio.run(
+            run_doctor(
+                profile="live",
+                env=env,
+                unresolved_order_count=lambda: 0,
+                directory_writable=lambda _path: True,
+            )
+        )
+        rendered = format_doctor_report(
+            report,
+            secrets=(
+                env["TOSS_OPENAPI_CLIENT_ID"],
+                env["TOSS_OPENAPI_CLIENT_SECRET"],
+                env["TOSS_OPENAPI_ACCOUNT_SEQ"],
+            ),
+        )
+
+        checks = {check.name: check for check in report.checks}
+        self.assertEqual(report.verdict, "BLOCKED")
+        self.assertEqual(
+            checks["toss_official_read_client_integration"].status,
+            "BLOCKED",
+        )
+        self.assertIn("not wired", checks["toss_official_read_client_integration"].message)
+        self.assertNotIn(env["TOSS_OPENAPI_CLIENT_ID"], rendered)
+        self.assertNotIn(env["TOSS_OPENAPI_CLIENT_SECRET"], rendered)
+        self.assertNotIn(env["TOSS_OPENAPI_ACCOUNT_SEQ"], rendered)
+
+    def test_official_toss_live_blocks_missing_credentials_without_adapter_calls(self):
+        from operations_doctor import run_doctor
+
+        class Factory:
+            called = False
+
+            def __call__(self):
+                self.called = True
+                raise AssertionError("adapter must not be built without credentials")
+
+        factory = Factory()
+        report = asyncio.run(
+            run_doctor(
+                profile="live",
+                env={
+                    "LECTURE_PROFILE": "live",
+                    "LECTURE_BROKER": "toss",
+                    "LECTURE_TOSS_INTEGRATION": "official",
+                    "LECTURE_ENABLE_LIVE_BROKER": "1",
+                    "LECTURE_ALLOW_REAL_BROKER": "1",
+                },
+                toss_official_adapter_factory=factory,
+                unresolved_order_count=lambda: 0,
+                directory_writable=lambda _path: True,
+            )
+        )
+
+        checks = {check.name: check for check in report.checks}
+        self.assertEqual(report.verdict, "BLOCKED")
+        self.assertEqual(checks["toss_official_credentials"].status, "BLOCKED")
+        self.assertFalse(factory.called)
+
+    def test_official_toss_rate_limit_blocks_and_sanitizes_failure(self):
+        from operations_doctor import format_doctor_report, run_doctor
+
+        adapter = FakeTossOfficialDoctorAdapter(fail_at="account_access")
+        report = asyncio.run(
+            run_doctor(
+                profile="live",
+                env=self._official_live_env(),
+                toss_official_adapter_factory=lambda: adapter,
+                unresolved_order_count=lambda: 0,
+                directory_writable=lambda _path: True,
+            )
+        )
+        rendered = format_doctor_report(report, secrets=("client-secret",))
+
+        checks = {check.name: check for check in report.checks}
+        self.assertEqual(report.verdict, "BLOCKED")
+        self.assertEqual(checks["toss_official_account_access"].status, "BLOCKED")
+        self.assertNotIn("raw secret detail", rendered)
+        self.assertNotIn("client-secret", rendered)
+        self.assertEqual(adapter.order_calls, [])
+
+    def test_official_order_e2e_is_blocked_when_a_read_only_prerequisite_fails(self):
+        from operations_doctor import run_doctor
+
+        adapter = FakeTossOfficialDoctorAdapter(fail_at="account_access")
+        report = asyncio.run(
+            run_doctor(
+                profile="live",
+                env=self._official_live_env(),
+                toss_official_adapter_factory=lambda: adapter,
+                unresolved_order_count=lambda: 0,
+                directory_writable=lambda _path: True,
+            )
+        )
+
+        checks = {check.name: check for check in report.checks}
+        self.assertEqual(checks["toss_official_account_access"].status, "BLOCKED")
+        self.assertEqual(checks["toss_official_order_e2e"].status, "BLOCKED")
+        self.assertIn("prerequisite", checks["toss_official_order_e2e"].message)
+        self.assertEqual(adapter.order_calls, [])
+
+    def test_official_toss_unknown_lifecycle_blocks_readiness(self):
+        from operations_doctor import run_doctor
+
+        adapter = FakeTossOfficialDoctorAdapter(unknown_status=True)
+        report = asyncio.run(
+            run_doctor(
+                profile="live",
+                env=self._official_live_env(),
+                toss_official_adapter_factory=lambda: adapter,
+                unresolved_order_count=lambda: 0,
+                directory_writable=lambda _path: True,
+            )
+        )
+
+        checks = {check.name: check for check in report.checks}
+        self.assertEqual(report.verdict, "BLOCKED")
+        self.assertEqual(checks["toss_official_lifecycle_fixture"].status, "BLOCKED")
+        self.assertEqual(adapter.order_calls, [])
+
+    def test_wts_toss_live_runs_read_only_checks_but_is_never_ready(self):
+        from operations_doctor import run_doctor
+
+        adapter = FakeTossWTSDoctorAdapter()
+        report = asyncio.run(
+            run_doctor(
+                profile="live",
+                env=self._wts_live_env(),
+                toss_wts_adapter_factory=lambda: adapter,
+                unresolved_order_count=lambda: 0,
+                directory_writable=lambda _path: True,
+            )
+        )
+
+        checks = {check.name: check for check in report.checks}
+        self.assertEqual(report.verdict, "BLOCKED")
+        self.assertEqual(checks["toss_wts_live_boundary"].status, "BLOCKED")
+        self.assertEqual(
+            adapter.calls,
+            [
+                "authentication",
+                "account_access",
+                "holdings",
+                "fresh_quote",
+                "pending_order_inquiry",
+                "lifecycle_fixture",
+            ],
+        )
+        self.assertEqual(adapter.order_calls, [])
+
+    def test_wts_toss_expired_session_blocks_before_read_checks(self):
+        from operations_doctor import run_doctor
+
+        adapter = FakeTossWTSDoctorAdapter(expired=True)
+        report = asyncio.run(
+            run_doctor(
+                profile="live",
+                env=self._wts_live_env(),
+                toss_wts_adapter_factory=lambda: adapter,
+                unresolved_order_count=lambda: 0,
+                directory_writable=lambda _path: True,
+            )
+        )
+
+        checks = {check.name: check for check in report.checks}
+        self.assertEqual(report.verdict, "BLOCKED")
+        self.assertEqual(checks["toss_wts_authentication"].status, "BLOCKED")
+        self.assertEqual(adapter.calls, ["authentication"])
+        self.assertEqual(adapter.order_calls, [])
+
+    def test_wts_toss_malformed_pending_payload_blocks_readiness(self):
+        from operations_doctor import run_doctor
+
+        adapter = FakeTossWTSDoctorAdapter(malformed_pending=True)
+        report = asyncio.run(
+            run_doctor(
+                profile="live",
+                env=self._wts_live_env(),
+                toss_wts_adapter_factory=lambda: adapter,
+                unresolved_order_count=lambda: 0,
+                directory_writable=lambda _path: True,
+            )
+        )
+
+        checks = {check.name: check for check in report.checks}
+        self.assertEqual(report.verdict, "BLOCKED")
+        self.assertEqual(checks["toss_wts_pending_order_inquiry"].status, "BLOCKED")
+        self.assertEqual(adapter.order_calls, [])
+
+    def test_wts_toss_unknown_lifecycle_blocks_readiness(self):
+        from operations_doctor import run_doctor
+
+        adapter = FakeTossWTSDoctorAdapter(unknown_status=True)
+        report = asyncio.run(
+            run_doctor(
+                profile="live",
+                env=self._wts_live_env(),
+                toss_wts_adapter_factory=lambda: adapter,
+                unresolved_order_count=lambda: 0,
+                directory_writable=lambda _path: True,
+            )
+        )
+
+        checks = {check.name: check for check in report.checks}
+        self.assertEqual(report.verdict, "BLOCKED")
+        self.assertEqual(checks["toss_wts_lifecycle_fixture"].status, "BLOCKED")
+        self.assertEqual(adapter.order_calls, [])
 
 
 if __name__ == "__main__":

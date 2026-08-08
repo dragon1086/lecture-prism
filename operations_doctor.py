@@ -280,6 +280,50 @@ def _kiwoom_credentials_check(env: Mapping[str, str]) -> CheckResult:
     )
 
 
+def _toss_integration(env: Mapping[str, str]) -> str:
+    selected = str(
+        env.get("LECTURE_TOSS_INTEGRATION")
+        or env.get("TOSS_SECURITIES_BACKEND")
+        or env.get("TOSS_BACKEND")
+        or ""
+    ).strip().lower().replace("-", "_")
+    if selected in {"official", "official_open_api", "openapi", "open_api", "rest"}:
+        return "official"
+    if selected in {"wts", "tossctl", "web", "web_session"}:
+        return "wts"
+    has_official = bool(
+        str(env.get("TOSS_OPENAPI_CLIENT_ID", "")).strip()
+        or str(env.get("TOSS_OPENAPI_CLIENT_SECRET", "")).strip()
+    )
+    return "official" if has_official else "wts"
+
+
+def _toss_official_credentials_check(env: Mapping[str, str]) -> CheckResult:
+    required = (
+        "TOSS_OPENAPI_CLIENT_ID",
+        "TOSS_OPENAPI_CLIENT_SECRET",
+        "TOSS_OPENAPI_ACCOUNT_SEQ",
+    )
+    missing = [key for key in required if not str(env.get(key, "")).strip()]
+    if missing:
+        return CheckResult(
+            "toss_official_credentials",
+            BLOCKED,
+            "missing: " + ",".join(missing),
+        )
+    return CheckResult("toss_official_credentials", READY, "configured")
+
+
+def _toss_wts_contract_check(env: Mapping[str, str]) -> CheckResult:
+    if str(env.get("TOSSCTL_PATH", "")).strip():
+        return CheckResult("toss_wts_contract", READY, "pinned tossctl configured")
+    return CheckResult(
+        "toss_wts_contract",
+        BLOCKED,
+        "missing: TOSSCTL_PATH for pinned tossctl WTS contract",
+    )
+
+
 async def _run_readonly_check(
     name: str,
     operation,
@@ -513,6 +557,210 @@ async def _kiwoom_readiness_checks(
     return checks
 
 
+async def _toss_official_readiness_checks(
+    *,
+    env: Mapping[str, str],
+    toss_official_adapter_factory,
+) -> list[CheckResult]:
+    credentials = _toss_official_credentials_check(env)
+    checks = [credentials]
+    if credentials.status == BLOCKED:
+        return checks
+
+    secrets = _sensitive_values(env)
+    try:
+        adapter = toss_official_adapter_factory()
+    except _TossOfficialReadClientIntegrationUnavailable:
+        checks.append(
+            CheckResult(
+                "toss_official_read_client_integration",
+                BLOCKED,
+                "supported official read-only client integration is not wired; inject through toss_official_adapter_factory",
+            )
+        )
+        return checks
+    except Exception:  # noqa: BLE001 - readiness check must isolate failures
+        checks.append(
+            CheckResult(
+                "toss_official_adapter",
+                BLOCKED,
+                "adapter initialization unavailable",
+            )
+        )
+        return checks
+
+    ticker = str(env.get("LECTURE_DOCTOR_TICKER") or "005930").strip() or "005930"
+    pending_cache: dict[str, object] = {}
+
+    async def authentication():
+        method = getattr(adapter, "check_authentication")
+        result = await method()
+        if isinstance(result, Mapping) and result.get("authenticated") is False:
+            raise RuntimeError("Toss official authentication unavailable")
+
+    async def account_access():
+        account = await adapter.get_account()
+        if not isinstance(account, Mapping) or int(account.get("accounts_count", 0)) < 1:
+            raise RuntimeError("Toss official account response missing account")
+
+    async def holdings():
+        quantity = await adapter.get_sellable_quantity(ticker)
+        if int(quantity) < 0:
+            raise RuntimeError("Toss official holdings quantity is invalid")
+
+    async def fresh_quote():
+        await adapter.get_quote(ticker)
+
+    async def pending_order_inquiry():
+        pending = await adapter.get_pending_orders()
+        if not isinstance(pending, list):
+            raise RuntimeError("Toss official pending orders payload malformed")
+        pending_cache["value"] = pending
+
+    async def lifecycle_fixture():
+        pending = pending_cache.get("value")
+        if pending is None:
+            pending = await adapter.get_pending_orders()
+            if not isinstance(pending, list):
+                raise RuntimeError("Toss official pending orders payload malformed")
+        if not pending:
+            return
+        first = pending[0]
+        if not isinstance(first, Mapping):
+            raise RuntimeError("Toss official pending order item malformed")
+        order_no = first.get("order_no") or first.get("orderId") or first.get("id")
+        if not order_no:
+            raise RuntimeError("Toss official pending order lacks identifier")
+        status = await adapter.get_order_status(str(order_no))
+        if not isinstance(status, Mapping) or status.get("status") == "unknown":
+            raise RuntimeError("Toss official lifecycle status unknown")
+
+    read_only_checks: list[CheckResult] = []
+    for name, operation in (
+        ("toss_official_authentication", authentication),
+        ("toss_official_account_access", account_access),
+        ("toss_official_holdings", holdings),
+        ("toss_official_fresh_quote", fresh_quote),
+        ("toss_official_pending_order_inquiry", pending_order_inquiry),
+        ("toss_official_lifecycle_fixture", lifecycle_fixture),
+    ):
+        result = await _run_readonly_check(name, operation, secrets=secrets)
+        checks.append(result)
+        read_only_checks.append(result)
+    prerequisites_ready = all(check.status == READY for check in read_only_checks)
+    checks.append(
+        CheckResult(
+            "toss_official_order_e2e",
+            (
+                CONDITIONAL
+                if prerequisites_ready
+                else BLOCKED
+            ),
+            (
+                "official live read-only/lifecycle checked; order-level E2E not approved"
+                if prerequisites_ready
+                else "official read-only/lifecycle prerequisite failed; order-level E2E not approved"
+            ),
+        )
+    )
+    return checks
+
+
+async def _toss_wts_readiness_checks(
+    *,
+    env: Mapping[str, str],
+    toss_wts_adapter_factory,
+) -> list[CheckResult]:
+    checks = [_toss_wts_contract_check(env)]
+    if checks[0].status == BLOCKED:
+        return checks
+
+    secrets = _sensitive_values(env)
+    try:
+        adapter = toss_wts_adapter_factory()
+    except Exception:  # noqa: BLE001 - readiness check must isolate failures
+        checks.append(
+            CheckResult("toss_wts_adapter", BLOCKED, "adapter initialization unavailable")
+        )
+        return checks
+
+    ticker = str(env.get("LECTURE_DOCTOR_TICKER") or "005930").strip() or "005930"
+    pending_cache: dict[str, object] = {}
+
+    async def authentication():
+        method = getattr(adapter, "check_auth", None) or getattr(
+            adapter, "check_authentication"
+        )
+        result = await method()
+        if not isinstance(result, Mapping):
+            raise RuntimeError("Toss WTS authentication payload malformed")
+        if result.get("success") is False or result.get("status") in {"blocked", "unknown"}:
+            raise RuntimeError("Toss WTS session is unavailable")
+
+    async def account_access():
+        await adapter.get_account()
+
+    async def holdings():
+        quantity = await adapter.get_sellable_quantity(ticker)
+        if int(quantity) < 0:
+            raise RuntimeError("Toss WTS holdings quantity is invalid")
+
+    async def fresh_quote():
+        method = getattr(adapter, "get_quote", None)
+        if callable(method):
+            await method(ticker)
+
+    async def pending_order_inquiry():
+        pending = await adapter.get_pending_orders()
+        if not isinstance(pending, list):
+            raise RuntimeError("Toss WTS pending orders payload malformed")
+        pending_cache["value"] = pending
+
+    async def lifecycle_fixture():
+        pending = pending_cache.get("value")
+        if pending is None:
+            pending = await adapter.get_pending_orders()
+            if not isinstance(pending, list):
+                raise RuntimeError("Toss WTS pending orders payload malformed")
+        if not pending:
+            return
+        first = pending[0]
+        if not isinstance(first, Mapping):
+            raise RuntimeError("Toss WTS pending order item malformed")
+        order_no = first.get("order_no") or first.get("orderId") or first.get("id")
+        if not order_no:
+            raise RuntimeError("Toss WTS pending order lacks identifier")
+        status = await adapter.get_order_status(str(order_no))
+        if not isinstance(status, Mapping) or status.get("status") == "unknown":
+            raise RuntimeError("Toss WTS lifecycle status unknown")
+
+    auth = await _run_readonly_check(
+        "toss_wts_authentication",
+        authentication,
+        secrets=secrets,
+    )
+    checks.append(auth)
+    if auth.status == BLOCKED:
+        return checks
+
+    for name, operation in (
+        ("toss_wts_account_access", account_access),
+        ("toss_wts_holdings", holdings),
+        ("toss_wts_fresh_quote", fresh_quote),
+        ("toss_wts_pending_order_inquiry", pending_order_inquiry),
+        ("toss_wts_lifecycle_fixture", lifecycle_fixture),
+    ):
+        checks.append(await _run_readonly_check(name, operation, secrets=secrets))
+    checks.append(
+        CheckResult(
+            "toss_wts_live_boundary",
+            BLOCKED,
+            "WTS-only live readiness is never READY; manual session recovery required",
+        )
+    )
+    return checks
+
+
 def _default_kis_adapter_factory(profile: str, env: Mapping[str, str]):
     def build():
         from brokers.kis import KISBrokerAdapter
@@ -532,12 +780,36 @@ def _default_kiwoom_adapter_factory():
     return build
 
 
+class _TossOfficialReadClientIntegrationUnavailable(RuntimeError):
+    """Raised until a supported official REST read client is integrated."""
+
+
+def _default_toss_official_adapter_factory():
+    def build():
+        raise _TossOfficialReadClientIntegrationUnavailable(
+            "supported official read-only client integration is not wired"
+        )
+
+    return build
+
+
+def _default_toss_wts_adapter_factory():
+    def build():
+        from brokers.toss import TossBrokerAdapter
+
+        return TossBrokerAdapter(mode="real")
+
+    return build
+
+
 async def run_doctor(
     *,
     profile: str | None = None,
     env: Mapping[str, str] | None = None,
     kis_adapter_factory=None,
     kiwoom_adapter_factory=None,
+    toss_official_adapter_factory=None,
+    toss_wts_adapter_factory=None,
     unresolved_order_count=None,
     directory_writable: Callable[[Path], bool] = _directory_writable,
     project_root: Path | None = None,
@@ -587,12 +859,40 @@ async def run_doctor(
                     now=now,
                 )
             )
+        elif broker == "toss":
+            if selected_profile == "paper":
+                checks.append(
+                    CheckResult(
+                        "toss_paper",
+                        BLOCKED,
+                        "Toss has no paper/demo trading environment",
+                    )
+                )
+            elif _toss_integration(source) == "official":
+                factory = (
+                    toss_official_adapter_factory
+                    or _default_toss_official_adapter_factory()
+                )
+                checks.extend(
+                    await _toss_official_readiness_checks(
+                        env=source,
+                        toss_official_adapter_factory=factory,
+                    )
+                )
+            else:
+                factory = toss_wts_adapter_factory or _default_toss_wts_adapter_factory()
+                checks.extend(
+                    await _toss_wts_readiness_checks(
+                        env=source,
+                        toss_wts_adapter_factory=factory,
+                    )
+                )
         else:
             checks.append(
                 CheckResult(
                     "broker_readiness",
                     BLOCKED,
-                    "doctor supports KIS and Kiwoom readiness",
+                    "doctor supports KIS, Kiwoom, and Toss readiness",
                 )
             )
 
@@ -618,6 +918,8 @@ async def print_doctor(
     env: Mapping[str, str] | None = None,
     kis_adapter_factory=None,
     kiwoom_adapter_factory=None,
+    toss_official_adapter_factory=None,
+    toss_wts_adapter_factory=None,
     unresolved_order_count=None,
     directory_writable: Callable[[Path], bool] = _directory_writable,
     now: Callable[[], datetime] = datetime.now,
@@ -628,6 +930,8 @@ async def print_doctor(
         env=source,
         kis_adapter_factory=kis_adapter_factory,
         kiwoom_adapter_factory=kiwoom_adapter_factory,
+        toss_official_adapter_factory=toss_official_adapter_factory,
+        toss_wts_adapter_factory=toss_wts_adapter_factory,
         unresolved_order_count=unresolved_order_count,
         directory_writable=directory_writable,
         now=now,
