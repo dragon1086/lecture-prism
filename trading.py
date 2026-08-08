@@ -474,6 +474,34 @@ def _real_broker_allowed(broker_name: str) -> bool:
     return any_truthy(keys)
 
 
+def _live_cli_block_result() -> dict | None:
+    """Fail closed before the ``--live`` demo can read broker exit quotes."""
+    from brokers.factory import selected_broker_name
+
+    broker = selected_broker_name(default="kis").strip().lower()
+    if _live_broker_enabled(broker):
+        return None
+    return {
+        "action": "LIVE_BLOCKED",
+        "status": "blocked",
+        "accepted": False,
+        "executed": False,
+        "terminal": True,
+        "requested_qty": 0,
+        "filled_qty": 0,
+        "remaining_qty": 0,
+        "executed_price": None,
+        "mode": "live_blocked",
+        "pnl": None,
+        "broker": broker,
+        "message": (
+            f"{broker} 주문 차단: LECTURE_ENABLE_LIVE_BROKER=1 "
+            f"또는 LECTURE_ENABLE_LIVE_{broker.upper()}=1 없이는 "
+            "--live를 실행하지 않습니다."
+        ),
+    }
+
+
 async def _execute_broker_order(decision: dict, broker_name: str | None = None) -> dict:
     """
     선택 브로커 API 주문 실행.
@@ -1687,5 +1715,10 @@ if __name__ == "__main__":
              "current_price": 71_200, "target_price": 81_200, "stop_loss": 67_600,
              "risk_reward_ratio": 2.8, "rationale": "테스트 진입", "risk": "없음"},
         ]
-        results = asyncio.run(run_trading(sample_analyses, dry_run=not args.live))
+        blocked = _live_cli_block_result() if args.live else None
+        results = (
+            [blocked]
+            if blocked is not None
+            else asyncio.run(run_trading(sample_analyses, dry_run=not args.live))
+        )
         print(f"\n체결 결과: {results}")

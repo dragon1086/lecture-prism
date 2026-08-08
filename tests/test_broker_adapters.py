@@ -10,7 +10,7 @@ from brokers.base import BrokerOrder, BrokerQuote, BrokerQuoteError, validate_br
 from brokers.config import load_env_file
 from brokers.kis import KISBrokerAdapter, selected_kis_mode
 from brokers.kiwoom import KiwoomBrokerAdapter
-from trading import _execute_broker_order
+from trading import _execute_broker_order, _live_cli_block_result
 from market_calendar import KST, MarketStatus
 
 
@@ -378,6 +378,23 @@ class BrokerAdapterTest(unittest.TestCase):
         self.assertFalse(result["executed"])
         self.assertEqual(result["mode"], "live_blocked")
         self.assertEqual(result["broker"], "kiwoom")
+
+    def test_live_cli_blocks_before_exit_quote_monitoring(self):
+        with patch.dict(
+            os.environ,
+            {
+                "LECTURE_BROKER": "kis",
+                "LECTURE_ENABLE_LIVE_BROKER": "0",
+                "LECTURE_ALLOW_REAL_BROKER": "0",
+            },
+            clear=False,
+        ):
+            result = _live_cli_block_result()
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result["mode"], "live_blocked")
+        self.assertFalse(result["executed"])
+        self.assertEqual(result["broker"], "kis")
 
     def test_live_gate_isolated_test_never_reads_config_or_calls_adapter(self):
         live_keys = {
