@@ -265,6 +265,21 @@ def _kis_credentials_check(profile: str, env: Mapping[str, str]) -> CheckResult:
     return CheckResult("kis_credentials", READY, f"{prefix} configured")
 
 
+def _kiwoom_credentials_check(env: Mapping[str, str]) -> CheckResult:
+    token = str(env.get("KIWOOM_ACCESS_TOKEN", "")).strip()
+    app_key = str(env.get("KIWOOM_APP_KEY") or env.get("KIWOOM_APPKEY") or "").strip()
+    secret_key = str(
+        env.get("KIWOOM_SECRET_KEY") or env.get("KIWOOM_SECRETKEY") or ""
+    ).strip()
+    if token or (app_key and secret_key):
+        return CheckResult("kiwoom_credentials", READY, "configured")
+    return CheckResult(
+        "kiwoom_credentials",
+        BLOCKED,
+        "missing: KIWOOM_ACCESS_TOKEN or KIWOOM_APP_KEY/KIWOOM_SECRET_KEY",
+    )
+
+
 async def _run_readonly_check(
     name: str,
     operation,
@@ -277,6 +292,50 @@ async def _run_readonly_check(
     except Exception:  # noqa: BLE001 - readiness check must isolate failures
         return CheckResult(name, BLOCKED, "read-only capability unavailable")
     return CheckResult(name, READY, "read-only check passed")
+
+
+async def _run_capability_check(
+    adapter,
+    *,
+    method_name: str,
+    check_name: str,
+    operation_factory,
+    secrets: Iterable[str],
+) -> CheckResult:
+    method = getattr(adapter, method_name, None)
+    if not callable(method):
+        message = (
+            f"missing capability: {method_name}"
+            if method is None
+            else f"unavailable capability: {method_name}"
+        )
+        return CheckResult(check_name, BLOCKED, message)
+    return await _run_readonly_check(
+        check_name,
+        operation_factory(method),
+        secrets=secrets,
+    )
+
+
+def _callable_capability_check(
+    adapter,
+    *,
+    method_name: str,
+    check_name: str,
+) -> CheckResult:
+    method = getattr(adapter, method_name, None)
+    if not callable(method):
+        message = (
+            f"missing capability: {method_name}"
+            if method is None
+            else f"unavailable capability: {method_name}"
+        )
+        return CheckResult(check_name, BLOCKED, message)
+    return CheckResult(
+        check_name,
+        BLOCKED,
+        "order-level cancellation E2E approval required; cancel_order not invoked",
+    )
 
 
 async def _kis_readiness_checks(
@@ -350,6 +409,110 @@ async def _kis_readiness_checks(
     return checks
 
 
+async def _kiwoom_readiness_checks(
+    *,
+    env: Mapping[str, str],
+    kiwoom_adapter_factory,
+    now: Callable[[], datetime],
+) -> list[CheckResult]:
+    credentials = _kiwoom_credentials_check(env)
+    checks = [credentials]
+    if credentials.status == BLOCKED:
+        return checks
+
+    secrets = _sensitive_values(env)
+    try:
+        adapter = kiwoom_adapter_factory()
+    except Exception:  # noqa: BLE001 - readiness check must isolate failures
+        checks.append(
+            CheckResult("kiwoom_adapter", BLOCKED, "adapter initialization unavailable")
+        )
+        return checks
+
+    business_date = now().strftime("%Y%m%d")
+    ticker = str(env.get("LECTURE_DOCTOR_TICKER") or "005930").strip() or "005930"
+    price = int(str(env.get("LECTURE_DOCTOR_PRICE") or "1").strip() or "1")
+
+    account_cache: dict[str, object] = {}
+
+    async def account_access(method):
+        account_cache["value"] = await method()
+
+    async def orderable_quantity(method):
+        quantity = await method(ticker, price)
+        if int(quantity) < 0:
+            raise RuntimeError("Kiwoom orderable quantity is invalid")
+
+    async def sellable_quantity(method):
+        quantity = await method(ticker)
+        if int(quantity) < 0:
+            raise RuntimeError("Kiwoom sellable quantity is invalid")
+
+    async def fresh_quote(method):
+        await method(ticker)
+
+    async def pending_order_inquiry(method):
+        await method(business_date=business_date)
+
+    async def completed_order_inquiry(method):
+        await method(business_date=business_date)
+
+    for method_name, check_name, operation in (
+        (
+            "check_authentication",
+            "kiwoom_authentication",
+            lambda method: lambda: method(),
+        ),
+        (
+            "get_account",
+            "kiwoom_account_access",
+            lambda method: lambda: account_access(method),
+        ),
+        (
+            "get_orderable_quantity",
+            "kiwoom_orderable_quantity",
+            lambda method: lambda: orderable_quantity(method),
+        ),
+        (
+            "get_sellable_quantity",
+            "kiwoom_sellable_quantity",
+            lambda method: lambda: sellable_quantity(method),
+        ),
+        (
+            "get_quote",
+            "kiwoom_fresh_quote",
+            lambda method: lambda: fresh_quote(method),
+        ),
+        (
+            "get_pending_orders",
+            "kiwoom_pending_order_inquiry",
+            lambda method: lambda: pending_order_inquiry(method),
+        ),
+        (
+            "get_completed_orders",
+            "kiwoom_completed_order_inquiry",
+            lambda method: lambda: completed_order_inquiry(method),
+        ),
+    ):
+        checks.append(
+            await _run_capability_check(
+                adapter,
+                method_name=method_name,
+                check_name=check_name,
+                operation_factory=operation,
+                secrets=secrets,
+            )
+        )
+    checks.append(
+        _callable_capability_check(
+            adapter,
+            method_name="cancel_order",
+            check_name="kiwoom_cancel_capability",
+        )
+    )
+    return checks
+
+
 def _default_kis_adapter_factory(profile: str, env: Mapping[str, str]):
     def build():
         from brokers.kis import KISBrokerAdapter
@@ -360,11 +523,21 @@ def _default_kis_adapter_factory(profile: str, env: Mapping[str, str]):
     return build
 
 
+def _default_kiwoom_adapter_factory():
+    def build():
+        from brokers.kiwoom import KiwoomBrokerAdapter
+
+        return KiwoomBrokerAdapter()
+
+    return build
+
+
 async def run_doctor(
     *,
     profile: str | None = None,
     env: Mapping[str, str] | None = None,
     kis_adapter_factory=None,
+    kiwoom_adapter_factory=None,
     unresolved_order_count=None,
     directory_writable: Callable[[Path], bool] = _directory_writable,
     project_root: Path | None = None,
@@ -393,11 +566,7 @@ async def run_doctor(
 
     broker = str(source.get("LECTURE_BROKER") or "kis").strip().lower()
     if selected_profile in {"paper", "live"}:
-        if broker != "kis":
-            checks.append(
-                CheckResult("broker_readiness", BLOCKED, "doctor supports KIS readiness first")
-            )
-        else:
+        if broker == "kis":
             factory = kis_adapter_factory or _default_kis_adapter_factory(
                 selected_profile, source
             )
@@ -407,6 +576,23 @@ async def run_doctor(
                     env=source,
                     kis_adapter_factory=factory,
                     now=now,
+                )
+            )
+        elif broker == "kiwoom":
+            factory = kiwoom_adapter_factory or _default_kiwoom_adapter_factory()
+            checks.extend(
+                await _kiwoom_readiness_checks(
+                    env=source,
+                    kiwoom_adapter_factory=factory,
+                    now=now,
+                )
+            )
+        else:
+            checks.append(
+                CheckResult(
+                    "broker_readiness",
+                    BLOCKED,
+                    "doctor supports KIS and Kiwoom readiness",
                 )
             )
 
@@ -431,6 +617,7 @@ async def print_doctor(
     profile: str | None = None,
     env: Mapping[str, str] | None = None,
     kis_adapter_factory=None,
+    kiwoom_adapter_factory=None,
     unresolved_order_count=None,
     directory_writable: Callable[[Path], bool] = _directory_writable,
     now: Callable[[], datetime] = datetime.now,
@@ -440,6 +627,7 @@ async def print_doctor(
         profile=profile,
         env=source,
         kis_adapter_factory=kis_adapter_factory,
+        kiwoom_adapter_factory=kiwoom_adapter_factory,
         unresolved_order_count=unresolved_order_count,
         directory_writable=directory_writable,
         now=now,

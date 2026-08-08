@@ -210,13 +210,22 @@ async def run_order_reconciliation(broker_name: str | None = None) -> dict:
     broker = (broker_name or os.getenv("LECTURE_BROKER", "kis")).strip().lower()
     readers = {
         "kis": trading.reconcile_pending_kis_orders,
+        "kiwoom": trading.reconcile_pending_kiwoom_orders,
         "toss": trading.reconcile_pending_toss_orders,
     }
     reader = readers.get(broker)
     if reader is None:
         return {"broker": broker, "status": "unsupported", "orders": []}
     try:
-        orders = await reader()
+        if broker == "kiwoom":
+            from brokers.factory import get_broker_adapter
+
+            orders = await reader(
+                adapter=get_broker_adapter("kiwoom"),
+                mode=trading._selected_broker_mode("kiwoom"),
+            )
+        else:
+            orders = await reader()
     except Exception as exc:  # noqa: BLE001 - 보조 작업 하나가 전체 스케줄을 막지 않음
         log.warning("미체결 주문 확인 실패 [%s]: %s", broker, type(exc).__name__)
         return {

@@ -567,7 +567,7 @@ async def _execute_broker_order(decision: dict, broker_name: str | None = None) 
         }
 
     selected_decision = dict(decision)
-    if broker in {"kis", "toss"}:
+    if broker in {"kis", "kiwoom", "toss"}:
         try:
             selected_decision["quantity"] = await _broker_safe_quantity(
                 adapter, selected_decision, broker=broker
@@ -610,7 +610,7 @@ async def _execute_broker_order(decision: dict, broker_name: str | None = None) 
         client_order_id = f"lecture-toss-{attempted_at}-{uuid4().hex}"
     else:
         client_order_id = f"lecture-{uuid4().hex}"
-    if broker in {"kis", "toss"}:
+    if broker in {"kis", "kiwoom", "toss"}:
         blocker = _admit_pending_broker_order(
             selected_decision,
             client_order_id=client_order_id,
@@ -651,7 +651,7 @@ async def _execute_broker_order(decision: dict, broker_name: str | None = None) 
             )
         )
     except Exception as e:  # noqa: BLE001 — 인증/네트워크 실패도 초보자에게 설명 가능해야 함
-        if broker in {"kis", "toss"}:
+        if broker in {"kis", "kiwoom", "toss"}:
             import db
             from prism_core.domain import OrderStatus
 
@@ -665,10 +665,10 @@ async def _execute_broker_order(decision: dict, broker_name: str | None = None) 
             )
         return {
             **selected_decision,
-            "status": "unknown" if broker in {"kis", "toss"} else "rejected",
+            "status": "unknown" if broker in {"kis", "kiwoom", "toss"} else "rejected",
             "accepted": False,
             "executed": False,
-            "terminal": broker not in {"kis", "toss"},
+            "terminal": broker not in {"kis", "kiwoom", "toss"},
             "requested_qty": int(selected_decision["quantity"]),
             "filled_qty": 0,
             "remaining_qty": int(selected_decision["quantity"]),
@@ -682,6 +682,13 @@ async def _execute_broker_order(decision: dict, broker_name: str | None = None) 
 
     if broker == "kis":
         broker_result = await _reconcile_kis_order(
+            adapter,
+            broker_result,
+            selected_decision,
+            client_order_id=client_order_id,
+        )
+    elif broker == "kiwoom":
+        broker_result = await _reconcile_kiwoom_order(
             adapter,
             broker_result,
             selected_decision,
@@ -996,6 +1003,161 @@ def _toss_snapshot_values(snapshot: dict, *, requested: int) -> tuple:
     return target, filled, remaining, average
 
 
+def _kiwoom_snapshot_values(snapshot: dict, *, requested: int) -> tuple:
+    from prism_core.domain import OrderStatus
+
+    status = str(snapshot.get("status") or "unknown").lower()
+    filled = int(snapshot.get("filled_qty") or 0)
+    remaining = int(snapshot.get("remaining_qty", requested - filled))
+    if filled < 0 or remaining < 0 or filled + remaining != requested:
+        return OrderStatus.UNKNOWN, 0, requested, None
+    average = snapshot.get("average_fill_price")
+    if filled > 0 and (average is None or Decimal(str(average)) <= 0):
+        return OrderStatus.UNKNOWN, 0, requested, None
+    target = {
+        "accepted": OrderStatus.ACCEPTED,
+        "partial": OrderStatus.PARTIALLY_FILLED,
+        "filled": OrderStatus.FILLED,
+        "canceled": OrderStatus.CANCELED,
+        "cancelled": OrderStatus.CANCELED,
+        "rejected": OrderStatus.REJECTED,
+        "blocked": OrderStatus.REJECTED,
+        "unknown": OrderStatus.UNKNOWN,
+    }.get(status, OrderStatus.UNKNOWN)
+    return target, filled, remaining, average
+
+
+def _update_kiwoom_ledger_snapshot(
+    client_order_id: str, snapshot: dict, *, requested: int
+) -> dict:
+    import db
+    from prism_core.domain import OrderStatus, validate_transition
+
+    state = db.get_broker_order_state(client_order_id)
+    target, filled, remaining, average = _kiwoom_snapshot_values(
+        snapshot, requested=requested
+    )
+    if Decimal(str(filled)) < state.filled_quantity:
+        target, filled, remaining, average = (
+            OrderStatus.UNKNOWN,
+            int(state.filled_quantity),
+            int(state.remaining_quantity),
+            (
+                int(state.average_fill_price)
+                if state.average_fill_price is not None
+                else None
+            ),
+        )
+    if target is OrderStatus.ACCEPTED and state.status is OrderStatus.PARTIALLY_FILLED:
+        return {
+            **snapshot,
+            "status": "partial",
+            "filled_qty": int(state.filled_quantity),
+            "remaining_qty": int(state.remaining_quantity),
+            "average_fill_price": (
+                int(state.average_fill_price)
+                if state.average_fill_price is not None
+                else None
+            ),
+        }
+    if state.status is not target:
+        if not validate_transition(state.status, target):
+            target, filled, remaining, average = (
+                OrderStatus.UNKNOWN,
+                int(state.filled_quantity),
+                int(state.remaining_quantity),
+                (
+                    int(state.average_fill_price)
+                    if state.average_fill_price is not None
+                    else None
+                ),
+            )
+        db.update_broker_order(
+            client_order_id,
+            status=target,
+            filled_quantity=Decimal(str(filled)),
+            remaining_quantity=Decimal(str(remaining)),
+            average_fill_price=(
+                Decimal(str(average)) if average is not None else None
+            ),
+        )
+    return {
+        **snapshot,
+        "status": (
+            "partial"
+            if target is OrderStatus.PARTIALLY_FILLED
+            else target.value.lower()
+        ),
+        "accepted": target is not OrderStatus.UNKNOWN,
+        "executed": target is OrderStatus.FILLED,
+        "terminal": target in {OrderStatus.FILLED, OrderStatus.CANCELED, OrderStatus.REJECTED},
+        "filled_qty": filled,
+        "remaining_qty": remaining,
+        "average_fill_price": average,
+    }
+
+
+async def _reconcile_kiwoom_order(
+    adapter,
+    broker_result: dict,
+    decision: dict,
+    *,
+    client_order_id: str,
+) -> dict:
+    import db
+    from market_calendar import KST
+
+    requested = int(decision["quantity"])
+    status = str(broker_result.get("status") or "unknown").lower()
+    order_no = broker_result.get("order_no")
+    order_date = datetime.now(KST).strftime("%Y%m%d")
+    if status in {"accepted", "filled", "partial", "canceled"} and not order_no:
+        broker_result = {
+            **broker_result,
+            "status": "unknown",
+            "accepted": False,
+            "executed": False,
+            "terminal": False,
+            "message": "Kiwoom 접수 응답의 주문 식별자가 없어 재주문을 금지합니다.",
+        }
+        status = "unknown"
+
+    if order_no:
+        db.bind_broker_identity(
+            client_order_id,
+            broker_order_date=order_date,
+            broker_org_no="kiwoom",
+            broker_order_no=str(order_no),
+        )
+
+    initial = {
+        **broker_result,
+        "status": status,
+        "filled_qty": int(broker_result.get("filled_qty") or 0),
+        "remaining_qty": int(
+            broker_result.get(
+                "remaining_qty",
+                requested - int(broker_result.get("filled_qty") or 0),
+            )
+        ),
+    }
+    initial = _update_kiwoom_ledger_snapshot(
+        client_order_id, initial, requested=requested
+    )
+    if status not in {"accepted", "unknown"} or not order_no:
+        return initial
+    try:
+        snapshot = await adapter.get_order_status(
+            str(order_no), business_date=order_date
+        )
+    except Exception as exc:
+        return {**initial, "reconciliation_message": str(exc)}
+    snapshot = _update_kiwoom_ledger_snapshot(
+        client_order_id, snapshot, requested=requested
+    )
+    return {**broker_result, **snapshot}
+
+
 def _toss_order_date(value) -> str:
     normalized = str(value or "").replace("-", "")
     if len(normalized) != 8 or not normalized.isdigit():
@@ -1288,6 +1450,79 @@ async def reconcile_pending_toss_orders(
                 "client_order_id": client_order_id,
                 "requested_qty": requested,
                 "message": "Toss 미결 주문 상태를 재조회했습니다.",
+            }
+        )
+    return results
+
+
+async def reconcile_pending_kiwoom_orders(
+    *, adapter=None, mode: str | None = None
+) -> list[dict]:
+    """Re-query restartable Kiwoom orders without submitting mutations."""
+    import db
+    from brokers.factory import get_broker_adapter
+    from prism_core.domain import OrderStatus
+
+    selected_mode = mode or _selected_broker_mode("kiwoom")
+    selected_adapter = adapter or get_broker_adapter("kiwoom")
+    pending = db.get_pending_broker_orders(
+        broker="kiwoom", broker_mode=selected_mode
+    )
+    results = []
+    for state in pending:
+        client_order_id = state.order.intent.client_order_id
+        order_no = state.broker_order_no
+        order_date = state.broker_order_date
+        requested = int(state.order.intent.quantity)
+        if not order_no or not order_date:
+            results.append(
+                {
+                    "client_order_id": client_order_id,
+                    "order_no": order_no,
+                    "status": state.status.value.lower(),
+                    "accepted": state.status is not OrderStatus.UNKNOWN,
+                    "executed": False,
+                    "terminal": False,
+                    "requested_qty": requested,
+                    "filled_qty": int(state.filled_quantity),
+                    "remaining_qty": int(state.remaining_quantity),
+                    "message": "Kiwoom 주문 식별자가 없어 자동 조회를 보류합니다.",
+                }
+            )
+            continue
+        try:
+            snapshot = await selected_adapter.get_order_status(
+                str(order_no), business_date=order_date
+            )
+            snapshot = _update_kiwoom_ledger_snapshot(
+                client_order_id, snapshot, requested=requested
+            )
+        except Exception as exc:
+            results.append(
+                {
+                    "client_order_id": client_order_id,
+                    "order_no": order_no,
+                    "status": (
+                        "partial"
+                        if state.status is OrderStatus.PARTIALLY_FILLED
+                        else state.status.value.lower()
+                    ),
+                    "accepted": state.status is not OrderStatus.UNKNOWN,
+                    "executed": False,
+                    "terminal": False,
+                    "requested_qty": requested,
+                    "filled_qty": int(state.filled_quantity),
+                    "remaining_qty": int(state.remaining_quantity),
+                    "message": str(exc),
+                }
+            )
+            continue
+        results.append(
+            {
+                **snapshot,
+                "client_order_id": client_order_id,
+                "requested_qty": requested,
+                "message": "Kiwoom 미결 주문 상태를 재조회했습니다.",
             }
         )
     return results

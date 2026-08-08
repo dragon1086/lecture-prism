@@ -96,12 +96,29 @@ class OperationsTest(unittest.TestCase):
         self.assertEqual(result["status"], "unavailable")
         self.assertEqual(result["orders"], [])
 
-    def test_reconciliation_rejects_broker_without_pending_order_reader(self):
-        result = asyncio.run(operations.run_order_reconciliation("kiwoom"))
+    def test_kiwoom_reconciliation_dispatches_read_only_reader_with_adapter_and_mode(self):
+        adapter = object()
+        orders = [{"client_order_id": "lecture-kiwoom-1", "status": "accepted"}]
+        reader = mock.AsyncMock(return_value=orders)
+
+        with mock.patch(
+            "operations.trading.reconcile_pending_kiwoom_orders",
+            new=reader,
+        ), mock.patch(
+            "brokers.factory.get_broker_adapter",
+            return_value=adapter,
+        ) as get_adapter, mock.patch(
+            "operations.trading._selected_broker_mode",
+            return_value="demo",
+        ) as selected_mode:
+            result = asyncio.run(operations.run_order_reconciliation("kiwoom"))
 
         self.assertEqual(result["broker"], "kiwoom")
-        self.assertEqual(result["status"], "unsupported")
-        self.assertEqual(result["orders"], [])
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(result["orders"], orders)
+        get_adapter.assert_called_once_with("kiwoom")
+        selected_mode.assert_called_once_with("kiwoom")
+        reader.assert_awaited_once_with(adapter=adapter, mode="demo")
 
     def test_status_output_reports_operations_snapshot_without_secret_values(self):
         self.assertTrue(hasattr(operations, "print_status"))

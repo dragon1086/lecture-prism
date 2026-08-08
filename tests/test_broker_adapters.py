@@ -35,6 +35,7 @@ _ENV_KEYS = {
     "KIWOOM_SECRET_KEY",
     "KIWOOM_SECRETKEY",
     "KIWOOM_ACCESS_TOKEN",
+    "KIWOOM_BASE_URL",
     "KIWOOM_EXCHANGE",
     "KIWOOM_TRADE_TYPE",
     "TOSS_SECURITIES_MODE",
@@ -96,6 +97,10 @@ class BrokerAdapterTest(unittest.TestCase):
         result = asyncio.run(adapter.place_order(BrokerOrder("BUY", "005930", 3, 70000)))
 
         self.assertTrue(result["success"])
+        self.assertEqual(result["status"], "accepted")
+        self.assertTrue(result["accepted"])
+        self.assertFalse(result["executed"])
+        self.assertFalse(result["terminal"])
         self.assertEqual(result["order_no"], "00024")
         self.assertEqual(calls[0][0], "/api/dostk/ordr")
         self.assertEqual(calls[0][2]["api-id"], "kt10000")
