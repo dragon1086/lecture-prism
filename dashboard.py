@@ -22,6 +22,13 @@ import data_source
 
 DB_PATH = Path("prism.db")
 
+_MOCK_MARKET_INDEX = {
+    "source": "fixture",
+    "as_of": "2026-07-01 장 마감",
+    "KOSPI": {"last": 2_835.4, "ret_20d": 2.4},
+    "KOSDAQ": {"last": 764.8, "ret_20d": -1.1},
+}
+
 
 # ── DB 초기화 ──────────────────────────────────────────────────────────────────
 
@@ -81,14 +88,13 @@ def _init_db() -> None:
 def _demo_sections(ticker: str) -> str:
     """데모 시드용 6섹션 JSON — analysis의 현재 섹션 빌더를 재사용."""
     mock = data_source._fetch_mock(ticker)
-    market = data_source.fetch_market_index()
     return json.dumps({
         "technical_summary": analysis._technical_data_text(mock),
         "supply_summary": analysis._section_supply(mock),
         "financial_summary": analysis._section_financial(mock),
         "industry_summary": analysis._section_industry(mock),
         "news_summary": analysis._news_evidence_text(ticker, mock),
-        "market_condition": analysis._section_market(market),
+        "market_condition": analysis._section_market(_MOCK_MARKET_INDEX),
     }, ensure_ascii=False)
 
 
