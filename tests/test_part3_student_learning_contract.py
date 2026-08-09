@@ -208,7 +208,7 @@ class Part3StudentLearningContractTest(unittest.TestCase):
         slide_41 = _slide(self.slides, "P3-S41")
         combined_slides = re.sub(r"<[^>]+>", "", slide_40 + "\n" + slide_41)
 
-        for source in (module_five, self.instructor, combined_slides):
+        for source in (module_five, self.instructor):
             for phrase in (
                 "mock",
                 "real_data",
@@ -225,6 +225,35 @@ class Part3StudentLearningContractTest(unittest.TestCase):
                 "Toss",
             ):
                 self.assertIn(phrase, source, phrase)
+
+        for phrase in (
+            "연습 데이터",
+            "실데이터",
+            "모의투자",
+            "실거래",
+            "준비 상태 점검",
+            "준비됨",
+            "준비 안 됨",
+        ):
+            self.assertIn(phrase, combined_slides, phrase)
+
+        for source in (module_five, self.instructor):
+            for phrase in (
+                "준비 상태 점검(doctor)",
+                "서비스 관리자(service manager)",
+                "준비됨(configured)",
+                "준비 안 됨(missing)",
+                "코딩 에이전트",
+            ):
+                self.assertIn(phrase, source, phrase)
+
+        for phrase in (
+            "무엇을 실행하나요?",
+            "operations.py doctor",
+            "operations.py status",
+            "수강생이 터미널 명령어를 직접 입력하지 않습니다",
+        ):
+            self.assertIn(phrase, module_five, phrase)
 
         for phrase in (
             "main.py를 켜 둔다고 운영이 되는 것은 아닙니다",

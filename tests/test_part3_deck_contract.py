@@ -200,38 +200,52 @@ class Part3DeckContractTests(unittest.TestCase):
         )
 
     def test_operations_readiness_slides_follow_auxiliary_operations_summary(self):
+        slide_39 = self._slide("P3-S39")
         slide_40 = self._slide("P3-S40")
         slide_41 = self._slide("P3-S41")
 
         for phrase in (
-            "다섯 작업",
-            "전체 배치",
-            "보유 감시",
-            "주문 대사",
-            "기억 압축",
-            "상태·알림",
-            "service manager",
-            "operations.py schedule",
-            "main.py를 터미널에 계속 띄워 두는 일",
+            "여기까지는 한 번 실행",
+            "매일 안전하게 반복",
+        ):
+            self.assertIn(phrase, slide_39, phrase)
+
+        for phrase in (
+            "정해진 때 시작하기",
+            "보유 종목 살피기",
+            "주문 결과 확인하기",
+            "기록 정리하기",
+            "이상 알려주기",
+            "수업에서 할 일",
+            "수업에서 하지 않을 일",
         ):
             self.assertIn(phrase, slide_40, phrase)
 
         for phrase in (
-            "mock",
-            "real_data",
-            "research",
-            "paper",
-            "live",
-            "doctor → simulation → paper → live",
-            "LECTURE_ENABLE_LIVE_BROKER",
-            "LECTURE_ALLOW_REAL_BROKER",
-            "KIS",
-            "Kiwoom",
-            "Toss",
-            "공식 Open API",
-            "WTS",
+            "코딩 에이전트",
+            "P3-M5",
+            "준비 상태 점검",
+            "operations.py doctor",
+            "operations.py status",
+            "준비됨",
+            "준비 안 됨",
+            "연습 데이터",
+            "실데이터",
+            "모의투자",
+            "실거래",
+            "실제 주문·취소 없이",
         ):
             self.assertIn(phrase, slide_41, phrase)
+
+        for jargon in (
+            "full 운영",
+            "service manager",
+            "long-lived service process",
+            "CONDITIONAL",
+            "READY",
+            "configured / missing",
+        ):
+            self.assertNotIn(jargon, slide_39 + slide_40 + slide_41, jargon)
 
     def test_part_three_operations_ids_are_synced_across_manifest_index_curriculum_and_assembled_deck(self):
         manifest_rows = [
@@ -243,10 +257,10 @@ class Part3DeckContractTests(unittest.TestCase):
         self.assertEqual([f"P3-S{number:02d}" for number in range(1, 44)], manifest_ids)
 
         expected_titles = {
-            "P3-S40": "24시간 운영은 한 프로그램이 아니라 다섯 작업을 지키는 일입니다",
-            "P3-S41": "내가 켤 옵션은 운영 단계에 따라 달라집니다",
-            "P3-S42": "대시보드는 이미 남은 판단과 기록을 다시 읽는 화면입니다",
-            "P3-S43": "오늘 바로 바꿔 볼 한 가지는 무엇입니까?",
+            "P3-S40": "매일 돌리려면 다섯 가지를 따로 챙겨야 합니다",
+            "P3-S41": "내 컴퓨터에서는 이 순서로 준비 상태를 확인합니다",
+            "P3-S42": "대시보드에서는 실행 결과 세 곳만 확인합니다",
+            "P3-S43": "오늘 배운 것 중 내 전략에 먼저 적용할 한 가지는 무엇입니까?",
         }
         for slide_id, title in expected_titles.items():
             with self.subTest(slide_id=slide_id):
