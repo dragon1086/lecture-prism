@@ -17,7 +17,8 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 
-from data_source import mock_profile  # 데모 시드의 6섹션 텍스트 재사용 (표준 라이브러리만 사용)
+import analysis
+import data_source
 
 DB_PATH = Path("prism.db")
 
@@ -78,15 +79,16 @@ def _init_db() -> None:
 
 
 def _demo_sections(ticker: str) -> str:
-    """데모 시드용 6섹션 JSON — data_source의 mock 프로필 문장을 재사용."""
-    p = mock_profile(ticker)
+    """데모 시드용 6섹션 JSON — analysis의 현재 섹션 빌더를 재사용."""
+    mock = data_source._fetch_mock(ticker)
+    market = data_source.fetch_market_index()
     return json.dumps({
-        "technical_summary": p["tech"],
-        "supply_summary": p["supply"],
-        "financial_summary": p["finance"],
-        "industry_summary": p["industry"],
-        "news_summary": p["news"],
-        "market_condition": "KOSPI 저항선 돌파 시도, 거래대금 회복 국면 (데모)",
+        "technical_summary": analysis._technical_data_text(mock),
+        "supply_summary": analysis._section_supply(mock),
+        "financial_summary": analysis._section_financial(mock),
+        "industry_summary": analysis._section_industry(mock),
+        "news_summary": analysis._news_evidence_text(ticker, mock),
+        "market_condition": analysis._section_market(market),
     }, ensure_ascii=False)
 
 
