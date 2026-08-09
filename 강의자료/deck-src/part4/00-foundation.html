@@ -1,0 +1,110 @@
+<!-- P4-S01 · 파트 4 · 본인만의 로직을 담은 · 자동매매 시스템으로 발전하기 -->
+<section class="slide cover">
+  <div class="kicker">패스트캠퍼스 · AI 네이티브 자동매매 시스템 구축</div>
+  <h1>파트 4<br>본인만의 로직을 담은<br>자동매매 시스템으로 발전하기</h1>
+  <p class="sub">강사 문상록 · PRISM Insight 개발·운영자</p>
+  <svg viewBox="0 0 900 190" style="width:70%; margin-top:36px; display:block;" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="씨앗에서 차트가 자라나는 일러스트">
+    <defs>
+      <linearGradient id="c4grad" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="#5ecf9a"/><stop offset="1" stop-color="#8b7cf8"/>
+      </linearGradient>
+    </defs>
+    <rect x="1" y="1" width="898" height="188" rx="14" fill="#151d1a" stroke="#274235"/>
+    <line x1="36" y1="156" x2="864" y2="156" stroke="#274235" stroke-width="2"/>
+    <ellipse cx="110" cy="150" rx="14" ry="10" fill="#f0b45a"/>
+    <path d="M110 148 C112 120 140 118 170 122 C240 130 300 96 380 102 C480 110 540 70 640 76 C730 80 790 40 856 46"
+          fill="none" stroke="url(#c4grad)" stroke-width="3.5" stroke-linecap="round"/>
+    <path d="M150 118 q18 -22 40 -16 q-10 24 -40 16 Z" fill="#5ecf9a" opacity="0.9"/>
+    <path d="M120 132 q-20 -18 -40 -10 q12 22 40 10 Z" fill="#3f9d74" opacity="0.9"/>
+    <path d="M420 96 q16 -20 36 -15 q-8 22 -36 15 Z" fill="#5ecf9a" opacity="0.75"/>
+    <circle cx="856" cy="46" r="6" fill="#8b7cf8"/>
+    <circle cx="856" cy="46" r="12" fill="none" stroke="#8b7cf8" opacity="0.5"/>
+    <text x="770" y="26" font-size="13" fill="#9ba0b8">한 규칙씩 확인하며 전진</text>
+  </svg>
+  <div class="pagenum">1</div>
+</section>
+
+<!-- P4-S02 · 오늘의 목표는 전략 전체가 아닙니다 -->
+<section class="slide">
+  <div class="kicker">오늘의 목표</div>
+  <h2>오늘의 목표는 전략 전체가 아닙니다</h2>
+  <ul>
+    <li><strong>내 북극성 한 줄을 파일 하나의 규칙으로 바꾸고, 전후 증거를 읽기</strong></li>
+    <li>먼저 시스템 지도를 읽고, 진입·분석·청산·리스크 중 하나만 고름</li>
+    <li>실행·예약·기록·인수인계까지 ‘운영의 기본 말’을 갖춤</li>
+    <li>실제 주문·브로커·계좌·시크릿은 사용하지 않음</li>
+  </ul>
+  <div class="pagenum">2</div>
+</section>
+
+<!-- P4-S03 · 코드를 고치기 전에 · 시스템 지도를 먼저 읽습니다 -->
+<section class="slide">
+  <div class="kicker">공통 실습 P4-00</div>
+  <h2>코드를 고치기 전에<br>시스템 지도를 먼저 읽습니다</h2>
+  <ul>
+    <li><strong>main.py</strong>가 시작점, screening → analysis → trading → feedback이 흐름</li>
+    <li>각 파일의 입력·하는 일·다음 출력·바꾸면 달라지는 결과를 표로 봄</li>
+    <li>runtime_config는 경로를 고르고, dashboard는 사람이 기록을 읽는 화면</li>
+  </ul>
+  <p class="note">P4-00은 조사만 합니다. 코드·.env·브로커·계좌를 건드리지 않습니다.</p>
+  <div class="pagenum">3</div>
+</section>
+
+<!-- P4-S04 · 수정 템플릿 -->
+<section class="slide divider">
+  <div class="chnum">CH 01</div>
+  <h1>수정 템플릿</h1>
+  <p class="sub">내 3줄이 네 개의 트랙이 됩니다</p>
+  <div class="pagenum">4</div>
+</section>
+
+<!-- P4-S05 · 내 3줄은 네 개의 트랙이 됩니다 -->
+<section class="slide">
+  <div class="kicker">오늘의 지도</div>
+  <h2>내 3줄은 네 개의 트랙이 됩니다</h2>
+  <div class="tracks">
+    <div class="track"><span class="tag">트랙 A · 진입</span><div class="q">"어떤 종목을 후보로 볼까"</div><div class="f">프로젝트 첫 폴더의 screening.py 상수·조건</div></div>
+    <div class="track"><span class="tag">트랙 B · 분석</span><div class="q">"AI가 어떤 관점으로 해석할까"</div><div class="f">analysis.py · LLM 연결 선택</div></div>
+    <div class="track"><span class="tag">트랙 C · 청산</span><div class="q">"언제 팔까"</div><div class="f">trading.py _decide_exit</div></div>
+    <div class="track"><span class="tag">트랙 D · 리스크</span><div class="q">"얼마나 보수적으로 굴릴까"</div><div class="f">trading.py 상수 3개</div></div>
+  </div>
+  <p class="note">오늘은 이 중 하나만 고릅니다. 스크리닝 전략 플러그인(ScreeningStrategy), 섹터 제한, 부분청산은 심화 내용입니다.</p>
+  <div class="pagenum">5</div>
+</section>
+
+<!-- P4-S06 · 지금 값들에는 이유가 있습니다 -->
+<section class="slide split">
+  <div class="txt">
+    <div class="kicker">바꾸기 전에</div>
+    <h2>지금 값들에는 이유가 있습니다</h2>
+    <ul>
+      <li>이 교재의 기본 전략: 추세추종 (윌리엄 오닐 방식)</li>
+      <li>목표가는 통과점일 뿐, 수익은 트레일링 스탑이 지킴</li>
+      <li>청산 점검 순서: <strong>① 손절 → ② 트레일링 스탑 → ③ 목표가</strong></li>
+      <li>'왜 이 값인지'를 알고 바꿔야 내 전략으로 바꿀 때 길을 안 잃음</li>
+    </ul>
+  </div>
+  <div class="img">
+    <svg viewBox="0 0 460 340" style="width:100%; display:block;" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="청산 점검 순서 차트">
+      <rect x="1" y="1" width="458" height="338" rx="12" fill="#171a2b" stroke="#2c3050"/>
+      <line x1="30" y1="150" x2="430" y2="150" stroke="#5ecf9a" stroke-width="2" stroke-dasharray="8 6"/>
+      <text x="36" y="142" font-size="13.5" fill="#5ecf9a" font-weight="700">③ 목표가 — '통과점', 지나도 계속 보유</text>
+      <line x1="30" y1="282" x2="430" y2="282" stroke="#ef6a55" stroke-width="2" stroke-dasharray="8 6"/>
+      <text x="36" y="304" font-size="13.5" fill="#ef6a55" font-weight="700">① 손절선 — 매수가 −7%, 무조건 우선</text>
+      <line x1="250" y1="112" x2="430" y2="112" stroke="#f0b45a" stroke-width="2" stroke-dasharray="8 6"/>
+      <path d="M40 258 C90 250 120 210 160 190 C210 165 240 120 290 84 C310 70 320 72 336 92 L360 122"
+            fill="none" stroke="#c7cbdc" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="70" cy="244" r="6" fill="#8b7cf8"/>
+      <text x="82" y="240" font-size="13.5" fill="#8b7cf8" font-weight="700">매수</text>
+      <circle cx="300" cy="76" r="5" fill="#eceef6"/>
+      <text x="300" y="60" font-size="12.5" fill="#9ba0b8" text-anchor="middle">고점</text>
+      <g>
+        <circle cx="352" cy="112" r="10" fill="#2a1d22" stroke="#f0b45a" stroke-width="2"/>
+        <text x="352" y="117" font-size="13" fill="#f0b45a" text-anchor="middle" font-weight="800">✕</text>
+        <text x="424" y="136" font-size="13.5" fill="#f0b45a" font-weight="700" text-anchor="end">② 트레일링 청산 — 고점 −8%</text>
+      </g>
+      <text x="36" y="30" font-size="14" fill="#9ba0b8">점검 순서: ① 손절 → ② 트레일링 → ③ 목표가</text>
+    </svg>
+  </div>
+  <div class="pagenum">6</div>
+</section>

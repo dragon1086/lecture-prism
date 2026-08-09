@@ -1,0 +1,62 @@
+<!-- P4-S10 · 실전 프롬프트 공식 -->
+<section class="slide divider">
+  <div class="chnum">CH 02</div>
+  <h1>실전 프롬프트 공식</h1>
+  <p class="sub">AI에게 코드를 고치게 하는 법 — 강사 라이브 시범<br>지금부터 나오는 프롬프트는 전부 강사가 실제로 쓴 기록입니다</p>
+  <div class="pagenum">7</div>
+</section>
+
+<!-- P4-S11 · 프롬프트 공식 — AI에게 코드를 고치게 하는 법 -->
+<section class="slide">
+  <div class="kicker">기본기</div>
+  <h2>프롬프트 공식 — AI에게 코드를 고치게 하는 법</h2>
+  <div class="prompt" style="font-size:30px; text-align:center; padding:34px;">
+    <strong>현재 상태</strong> + <strong>원하는 결과</strong> + <strong>유지할 제약</strong>
+  </div>
+  <ul>
+    <li>"지금은 이런데(현재), 이렇게 바꿔줘(결과), 단 이건 건드리지 마(제약)"</li>
+    <li>이 구조만 지켜도 결과가 완전히 달라짐</li>
+  </ul>
+  <div class="pagenum">8</div>
+</section>
+
+<!-- P4-S12 · Bad vs Good -->
+<section class="slide">
+  <div class="kicker">비교</div>
+  <h2>Bad vs Good</h2>
+  <div class="compare">
+    <div class="cbox bad"><div class="label">❌ Bad</div>"손절 좀 잘해줘"</div>
+    <div class="cbox good"><div class="label">✅ Good</div>"지금 손절은 -7%인데(현재), -5%로 바꿔줘(결과). 트레일링 스탑 로직은 그대로 두고, 바꾼 뒤 데모로 검증해줘(제약)"</div>
+  </div>
+  <p class="note">차이: AI가 추측할 일이 없어짐</p>
+  <div class="pagenum">9</div>
+</section>
+
+<!-- P4-S13 · AI와 일하는 세 순간 -->
+<section class="slide">
+  <div class="kicker">큰 그림</div>
+  <h2>AI와 일하는 세 순간</h2>
+  <div class="flow">
+    <div class="step"><div class="n">순간 1</div><div class="t">일을 시킬 때</div><div class="d">문제를 말한다<br>역할을 준다<br>기준을 댄다</div></div>
+    <div class="step"><div class="n">순간 2</div><div class="t">지킬 것을 정할 때</div><div class="d">동결을 선언한다<br>지어내기를 금지한다<br>내 의도를 설명한다</div></div>
+    <div class="step"><div class="n">순간 3</div><div class="t">결과를 받았을 때</div><div class="d">고치기 전에 확인시킨다<br>근거를 들어 반박한다<br>큰 일은 나눠 시킨다</div></div>
+  </div>
+  <ul style="margin-top:20px;"><li>공식(현재+결과+제약)이 실전에서 이 아홉 가지로 진화함</li></ul>
+  <p class="note">"프롬프트 엔지니어링보다 컨텍스트 엔지니어링" — Karpathy(2025) · AI에게 무엇을 보여줄지 설계하는 기술</p>
+  <div class="pagenum">10</div>
+</section>
+
+<!-- P4-S14 · 몰라도 시킬 수 있습니다 -->
+<section class="slide">
+  <div class="kicker">순간 1 — 일을 시킬 때</div>
+  <h2>몰라도 시킬 수 있습니다</h2>
+  <ul>
+    <li><strong>해결책 말고 문제를 말함</strong> → <em>"손절을 잘하고 싶어. 지금 코드 보고 방법 추천해줘"</em></li>
+    <li><strong>역할을 줌</strong> → <em>"너는 보수적인 리스크 관리자야"</em></li>
+    <li><strong>결과물 기준을 댐</strong> → <em>"끝나면 전후 비교표로 보여줘"</em></li>
+  </ul>
+  <div class="prompt" style="font-size:20px;">"궁금한 것은 너가 파일 찾아서 조사해봐. 나도 어떤 방향이 가장 효과적일지 예측을 못하겠어. 결국은 매매를 더 잘하게끔 하고 싶은데"
+  <span class="cap">— 2026년 3월, 강사 실제 프롬프트. 모른다고 인정해도 목적만 말하면 AI가 탐색함</span></div>
+  <div class="src">근거: Anthropic 공식 가이드 — "바로 코딩시키지 말고 먼저 조사·계획부터 시켜라" · "역할 지정은 한 문장으로도 차이를 만든다" · "완성 판정 기준(검증 수단)을 함께 줘라"</div>
+  <div class="pagenum">11</div>
+</section>

@@ -1,0 +1,51 @@
+<!-- P4-S26 · 오전 1회·오후 1회는 · ‘시스템을 켜 두는 법’과 다릅니다 -->
+<section class="slide">
+  <div class="kicker">P4-08 · 강사 시연 또는 수업 후 선택 설계</div>
+  <h2>오전 1회·오후 1회는<br>‘시스템을 켜 두는 법’과 다릅니다</h2>
+  <div class="flow">
+    <div class="step"><div class="n">컴퓨터·서버</div><div class="t">계속 켜짐</div><div class="d">실행할 장소가 준비됨</div></div>
+    <div class="step"><div class="n">운영체제 예약</div><div class="t">정해진 시각</div><div class="d">오전·오후에 main.py를 새로 시작</div></div>
+    <div class="step"><div class="n">연습 데이터·예행 실행</div><div class="t">안전 실행</div><div class="d">실제 주문 없이 로그·DB·보고서를 남김</div></div>
+    <div class="step"><div class="n">사람</div><div class="t">확인·중지</div><div class="d">실패 로그와 중지 방법을 먼저 앎</div></div>
+  </div>
+  <p class="note">P4-08 1단계는 설계만 합니다. 예약 등록은 수업 밖에서 초안·되돌림 방법을 확인한 뒤에만 합니다.</p>
+  <div class="pagenum">운영 설계</div>
+</section>
+
+<!-- P4-S27 · 기억을 한 파일에 몰아넣지 않습니다 -->
+<section class="slide">
+  <div class="kicker">P4-09 · 다음 세션 연결</div>
+  <h2>기억을 한 파일에 몰아넣지 않습니다</h2>
+  <div class="tracks">
+    <div class="track"><span class="tag">내 전략</span><div class="q">MY_STRATEGY.md</div><div class="f">진입·청산·리스크의 내 말</div></div>
+    <div class="track"><span class="tag">공통 규칙</span><div class="q">AGENTS.md·도구별 지침</div><div class="f">프로젝트의 안전 경계와 작업 방식</div></div>
+    <div class="track"><span class="tag">자동 기억</span><div class="q">local memory</div><div class="f">도구·컴퓨터별일 수 있으며 비밀 보관함이 아님</div></div>
+    <div class="track"><span class="tag">인수인계</span><div class="q">tasks/handoff.md</div><div class="f">한 일·결정·증거·남은 일·다음 3단계</div></div>
+  </div>
+  <p class="note">API 키·토큰·계좌번호·로그인 세션·개인정보는 어느 기억 파일에도 적지 않습니다.</p>
+  <div class="pagenum">기억과 handoff</div>
+</section>
+
+<!-- P4-S28 · AI의 설명을 바꿔도 · 정량 안전 규칙은 바꾸지 않습니다 -->
+<section class="slide">
+  <div class="kicker">P4-10 · 프레이밍 진단</div>
+  <h2>AI의 설명을 바꿔도<br>정량 안전 규칙은 바꾸지 않습니다</h2>
+  <div class="compare">
+    <div class="cbox bad"><div class="label">한쪽만 강조</div>“손실을 피하라.”<br><br>위험을 크게 읽어 HOLD가 많아질 수 있음</div>
+    <div class="cbox good"><div class="label">두 목표를 함께 설명</div>“손실 위험과 기회를 놓치는 비용을 함께 설명하되, 같은 점수·손절·한도를 지켜라.”</div>
+  </div>
+  <p class="note">이 차이는 정성 설명과 HOLD 의견의 차이를 관찰하는 것뿐입니다. BUY 점수·목표가·손절가·실거래 경로는 그대로 둡니다.</p>
+  <div class="pagenum">프레이밍</div>
+</section>
+
+<!-- P4-S29 · 오전은 관찰, 오후는 확인 · 불완전하면 HOLD 또는 다음 실행 -->
+<section class="slide">
+  <div class="kicker">P4-11 · 강사 확장 예시 · 수업 중 구현하지 않음</div>
+  <h2>오전은 관찰, 오후는 확인<br>불완전하면 HOLD 또는 다음 실행</h2>
+  <div class="compare">
+    <div class="cbox bad"><div class="label">오전</div>오늘 거래량·일봉이 아직 만들어지는 중<br><br><strong>종가 확정값처럼 BUY를 강화하지 않음</strong></div>
+    <div class="cbox good"><div class="label">오후</div>원천·기준 시각·일봉 완성 여부를 확인<br><br>확정할 수 없으면 HOLD 또는 다음 실행으로 미룸</div>
+  </div>
+  <p class="note">시간대는 시스템 시계가 아니라 테스트 가능한 입력으로 설계합니다. 오전·오후 검증용 예시에서 ‘미완성 데이터를 종가로 오해하지 않는지’를 먼저 확인합니다.</p>
+  <div class="pagenum">시간대 설계</div>
+</section>
