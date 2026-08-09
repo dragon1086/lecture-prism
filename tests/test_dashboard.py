@@ -1,4 +1,5 @@
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -35,6 +36,30 @@ class DashboardSeedRegressionTest(unittest.TestCase):
             },
             set(sections),
         )
+
+    def test_fresh_dashboard_seed_never_calls_optional_research(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(
+            os.environ,
+            {
+                "LECTURE_PROFILE": "research",
+                "LECTURE_REPORT_MODE": "research",
+                "LECTURE_RESEARCH_TOOLS": "perplexity",
+                "PERPLEXITY_API_KEY": "pplx-test-fixture-only",
+            },
+            clear=False,
+        ), patch.object(
+            dashboard.data_source,
+            "fetch_market_index",
+            side_effect=AssertionError("dashboard seed must not fetch market index"),
+        ), patch("research_tools.build_research_context", return_value="") as build_context, patch(
+            "research_tools.build_research_sections", return_value={}, create=True
+        ) as build_sections, patch.object(
+            dashboard, "DB_PATH", Path(tmp) / "prism.db"
+        ):
+            dashboard._init_db()
+
+        build_context.assert_not_called()
+        build_sections.assert_not_called()
 
 
 if __name__ == "__main__":

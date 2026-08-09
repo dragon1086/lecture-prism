@@ -86,14 +86,20 @@ def _init_db() -> None:
 
 
 def _demo_sections(ticker: str) -> str:
-    """데모 시드용 6섹션 JSON — analysis의 현재 섹션 빌더를 재사용."""
+    """데모 시드용 6섹션 JSON — 외부 연결 없이 고정 fixture만 표현."""
     mock = data_source._fetch_mock(ticker)
+    news = mock.get("news")
+    headlines = news if isinstance(news, list) else []
+    news_text = "\n".join(f"- {headline}" for headline in headlines[:8])
+    if not news_text:
+        news_text = news if isinstance(news, str) else "관련 뉴스 없음"
+    news_text = f"교육용 촉매 시나리오(현재 뉴스 아님):\n{news_text}"
     return json.dumps({
         "technical_summary": analysis._technical_data_text(mock),
         "supply_summary": analysis._section_supply(mock),
         "financial_summary": analysis._section_financial(mock),
         "industry_summary": analysis._section_industry(mock),
-        "news_summary": analysis._news_evidence_text(ticker, mock),
+        "news_summary": news_text,
         "market_condition": analysis._section_market(_MOCK_MARKET_INDEX),
     }, ensure_ascii=False)
 
