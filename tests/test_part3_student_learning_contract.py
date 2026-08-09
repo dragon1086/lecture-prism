@@ -238,6 +238,17 @@ class Part3StudentLearningContractTest(unittest.TestCase):
         ):
             self.assertIn(phrase, self.instructor, phrase)
 
+    def test_dashboard_prompt_instructor_and_slide_share_the_same_safe_fallback(self):
+        dashboard_prompt = _markdown_block(self.prompts, "P3-05")
+        dashboard_slide = _slide(self.slides, "P3-S42")
+        for phrase in ("매매현황", "AI 분석 근거", "축적된 피드백"):
+            self.assertIn(phrase, dashboard_prompt)
+            self.assertIn(phrase, self.instructor)
+            self.assertIn(phrase, dashboard_slide)
+        for phrase in ("준비된 캡처", "기본 연습 데이터 파이프라인 성공과는 별개"):
+            self.assertIn(phrase, dashboard_prompt)
+            self.assertIn(phrase, self.instructor)
+
     def test_first_run_supports_real_data_discord_and_mock_fallback_lanes(self):
         for phrase in (
             "실데이터와 Discord까지 포함해 전체 흐름",

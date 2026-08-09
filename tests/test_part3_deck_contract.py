@@ -170,7 +170,7 @@ class Part3DeckContractTests(unittest.TestCase):
         self.assertIn("P3-M3 블록 전체", self._slide("P3-S32"))
 
         slide_ids = re.findall(r"<!-- (P3-S\d{2})\b", self.sources)
-        self.assertEqual([f"P3-S{number:02d}" for number in range(1, 43)], slide_ids)
+        self.assertEqual([f"P3-S{number:02d}" for number in range(1, 44)], slide_ids)
 
     def test_module_two_names_data_limits_and_a_safe_extension_sequence(self):
         slide = self._slide("P3-S22")
@@ -240,12 +240,13 @@ class Part3DeckContractTests(unittest.TestCase):
             for slide in module["slides"]
         ]
         manifest_ids = [slide["id"] for slide in manifest_rows]
-        self.assertEqual([f"P3-S{number:02d}" for number in range(1, 43)], manifest_ids)
+        self.assertEqual([f"P3-S{number:02d}" for number in range(1, 44)], manifest_ids)
 
         expected_titles = {
             "P3-S40": "24시간 운영은 한 프로그램이 아니라 다섯 작업을 지키는 일입니다",
             "P3-S41": "내가 켤 옵션은 운영 단계에 따라 달라집니다",
-            "P3-S42": "오늘 바로 바꿔 볼 한 가지는 무엇입니까?",
+            "P3-S42": "대시보드는 이미 남은 판단과 기록을 다시 읽는 화면입니다",
+            "P3-S43": "오늘 바로 바꿔 볼 한 가지는 무엇입니까?",
         }
         for slide_id, title in expected_titles.items():
             with self.subTest(slide_id=slide_id):
@@ -284,8 +285,24 @@ class Part3DeckContractTests(unittest.TestCase):
         ):
             self.assertNotIn(phrase, slide)
 
-    def test_final_slide_ends_with_one_immediate_application(self):
+    def test_dashboard_slide_uses_safe_mock_capture_and_teaches_three_reading_targets(self):
         slide = self._slide("P3-S42")
+        asset = DECK_ROOT / "assets" / "lecture-prism-dashboard-mock.png"
+
+        self.assertTrue(asset.exists())
+        self.assertEqual((1600, 900), self._png_size(asset))
+        for phrase in (
+            "매매현황",
+            "AI 분석 근거",
+            "축적된 피드백",
+            "로컬 시뮬레이션 기록",
+            "실계좌 화면 아님",
+        ):
+            self.assertIn(phrase, slide)
+        self.assertIn("assets/lecture-prism-dashboard-mock.png", slide)
+
+    def test_final_slide_ends_with_one_immediate_application(self):
+        slide = self._slide("P3-S43")
 
         self.assertIn("오늘 바로 바꿔 볼 한 가지", slide)
         self.assertIn("데이터 근거", slide)
