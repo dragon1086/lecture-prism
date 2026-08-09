@@ -621,7 +621,7 @@
               <span class="time-chip">⏱ 20분</span>
             </div>
             <div class="chapter-desc">
-              "ChatGPT Plus 구독 계정을 공식 Codex CLI로 연결해 <strong>최신 GPT-5.5</strong>를 파이썬 분석 단계에서 실행하는 법" — 첫 5분에 라이브 연동 시연으로 임팩트를 주고, 별도 과금 API와의 차이 및 mock 폴백을 함께 설명. 그 위에 AI-Native 매매 전략이 왜 필요한지 설득. <span style="color:#64748B;font-size:13px;">(PRISM 실제 구성: 보고서 생성 <code>gpt-5.4-mini</code>, 매매 판단 <code>gpt-5.5</code>)</span>
+              "ChatGPT Plus 구독 계정을 공식 Codex CLI로 연결해 역할별 GPT-5.6 모델을 파이썬 분석 단계에서 실행하는 법" — 첫 5분에 라이브 연동 시연으로 임팩트를 주고, 별도 과금 API와의 차이 및 mock 폴백을 함께 설명. 그 위에 AI-Native 매매 전략이 왜 필요한지 설득. <span style="color:#64748B;font-size:13px;">(lecture-prism 구성: 보고서 생성 <code>gpt-5.6-luna/high</code>, 매수 판단 <code>gpt-5.6-sol/medium</code>)</span>
             </div>
             <div class="chapter-tags">
               <span class="tag tag-demo">Claude Code 데모</span>
@@ -729,11 +729,11 @@
           <div class="chapter-main">
             <div class="chapter-header">
               <span class="chapter-num">CH 05</span>
-              <span class="chapter-title">모듈 4–5: 피드백·메모리와 운영 준비 — 기록 뒤에는 운영 사다리가 남습니다</span>
+              <span class="chapter-title">모듈 4–5: 기록을 남긴 뒤, 내 컴퓨터의 운영 준비 상태 확인하기</span>
               <span class="time-chip">⏱ 15분</span>
             </div>
             <div class="chapter-desc">
-              매매일지의 단기/중기/장기 메모리 구조를 본 뒤 P3-M5로 운영 준비를 읽기 전용 감사한다. `mock / real_data / research / paper / live` 프로필을 구분하고, `doctor → simulation → paper → live` 순서와 service manager 책임을 설명한다.
+              매매일지가 다음 판단에 쓰이는 과정을 본 뒤, P3-M5를 코딩 에이전트에 붙여넣어 현재 컴퓨터의 준비 상태만 확인한다. 수강생은 터미널 명령어를 직접 입력하지 않는다. 연습 데이터부터 실거래까지(`mock / real_data / research / paper / live`) 무엇이 준비됐고 무엇이 빠졌는지 읽는다.
             </div>
             <div class="chapter-tags">
               <span class="tag tag-lecture">개념 강의</span>
@@ -742,9 +742,11 @@
             <div class="chapter-bullets">
               <div class="bullet">단기 메모리(당일): 오늘 매매 패턴 / 중기(주간): 섹터·트렌드 / 장기(월간): 시장 체제 판단</div>
               <div class="bullet">교훈 추출 → 다음 매매 프롬프트에 자동 반영하는 자기개선 루프</div>
-              <div class="bullet">P3-M5 운영 감사: configured / missing만 보고, 시크릿 출력·서비스 등록·플래그 변경·실제 주문은 하지 않음</div>
-              <div class="bullet">KIS 기준선, Kiwoom 조건부, Toss 공식 Open API와 WTS 분리. live 전에는 <code>LECTURE_ENABLE_LIVE_BROKER</code>와 <code>LECTURE_ALLOW_REAL_BROKER</code> gate가 남음</div>
-              <div class="cc-cmd"><span class="cc-bubble">Claude Code</span><div><span class="cc-text">"로컬 대시보드 실행해줘. 오늘 시뮬레이션 매매 내역이랑 의사결정 이유 보고 싶어"</span><div class="cc-result">→ dashboard.py 실행 → localhost:8080 → 매매현황·의사결정 내역·교훈 리스트 확인</div></div></div>
+              <div class="bullet">P3-M5 준비 상태 확인: <code>operations.py doctor</code>와 <code>operations.py status</code> 결과를 준비됨(configured) / 준비 안 됨(missing)으로 읽음</div>
+              <div class="bullet">확인 순서: <code>doctor → simulation → paper → live</code>. 자동 실행은 서비스 관리자(service manager)가 맡지만 수업에서는 등록하지 않음</div>
+              <div class="bullet">증권사 연결: KIS 기준선, Kiwoom 조건부, Toss 공식 Open API와 WTS 분리. 실거래 전에는 <code>LECTURE_ENABLE_LIVE_BROKER</code>와 <code>LECTURE_ALLOW_REAL_BROKER</code> 잠금장치가 남음</div>
+              <div class="cc-cmd"><span class="cc-bubble">Claude Code</span><div><span class="cc-text">"내 컴퓨터가 어디까지 준비됐는지 읽기 전용으로 확인해줘. 실제 주문·취소는 하지 마."</span><div class="cc-result">→ 준비 상태 확인 → 준비됨 / 준비 안 됨 표 읽기 → 다음에 채울 한 가지 고르기</div></div></div>
+              <div class="cc-cmd"><span class="cc-bubble">Claude Code</span><div><span class="cc-text">"방금 실행한 결과를 대시보드에서 보여줘. 매매현황, AI 분석 근거, 축적된 피드백 순서로 알려줘."</span><div class="cc-result">→ dashboard.py 준비 확인 → localhost:8080 또는 준비된 캡처에서 세 곳 확인</div></div></div>
               <div class="bullet">파트4 사전과제 안내: "본인의 매매 이론을 3줄로 정리해오기 (진입/청산/리스크)"</div>
             </div>
           </div>

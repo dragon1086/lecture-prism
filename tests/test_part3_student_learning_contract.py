@@ -34,9 +34,9 @@ APPLICATION_QUESTIONS = {
         "오늘의 교훈 중 다음 거래에는 넣지 말아야 할 일회성 상황은 무엇일까?",
     ),
     "P3-M5": (
-        "내 컴퓨터는 지금 어느 운영 단계까지 안전하게 갈 수 있을까?",
-        "service manager가 대신 지켜야 할 일은 무엇일까?",
-        "브로커 준비 상태가 CONDITIONAL이면 다음 행동은 무엇일까?",
+        "내 컴퓨터는 지금 어느 단계까지 안전하게 준비됐을까?",
+        "컴퓨터가 자동으로 챙겨야 할 일은 무엇일까?",
+        "준비가 덜 된 증권사는 무엇부터 더 확인해야 할까?",
     ),
 }
 
@@ -152,7 +152,7 @@ class Part3StudentLearningContractTest(unittest.TestCase):
             "장기 원칙은 최대 20개",
             "실제 수익률과 청산 사유까지 깊게 비교하지는 않습니다",
             "다음 날 자동으로 매수를 막는 규칙은 아직 없습니다",
-            "main.py를 켜 둔다고 운영이 되는 것은 아닙니다",
+            "`main.py`는 판단 흐름을 한 번 실행합니다",
             "전체 배치, 보유 감시, 주문 대사, 기억 압축, 상태·알림",
             "doctor → simulation → paper → live",
             "KIS는 기준선",
@@ -165,14 +165,15 @@ class Part3StudentLearningContractTest(unittest.TestCase):
         module_five = _markdown_block(self.prompts, "P3-M5")
 
         for phrase in (
-            "읽기 전용 운영 준비 감사",
-            "목표 운영 단계 계획",
+            "준비된 것과 빠진 것 확인",
+            "다음에 준비할 단계 고르기",
             "mock",
             "real_data",
             "research",
             "paper",
             "live",
-            "configured / missing",
+            "준비됨(configured)",
+            "준비 안 됨(missing)",
             "시크릿 값은 출력하지 마",
             "서비스 등록을 하지 마",
             "플래그 값을 바꾸지 마",
@@ -200,7 +201,8 @@ class Part3StudentLearningContractTest(unittest.TestCase):
                 self.assertIn("서비스 등록을 하지 마", block)
                 self.assertIn("플래그 값을 바꾸지 마", block)
                 self.assertIn("실제 주문·취소를 실행하지 마", block)
-                self.assertIn("configured / missing", block)
+                self.assertIn("준비됨(configured)", block)
+                self.assertIn("준비 안 됨(missing)", block)
 
     def test_module_five_operations_boundaries_are_synced_across_script_and_slides(self):
         module_five = _markdown_block(self.prompts, "P3-M5")
@@ -256,7 +258,7 @@ class Part3StudentLearningContractTest(unittest.TestCase):
             self.assertIn(phrase, module_five, phrase)
 
         for phrase in (
-            "main.py를 켜 둔다고 운영이 되는 것은 아닙니다",
+            "`main.py`는 판단 흐름을 한 번 실행합니다",
             "전체 배치",
             "보유 감시",
             "주문 대사",
@@ -274,7 +276,10 @@ class Part3StudentLearningContractTest(unittest.TestCase):
             self.assertIn(phrase, dashboard_prompt)
             self.assertIn(phrase, self.instructor)
             self.assertIn(phrase, dashboard_slide)
-        for phrase in ("준비된 캡처", "기본 연습 데이터 파이프라인 성공과는 별개"):
+        for phrase in (
+            "준비된 캡처",
+            "대시보드가 열리지 않아도 기본 연습 데이터 파이프라인의 성공 기록은 그대로 남",
+        ):
             self.assertIn(phrase, dashboard_prompt)
             self.assertIn(phrase, self.instructor)
 

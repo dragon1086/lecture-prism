@@ -73,15 +73,15 @@
             {"id": "P3-S37", "title": "AI 회고와 기억 시스템을 기록·압축·예약 작업의 작은 루프로 줄였습니다", "promptId": null},
             {"id": "P3-S38", "title": "프롬프트 파일에서 P3-M4 블록 전체를 복사합니다", "promptId": "P3-M4"},
             {"id": "P3-S39", "title": "자동매매는 메인 로직과 보조 운영이 함께 있어야 돌아갑니다", "promptId": null},
-            {"id": "P3-S40", "title": "24시간 운영은 한 프로그램이 아니라 다섯 작업을 지키는 일입니다", "promptId": null},
-            {"id": "P3-S41", "title": "내가 켤 옵션은 운영 단계에 따라 달라집니다", "promptId": "P3-M5"},
-            {"id": "P3-S42", "title": "대시보드는 이미 남은 판단과 기록을 다시 읽는 화면입니다", "promptId": "P3-05"}
+            {"id": "P3-S40", "title": "매일 돌리려면 다섯 가지를 따로 챙겨야 합니다", "promptId": null},
+            {"id": "P3-S41", "title": "내 컴퓨터에서는 이 순서로 준비 상태를 확인합니다", "promptId": "P3-M5"},
+            {"id": "P3-S42", "title": "대시보드에서는 실행 결과 세 곳만 확인합니다", "promptId": "P3-05"}
           ]
         },
         {
           "file": "part3/99-close.html",
           "slides": [
-            {"id": "P3-S43", "title": "오늘 바로 바꿔 볼 한 가지는 무엇입니까?", "promptId": null}
+            {"id": "P3-S43", "title": "오늘 배운 것 중 내 전략에 먼저 적용할 한 가지는 무엇입니까?", "promptId": null}
           ]
         }
       ]

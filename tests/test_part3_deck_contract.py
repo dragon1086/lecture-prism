@@ -318,7 +318,7 @@ class Part3DeckContractTests(unittest.TestCase):
     def test_final_slide_ends_with_one_immediate_application(self):
         slide = self._slide("P3-S43")
 
-        self.assertIn("오늘 바로 바꿔 볼 한 가지", slide)
+        self.assertIn("오늘 배운 것 중 내 전략에 먼저 적용할 한 가지", slide)
         self.assertIn("데이터 근거", slide)
         self.assertIn("내 전략에서 ___을 먼저 바꿔 보고 싶다", slide)
         self.assertNotIn("<h1>Q&amp;A</h1>", slide)
