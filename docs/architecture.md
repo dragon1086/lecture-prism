@@ -34,6 +34,7 @@
 | 보조 | `operations.py` | 분석 배치·보유종목 감시·주문 대사·메모리 압축을 한 번씩 실행 | 반복 운영 작업 |
 | 보조 | `memory.py` | 교훈을 단기·중기·장기로 옮기고 장기 기억 수를 제한 | 다음 판단에 넣을 압축 기억 |
 | 선택 | `notifications.py` | 각 단계의 AI 판단과 근거를 Discord에 전달 | 스크리닝·종목별 분석·매매 판단·AI 판단 요약 |
+| 선택 | `kis_market_data.py` | KIS에서 가격과 일별 투자자 수급만 읽는 창구 | 기준일·가격·기관·외국인·개인 순매수 |
 
 LLM 연결이 없으면 각 보고서 에이전트가 규칙 기반 작성기로 폴백합니다. 연결하면 여섯 전문 에이전트가 개별 호출되고 편집 에이전트가 마지막에 보고서를 요약합니다. 매수 판단은 별도 `buy_agent.py`가 맡으며 추천·점수·목표가·손절가는 규칙이 소유하고 LLM은 BUY를 HOLD로만 veto할 수 있습니다. `trading.py`는 가격 배열·손익비·포지션 한도를 다시 검사합니다.
 
@@ -72,7 +73,7 @@ Discord 알림은 기본값이 꺼져 있습니다. `LECTURE_NOTIFY_DISCORD=1`�
 
 ![API 키와 선택 연동 안전 지도](assets/readme/optional-integrations-safety.png)
 
-강의 기본 실습에는 필수 API 키가 없습니다. 실제 LLM은 공식 Codex의 ChatGPT 구독 로그인 또는 별도 OpenAI API 키로 선택 연결하고, KIS·Toss는 심화 실습에서만 다룹니다. `trading.py`는 실거래 요청을 기본으로 차단합니다.
+강의 기본 실습에는 필수 API 키가 없습니다. 실제 LLM은 공식 Codex의 ChatGPT 구독 로그인 또는 별도 OpenAI API 키로 선택 연결합니다. KIS를 준비한 수강생은 Part 3 말미와 Part 4에서 가격·일별 투자자 수급만 읽기 전용으로 보강할 수 있습니다. 이때 `data_source.py`는 yfinance 기반의 다른 자료를 그대로 두고 수급 섹션의 거래량 프록시만 KIS 기관·외국인·개인 순매수로 바꿉니다. 주문·계좌 경로는 별도 심화 범위이며 `trading.py`는 실거래 요청을 기본으로 차단합니다.
 
 ## 7. 전략 하네스
 

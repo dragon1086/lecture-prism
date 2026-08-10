@@ -52,6 +52,7 @@ lecture-prism은 **API 키 없이도 기본 데모가 바로 실행**되도록 �
 | 범위 | 필요한 것 | 기본 실습 필요 여부 |
 |---|---|---|
 | yfinance 가격·거래량 (분석·`screening.py --real` 공통) | `yfinance` 패키지와 인터넷 연결 | 선택 |
+| KIS 가격·일별 투자자 수급 | paper 또는 real App Key와 App Secret. 계좌번호는 불필요 | Part 3 말미·Part 4 선택 실습 |
 | Perplexity 리서치 | `PERPLEXITY_API_KEY` | 심화 |
 | Firecrawl 웹 수집 | `FIRECRAWL_API_KEY` | 심화 |
 
@@ -59,8 +60,18 @@ Perplexity와 Firecrawl은 `LECTURE_REPORT_MODE=research`이고 해당 키가 �
 
 ## 5. 증권사 브로커 심화
 
+KIS에는 서로 다른 두 범위가 있습니다. 강의에서 먼저 쓰는 것은 **읽기 전용 시장 데이터**입니다. `kis_market_data.py`가 현재가와 일별 기관·외국인·개인 순매수만 조회하며, 계좌번호 없이 선택한 환경의 아래 두 값만 사용합니다.
+
+| 환경 | 로컬 `.env` 값 |
+|---|---|
+| 모의투자 `paper` | `KIS_PAPER_APP_KEY`, `KIS_PAPER_APP_SECRET` |
+| 실전 `real` | `KIS_REAL_APP_KEY`, `KIS_REAL_APP_SECRET` |
+
+강사 시연은 `real` 환경의 실제 데이터를 사용하되 주문·취소·정정·잔고·계좌 API를 호출하지 않고 매매를 simulation으로 유지합니다. 수강생은 준비한 `paper` 또는 `real` 중 하나를 명시적으로 고릅니다. 실패하면 다른 환경으로 자동 전환하거나 mock 값을 KIS 성공으로 꾸미지 않습니다.
+
 | 범위 | 필요한 것 | 기본 실습 필요 여부 |
 |---|---|---|
+| KIS 가격·일별 투자자 수급 조회 | 선택한 환경의 App Key, App Secret | 선택 공통 실습 |
 | KIS 모의투자 조회·주문 구조 | 한국투자증권 모의투자 App Key, App Secret, HTS ID, 계좌번호 앞 8자리, 상품코드 2자리 | 심화 |
 | Kiwoom 모의투자/REST 구조 | 키움증권 REST API App Key, Secret Key 또는 Access Token | 심화 |
 | Toss Securities | `tossctl 0.24.1`과 사용자가 직접 승인한 WTS 로그인 세션. API 키는 lecture-prism이 보관하지 않음 | 선택 |
