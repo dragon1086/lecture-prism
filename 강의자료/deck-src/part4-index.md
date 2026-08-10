@@ -7,7 +7,7 @@
 | P4-S01 | — | `part4/00-foundation.html` | 파트 4 · 본인만의 로직을 담은 · 자동매매 시스템으로 발전하기 |
 | P4-S02 | — | `part4/00-foundation.html` | 오늘의 목표는 전략 전체가 아닙니다 |
 | P4-S03 | P4-00 | `part4/00-foundation.html` | 코드를 고치기 전에 · 시스템 지도를 먼저 읽습니다 |
-| P4-S04 | — | `part4/00-foundation.html` | 수정 템플릿 |
+| P4-S04 | P4-KIS | `part4/00-foundation.html` | KIS 실제 수급을 분석에 한 번 연결합니다 |
 | P4-S05 | P4-01 | `part4/00-foundation.html` | 내 3줄은 네 개의 트랙이 됩니다 |
 | P4-S06 | — | `part4/00-foundation.html` | 지금 값들에는 이유가 있습니다 |
 | P4-S07 | — | `part4/01-service-core.html` | 후보 선별·재점수는 시장·섹터·신호를 여러 층으로 분리한다 |

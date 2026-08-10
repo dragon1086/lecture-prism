@@ -394,6 +394,31 @@ def fetch_market_index() -> dict | None:
     return _fetch_market_index_yfinance()
 
 
+def _fetch_kis_snapshot(ticker: str) -> dict:
+    from brokers.kis import selected_kis_mode
+    from kis_market_data import fetch_kis_snapshot
+
+    return fetch_kis_snapshot(ticker, selected_kis_mode())
+
+
+def _enrich_supply_with_kis(data: dict, ticker: str) -> dict:
+    try:
+        snapshot = _fetch_kis_snapshot(ticker)
+    except Exception:  # noqa: BLE001 - optional enrichment falls back once
+        log.warning("  KIS 수급 조회 실패 — 기존 거래량 프록시 유지")
+        return data
+    enriched = copy.deepcopy(data)
+    enriched["supply"] = {
+        "source": "kis",
+        "environment": snapshot["environment"],
+        "as_of": snapshot["as_of"],
+        "institution_net_buy": snapshot["institution_net_buy"],
+        "foreign_net_buy": snapshot["foreign_net_buy"],
+        "individual_net_buy": snapshot["individual_net_buy"],
+    }
+    return enriched
+
+
 # ── 공개 단일 접점 ──────────────────────────────────────────────────────
 def _fetch_mock(ticker: str) -> dict:
     prof = mock_profile(ticker)
@@ -433,4 +458,7 @@ def fetch_stock_data(ticker: str) -> dict:
     cfg = load_runtime_config()
     if cfg.data_mode == "mock":
         return _fetch_mock(ticker)
-    return _fetch_real(ticker) or _fetch_mock(ticker)
+    data = _fetch_real(ticker) or _fetch_mock(ticker)
+    if data.get("source") == "yfinance" and cfg.supply_source == "kis":
+        return _enrich_supply_with_kis(data, ticker)
+    return data

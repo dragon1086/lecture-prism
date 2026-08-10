@@ -142,6 +142,7 @@ _TRADE_ALIASES = {
 class RuntimeConfig:
     profile: str
     data_mode: str
+    supply_source: str
     screening_mode: str
     llm_mode: str
     report_mode: str
@@ -158,7 +159,8 @@ class RuntimeConfig:
     def summary(self) -> str:
         tools = ",".join(self.research_tools) if self.research_tools else "off"
         return (
-            f"profile={self.profile}, data={self.data_mode}, screening={self.screening_mode}, "
+            f"profile={self.profile}, data={self.data_mode}, supply={self.supply_source}, "
+            f"screening={self.screening_mode}, "
             f"llm={self.llm_mode}, report={self.report_mode}, tools={tools}, "
             f"trade={self.trade_mode}, broker={self.broker}/{self.broker_mode}"
         )
@@ -246,6 +248,7 @@ def load_runtime_config(profile: str | None = None) -> RuntimeConfig:
         return RuntimeConfig(
             profile=profile,
             data_mode=defaults["data_mode"],
+            supply_source="proxy",
             screening_mode=defaults["screening_mode"],
             llm_mode=defaults["llm_mode"],
             report_mode=defaults["report_mode"],
@@ -265,6 +268,12 @@ def load_runtime_config(profile: str | None = None) -> RuntimeConfig:
         default=defaults["data_mode"],
         aliases=_DATA_ALIASES,
         allowed={"mock", "auto", "yfinance"},
+    )
+    supply_source = _normalize(
+        os.getenv("LECTURE_SUPPLY_SOURCE"),
+        default="proxy",
+        aliases={"volume": "proxy", "yfinance": "proxy"},
+        allowed={"proxy", "kis"},
     )
     screening_mode = _normalize(
         os.getenv("LECTURE_SCREENING_MODE") or defaults["screening_mode"],
@@ -328,6 +337,7 @@ def load_runtime_config(profile: str | None = None) -> RuntimeConfig:
     return RuntimeConfig(
         profile=profile,
         data_mode=data_mode,
+        supply_source=supply_source,
         screening_mode=screening_mode,
         llm_mode=llm_mode,
         report_mode=report_mode,

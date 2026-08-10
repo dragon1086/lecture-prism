@@ -71,6 +71,25 @@ class KISConfig:
             raise ValueError(f"missing {prefix} credentials: {', '.join(missing)}")
         return cls(canonical, **values)
 
+    @classmethod
+    def from_env_market_data(cls, mode: str = "paper") -> "KISConfig":
+        """Load only credentials needed by KIS read-only market endpoints."""
+
+        canonical = _canonical_mode(mode)
+        prefix = "KIS_PAPER" if canonical == "paper" else "KIS_REAL"
+        app_key = os.getenv(f"{prefix}_APP_KEY", "").strip()
+        app_secret = os.getenv(f"{prefix}_APP_SECRET", "").strip()
+        missing = [
+            name
+            for name, value in (("app_key", app_key), ("app_secret", app_secret))
+            if not value
+        ]
+        if missing:
+            raise ValueError(
+                f"missing {prefix} market-data credentials: {', '.join(missing)}"
+            )
+        return cls(canonical, app_key, app_secret, "")
+
 
 @dataclass(frozen=True)
 class _HTTPResponse:
@@ -513,6 +532,67 @@ class KISClient:
         if any(not isinstance(row, Mapping) for row in output2):
             raise KISRequestError("KIS daily-price response contains an invalid row")
         return [dict(row) for row in output2]
+
+    def get_investor_flow(
+        self, ticker: str, as_of_date: str
+    ) -> list[dict[str, object]]:
+        selected_ticker = str(ticker).strip()
+        selected_date = str(as_of_date).strip()
+        if len(selected_ticker) != 6 or not selected_ticker.isdigit():
+            raise ValueError("ticker must be a six-digit domestic stock code")
+        try:
+            datetime.strptime(selected_date, "%Y%m%d")
+        except ValueError as exc:
+            raise ValueError("as_of_date must use YYYYMMDD") from exc
+
+        body, _ = self._call(
+            "GET",
+            "/uapi/domestic-stock/v1/quotations/investor-trade-by-stock-daily",
+            "FHPTJ04160001",
+            params={
+                "FID_COND_MRKT_DIV_CODE": "J",
+                "FID_INPUT_ISCD": selected_ticker,
+                "FID_INPUT_DATE_1": selected_date,
+                "FID_ORG_ADJ_PRC": "0",
+                "FID_ETC_CLS_CODE": "",
+            },
+            require_output=False,
+        )
+        rows = body.get("output2")
+        if not isinstance(rows, list) or not rows:
+            raise KISRequestError("KIS investor-flow response has no rows")
+
+        normalized: list[dict[str, object]] = []
+        for row in rows:
+            if not isinstance(row, Mapping):
+                raise KISRequestError("KIS investor-flow response contains an invalid row")
+            raw_date = str(row.get("stck_bsop_date") or "").strip()
+            try:
+                parsed_date = datetime.strptime(raw_date, "%Y%m%d").strftime(
+                    "%Y-%m-%d"
+                )
+            except ValueError as exc:
+                raise KISRequestError(
+                    "KIS investor-flow response has invalid date"
+                ) from exc
+            try:
+                institution = int(str(row.get("orgn_ntby_qty") or "").strip())
+                foreign = int(str(row.get("frgn_ntby_qty") or "").strip())
+                individual = int(str(row.get("prsn_ntby_qty") or "").strip())
+            except ValueError as exc:
+                raise KISRequestError(
+                    "KIS investor-flow response has invalid quantity"
+                ) from exc
+            normalized.append(
+                {
+                    "as_of": parsed_date,
+                    "institution_net_buy": institution,
+                    "foreign_net_buy": foreign,
+                    "individual_net_buy": individual,
+                    "source": "kis.investor-trade-by-stock-daily",
+                }
+            )
+        return sorted(normalized, key=lambda item: str(item["as_of"]), reverse=True)
 
     @staticmethod
     def _quote_observed_at(output: Mapping[str, Any], fallback: datetime) -> datetime:

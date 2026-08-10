@@ -42,6 +42,7 @@ lecture-prism은 한 저장소 안에서 초급자용 더미 데모부터 상태
 | 값 | 선택지 | 의미 |
 |---|---|---|
 | `LECTURE_DATA_MODE` | `mock`, `auto`, `yfinance` | 분석 데이터 원천 |
+| `LECTURE_SUPPLY_SOURCE` | `proxy`, `kis` | 수급 섹션 원천. 기본 `proxy`; `kis`는 KIS 일별 기관·외국인·개인 순매수만 보강 |
 | `LECTURE_SCREENING_MODE` | `mock`, `fixture`, `real` | 스크리닝 원천 (`fixture` = classroom/backtest, `real` = yfinance) |
 | `LECTURE_LLM_MODE` | `mock`, `auto`, `oauth`, `openai` | `oauth`는 공식 Codex 구독, `openai`는 별도 API 키, `auto`는 API 키가 있을 때만 호출 |
 | `LECTURE_REPORT_MODE` | `lite`, `research` | 보고서 깊이 |
@@ -152,6 +153,19 @@ LECTURE_TRADE_MODE=simulation
 ```
 
 얻는 것: yfinance가 가능하면 실데이터를 쓰고, 실패하면 더미 데이터로 돌아갑니다.
+
+### 선택: KIS 실제 수급만 읽기 전용으로 보강
+
+`kis_market_data.py`는 선택한 KIS 환경에서 현재가와 일별 기관·외국인·개인 순매수만 읽습니다. `paper`는 `KIS_PAPER_APP_KEY`·`KIS_PAPER_APP_SECRET`, `real`은 `KIS_REAL_APP_KEY`·`KIS_REAL_APP_SECRET`을 사용하며 이 조회에는 계좌번호가 필요하지 않습니다. `LECTURE_KIS_MODE=demo|real`은 각각 paper/real 자격 증명 묶음을 선택합니다.
+
+P3-04는 실제 숫자 한 묶음이 오는지 확인하는 smoke test이므로 실패를 연습 데이터 성공으로 바꾸지 않습니다. Part 4 분석에서는 `LECTURE_SUPPLY_SOURCE=kis`를 이번 실행에만 적용합니다. KIS가 실패하면 다른 다섯 분석 섹션은 유지하고 수급만 거래량 프록시로 돌아가며, 보고서에 그 사실을 명시합니다. 어떤 경우에도 주문·취소·정정·잔고·계좌 API는 호출하지 않고 매매는 simulation입니다.
+
+```text
+lecture-prism에서 삼성전자 005930의 KIS 읽기 전용 데이터 한 묶음을 확인해줘.
+내가 고른 환경은 [paper 또는 real]이야. kis_market_data.py와 테스트를 먼저 읽고 현재가와 일별 기관·외국인·개인 순매수만 호출하는지 확인해줘.
+기준일·가격·세 투자주체 순매수·환경·주문 계열 호출 0회를 보여줘. 주말이면 가장 최근 영업일이라고 적어.
+키·토큰은 출력하지 말고 주문·취소·정정·잔고·계좌 API는 호출하지 마. 실패하면 재시도·환경 전환·mock 위장을 하지 마.
+```
 
 ### 고급자: 원본 PRISM에 가까운 리서치 보고서
 
