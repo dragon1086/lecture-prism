@@ -13,14 +13,20 @@ import socket
 import time
 from datetime import datetime
 from dataclasses import dataclass, field
+from decimal import Decimal, InvalidOperation
 from typing import Any, Mapping
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
+from zoneinfo import ZoneInfo
+
+from .base import BrokerQuote, BrokerQuoteError, validate_broker_quote
 
 
 PAPER_BASE_URL = "https://openapivts.koreainvestment.com:29443"
 REAL_BASE_URL = "https://openapi.koreainvestment.com:9443"
+KST = ZoneInfo("Asia/Seoul")
+UTC = ZoneInfo("UTC")
 
 
 class KISRequestError(RuntimeError):
@@ -140,6 +146,14 @@ class KISClient:
         if isinstance(value, datetime):
             return value.timestamp()
         return float(value)
+
+    def _now_datetime(self) -> datetime:
+        value = self.clock() if self.clock is not None else None
+        if isinstance(value, datetime):
+            if value.tzinfo is None:
+                return value.replace(tzinfo=KST).astimezone(UTC)
+            return value.astimezone(UTC)
+        return datetime.fromtimestamp(self._now(), UTC)
 
     @staticmethod
     def _body(response: object) -> dict[str, Any]:
@@ -407,6 +421,58 @@ class KISClient:
             tr_cont = "N"
         raise KISRequestError("KIS order-status pagination exceeded max_pages")
 
+    def get_pending_orders(
+        self,
+        *,
+        business_date: str,
+        max_pages: int = 10,
+    ) -> dict[str, Any]:
+        params = {
+            "CANO": self.config.account_no,
+            "ACNT_PRDT_CD": self.config.product_code,
+            "INQR_STRT_DT": business_date,
+            "INQR_END_DT": business_date,
+            "SLL_BUY_DVSN_CD": "00",
+            "PDNO": "",
+            "CCLD_DVSN": "02",
+            "INQR_DVSN": "00",
+            "INQR_DVSN_3": "00",
+            "ORD_GNO_BRNO": "",
+            "ODNO": "",
+            "INQR_DVSN_1": "",
+            "CTX_AREA_FK100": "",
+            "CTX_AREA_NK100": "",
+        }
+        rows: list[dict[str, Any]] = []
+        summaries: list[dict[str, Any]] = []
+        tr_cont = ""
+        for _ in range(max_pages):
+            body, headers = self._call(
+                "GET",
+                "/uapi/domestic-stock/v1/trading/inquire-daily-ccld",
+                "VTTC0081R" if self._paper else "TTTC0081R",
+                params=params,
+                tr_cont=tr_cont,
+                require_output=False,
+            )
+            output1 = body.get("output1", [])
+            output2 = body.get("output2", {})
+            if not isinstance(output1, list) or not isinstance(output2, Mapping):
+                raise KISRequestError("KIS pending-order response has invalid output shape")
+            rows.extend(dict(row) for row in output1 if isinstance(row, Mapping))
+            summaries.append(dict(output2))
+            continuation = str(headers.get("tr_cont", headers.get("TR_CONT", ""))).upper()
+            if continuation not in {"M", "F"}:
+                return {"rows": rows, "summary": summaries}
+            fk = str(body.get("ctx_area_fk100", ""))
+            nk = str(body.get("ctx_area_nk100", ""))
+            if not fk and not nk:
+                raise KISRequestError("KIS pending-order continuation keys are missing")
+            params["CTX_AREA_FK100"] = fk
+            params["CTX_AREA_NK100"] = nk
+            tr_cont = "N"
+        raise KISRequestError("KIS pending-order pagination exceeded max_pages")
+
     def get_market_day(self, business_date: str) -> dict[str, Any]:
         body, _ = self._call(
             "GET",
@@ -447,6 +513,62 @@ class KISClient:
         if any(not isinstance(row, Mapping) for row in output2):
             raise KISRequestError("KIS daily-price response contains an invalid row")
         return [dict(row) for row in output2]
+
+    @staticmethod
+    def _quote_observed_at(output: Mapping[str, Any], fallback: datetime) -> datetime:
+        business_date = str(output.get("stck_bsop_date") or "").strip()
+        trade_time = str(output.get("stck_cntg_hour") or "").strip()
+        if business_date and trade_time:
+            compact_time = trade_time.replace(":", "").zfill(6)[:6]
+            try:
+                return datetime.strptime(
+                    f"{business_date}{compact_time}", "%Y%m%d%H%M%S"
+                ).replace(tzinfo=KST).astimezone(UTC)
+            except ValueError as exc:
+                raise KISRequestError("KIS quote timestamp fields are invalid") from exc
+        return fallback
+
+    def get_quote(self, ticker: str) -> BrokerQuote:
+        selected_ticker = str(ticker).strip()
+        if not selected_ticker:
+            raise ValueError("ticker is required")
+        body, _ = self._call(
+            "GET",
+            "/uapi/domestic-stock/v1/quotations/inquire-price",
+            "FHKST01010100",
+            params={
+                "FID_COND_MRKT_DIV_CODE": "J",
+                "FID_INPUT_ISCD": selected_ticker,
+            },
+        )
+        output = body["output"]
+        if not isinstance(output, Mapping):
+            raise KISRequestError("KIS quote response has invalid output")
+        raw_price = output.get("stck_prpr")
+        try:
+            parsed_price = Decimal(str(raw_price))
+        except (InvalidOperation, TypeError, ValueError) as exc:
+            raise KISRequestError("KIS quote response has invalid stck_prpr") from exc
+        if parsed_price != parsed_price.to_integral_value():
+            raise KISRequestError("KIS quote response has non-integral stck_prpr")
+        price = int(parsed_price)
+        output_ticker = str(output.get("stck_shrn_iscd") or selected_ticker).strip()
+        quote = BrokerQuote(
+            ticker=output_ticker,
+            price=price,
+            currency="KRW",
+            market="KRX",
+            observed_at=self._quote_observed_at(output, self._now_datetime()),
+            source="kis.inquire-price",
+        )
+        try:
+            return validate_broker_quote(
+                quote,
+                expected_ticker=selected_ticker,
+                now=self._now_datetime(),
+            )
+        except BrokerQuoteError as exc:
+            raise KISRequestError(str(exc)) from exc
 
     def cancel_order(
         self,

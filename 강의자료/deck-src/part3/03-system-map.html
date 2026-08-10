@@ -1,17 +1,17 @@
-<!-- P3-S14 · 차트가 좋아 보인다는 이유만으로 종목 분석을 끝내도 될까요 -->
+<!-- P3-S15 · 이 종목을 사기 전에, 어떤 정보까지 확인하고 싶으세요 -->
 <section class="slide split large-diagram">
   <div class="txt">
     <div class="kicker">모듈 2 · 먼저 풀 문제</div>
-    <h2>차트가 좋아 보인다는 이유만으로 종목 분석을 끝내도 될까요?</h2>
+    <h2>이 종목을 사기 전에, 어떤 정보까지 확인하고 싶으세요?</h2>
   </div>
   <div class="img">
     <img class="reference-shot" src="../docs/assets/prism-insight/screening-analysis-deep-dive.png" alt="선별된 종목을 여섯 분석 에이전트가 조사하는 흐름">
     <p class="caption">최종 후보마다 주가·거래량, 투자 주체, 실적·재무, 사업·경쟁력, 뉴스·주도주, 시장·업종의 여섯 방향의 보고서를 만들고 투자전략과 요약으로 조립합니다.</p>
   </div>
-  <div class="pagenum">14</div>
+  <div class="pagenum">15</div>
 </section>
 
-<!-- P3-S15 · 여섯 에이전트는 질문과 출력이 다릅니다 -->
+<!-- P3-S16 · 여섯 에이전트는 질문과 출력이 다릅니다 -->
 <section class="slide split large-diagram">
   <div class="txt">
     <div class="kicker">모듈 2 · 에이전트 역할 지도</div>
@@ -21,10 +21,10 @@
     <img class="reference-shot" src="assets/prism-analysis-agent-map.png" alt="주가 거래량, 투자자 수급, 기업 현황, 기업 개요, 뉴스 주도주, 시장 지수 분석 에이전트">
     <p class="caption">원본 코드의 에이전트 이름과 보고서 섹션을 바탕으로 만든 강의용 구조도입니다.</p>
   </div>
-  <div class="pagenum">15</div>
+  <div class="pagenum">16</div>
 </section>
 
-<!-- P3-S16 · 숫자를 읽는 프롬프트는 계산과 근거를 강제합니다 -->
+<!-- P3-S17 · 숫자를 읽는 프롬프트는 계산과 근거를 강제합니다 -->
 <section class="slide split large-diagram">
   <div class="txt">
     <div class="kicker">모듈 2 · 정량 에이전트 프롬프트</div>
@@ -34,10 +34,10 @@
     <img class="reference-shot" src="assets/prism-analysis-prompt-quant.png" alt="주가 거래량, 투자자 수급, 시장 지수 분석가의 핵심 프롬프트">
     <p class="caption">원본 프롬프트의 핵심 제약을 옮긴 개념도입니다. 그림 속 차트와 수치는 실제 종목 데이터가 아닙니다.</p>
   </div>
-  <div class="pagenum">16</div>
+  <div class="pagenum">17</div>
 </section>
 
-<!-- P3-S17 · 맥락을 읽는 프롬프트는 출처와 범위를 제한합니다 -->
+<!-- P3-S18 · 맥락을 읽는 프롬프트는 출처와 범위를 제한합니다 -->
 <section class="slide split large-diagram">
   <div class="txt">
     <div class="kicker">모듈 2 · 맥락 에이전트 프롬프트</div>
@@ -47,10 +47,10 @@
     <img class="reference-shot" src="assets/prism-analysis-prompt-context.png" alt="기업 현황, 기업 개요, 뉴스 주도주 분석가의 핵심 프롬프트">
     <p class="caption">원본 프롬프트를 줄여 표현한 개념도입니다. 화면의 회사·뉴스·재무 수치는 설명용이며 실제 데이터가 아닙니다.</p>
   </div>
-  <div class="pagenum">17</div>
+  <div class="pagenum">18</div>
 </section>
 
-<!-- P3-S18 · 여섯 보고서는 조건부 투자 전략과 요약으로 합쳐집니다 -->
+<!-- P3-S19 · 여섯 보고서는 조건부 투자 전략과 요약으로 합쳐집니다 -->
 <section class="slide">
   <div class="kicker">원본 PRISM의 보고서 조립</div>
   <h2>여섯 보고서는 조건부 투자 전략과 요약으로 합쳐집니다</h2>
@@ -61,10 +61,10 @@
     <div class="step"><div class="n">읽기용 출력</div><div class="t">요약·PDF</div><div class="d">근거와 기준일을 한 보고서에 묶습니다.</div></div>
   </div>
   <div class="takeaway">보고서의 매수 고려 가격은 주문이 아닙니다. 실제 Enter / No Entry는 모듈 3이 다시 결정합니다.</div>
-  <div class="pagenum">18</div>
+  <div class="pagenum">19</div>
 </section>
 
-<!-- P3-S19 · lecture-prism도 일곱 보고서 에이전트를 조립합니다 -->
+<!-- P3-S20 · lecture-prism도 일곱 보고서 에이전트를 조립합니다 -->
 <section class="slide comparison-slide" id="p3-s19">
   <div class="txt">
     <div class="kicker">원본과 강의용 축소판 비교</div>
@@ -74,10 +74,10 @@
     <img class="reference-shot comparison-shot" src="assets/lecture-compare-analysis.png" alt="PRISM Insight와 lecture-prism의 독립 분석 보고서 에이전트 및 편집 에이전트 비교">
     <p class="caption"><code>analysis_agents.py</code>에 역할과 프롬프트를 분리하고, <code>analysis.py</code>는 전문 에이전트 6개와 편집 에이전트의 결과만 보고서로 조립합니다.</p>
   </div>
-  <div class="pagenum">19</div>
+  <div class="pagenum">20</div>
 </section>
 
-<!-- P3-S20 · 프롬프트 파일에서 P3-M2 전체를 복사합니다 -->
+<!-- P3-S21 · 프롬프트 파일에서 P3-M2 전체를 복사합니다 -->
 <section class="slide prompt-screen">
   <div class="kicker">모듈 2 · 구조 질문과 단독 실행</div>
   <h2>프롬프트 파일에서 P3-M2 블록 전체를 복사합니다</h2>
@@ -90,10 +90,37 @@
     </div>
     <div class="prompt-panel">
       <p><span class="num">내 전략에 대입 1</span> 내 전략에서 숫자로 확인할 근거와 맥락으로 읽을 근거는 각각 무엇일까?</p>
-      <p><span class="num">내 전략에 대입 2</span> 여섯 역할 중 반드시 남길 분석가와 새로 보태고 싶은 분석가는 무엇일까?</p>
+      <p><span class="num">내 전략에 대입 2</span> 내가 아는 데이터 출처에서 어떤 값만 골라 어느 분석가에게 줄까?</p>
       <p><span class="num">내 전략에 대입 3</span> 어떤 근거가 빠지면 매수 판단을 다음 단계로 넘기지 않을까?</p>
     </div>
   </div>
-  <div class="prompt-branch">코드는 고치지 않습니다. 연습 데이터로 한 번 실행하고, 보고서와 매수 판단의 경계만 읽습니다.</div>
-  <div class="pagenum">20</div>
+  <div class="prompt-branch">005930 실데이터를 한 번 읽고, 연결이 안 되면 연습 데이터로 돌아갑니다. LLM 없이도 읽을 만한 보고서가 <code>reports/</code>에 남습니다.</div>
+  <div class="pagenum">21</div>
+</section>
+
+<!-- P3-S22 · 보고서의 빈칸은 알맞은 데이터로 채웁니다 -->
+<section class="slide">
+  <div class="kicker">모듈 2 · 데이터 설계</div>
+  <h2>보고서의 빈칸은 더 좋은 LLM이 아니라 알맞은 데이터로 채웁니다</h2>
+  <div class="flow" style="margin-top:22px; grid-template-columns:1fr 1fr;">
+    <div class="step" style="border-color:#5ecf9a; background:#10231d;">
+      <div class="n">현재 실습이 잘 읽는 것</div>
+      <div class="t">가격 · 거래량 · 기본 재무</div>
+      <div class="d">yfinance 한 곳으로 기술 지표, 거래량, 기업 기본값, 지수와 뉴스 제목을 빠르게 확인합니다.</div>
+    </div>
+    <div class="step" style="border-color:#f0b45a; background:#271d12;">
+      <div class="n">따로 보강해야 할 것</div>
+      <div class="t">수급 · 공시 · 기사 본문 · 거시지표</div>
+      <div class="d">투자자별 순매수, 재무 기준 기간, 원문 근거, 환율·금리·업종 비교는 목적에 맞는 출처가 더 필요합니다.</div>
+    </div>
+  </div>
+  <div class="flow" style="margin-top:18px; grid-template-columns:repeat(5, 1fr); gap:10px;">
+    <div class="step"><div class="n">1</div><div class="t" style="font-size:20px;">빈칸 찾기</div><div class="d">판단에 부족한 근거를 먼저 적습니다.</div></div>
+    <div class="step"><div class="n">2</div><div class="t" style="font-size:20px;">출처 고르기</div><div class="d">공시·거래소·증권사·원문 중 맞는 곳을 고릅니다.</div></div>
+    <div class="step"><div class="n">3</div><div class="t" style="font-size:20px;">필드만 추리기</div><div class="d">필요한 값과 기준 시점만 가져옵니다.</div></div>
+    <div class="step"><div class="n">4</div><div class="t" style="font-size:20px;">담당 칸에 넣기</div><div class="d">기술·수급·재무 등 맞는 섹션에 연결합니다.</div></div>
+    <div class="step"><div class="n">5</div><div class="t" style="font-size:20px;">달라진 판단 확인</div><div class="d">추가 전후의 근거와 결론을 비교합니다.</div></div>
+  </div>
+  <div class="takeaway">데이터를 많이 모으는 것이 목표가 아닙니다. 출처·기준 시각·단위·갱신 주기·실패 시 동작까지 정해야 분석 근거가 됩니다.</div>
+  <div class="pagenum">22</div>
 </section>

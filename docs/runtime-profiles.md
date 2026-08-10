@@ -57,7 +57,50 @@ lecture-prism은 한 저장소 안에서 초급자용 더미 데모부터 상태
 
 `classroom`과 `backtest`는 환경변수로 data/LLM/외부 broker 설정을 덮어쓸 수 없는 고정 offline simulation 프로필이며 live 플래그를 무시합니다. 두 프로필의 서로 다른 실행 코어는 다음 절에서 구분합니다.
 
-## 3. mock 첫 실행과 classroom 상태 재생
+## 3. 운영 서비스 사다리
+
+운영형 실행은 `doctor → simulation → paper → live` 순서로만 올립니다. `operations.py schedule`은 한 번 실행하고 끝나는 명령이 아니라 장중 보유 종목 점검, 미체결 주문 대사, 메모리 압축을 계속 기다리는 **long-lived service process**입니다. 이 프로세스를 항상 켜 두고 재시작하는 책임은 launchd, systemd, Windows Task Scheduler 같은 **service manager**가 맡습니다. lecture-prism은 예시 템플릿만 제공하며, 설치·등록·실행은 자동으로 하지 않습니다.
+
+상태와 로그는 `LECTURE_OPERATIONS_RUNTIME_DIR` 아래에 남습니다. 비워 두면 운영체제 임시 폴더의 lecture-prism 전용 위치를 씁니다.
+
+| 위치 | 의미 |
+|---|---|
+| `operations-state.json` | 스케줄러 pid, heartbeat, 작업별 성공·실패·stale_data 상태 |
+| `scheduler.lock` / `scheduler.lock.advisory` | 같은 프로젝트에서 스케줄러를 한 개만 띄우기 위한 잠금 |
+| `logs/operations-YYYY-MM-DD.log` | KST 날짜 기준 운영 이벤트 로그 |
+
+운영 상태는 `operations.py status`가 같은 런타임 디렉터리를 읽어 보여 줍니다. `operations.py doctor`는 프로필, scheduler enable 힌트, 런타임 디렉터리 쓰기 가능 여부, 미해결 주문, 브로커별 읽기 전용 준비 상태를 점검합니다. `stale_data`가 보이면 fresh quote나 provider 증거가 부족해 해당 작업이 fail-closed로 닫힌 것입니다.
+
+서비스 템플릿은 다음 파일에 있습니다.
+
+| 운영체제 | 템플릿 |
+|---|---|
+| macOS launchd | `deploy/launchd/com.lecture-prism.operations.plist.example` |
+| Linux systemd | `deploy/systemd/lecture-prism.service.example` |
+| Windows Task Scheduler | `deploy/windows/lecture-prism-task.xml.example` |
+
+모든 템플릿은 `{{PROJECT_DIR}}`의 `.venv` Python으로 `operations.py schedule`을 실행하고, 작업 디렉터리를 프로젝트 루트로 고정하며, 기본값에서 `--execute-broker`를 넣지 않습니다. 따라서 기본 서비스는 simulation 실행입니다. paper/live에서 브로커 API를 호출하려면 먼저 doctor가 준비 상태를 설명해야 하고, service manager 등록 템플릿도 사람이 검토한 뒤에만 바꿉니다.
+
+```text
+lecture-prism 운영 서비스 템플릿을 내 컴퓨터에 맞게 준비해줘.
+조건:
+1. 내 운영체제에 맞는 deploy/ 아래 example 파일만 읽고, 바로 등록하거나 실행하지 마.
+2. {{PROJECT_DIR}}, {{OPERATIONS_RUNTIME_DIR}}, {{MONITOR_INTERVAL_MINUTES}}, {{RECONCILE_INTERVAL_MINUTES}} placeholder를 실제 로컬 값으로 바꾼 사본을 만들어줘.
+3. 기본값에는 --execute-broker를 넣지 말고 simulation으로만 동작하게 해줘.
+4. .venv Python, operations.py schedule, 프로젝트 작업 디렉터리, 실패/재부팅 후 재시작 설정이 들어 있는지 점검해줘.
+5. 상태는 operations-state.json, 로그는 logs/operations-YYYY-MM-DD.log, 잠금은 scheduler.lock에 남는다고 설명해줘.
+6. 등록이나 시작은 내가 별도로 승인하기 전까지 하지 마.
+```
+
+```text
+lecture-prism 운영 단계를 doctor → simulation → paper → live 순서로 점검해줘.
+먼저 operations.py doctor와 status가 어떤 정보를 보여 주는지 코드와 테스트 근거로 설명하고,
+simulation 서비스 템플릿에는 --execute-broker가 없는지 확인해줘.
+paper/live로 올릴 때 필요한 LECTURE_ENABLE_LIVE_BROKER, LECTURE_ALLOW_REAL_BROKER,
+LECTURE_UNATTENDED_LIVE_ACK 조건을 설명하되 실제 주문·취소·API 호출은 실행하지 마.
+```
+
+## 4. mock 첫 실행과 classroom 상태 재생
 
 `mock`은 기존 강의 파이프라인입니다. API 키 없이 스크리닝, 6섹션 mock 분석, 가상 매매, 피드백 저장을 한 번에 경험하는 것이 목적입니다.
 
@@ -77,7 +120,7 @@ lecture-prism은 한 저장소 안에서 초급자용 더미 데모부터 상태
 
 사이클은 각 종목을 하나씩 청산하는 방식이 아닙니다. **포트폴리오 전체 관찰 pass**에서 유효한 유한 quote가 있는 모든 포지션의 high-water를 청산 write 전에 저장한 다음, 청산 대상을 처리하고 새 진입을 봅니다. quote가 누락됐거나 잘못된 quote이면 그 포지션은 관찰 갱신과 주문 mutation을 건너뛰어 fail-closed로 남습니다. 한 청산 응답을 잃어도 valid quote가 있던 다른 포지션의 고점 기록이 먼저 남는 **청산 우선** 구조입니다.
 
-## 4. 추천 조합
+## 5. 추천 조합
 
 ### 초급자: 무조건 돌아가는 첫 성공
 
@@ -166,7 +209,7 @@ LECTURE_KIS_MODE=real
 
 이중 플래그는 market provider fail-closed와 별개인 **별도 live gate**입니다. KIS와 Toss의 전체 수명주기는 코드와 고정 fixture로 검증했지만, 그것만으로 live 운영 준비가 완료되지는 않습니다. 실제 계좌 E2E는 실제 키·장 운영시간·사용자 승인이 필요한 별도 작업이므로, 강의 문서와 자동 테스트는 주문 경로를 실행하지 않습니다.
 
-## 5. Discord로 AI 판단 받기
+## 6. Discord로 AI 판단 받기
 
 Discord는 어떤 계좌에 얼마가 있는지 보여 주는 잔고 알림이 아닙니다. `main.py` 한 번에서 나온 스크리닝 후보, 종목별 6개 분석 근거, BUY/SELL/HOLD/PASS 판단, 마지막 AI 판단 요약을 순서대로 보냅니다. 계좌 잔고·계좌번호·webhook URL은 메시지에 보내지 않습니다.
 
@@ -185,7 +228,7 @@ LECTURE_NOTIFY_DISCORD=1과 webhook 설정이 모두 있을 때만 알림이 켜
 메시지에 계좌 잔고·계좌번호·webhook 값이 들어가지 않는지도 확인해줘.
 ```
 
-## 6. 보고서 산출물
+## 7. 보고서 산출물
 
 `LECTURE_SAVE_REPORTS=1`이면 `main.py`가 분석 이후 `reports/`에 Markdown 보고서를 저장합니다.
 
@@ -197,7 +240,7 @@ LECTURE_NOTIFY_DISCORD=1과 webhook 설정이 모두 있을 때만 알림이 켜
 
 `reports/`는 실행할 때 생기는 결과물이므로 Git에 올리지 않습니다.
 
-## 7. 상태 증거와 안전을 점검하는 프롬프트
+## 8. 상태 증거와 안전을 점검하는 프롬프트
 
 ```text
 방금 만든 classroom 임시 DB에서 주문과 체결 증거를 읽어 설명해줘.

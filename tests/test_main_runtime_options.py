@@ -18,7 +18,39 @@ _ENV_KEYS = {
     "LECTURE_DATA_MODE",
     "LECTURE_TRADE_MODE",
     "LECTURE_SCREENING_MODE",
+    "LECTURE_LLM_MODE",
+    "LECTURE_REPORT_MODE",
+    "LECTURE_RESEARCH_TOOLS",
+    "LECTURE_BROKER",
+    "LECTURE_BROKER_MODE",
+    "LECTURE_ENABLE_LIVE_BROKER",
+    "LECTURE_ALLOW_REAL_BROKER",
+    "LECTURE_UNATTENDED_LIVE_ACK",
+    "LECTURE_NOTIFY_DISCORD",
+    "DISCORD_WEBHOOK_URL",
+    "OPENAI_API_KEY",
+    "OPENAI_BASE_URL",
+    "PRISM_OPENAI_AUTH_MODE",
+    "PERPLEXITY_API_KEY",
+    "FIRECRAWL_API_KEY",
 }
+
+
+class _NoopNotifier:
+    async def screening(self, *args, **kwargs):
+        return False
+
+    async def analysis(self, *args, **kwargs):
+        return False
+
+    async def trading(self, *args, **kwargs):
+        return False
+
+    async def summary(self, *args, **kwargs):
+        return False
+
+    async def feedback(self, *args, **kwargs):
+        return False
 
 
 class MainRuntimeOptionsTest(unittest.TestCase):
@@ -26,8 +58,22 @@ class MainRuntimeOptionsTest(unittest.TestCase):
         self._saved = {key: os.environ.get(key) for key in _ENV_KEYS}
         for key in _ENV_KEYS:
             os.environ.pop(key, None)
+        self._patches = [
+            mock.patch.object(runtime_config, "load_dotenv_once"),
+            mock.patch("brokers.factory.load_dotenv_once"),
+            mock.patch("notifications.load_dotenv_once"),
+            mock.patch("notifications.build_notifier", return_value=_NoopNotifier()),
+        ]
+        (
+            self.runtime_load_dotenv_once,
+            self.broker_load_dotenv_once,
+            self.notification_load_dotenv_once,
+            self.build_notifier,
+        ) = [patcher.start() for patcher in self._patches]
 
     def tearDown(self):
+        for patcher in reversed(self._patches):
+            patcher.stop()
         for key, value in self._saved.items():
             if value is None:
                 os.environ.pop(key, None)
@@ -228,6 +274,23 @@ class MainRuntimeOptionsTest(unittest.TestCase):
 
         self.assertIsNone(result)
         replay.assert_not_called()
+
+    def test_pipeline_tests_do_not_reach_ambient_notification_side_effects(self):
+        with mock.patch(
+            "notifications.load_dotenv_once",
+            side_effect=AssertionError("ambient .env loader"),
+        ), mock.patch(
+            "notifications.urlopen",
+            side_effect=AssertionError("network notification"),
+        ), mock.patch(
+            "screening.run_screening", new=mock.AsyncMock(return_value=[])
+        ):
+            result = asyncio.run(
+                main.run_pipeline(config=runtime_config.load_runtime_config("mock"))
+            )
+
+        self.assertIsNone(result)
+        self.build_notifier.assert_called_once_with()
 
     def test_direct_backtest_pipeline_cannot_enable_real_data_or_broker_path(self):
         analysis = {

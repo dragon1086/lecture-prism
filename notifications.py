@@ -228,6 +228,67 @@ def format_decision_summary(analyses: list[dict], trades: list[dict]) -> str:
     return _content("\n".join(lines))
 
 
+def format_feedback_message(analyses: list[dict], trades: list[dict]) -> str:
+    """Describe the records saved after the feedback stage completes."""
+
+    filled = [
+        result
+        for result in trades
+        if result.get("status") == "filled"
+        and result.get("executed") is True
+        and int(result.get("filled_qty") or 0) > 0
+    ]
+    lessons = [
+        result
+        for result in filled
+        if str(result.get("action") or "").upper() == "SELL"
+    ]
+    return _content(
+        "\n".join(
+            [
+                "💾 **피드백 저장 완료**",
+                f"- 분석 이력 {len(analyses)}건 → prism.db",
+                f"- 가상 체결 기록 {len(filled)}건",
+                f"- 결과 교훈 {len(lessons)}건",
+                "- BUY 직후에는 결과 교훈을 만들지 않고, SELL 뒤에만 남깁니다.",
+            ]
+        )
+    )
+
+
+def format_operational_message(event: str, context: dict | None = None) -> str:
+    """Format scheduler/service notifications without raw operational secrets."""
+
+    from operations_runtime import sanitize_operations_fields
+
+    safe = sanitize_operations_fields(context or {})
+    lines = [f"🛠 **운영 이벤트 · {event}**"]
+    for key in (
+        "profile",
+        "job",
+        "status",
+        "error",
+        "error_type",
+        "blocked_reasons",
+        "last_data_at",
+        "next_run_at",
+    ):
+        if key in safe:
+            lines.append(f"- {key}: {_short(safe[key], 220)}")
+    for key in sorted(set(safe) - {
+        "profile",
+        "job",
+        "status",
+        "error",
+        "error_type",
+        "blocked_reasons",
+        "last_data_at",
+        "next_run_at",
+    }):
+        lines.append(f"- {key}: {_short(safe[key], 120)}")
+    return _content("\n".join(lines))
+
+
 class NullNotifier:
     """Drop-in notifier used when Discord is not explicitly configured."""
 
@@ -251,6 +312,14 @@ class NullNotifier:
 
     async def summary(self, analyses: list[dict], trades: list[dict]) -> bool:
         _ = analyses, trades
+        return False
+
+    async def feedback(self, analyses: list[dict], trades: list[dict]) -> bool:
+        _ = analyses, trades
+        return False
+
+    async def operational(self, event: str, context: dict | None = None) -> bool:
+        _ = event, context
         return False
 
 
@@ -358,6 +427,12 @@ class DiscordNotifier:
 
     async def summary(self, analyses: list[dict], trades: list[dict]) -> bool:
         return await self.send(format_decision_summary(analyses, trades))
+
+    async def feedback(self, analyses: list[dict], trades: list[dict]) -> bool:
+        return await self.send(format_feedback_message(analyses, trades))
+
+    async def operational(self, event: str, context: dict | None = None) -> bool:
+        return await self.send(format_operational_message(event, context))
 
 
 def build_notifier():

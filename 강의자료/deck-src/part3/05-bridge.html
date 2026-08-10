@@ -1,14 +1,14 @@
-<!-- P3-S31 · 방금 샀는데 아직 결과도 모르면서 성공 교훈을 만들어도 될까요 -->
+<!-- P3-S33 · 어제 손절한 종목이 오늘 다시 떴습니다. 다시 사도 될까요 -->
 <section class="slide split large-diagram">
-  <div class="txt"><div class="kicker">모듈 4 · 먼저 풀 문제</div><h2>방금 샀는데 아직 결과도 모르면서 성공 교훈을 만들어도 될까요?</h2></div>
+  <div class="txt"><div class="kicker">모듈 4 · 먼저 풀 문제</div><h2>어제 손절한 종목이 오늘 다시 떴습니다. 다시 사도 될까요?</h2></div>
   <div class="img">
     <img class="reference-shot" src="../docs/assets/prism-insight/feedback-reentry-overview.png" alt="매매일지와 반복 교훈이 다음 판단과 재진입 제한으로 돌아가는 흐름">
     <p class="caption">이 루프는 자율 강화학습이 아니라 완료된 거래의 계획과 결과에서 교훈을 만들고 다음 판단에 참고자료로 넣는 구조입니다. 프롬프트·주문 규칙 변경은 사람의 검토와 배포가 필요합니다.</p>
   </div>
-  <div class="pagenum">31</div>
+  <div class="pagenum">33</div>
 </section>
 
-<!-- P3-S32 · 기억은 저장만 해서는 루프가 되지 않습니다 -->
+<!-- P3-S34 · 기억은 저장만 해서는 루프가 되지 않습니다 -->
 <section class="slide">
   <div class="kicker">원본 PRISM의 닫힌 피드백 루프</div>
   <h2>기억은 저장만 해서는 다음 판단에 영향을 주지 못합니다</h2>
@@ -19,20 +19,20 @@
     <div class="step"><div class="n">재사용</div><div class="t">다음 진입</div><div class="d">같은 종목·섹터·트리거 이력과 장기 원칙을 프롬프트에 넣습니다.</div></div>
   </div>
   <div class="takeaway">원본은 과거 기록을 참고했는지와 이후 성과도 따로 비교합니다. 기억 역시 검증 대상입니다.</div>
-  <div class="pagenum">32</div>
+  <div class="pagenum">34</div>
 </section>
 
-<!-- P3-S33 · 실제 운영에서는 매주 기록을 압축합니다 -->
+<!-- P3-S35 · 실제 운영에서는 매주 기록을 압축합니다 -->
 <section class="slide split large-diagram">
   <div class="txt"><div class="kicker">모듈 4 · 실제 운영 배치</div><h2>실제 운영에서는 매주 기록을 압축합니다</h2></div>
   <div class="img">
     <img class="reference-shot" src="assets/prism-memory-compression-operations.png" alt="단기, 중기, 장기 메모리 압축과 정리 게이트">
     <p class="caption">실제 서버의 일요일 03:00 배치와 2026-07-26 로그를 바탕으로 만든 설명 그림입니다. 압축은 성과 보장이 아닙니다.</p>
   </div>
-  <div class="pagenum">33</div>
+  <div class="pagenum">35</div>
 </section>
 
-<!-- P3-S34 · 기억은 많이 쌓는 것보다 쓸 만하게 유지하는 게 중요합니다 -->
+<!-- P3-S36 · 기억은 많이 쌓는 것보다 쓸 만하게 유지하는 게 중요합니다 -->
 <section class="slide">
   <div class="kicker">기억을 쓸 만하게 관리하는 법</div>
   <h2>기억은 많이 쌓는 것보다 쓸 만하게 유지하는 게 중요합니다</h2>
@@ -42,10 +42,10 @@
     <div class="step"><div class="n">오래됐거나 도움이 안 되는 교훈</div><div class="t">뒤로 물리거나 비활성화</div><div class="d">오래된 기록은 중기 요약으로 옮기고, 장기 기억 한도를 넘는 약한 원칙은 다음 판단에서 빼둡니다.</div></div>
   </div>
   <div class="takeaway">메모리 압축은 삭제가 목적이 아닙니다. 다음 판단에 필요한 교훈을 먼저 꺼내기 위한 정리입니다.</div>
-  <div class="pagenum">34</div>
+  <div class="pagenum">36</div>
 </section>
 
-<!-- P3-S35 · lecture-prism도 저장에서 재사용까지 한 바퀴 돕니다 -->
+<!-- P3-S37 · lecture-prism도 저장에서 재사용까지 한 바퀴 돕니다 -->
 <section class="slide comparison-slide">
   <div class="txt">
     <div class="kicker">원본과 강의용 축소판 비교</div>
@@ -55,10 +55,10 @@
     <img class="reference-shot comparison-shot" src="assets/lecture-compare-feedback.png" alt="PRISM Insight 매매일지·압축·재진입 구조와 lecture-prism feedback.py, memory.py, db.py, operations.py 함수 비교">
     <p class="caption">청산 결과가 교훈으로 저장되고, 기억 압축과 보조 작업을 거쳐 다음 판단에 다시 연결되는 위치를 봅니다.</p>
   </div>
-  <div class="pagenum">35</div>
+  <div class="pagenum">37</div>
 </section>
 
-<!-- P3-S36 · 프롬프트 파일에서 P3-M4 전체를 복사합니다 -->
+<!-- P3-S38 · 프롬프트 파일에서 P3-M4 전체를 복사합니다 -->
 <section class="slide prompt-screen">
   <div class="kicker">모듈 4 · 구조 질문과 보조 작업 실행</div>
   <h2>프롬프트 파일에서 P3-M4 블록 전체를 복사합니다</h2>
@@ -76,15 +76,96 @@
     </div>
   </div>
   <div class="prompt-branch">예약 시각과 실제 주문 설정은 바꾸지 않습니다. <code>schedule</code>은 구조만 읽고 수업 중에는 켜지 않습니다.</div>
-  <div class="pagenum">36</div>
+  <div class="pagenum">38</div>
 </section>
 
-<!-- P3-S37 · 네 모듈과 보조 운영이 자동매매 한 사이클을 만듭니다 -->
+<!-- P3-S39 · 한 번 실행한 흐름을 매일 안전하게 반복하려면 무엇이 더 필요할까요 -->
 <section class="slide split large-diagram">
-  <div class="txt"><div class="kicker">파트 3 마무리</div><h2>자동매매는 메인 로직과 보조 운영이 함께 있어야 돌아갑니다</h2></div>
+  <div class="txt"><div class="kicker">모듈 4에서 운영으로</div><h2>여기까지는 한 번 실행했습니다.<br>이제 매일 안전하게 반복하려면 무엇이 더 필요할까요?</h2></div>
   <div class="img">
-    <img class="reference-shot" src="assets/prism-auxiliary-operations-loop.png" alt="네 모듈 주변에서 보유종목 감시, 체결 확인, 메모리 압축, 다음 진입 참고가 계속 도는 구조">
-    <p class="caption">가운데 네 모듈은 한 번의 판단 흐름입니다. 바깥의 보유 감시·체결 확인·기억 압축·다음 진입 참고는 실행 사이의 빈틈을 메웁니다. 강의용 <code>operations.py</code>는 이 작업을 안전한 일회 실행과 선택 예약으로 나눕니다.</p>
+    <div style="position:relative; min-height:0; flex:1; overflow:hidden; border-radius:14px;">
+      <img class="reference-shot" src="assets/prism-auxiliary-operations-loop.png" alt="네 모듈 주변에서 보유종목 감시, 체결 확인, 메모리 압축, 다음 진입 참고가 계속 도는 구조" style="height:100%; width:100%; object-fit:contain;">
+      <div style="position:absolute; left:4%; top:3%; padding:7px 13px; border-radius:999px; background:rgba(6,11,20,.92); border:2px solid #70a7ff; color:#fff; font-size:17px; font-weight:850;">① 한 번 판단</div>
+      <div style="position:absolute; left:50%; top:3%; transform:translateX(-50%); padding:7px 13px; border-radius:999px; background:rgba(6,11,20,.92); border:2px solid #ffb45c; color:#fff; font-size:17px; font-weight:850;">② 매일 확인</div>
+      <div style="position:absolute; right:4%; top:3%; padding:7px 13px; border-radius:999px; background:rgba(6,11,20,.92); border:2px solid #72dc9c; color:#fff; font-size:17px; font-weight:850;">③ 기록 정리</div>
+    </div>
+    <p class="caption">가운데 네 모듈은 한 번의 판단을 끝냅니다. 매일 운영하려면 다음 실행을 시작하고, 보유 종목과 주문 결과를 확인하고, 기록을 정리하는 일도 따로 챙겨야 합니다.</p>
   </div>
-  <div class="pagenum">37</div>
+  <div class="pagenum">39</div>
+</section>
+
+<!-- P3-S40 · 매일 돌리려면 다섯 가지를 따로 챙겨야 합니다 -->
+<section class="slide">
+  <div class="kicker">모듈 5 · 컴퓨터가 대신 챙길 일</div>
+  <h2>매일 돌리려면 다섯 가지를 따로 챙겨야 합니다</h2>
+  <div class="flow" style="margin-top:20px; grid-template-columns:repeat(5, 1fr); gap:10px;">
+    <div class="step"><div class="n">1</div><div class="t" style="font-size:20px;">정해진 때 시작하기</div><div class="d">후보 찾기와 분석을 약속한 시각에 새로 실행합니다.</div></div>
+    <div class="step"><div class="n">2</div><div class="t" style="font-size:20px;">보유 종목 살피기</div><div class="d">이미 산 종목이 손절 기준이나 추세를 벗어났는지 봅니다.</div></div>
+    <div class="step"><div class="n">3</div><div class="t" style="font-size:20px;">주문 결과 확인하기</div><div class="d">접수만 됐는지, 덜 체결됐는지, 끝났는지 다시 확인합니다.</div></div>
+    <div class="step"><div class="n">4</div><div class="t" style="font-size:20px;">기록 정리하기</div><div class="d">오래된 교훈을 줄이고 다음 판단에 필요한 기록만 남깁니다.</div></div>
+    <div class="step"><div class="n">5</div><div class="t" style="font-size:20px;">이상 알려주기</div><div class="d">어디까지 끝났고 어디서 멈췄는지 사람이 알 수 있게 남깁니다.</div></div>
+  </div>
+  <div class="flow" style="margin-top:18px; grid-template-columns:1fr 1fr;">
+    <div class="step" style="border-color:#5ecf9a; background:#10231d;">
+      <div class="n">수업에서 할 일</div>
+      <div class="t">내 컴퓨터의 준비 상태 읽기</div>
+      <div class="d">코딩 에이전트에게 준비된 것과 빠진 것만 확인해 달라고 부탁합니다.</div>
+    </div>
+    <div class="step" style="border-color:#f0b45a; background:#271d12;">
+      <div class="n">수업에서 하지 않을 일</div>
+      <div class="t">자동 실행과 실계좌 연결</div>
+      <div class="d">자동 실행 등록, 브로커 설정 변경, 실제 주문·취소는 하지 않습니다.</div>
+    </div>
+  </div>
+  <div class="takeaway">다음 화면에서 P3-M5를 붙여넣으면 코딩 에이전트가 읽기 전용으로 확인합니다.</div>
+  <div class="pagenum">40</div>
+</section>
+
+<!-- P3-S41 · 내 컴퓨터에서는 이 순서로 준비 상태를 확인합니다 -->
+<section class="slide prompt-screen">
+  <div class="kicker">모듈 5 · 코딩 에이전트와 함께 점검하기</div>
+  <h2>내 컴퓨터에서는 이 순서로 준비 상태를 확인합니다</h2>
+  <div class="prompt-lead">수강생이 터미널 명령어를 직접 입력하지 않습니다. <strong>P3-M5 블록 전체</strong>를 붙여넣으면 코딩 에이전트가 아래 순서로 확인합니다.</div>
+  <div class="flow" style="margin-top:16px; grid-template-columns:repeat(4, 1fr); gap:12px;">
+    <div class="step"><div class="n">1 · 준비 상태 점검</div><div class="t" style="font-size:19px;"><code>operations.py doctor</code></div><div class="d">필요한 파일과 설정이 있는지만 읽습니다. 비밀값은 보여 주지 않습니다.</div></div>
+    <div class="step"><div class="n">2 · 현재 상태 읽기</div><div class="t" style="font-size:19px;"><code>operations.py status</code></div><div class="d">실행 중인 작업과 마지막 기록을 읽습니다. 설정은 바꾸지 않습니다.</div></div>
+    <div class="step"><div class="n">3 · 결과 이해하기</div><div class="t" style="font-size:19px;">준비됨 / 준비 안 됨</div><div class="d">값 자체가 아니라 준비 여부와 다음에 채울 것만 확인합니다.</div></div>
+    <div class="step"><div class="n">4 · 다음 단계 고르기</div><div class="t" style="font-size:19px;">내가 갈 곳 하나</div><div class="d">연습 데이터(mock) → 실데이터(real_data·research) → 모의투자(paper) → 실거래(live) 순서로 봅니다.</div></div>
+  </div>
+  <div class="prompt-columns" style="grid-template-columns:1fr 1fr 1fr; margin-top:12px; gap:10px;">
+    <div class="prompt-panel"><p style="font-size:15.5px;"><span class="num">내 전략에 대입 1</span> 내 컴퓨터는 지금 어느 단계까지 안전하게 준비됐을까?</p></div>
+    <div class="prompt-panel"><p style="font-size:15.5px;"><span class="num">내 전략에 대입 2</span> 컴퓨터가 자동으로 챙겨야 할 일은 무엇일까?</p></div>
+    <div class="prompt-panel"><p style="font-size:15.5px;"><span class="num">내 전략에 대입 3</span> 준비가 덜 된 증권사는 무엇부터 더 확인해야 할까?</p></div>
+  </div>
+  <div class="prompt-branch">오늘은 준비 상태만 봅니다. 실제 주문·취소 없이, 자동 실행 등록이나 실거래 잠금장치 변경도 하지 않습니다.</div>
+  <div class="pagenum">41</div>
+</section>
+
+<!-- P3-S42 · 대시보드에서는 실행 결과 세 곳만 확인합니다 -->
+<section class="slide" style="justify-content:flex-start; padding:34px 42px 30px;">
+  <div class="kicker" style="font-size:16px; margin-bottom:4px;">모듈 5 · 로컬 확인 화면</div>
+  <h2 style="font-size:31px; line-height:1.14; margin-bottom:12px;">대시보드에서는 실행 결과 세 곳만 확인합니다</h2>
+  <div style="display:grid; grid-template-columns:0.72fr 1.28fr; gap:20px; flex:1; min-height:0; align-items:start;">
+    <div style="min-width:0; display:flex; flex-direction:column;">
+      <div style="position:relative; width:100%; aspect-ratio:16/9; overflow:hidden; border-radius:14px;">
+        <img class="dashboard-shot" src="assets/lecture-prism-dashboard-overview.png" alt="시뮬레이션 상태와 매매현황이 보이는 lecture-prism 로컬 대시보드" data-fullscreenable="true" tabindex="0" style="width:100%; height:100%; object-fit:cover; object-position:top;">
+        <span style="position:absolute; left:5%; top:45%; display:grid; place-items:center; width:32px; height:32px; border-radius:50%; background:#4f8cff; color:#fff; font-size:19px; font-weight:900; box-shadow:0 0 0 4px rgba(6,11,20,.82);">1</span>
+      </div>
+      <div class="flow" style="display:grid; grid-template-columns:1fr; gap:7px; margin:10px 0 0;">
+        <div class="step" style="min-height:46px; padding:8px 13px; text-align:left;"><span style="font-size:19px; font-weight:850;">1 · 매매현황</span></div>
+        <div class="step" style="min-height:46px; padding:8px 13px; text-align:left;"><span style="font-size:19px; font-weight:850;">2 · AI 분석 근거</span></div>
+        <div class="step" style="min-height:46px; padding:8px 13px; text-align:left;"><span style="font-size:19px; font-weight:850;">3 · 축적된 피드백</span></div>
+      </div>
+    </div>
+    <div style="min-width:0; display:flex; flex-direction:column;">
+      <div style="position:relative; width:100%; aspect-ratio:16/9; overflow:hidden; border:1px solid rgba(148,163,184,.22); border-radius:14px; background:#070b12;">
+        <img class="reference-shot" src="assets/lecture-prism-dashboard-mock.png" alt="AI 분석 근거와 축적된 피드백이 보이는 lecture-prism 로컬 대시보드" data-fullscreenable="true" tabindex="0" style="display:block; width:101.5%; height:100%; object-fit:cover; object-position:left center; max-width:none;">
+        <span style="position:absolute; left:2%; top:39%; display:grid; place-items:center; width:32px; height:32px; border-radius:50%; background:#4f8cff; color:#fff; font-size:19px; font-weight:900; box-shadow:0 0 0 4px rgba(6,11,20,.82);">2</span>
+        <span style="position:absolute; left:2%; top:70%; display:grid; place-items:center; width:32px; height:32px; border-radius:50%; background:#4f8cff; color:#fff; font-size:19px; font-weight:900; box-shadow:0 0 0 4px rgba(6,11,20,.82);">3</span>
+      </div>
+      <p class="caption" style="font-size:15px; line-height:1.45; margin-top:8px; color:#cbd5e1;">대시보드는 새 판단을 대신하지 않습니다. 끝난 로컬 실행의 판단 근거와 저장된 기록을 다시 읽는 화면입니다.</p>
+    </div>
+  </div>
+  <div class="takeaway" style="margin-top:12px; padding:11px 16px; font-size:19px;">로컬 시뮬레이션 기록 · 실계좌 화면 아님</div>
+  <div class="pagenum">42</div>
 </section>

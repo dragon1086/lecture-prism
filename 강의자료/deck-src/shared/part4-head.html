@@ -1,0 +1,117 @@
+<!-- Shared source header. Edit modules, then run node deck-src/build-decks.mjs. -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>파트4 — 본인만의 로직을 담은 자동매매 시스템으로 발전하기</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root {
+    --bg: oklch(0.13 0.015 264); --card: oklch(0.17 0.015 264);
+    --fg: oklch(0.96 0.005 264); --muted: oklch(0.65 0.01 264);
+    --accent: oklch(0.75 0.15 145); --accent2: oklch(0.72 0.19 264);
+    --warn: oklch(0.78 0.15 60); --bad: oklch(0.7 0.19 25);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  body { background: oklch(0.09 0.01 264); font-family: 'Apple SD Gothic Neo','Pretendard','Noto Sans KR',system-ui,sans-serif; }
+
+  .slide {
+    width: 1280px; height: 720px; margin: 24px auto; padding: 64px 80px;
+    background: var(--bg); color: var(--fg); position: relative;
+    display: flex; flex-direction: column; justify-content: center;
+    border-radius: 6px; overflow: hidden;
+  }
+  .slide::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 6px;
+    background: linear-gradient(90deg, var(--accent), oklch(0.7 0.15 200)); }
+  .pagenum { position: absolute; bottom: 22px; right: 32px; font-size: 15px; color: var(--muted); }
+  .kicker { font-size: 20px; font-weight: 700; color: var(--accent); margin-bottom: 14px; letter-spacing: 0.5px; }
+  h1 { font-size: 54px; font-weight: 800; line-height: 1.25; letter-spacing: -1px; }
+  h2 { font-size: 40px; font-weight: 800; line-height: 1.3; margin-bottom: 34px; letter-spacing: -0.5px; }
+  .sub { font-size: 26px; color: var(--muted); margin-top: 20px; line-height: 1.5; }
+  ul { list-style: none; }
+  li { font-size: 26px; line-height: 1.55; padding: 10px 0 10px 40px; position: relative; }
+  li::before { content: "▸"; position: absolute; left: 8px; color: var(--accent); }
+  li strong, p strong { color: var(--accent2); }
+  li em { font-style: normal; color: var(--warn); }
+  .note { margin-top: auto; padding-top: 22px; font-size: 20px; color: var(--warn); }
+  .src { position: absolute; bottom: 20px; left: 32px; font-size: 13.5px; color: oklch(0.52 0.01 264); }
+
+  .cover { text-align: center; align-items: center; }
+  .cover .kicker { font-size: 24px; }
+  .cover h1 { font-size: 62px; }
+
+  /* 챕터 디바이더 — 장 표지 */
+  .divider { text-align: center; align-items: center; }
+  .divider .chnum { font-size: 26px; font-weight: 800; color: var(--accent); letter-spacing: 6px; margin-bottom: 20px; }
+  .divider h1 { font-size: 60px; }
+  .divider .sub { font-size: 25px; }
+  .divider::before { background: linear-gradient(90deg, var(--accent2), var(--accent)); }
+
+  .split { flex-direction: row; align-items: center; gap: 48px; justify-content: flex-start; }
+  .split .txt { flex: 1.15; }
+  .split .img { flex: 0.85; }
+
+  .imgbox {
+    border: 3px dashed oklch(0.55 0.12 60); border-radius: 14px;
+    background: oklch(0.15 0.02 60 / 0.35); color: var(--warn);
+    padding: 26px; font-size: 19px; line-height: 1.6; min-height: 220px;
+    display: flex; flex-direction: column; justify-content: center; gap: 8px;
+  }
+  .imgbox::before { content: "🖼 이미지 자리"; font-weight: 800; font-size: 22px; }
+  .imgbox .hint { color: oklch(0.7 0.08 60); font-size: 16px; }
+
+  .tracks { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 6px; }
+  .track { background: var(--card); border: 1px solid oklch(0.3 0.02 264); border-radius: 12px; padding: 22px 24px; }
+  .track .tag { display: inline-block; font-size: 16px; font-weight: 800; color: var(--accent);
+    border: 1.5px solid var(--accent); border-radius: 999px; padding: 2px 14px; margin-bottom: 10px; }
+  .track .q { font-size: 24px; font-weight: 800; margin-bottom: 6px; }
+  .track .f { font-size: 17px; color: var(--muted); font-family: ui-monospace, monospace; }
+
+  .flow { display: flex; gap: 16px; margin-top: 8px; }
+  .step { flex: 1; background: var(--card); border: 1px solid oklch(0.3 0.02 264); border-radius: 12px; padding: 22px 20px; }
+  .step .n { font-size: 15px; color: var(--accent); font-weight: 800; }
+  .step .t { font-size: 24px; font-weight: 800; margin: 6px 0; }
+  .step .d { font-size: 16.5px; color: var(--muted); line-height: 1.5; }
+
+  .compare { display: flex; gap: 20px; margin-top: 8px; }
+  .cbox { flex: 1; border-radius: 12px; padding: 26px; font-size: 23px; line-height: 1.6; }
+  .cbox .label { font-size: 18px; font-weight: 800; margin-bottom: 12px; }
+  .cbox.bad { background: oklch(0.16 0.04 25); border: 1px solid oklch(0.4 0.1 25); }
+  .cbox.bad .label { color: var(--bad); }
+  .cbox.good { background: oklch(0.15 0.03 145); border: 1px solid oklch(0.35 0.08 145); }
+  .cbox.good .label { color: var(--accent); }
+
+  .prompt { background: var(--card); border-left: 4px solid var(--accent2); border-radius: 8px;
+    padding: 20px 26px; font-size: 22px; line-height: 1.65; margin: 8px 0; color: oklch(0.88 0.01 264); }
+  .prompt .cap { display: block; margin-top: 8px; font-size: 15px; color: var(--muted); }
+  .reference-shot { width: 100%; height: 360px; object-fit: contain; object-position: center;
+    border-radius: 12px; border: 1px solid oklch(0.3 0.02 264); background: oklch(0.11 0.012 264); display: block; }
+  .caption { margin-top: 9px; font-size: 14px; color: var(--muted); line-height: 1.4; }
+  /* 정보밀도가 높은 원본 화면은 설명 옆 썸네일이 아니라 한 장의 읽을 자료로 보여 준다. */
+  .image-focus { padding: 28px 60px 26px; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 0; }
+  .image-focus .txt { flex: none; width: 100%; }
+  .image-focus .txt .kicker { font-size: 16px; margin-bottom: 4px; }
+  .image-focus .txt h2 { font-size: 32px; line-height: 1.12; margin: 0 0 9px; }
+  .image-focus .txt ul { display: none; }
+  .image-focus .img { flex: 1; width: 100%; min-height: 0; }
+  .image-focus .reference-shot { height: 500px; max-height: 500px; }
+  .image-focus .caption { margin-top: 5px; }
+  .archive-example::after {
+    content: "과거 운영 예시 · 현재 추천 아님";
+    position: absolute; top: 78px; right: 70px; z-index: 3;
+    padding: 8px 14px; border-radius: 999px;
+    color: #fff; background: rgba(159, 54, 54, 0.94);
+    border: 1px solid rgba(255,255,255,0.4);
+    font-size: 16px; font-weight: 800;
+  }
+
+  @media print {
+    body { background: none; }
+    @page { size: 1280px 720px; margin: 0; }
+    .slide { margin: 0; border-radius: 0; break-after: page; page-break-after: always; }
+  }
+</style>
+</head>
+<body>
+
+<!-- S1 표지 -->

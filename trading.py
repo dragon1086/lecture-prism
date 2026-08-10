@@ -38,6 +38,7 @@ STOP_LOSS = {
 # 추세추종 관점: 목표가는 마일스톤, 트레일링 스탑으로 수익을 보호.
 TAKE_PROFIT = 0.15      # 목표가 +15% 도달 시 청산 신호
 TRAILING_STOP = 0.08    # 고점 대비 -8% 되돌림 시 트레일링 스탑
+EXIT_QUOTE_MAX_AGE = timedelta(minutes=5)
 
 
 async def run_trading(analyses: list[dict], dry_run: bool = True) -> list[dict]:
@@ -56,7 +57,7 @@ async def run_trading(analyses: list[dict], dry_run: bool = True) -> list[dict]:
     # 기존 보유분의 청산을 먼저 판단한다. 같은 실행에서 매도 신호가 난
     # 종목을 곧바로 다시 사지 않도록 청산 종목을 신규 진입에서 제외한다.
     holdings = await _get_exit_holdings()
-    price_map = await _load_holding_prices(holdings)
+    price_map = await _load_holding_prices(holdings, dry_run=dry_run)
     await _persist_holding_highs(holdings, price_map)
     exit_decisions = await run_exit_check(holdings, price_map)
     held_tickers = {holding["ticker"] for holding in holdings}
@@ -109,12 +110,22 @@ async def _get_exit_holdings() -> list[dict]:
     return await asyncio.to_thread(db.get_open_holdings)
 
 
-async def _load_holding_prices(holdings: list[dict]) -> dict[str, float]:
+async def _load_holding_prices(
+    holdings: list[dict],
+    *,
+    dry_run: bool | None = None,
+    broker_name: str | None = None,
+) -> dict[str, float | dict]:
     """보유 종목 현재가를 읽되 실패한 종목은 청산 판단에서 보류한다."""
+
+    if not holdings:
+        return {}
+    if _requires_broker_exit_quotes(dry_run, broker_name=broker_name):
+        return await _load_broker_holding_prices(holdings, broker_name=broker_name)
 
     import data_source
 
-    prices: dict[str, float] = {}
+    prices: dict[str, float | dict] = {}
     for holding in holdings:
         ticker = holding["ticker"]
         try:
@@ -130,8 +141,100 @@ async def _load_holding_prices(holdings: list[dict]) -> dict[str, float]:
     return prices
 
 
+def _requires_broker_exit_quotes(
+    dry_run: bool | None, *, broker_name: str | None = None
+) -> bool:
+    if dry_run is not None:
+        return dry_run is False
+    if broker_name:
+        return True
+    profile = str(os.getenv("LECTURE_PROFILE") or os.getenv("PRISM_PROFILE") or "")
+    normalized = profile.strip().lower().replace("-", "_")
+    return normalized in {"paper", "paper_trade", "broker_demo", "live", "real", "prod"}
+
+
+def _quote_block(ticker: str, *, mode: str, message: str) -> dict:
+    return {
+        "status": "blocked",
+        "mode": mode,
+        "ticker": ticker,
+        "message": message,
+        "operational_alert": True,
+    }
+
+
+async def _load_broker_holding_prices(
+    holdings: list[dict], *, broker_name: str | None = None
+) -> dict[str, float | dict]:
+    """Load paper/live exit prices from the selected broker only."""
+
+    from brokers.base import BrokerQuoteError, validate_broker_quote
+    from brokers.factory import get_broker_adapter, selected_broker_name
+
+    broker = (broker_name or selected_broker_name(default="kis")).strip().lower()
+    try:
+        adapter = get_broker_adapter(broker)
+    except Exception as exc:  # noqa: BLE001 - fail closed on adapter uncertainty
+        return {
+            holding["ticker"]: _quote_block(
+                holding["ticker"],
+                mode="broker_quote_unavailable",
+                message=f"{broker} quote adapter unavailable for {holding['ticker']}: {exc}",
+            )
+            for holding in holdings
+        }
+
+    get_quote = getattr(adapter, "get_quote", None)
+    if get_quote is None:
+        return {
+            holding["ticker"]: _quote_block(
+                holding["ticker"],
+                mode="broker_quote_unavailable",
+                message=f"{broker} adapter does not provide fresh quotes for {holding['ticker']}",
+            )
+            for holding in holdings
+        }
+
+    prices: dict[str, float | dict] = {}
+    for holding in holdings:
+        ticker = holding["ticker"]
+        try:
+            quote = await get_quote(ticker)
+            validated = validate_broker_quote(
+                quote,
+                expected_ticker=ticker,
+                now=datetime.now(timezone.utc),
+                max_age=EXIT_QUOTE_MAX_AGE,
+            )
+        except BrokerQuoteError as exc:
+            prices[ticker] = _quote_block(
+                ticker,
+                mode="broker_quote_invalid",
+                message=f"{broker} quote rejected for {ticker}: {exc}",
+            )
+            continue
+        except Exception as exc:  # noqa: BLE001 - no data-source fallback in broker mode
+            prices[ticker] = _quote_block(
+                ticker,
+                mode="broker_quote_unavailable",
+                message=f"{broker} quote unavailable for {ticker}: {exc}",
+            )
+            continue
+        prices[ticker] = float(validated.price)
+    return prices
+
+
+def _numeric_price(value) -> float:
+    if isinstance(value, dict) and value.get("status") == "blocked":
+        return 0.0
+    try:
+        return float(value or 0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
 async def _persist_holding_highs(
-    holdings: list[dict], price_map: dict[str, float]
+    holdings: list[dict], price_map: dict[str, float | dict]
 ) -> None:
     """현재가가 새 고점이면 다음 실행의 트레일링 판단을 위해 저장한다."""
 
@@ -139,7 +242,7 @@ async def _persist_holding_highs(
 
     for holding in holdings:
         ticker = holding["ticker"]
-        current_price = float(price_map.get(ticker) or 0)
+        current_price = _numeric_price(price_map.get(ticker))
         if current_price <= 0:
             continue
         previous = float(
@@ -154,6 +257,18 @@ async def _persist_holding_highs(
 async def _execute_decision(decision: dict, *, dry_run: bool) -> dict:
     """청산·진입 결정을 같은 안전 실행 경로로 처리한다."""
 
+    if decision.get("status") == "blocked":
+        return {
+            **decision,
+            "accepted": False,
+            "executed": False,
+            "terminal": True,
+            "requested_qty": 0,
+            "filled_qty": 0,
+            "remaining_qty": 0,
+            "executed_price": None,
+            "pnl": None,
+        }
     if dry_run:
         result = _simulate_trade(decision)
         log.info("  [%s] [시뮬레이션] %s 체결 완료", decision["ticker"], decision["action"])
@@ -264,11 +379,29 @@ def _exit(holding: dict, price: float, reason: str) -> dict:
     }
 
 
+def _blocked_exit(holding: dict, quote_block: dict) -> dict:
+    return {
+        "action": "BLOCKED_EXIT",
+        "ticker": holding["ticker"],
+        "quantity": int(holding.get("quantity", 0)),
+        "price": None,
+        "reason": quote_block["message"],
+        "status": "blocked",
+        "mode": quote_block["mode"],
+        "message": quote_block["message"],
+        "operational_alert": True,
+    }
+
+
 async def run_exit_check(holdings: list[dict], price_map: dict) -> list[dict]:
     """보유 종목 청산 여부 일괄 점검. price_map: {ticker: 현재가}."""
     decisions = []
     for h in holdings:
         price = price_map.get(h["ticker"], h["entry_price"])
+        if isinstance(price, dict) and price.get("status") == "blocked":
+            log.warning("  [%s] 청산 가격 차단: %s", h["ticker"], price["message"])
+            decisions.append(_blocked_exit(h, price))
+            continue
         decision = _decide_exit(h, price)
         if decision:
             log.info(f"  [{h['ticker']}] 청산 신호: {decision['reason']} @ {price:,.0f}원")
@@ -339,6 +472,34 @@ def _real_broker_allowed(broker_name: str) -> bool:
     if broker_name.lower() == "kis":
         keys.append("LECTURE_ALLOW_REAL_KIS")
     return any_truthy(keys)
+
+
+def _live_cli_block_result() -> dict | None:
+    """Fail closed before the ``--live`` demo can read broker exit quotes."""
+    from brokers.factory import selected_broker_name
+
+    broker = selected_broker_name(default="kis").strip().lower()
+    if _live_broker_enabled(broker):
+        return None
+    return {
+        "action": "LIVE_BLOCKED",
+        "status": "blocked",
+        "accepted": False,
+        "executed": False,
+        "terminal": True,
+        "requested_qty": 0,
+        "filled_qty": 0,
+        "remaining_qty": 0,
+        "executed_price": None,
+        "mode": "live_blocked",
+        "pnl": None,
+        "broker": broker,
+        "message": (
+            f"{broker} 주문 차단: LECTURE_ENABLE_LIVE_BROKER=1 "
+            f"또는 LECTURE_ENABLE_LIVE_{broker.upper()}=1 없이는 "
+            "--live를 실행하지 않습니다."
+        ),
+    }
 
 
 async def _execute_broker_order(decision: dict, broker_name: str | None = None) -> dict:
@@ -434,7 +595,7 @@ async def _execute_broker_order(decision: dict, broker_name: str | None = None) 
         }
 
     selected_decision = dict(decision)
-    if broker in {"kis", "toss"}:
+    if broker in {"kis", "kiwoom", "toss"}:
         try:
             selected_decision["quantity"] = await _broker_safe_quantity(
                 adapter, selected_decision, broker=broker
@@ -477,7 +638,7 @@ async def _execute_broker_order(decision: dict, broker_name: str | None = None) 
         client_order_id = f"lecture-toss-{attempted_at}-{uuid4().hex}"
     else:
         client_order_id = f"lecture-{uuid4().hex}"
-    if broker in {"kis", "toss"}:
+    if broker in {"kis", "kiwoom", "toss"}:
         blocker = _admit_pending_broker_order(
             selected_decision,
             client_order_id=client_order_id,
@@ -518,7 +679,7 @@ async def _execute_broker_order(decision: dict, broker_name: str | None = None) 
             )
         )
     except Exception as e:  # noqa: BLE001 — 인증/네트워크 실패도 초보자에게 설명 가능해야 함
-        if broker in {"kis", "toss"}:
+        if broker in {"kis", "kiwoom", "toss"}:
             import db
             from prism_core.domain import OrderStatus
 
@@ -532,10 +693,10 @@ async def _execute_broker_order(decision: dict, broker_name: str | None = None) 
             )
         return {
             **selected_decision,
-            "status": "unknown" if broker in {"kis", "toss"} else "rejected",
+            "status": "unknown" if broker in {"kis", "kiwoom", "toss"} else "rejected",
             "accepted": False,
             "executed": False,
-            "terminal": broker not in {"kis", "toss"},
+            "terminal": broker not in {"kis", "kiwoom", "toss"},
             "requested_qty": int(selected_decision["quantity"]),
             "filled_qty": 0,
             "remaining_qty": int(selected_decision["quantity"]),
@@ -549,6 +710,13 @@ async def _execute_broker_order(decision: dict, broker_name: str | None = None) 
 
     if broker == "kis":
         broker_result = await _reconcile_kis_order(
+            adapter,
+            broker_result,
+            selected_decision,
+            client_order_id=client_order_id,
+        )
+    elif broker == "kiwoom":
+        broker_result = await _reconcile_kiwoom_order(
             adapter,
             broker_result,
             selected_decision,
@@ -863,6 +1031,161 @@ def _toss_snapshot_values(snapshot: dict, *, requested: int) -> tuple:
     return target, filled, remaining, average
 
 
+def _kiwoom_snapshot_values(snapshot: dict, *, requested: int) -> tuple:
+    from prism_core.domain import OrderStatus
+
+    status = str(snapshot.get("status") or "unknown").lower()
+    filled = int(snapshot.get("filled_qty") or 0)
+    remaining = int(snapshot.get("remaining_qty", requested - filled))
+    if filled < 0 or remaining < 0 or filled + remaining != requested:
+        return OrderStatus.UNKNOWN, 0, requested, None
+    average = snapshot.get("average_fill_price")
+    if filled > 0 and (average is None or Decimal(str(average)) <= 0):
+        return OrderStatus.UNKNOWN, 0, requested, None
+    target = {
+        "accepted": OrderStatus.ACCEPTED,
+        "partial": OrderStatus.PARTIALLY_FILLED,
+        "filled": OrderStatus.FILLED,
+        "canceled": OrderStatus.CANCELED,
+        "cancelled": OrderStatus.CANCELED,
+        "rejected": OrderStatus.REJECTED,
+        "blocked": OrderStatus.REJECTED,
+        "unknown": OrderStatus.UNKNOWN,
+    }.get(status, OrderStatus.UNKNOWN)
+    return target, filled, remaining, average
+
+
+def _update_kiwoom_ledger_snapshot(
+    client_order_id: str, snapshot: dict, *, requested: int
+) -> dict:
+    import db
+    from prism_core.domain import OrderStatus, validate_transition
+
+    state = db.get_broker_order_state(client_order_id)
+    target, filled, remaining, average = _kiwoom_snapshot_values(
+        snapshot, requested=requested
+    )
+    if Decimal(str(filled)) < state.filled_quantity:
+        target, filled, remaining, average = (
+            OrderStatus.UNKNOWN,
+            int(state.filled_quantity),
+            int(state.remaining_quantity),
+            (
+                int(state.average_fill_price)
+                if state.average_fill_price is not None
+                else None
+            ),
+        )
+    if target is OrderStatus.ACCEPTED and state.status is OrderStatus.PARTIALLY_FILLED:
+        return {
+            **snapshot,
+            "status": "partial",
+            "filled_qty": int(state.filled_quantity),
+            "remaining_qty": int(state.remaining_quantity),
+            "average_fill_price": (
+                int(state.average_fill_price)
+                if state.average_fill_price is not None
+                else None
+            ),
+        }
+    if state.status is not target:
+        if not validate_transition(state.status, target):
+            target, filled, remaining, average = (
+                OrderStatus.UNKNOWN,
+                int(state.filled_quantity),
+                int(state.remaining_quantity),
+                (
+                    int(state.average_fill_price)
+                    if state.average_fill_price is not None
+                    else None
+                ),
+            )
+        db.update_broker_order(
+            client_order_id,
+            status=target,
+            filled_quantity=Decimal(str(filled)),
+            remaining_quantity=Decimal(str(remaining)),
+            average_fill_price=(
+                Decimal(str(average)) if average is not None else None
+            ),
+        )
+    return {
+        **snapshot,
+        "status": (
+            "partial"
+            if target is OrderStatus.PARTIALLY_FILLED
+            else target.value.lower()
+        ),
+        "accepted": target is not OrderStatus.UNKNOWN,
+        "executed": target is OrderStatus.FILLED,
+        "terminal": target in {OrderStatus.FILLED, OrderStatus.CANCELED, OrderStatus.REJECTED},
+        "filled_qty": filled,
+        "remaining_qty": remaining,
+        "average_fill_price": average,
+    }
+
+
+async def _reconcile_kiwoom_order(
+    adapter,
+    broker_result: dict,
+    decision: dict,
+    *,
+    client_order_id: str,
+) -> dict:
+    import db
+    from market_calendar import KST
+
+    requested = int(decision["quantity"])
+    status = str(broker_result.get("status") or "unknown").lower()
+    order_no = broker_result.get("order_no")
+    order_date = datetime.now(KST).strftime("%Y%m%d")
+    if status in {"accepted", "filled", "partial", "canceled"} and not order_no:
+        broker_result = {
+            **broker_result,
+            "status": "unknown",
+            "accepted": False,
+            "executed": False,
+            "terminal": False,
+            "message": "Kiwoom 접수 응답의 주문 식별자가 없어 재주문을 금지합니다.",
+        }
+        status = "unknown"
+
+    if order_no:
+        db.bind_broker_identity(
+            client_order_id,
+            broker_order_date=order_date,
+            broker_org_no="kiwoom",
+            broker_order_no=str(order_no),
+        )
+
+    initial = {
+        **broker_result,
+        "status": status,
+        "filled_qty": int(broker_result.get("filled_qty") or 0),
+        "remaining_qty": int(
+            broker_result.get(
+                "remaining_qty",
+                requested - int(broker_result.get("filled_qty") or 0),
+            )
+        ),
+    }
+    initial = _update_kiwoom_ledger_snapshot(
+        client_order_id, initial, requested=requested
+    )
+    if status not in {"accepted", "unknown"} or not order_no:
+        return initial
+    try:
+        snapshot = await adapter.get_order_status(
+            str(order_no), business_date=order_date
+        )
+    except Exception as exc:
+        return {**initial, "reconciliation_message": str(exc)}
+    snapshot = _update_kiwoom_ledger_snapshot(
+        client_order_id, snapshot, requested=requested
+    )
+    return {**broker_result, **snapshot}
+
+
 def _toss_order_date(value) -> str:
     normalized = str(value or "").replace("-", "")
     if len(normalized) != 8 or not normalized.isdigit():
@@ -1160,6 +1483,79 @@ async def reconcile_pending_toss_orders(
     return results
 
 
+async def reconcile_pending_kiwoom_orders(
+    *, adapter=None, mode: str | None = None
+) -> list[dict]:
+    """Re-query restartable Kiwoom orders without submitting mutations."""
+    import db
+    from brokers.factory import get_broker_adapter
+    from prism_core.domain import OrderStatus
+
+    selected_mode = mode or _selected_broker_mode("kiwoom")
+    selected_adapter = adapter or get_broker_adapter("kiwoom")
+    pending = db.get_pending_broker_orders(
+        broker="kiwoom", broker_mode=selected_mode
+    )
+    results = []
+    for state in pending:
+        client_order_id = state.order.intent.client_order_id
+        order_no = state.broker_order_no
+        order_date = state.broker_order_date
+        requested = int(state.order.intent.quantity)
+        if not order_no or not order_date:
+            results.append(
+                {
+                    "client_order_id": client_order_id,
+                    "order_no": order_no,
+                    "status": state.status.value.lower(),
+                    "accepted": state.status is not OrderStatus.UNKNOWN,
+                    "executed": False,
+                    "terminal": False,
+                    "requested_qty": requested,
+                    "filled_qty": int(state.filled_quantity),
+                    "remaining_qty": int(state.remaining_quantity),
+                    "message": "Kiwoom 주문 식별자가 없어 자동 조회를 보류합니다.",
+                }
+            )
+            continue
+        try:
+            snapshot = await selected_adapter.get_order_status(
+                str(order_no), business_date=order_date
+            )
+            snapshot = _update_kiwoom_ledger_snapshot(
+                client_order_id, snapshot, requested=requested
+            )
+        except Exception as exc:
+            results.append(
+                {
+                    "client_order_id": client_order_id,
+                    "order_no": order_no,
+                    "status": (
+                        "partial"
+                        if state.status is OrderStatus.PARTIALLY_FILLED
+                        else state.status.value.lower()
+                    ),
+                    "accepted": state.status is not OrderStatus.UNKNOWN,
+                    "executed": False,
+                    "terminal": False,
+                    "requested_qty": requested,
+                    "filled_qty": int(state.filled_quantity),
+                    "remaining_qty": int(state.remaining_quantity),
+                    "message": str(exc),
+                }
+            )
+            continue
+        results.append(
+            {
+                **snapshot,
+                "client_order_id": client_order_id,
+                "requested_qty": requested,
+                "message": "Kiwoom 미결 주문 상태를 재조회했습니다.",
+            }
+        )
+    return results
+
+
 async def reconcile_pending_kis_orders(
     *, adapter=None, mode: str | None = None
 ) -> list[dict]:
@@ -1319,5 +1715,10 @@ if __name__ == "__main__":
              "current_price": 71_200, "target_price": 81_200, "stop_loss": 67_600,
              "risk_reward_ratio": 2.8, "rationale": "테스트 진입", "risk": "없음"},
         ]
-        results = asyncio.run(run_trading(sample_analyses, dry_run=not args.live))
+        blocked = _live_cli_block_result() if args.live else None
+        results = (
+            [blocked]
+            if blocked is not None
+            else asyncio.run(run_trading(sample_analyses, dry_run=not args.live))
+        )
         print(f"\n체결 결과: {results}")

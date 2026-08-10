@@ -1,16 +1,16 @@
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import os
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
-from brokers.base import BrokerOrder
+from brokers.base import BrokerOrder, BrokerQuote, BrokerQuoteError, validate_broker_quote
 from brokers.config import load_env_file
 from brokers.kis import KISBrokerAdapter, selected_kis_mode
 from brokers.kiwoom import KiwoomBrokerAdapter
-from trading import _execute_broker_order
+from trading import _execute_broker_order, _live_cli_block_result
 from market_calendar import KST, MarketStatus
 
 
@@ -35,6 +35,7 @@ _ENV_KEYS = {
     "KIWOOM_SECRET_KEY",
     "KIWOOM_SECRETKEY",
     "KIWOOM_ACCESS_TOKEN",
+    "KIWOOM_BASE_URL",
     "KIWOOM_EXCHANGE",
     "KIWOOM_TRADE_TYPE",
     "TOSS_SECURITIES_MODE",
@@ -96,6 +97,10 @@ class BrokerAdapterTest(unittest.TestCase):
         result = asyncio.run(adapter.place_order(BrokerOrder("BUY", "005930", 3, 70000)))
 
         self.assertTrue(result["success"])
+        self.assertEqual(result["status"], "accepted")
+        self.assertTrue(result["accepted"])
+        self.assertFalse(result["executed"])
+        self.assertFalse(result["terminal"])
         self.assertEqual(result["order_no"], "00024")
         self.assertEqual(calls[0][0], "/api/dostk/ordr")
         self.assertEqual(calls[0][2]["api-id"], "kt10000")
@@ -169,6 +174,83 @@ class BrokerAdapterTest(unittest.TestCase):
         self.assertFalse(buy["executed"])
         self.assertEqual(sell["order_no"], "2")
 
+    def test_broker_quote_validator_accepts_fresh_domestic_krw_quote(self):
+        observed = datetime(2026, 7, 20, 1, 5, tzinfo=timezone.utc)
+        quote = BrokerQuote(
+            ticker="005930",
+            price=70100,
+            currency="KRW",
+            market="KRX",
+            observed_at=observed,
+            source="kis.inquire-price",
+        )
+
+        validated = validate_broker_quote(
+            quote,
+            expected_ticker="005930",
+            now=observed + timedelta(seconds=30),
+            max_age=timedelta(minutes=1),
+        )
+
+        self.assertEqual(validated.price, 70100)
+
+    def test_broker_quote_validator_rejects_bad_domestic_quote_contracts(self):
+        observed = datetime(2026, 7, 20, 1, 5, tzinfo=timezone.utc)
+        valid = {
+            "ticker": "005930",
+            "price": 70100,
+            "currency": "KRW",
+            "market": "KRX",
+            "observed_at": observed,
+            "source": "kis.inquire-price",
+        }
+        cases = [
+            ("wrong ticker", {"ticker": "000660"}),
+            ("non-KRW", {"currency": "USD"}),
+            ("zero price", {"price": 0}),
+            ("negative price", {"price": -1}),
+            ("non-integral price", {"price": 70100.5}),
+            ("stale timestamp", {"observed_at": observed - timedelta(minutes=2)}),
+        ]
+        for name, override in cases:
+            with self.subTest(name=name):
+                quote = BrokerQuote(**{**valid, **override})
+                with self.assertRaises(BrokerQuoteError):
+                    validate_broker_quote(
+                        quote,
+                        expected_ticker="005930",
+                        now=observed,
+                        max_age=timedelta(minutes=1),
+                    )
+
+    def test_kis_adapter_get_quote_uses_client_quote_and_validation(self):
+        observed = datetime(2026, 7, 20, 1, 5, tzinfo=timezone.utc)
+
+        class Client:
+            def get_quote(self, ticker):
+                self.ticker = ticker
+                return BrokerQuote(
+                    ticker=ticker,
+                    price=70100,
+                    currency="KRW",
+                    market="KRX",
+                    observed_at=observed,
+                    source="kis.inquire-price",
+                )
+
+        client = Client()
+        adapter = KISBrokerAdapter(
+            mode="demo",
+            client=client,
+            gate=object(),
+            clock=lambda: observed + timedelta(seconds=10),
+        )
+
+        quote = asyncio.run(adapter.get_quote("005930"))
+
+        self.assertEqual(client.ticker, "005930")
+        self.assertEqual(quote.price, 70100)
+
     def test_kis_adapter_market_block_happens_before_order_post(self):
         class Client:
             def place_cash_order(self, *args):
@@ -201,6 +283,46 @@ class BrokerAdapterTest(unittest.TestCase):
         self.assertEqual(result["status"], "blocked")
         self.assertEqual(result["mode"], "kis_demo_weekend")
         self.assertTrue(result["terminal"])
+
+    def test_kis_real_place_and_cancel_block_without_live_gates(self):
+        calls = []
+
+        class Client:
+            def place_cash_order(self, *args):
+                calls.append(("place", args))
+                raise AssertionError("real KIS order POST must not run")
+
+            def cancel_order(self, *args, **kwargs):
+                calls.append(("cancel", args, kwargs))
+                raise AssertionError("real KIS cancel POST must not run")
+
+        class Gate:
+            def check(self, now):
+                calls.append(("gate", now))
+                raise AssertionError("market gate must not run before live gate")
+
+        adapter = KISBrokerAdapter(
+            mode="real",
+            client=Client(),
+            gate=Gate(),
+            clock=lambda: datetime(2026, 7, 20, 10, 0, tzinfo=KST),
+        )
+
+        place = asyncio.run(
+            adapter.place_order(BrokerOrder("BUY", "005930", 1, 70000))
+        )
+        cancel = asyncio.run(
+            adapter.cancel_order(
+                "42", quantity=1, order_date="20260720", org_no="12345"
+            )
+        )
+
+        self.assertEqual(place["status"], "blocked")
+        self.assertEqual(place["mode"], "kis_real_live_gate_blocked")
+        self.assertTrue(place["terminal"])
+        self.assertEqual(cancel["status"], "blocked")
+        self.assertEqual(cancel["mode"], "kis_real_live_gate_blocked")
+        self.assertEqual(calls, [])
 
     def test_kis_adapter_treats_post_boundary_exception_as_unknown(self):
         class Client:
@@ -288,6 +410,31 @@ class BrokerAdapterTest(unittest.TestCase):
         self.assertEqual(result["filled_qty"], 0)
         self.assertEqual(result["remaining_qty"], 2)
 
+    def test_kiwoom_real_place_and_cancel_block_without_live_gates(self):
+        os.environ["KIWOOM_ACCESS_TOKEN"] = "token"
+        adapter = KiwoomBrokerAdapter(mode="real")
+        calls = []
+
+        def fake_request(path, payload, *, headers):
+            calls.append((path, payload, headers))
+            raise AssertionError("real Kiwoom mutation POST must not run")
+
+        adapter._request_json = fake_request  # type: ignore[method-assign]
+
+        place = asyncio.run(
+            adapter.place_order(BrokerOrder("BUY", "005930", 1, 70000))
+        )
+        cancel = asyncio.run(
+            adapter.cancel_order("KW1001", ticker="005930", quantity=1)
+        )
+
+        self.assertEqual(place["status"], "blocked")
+        self.assertEqual(place["mode"], "kiwoom_real_live_gate_blocked")
+        self.assertTrue(place["terminal"])
+        self.assertEqual(cancel["status"], "blocked")
+        self.assertEqual(cancel["mode"], "kiwoom_real_live_gate_blocked")
+        self.assertEqual(calls, [])
+
     def test_trading_blocks_live_broker_until_explicitly_enabled(self):
         os.environ["LECTURE_BROKER"] = "kiwoom"
 
@@ -296,6 +443,23 @@ class BrokerAdapterTest(unittest.TestCase):
         self.assertFalse(result["executed"])
         self.assertEqual(result["mode"], "live_blocked")
         self.assertEqual(result["broker"], "kiwoom")
+
+    def test_live_cli_blocks_before_exit_quote_monitoring(self):
+        with patch.dict(
+            os.environ,
+            {
+                "LECTURE_BROKER": "kis",
+                "LECTURE_ENABLE_LIVE_BROKER": "0",
+                "LECTURE_ALLOW_REAL_BROKER": "0",
+            },
+            clear=False,
+        ):
+            result = _live_cli_block_result()
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result["mode"], "live_blocked")
+        self.assertFalse(result["executed"])
+        self.assertEqual(result["broker"], "kis")
 
     def test_live_gate_isolated_test_never_reads_config_or_calls_adapter(self):
         live_keys = {

@@ -1,0 +1,13 @@
+<script>
+  const sellImage = [...document.querySelectorAll('img')]
+    .find(img => img.src.includes('sell_message.png'));
+  if (sellImage) sellImage.closest('section.slide').classList.add('archive-example');
+  const slides = [...document.querySelectorAll('section.slide')];
+  slides.forEach((slide, index) => {
+    if (slide.querySelector('.reference-shot')) slide.classList.add('image-focus');
+    const page = slide.querySelector('.pagenum');
+    if (page) page.textContent = String(index + 1) + ' / ' + String(slides.length);
+  });
+</script>
+</body>
+</html>

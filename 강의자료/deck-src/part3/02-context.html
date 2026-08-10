@@ -1,17 +1,17 @@
-<!-- P3-S07 · 시장이 흔들려도 어제와 같은 기준으로 후보를 골라도 될까요 -->
+<!-- P3-S08 · 어제는 강세장, 오늘은 약세장입니다. 후보를 같은 기준으로 골라도 될까요 -->
 <section class="slide split large-diagram">
   <div class="txt">
     <div class="kicker">모듈 1 · 먼저 풀 문제</div>
-    <h2>시장이 흔들려도 어제와 같은 기준으로 후보를 골라도 될까요?</h2>
+    <h2>어제는 강세장, 오늘은 약세장입니다. 후보를 같은 기준으로 골라도 될까요?</h2>
   </div>
   <div class="img">
     <img class="reference-shot" src="../docs/assets/prism-insight/market-pulse-batch-control-overview.png" alt="PRISM Insight의 오닐식 시장 방향 판단과 오전·오후 배치 제어">
     <p class="caption">Market Pulse는 막연한 변동성이 아니라 CAN SLIM의 M입니다. 대표지수의 종가·거래량으로 3상태를 계산하며, 기본 <code>shadow</code> 모드에서는 기록만 하고 배치를 막지 않습니다.</p>
   </div>
-  <div class="pagenum">7</div>
+  <div class="pagenum">8</div>
 </section>
 
-<!-- P3-S08 · 분산일은 하루의 숫자가 아니라 상태 변화입니다 -->
+<!-- P3-S09 · 분산일은 하루의 숫자가 아니라 상태 변화입니다 -->
 <section class="slide split large-diagram">
   <div class="txt">
     <div class="kicker">모듈 1 · 시장 위험 누적</div>
@@ -21,10 +21,10 @@
     <img class="reference-shot" src="../docs/assets/prism-insight/distribution-day-state-transitions.png" alt="분산일 누적과 시장 상태 전이">
     <p class="caption">대표지수가 전일보다 0.2% 이상 내리고 거래량이 늘면 분산일로 셉니다. 최근 25거래일의 0–3개·4–5개·6개 이상을 상승 흐름·매도 압력 증가·시장 조정으로 구분합니다.</p>
   </div>
-  <div class="pagenum">8</div>
+  <div class="pagenum">9</div>
 </section>
 
-<!-- P3-S09 · 시장 판단 두 가지는 서로 다른 일을 합니다 -->
+<!-- P3-S10 · 시장 판단 두 가지는 서로 다른 일을 합니다 -->
 <section class="slide split large-diagram">
   <div class="txt">
     <div class="kicker">모듈 1 · 시장 국면과 진입 정책</div>
@@ -34,10 +34,10 @@
     <img class="reference-shot" src="../docs/assets/prism-insight/trading-regime-entry-overview.png" alt="오닐식 시장 매수 환경과 스크리닝용 시장 체제의 차이">
     <p class="caption">PRISM에는 서로 목적이 다른 시장 분류가 있습니다. 오닐식 3상태는 분석 배치를, 스크리닝용 5상태는 후보 점수 비중과 주도 업종 자리를 정합니다.</p>
   </div>
-  <div class="pagenum">9</div>
+  <div class="pagenum">10</div>
 </section>
 
-<!-- P3-S10 · 오전과 오후는 서로 다른 움직임을 찾습니다 -->
+<!-- P3-S11 · 오전과 오후는 서로 다른 움직임을 찾습니다 -->
 <section class="slide split large-diagram">
   <div class="txt">
     <div class="kicker">모듈 1 · 여섯 선별 신호</div>
@@ -47,10 +47,10 @@
     <img class="reference-shot" src="../docs/assets/prism-insight/screening-six-triggers-overview.png" alt="오전 세 신호와 오후 세 신호">
     <p class="caption">오전 3개와 오후 3개 조건은 이름만 다른 점수표가 아니라 거래량 급증·갭·자금 집중·상승률·장마감 강세·횡보처럼 서로 다른 움직임을 찾습니다.</p>
   </div>
-  <div class="pagenum">10</div>
+  <div class="pagenum">11</div>
 </section>
 
-<!-- P3-S11 · 후보를 다시 점수 매겨 최대 세 종목만 넘깁니다 -->
+<!-- P3-S12 · 후보를 다시 점수 매겨 최대 세 종목만 넘깁니다 -->
 <section class="slide split large-diagram">
   <div class="txt">
     <div class="kicker">모듈 1 · 후보 재정렬</div>
@@ -60,10 +60,10 @@
     <img class="reference-shot" src="../docs/assets/prism-insight/candidate-screening-reranking-overview.png" alt="여섯 발견 조건에서 모은 후보를 시장 체제에 맞춰 재정렬하는 흐름">
     <p class="caption">발견 조건·예상 손익비·후보군 상대강도·20일선 과열도의 네 점수를 시장 체제별 비중으로 합칩니다. 최종 상한은 보통 3종목이며 post-FTD 직후에는 1종목으로 줄 수 있습니다.</p>
   </div>
-  <div class="pagenum">11</div>
+  <div class="pagenum">12</div>
 </section>
 
-<!-- P3-S12 · lecture-prism은 한 파일에 핵심 필터만 남겼습니다 -->
+<!-- P3-S13 · lecture-prism은 한 파일에 핵심 필터만 남겼습니다 -->
 <section class="slide comparison-slide">
   <div class="txt">
     <div class="kicker">원본과 강의용 축소판 비교</div>
@@ -73,10 +73,10 @@
     <img class="reference-shot comparison-shot" src="assets/lecture-compare-screening.png" alt="PRISM Insight 스크리닝 운영 구조와 lecture-prism의 data_source.py, screening.py 함수 흐름 비교">
     <p class="caption">큰 역할명부터 읽고, 아래 파일·함수명이 lecture-prism에서 실제로 실행되는 위치인지 확인합니다.</p>
   </div>
-  <div class="pagenum">12</div>
+  <div class="pagenum">13</div>
 </section>
 
-<!-- P3-S13 · 프롬프트 파일에서 P3-M1 전체를 복사합니다 -->
+<!-- P3-S14 · 프롬프트 파일에서 P3-M1 전체를 복사합니다 -->
 <section class="slide prompt-screen">
   <div class="kicker">모듈 1 · 이제 직접 확인할 차례</div>
   <h2>프롬프트 파일에서 <code>P3-M1 블록 전체</code>를 복사합니다</h2>
@@ -94,5 +94,5 @@
     </div>
   </div>
   <div class="prompt-branch">코드는 고치지 않고 연습 데이터로 한 번만 실행합니다. 조건을 바꾸는 실습은 파트 4에서 합니다.</div>
-  <div class="pagenum">13</div>
+  <div class="pagenum">14</div>
 </section>

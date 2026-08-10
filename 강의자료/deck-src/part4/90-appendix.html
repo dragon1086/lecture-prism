@@ -1,0 +1,49 @@
+<!-- P4-S33 · PRISM Insight 심화 구조 -->
+<section class="slide divider" id="p4-appendix">
+  <div class="chnum">APPENDIX</div>
+  <h1>PRISM Insight 심화 구조</h1>
+  <p class="sub">내 트랙과 연결될 때 필요한 화면만 골라 봅니다</p>
+  <div class="pagenum">부록</div>
+</section>
+
+<!-- P4-S34 · 시장 상태와 3개의 진입 게이트를 거쳐 진입·보류·미진입을 나눈다 -->
+<section class="slide split">
+  <div class="txt"><div class="kicker">PRISM Insight 서비스 구조</div><h2>시장 상태와 3개의 진입 게이트를 거쳐 진입·보류·미진입을 나눈다</h2><ul><li>시장 상태는 신규 진입의 문턱과 위험 한도에 연결</li><li>Q5의 핵심은 매수를 늘리는 것이 아니라 <strong>시장별 기준을 설명하는 것</strong></li><li>수업 기본은 상수 하나의 전후 비교</li></ul></div>
+  <div class="img"><img class="reference-shot" src="../docs/assets/prism-insight/trading-regime-entry-overview.png" alt="PRISM Insight 시장 상태와 진입 게이트 개념도"><p class="caption">서비스의 시장 상태·후보·포트폴리오 게이트 개념도입니다. 조건과 수치는 실제 문서 표를 따르며 lecture-prism의 기본 규칙과 동일하다고 가정하지 않습니다.</p></div>
+  <div class="pagenum">시황별 진입</div>
+</section>
+
+<!-- P4-S35 · 상태 기반 배치 제어와 보유 포지션 보호 루프는 분리되어 있다 -->
+<section class="slide split">
+  <div class="txt"><div class="kicker">PRISM Insight 서비스 운영 구조</div><h2>상태 기반 배치 제어와 보유 포지션 보호 루프는 분리되어 있다</h2><ul><li>main.py가 24시간 떠 있는 것이 아님</li><li>컴퓨터·서버가 켜져 있고, 운영체제가 정한 시각에 다시 시작</li><li>실패 시각·로그·중지 방법이 <strong>실행만큼 중요</strong></li></ul></div>
+  <div class="img"><img class="reference-shot" src="../docs/assets/prism-insight/market-pulse-batch-control-overview.png" alt="PRISM Insight 시장 펄스와 배치 제어 개념도"><p class="caption">PRISM Insight의 상태 기반 배치 제어·상시 포지션 보호 개념도입니다. P4-08의 오전·오후 mock 예약 설계보다 훨씬 넓은 서비스 운영 구조입니다.</p></div>
+  <div class="pagenum">예약과 배치</div>
+</section>
+
+<!-- P4-S36 · 신규 진입은 AI 시나리오와 결정 규칙의 여러 게이트를 함께 통과해야 한다 -->
+<section class="slide split">
+  <div class="txt"><div class="kicker">PRISM Insight 서비스 구조</div><h2>신규 진입은 AI 시나리오와 결정 규칙의 여러 게이트를 함께 통과해야 한다</h2><ul><li>후보·시장·점수·리스크의 서로 다른 확인을 통과</li><li>LLM의 설명은 정량 점수·목표가·손절가를 올리지 못함</li><li>불확실하면 HOLD로 미루는 것이 <strong>정상 결과</strong></li></ul></div>
+  <div class="img"><img class="reference-shot" src="../docs/assets/prism-insight/entry-gates-overview.png" alt="PRISM Insight 신규 진입 게이트 개념도"><p class="caption">서비스 신규 진입 게이트 개념도입니다. P4-10에서 프레이밍을 비교해도 lecture-prism의 정량 안전 경계는 바꾸지 않습니다.</p></div>
+  <div class="pagenum">진입 게이트</div>
+</section>
+
+<!-- P4-S37 · 피라미딩은 수익 포지션·시장 강도·업종 한도를 함께 확인하는 심화 기능이다 -->
+<section class="slide split">
+  <div class="txt"><div class="kicker">PRISM Insight 서비스 구조</div><h2>피라미딩은 수익 포지션·시장 강도·업종 한도를 함께 확인하는 심화 기능이다</h2><ul><li>피라미딩은 물타기와 다르고, 이미 수익인 리더에만 붙이는 심화 설계</li><li>Q21은 슬롯·점수·업종 한도를 함께 확인해야 함</li><li>기본 수업은 먼저 <strong>한 파일·한 규칙</strong>을 증명</li></ul></div>
+  <div class="img"><img class="reference-shot" src="../docs/assets/prism-insight/pyramiding-portfolio-overview.png" alt="PRISM Insight 피라미딩과 포트폴리오 제어 개념도"><p class="caption">서비스 피라미딩·업종 집중 제한 개념도입니다. lecture-prism 기본 실습에는 넣지 않고 Q21·Q22의 심화 사례로만 사용합니다.</p></div>
+  <div class="pagenum">심화 리스크</div>
+</section>
+
+<!-- P4-S38 · 매매 기록·교훈·원칙은 다음 후보 판단에 제한적으로 다시 제공된다 -->
+<section class="slide split">
+  <div class="txt"><div class="kicker">PRISM Insight 서비스 구조</div><h2>매매 기록·교훈·원칙은 다음 후보 판단에 제한적으로 다시 제공된다</h2><ul><li>오늘의 입력·결정·결과를 남겨야 수정 전후를 비교</li><li>기억은 전략·공통 지침·자동 memory·handoff로 역할을 나눔</li><li>Q9·Q10은 <strong>모델 재학습이 아니라 기록 기반 개선</strong>의 이야기</li></ul></div>
+  <div class="img"><img class="reference-shot" src="../docs/assets/prism-insight/feedback-reentry-overview.png" alt="PRISM Insight 매매일지 피드백과 재진입 제한 개념도"><p class="caption">서비스 피드백·재진입 제한 개념도입니다. 자동 강화학습이 아니며 P4-09의 handoff와는 목적이 다릅니다.</p></div>
+  <div class="pagenum">피드백 루프</div>
+</section>
+
+<!-- P4-S39 · 매도 알림은 서비스가 남긴 한 시점의 거래 기록이다 -->
+<section class="slide split">
+  <div class="txt"><div class="kicker">PRISM Insight 서비스 알림 사례</div><h2>매도 알림은 서비스가 남긴 한 시점의 거래 기록이다</h2><ul><li>원본의 매도 메시지는 운영 기록의 한 조각</li><li>lecture-prism 수업에서는 실제 주문을 보내지 않고 simulation으로만 연습</li><li>Q29–Q33은 실운영 안전 질문이며, <strong>수업의 기본 경계를 넓히지 않음</strong></li></ul></div>
+  <div class="img"><img class="reference-shot" src="../docs/assets/prism-insight/sell_message.png" alt="PRISM Insight 매도 알림 예시"><p class="caption">PRISM Insight 서비스 알림 예시입니다. 당시 기록일 뿐이며 현재 추천·매도 권유·수강생 실습 결과가 아닙니다.</p></div>
+  <div class="pagenum">운영 경계</div>
+</section>

@@ -1,5 +1,6 @@
 import os
 import unittest
+from unittest import mock
 
 import runtime_config
 
@@ -29,13 +30,21 @@ class RuntimeConfigTest(unittest.TestCase):
         self._saved = {key: os.environ.get(key) for key in _ENV_KEYS}
         for key in _ENV_KEYS:
             os.environ.pop(key, None)
+        self._load_env_patch = mock.patch.object(runtime_config, "load_dotenv_once")
+        self.load_dotenv_once = self._load_env_patch.start()
 
     def tearDown(self):
+        self._load_env_patch.stop()
         for key, value in self._saved.items():
             if value is None:
                 os.environ.pop(key, None)
             else:
                 os.environ[key] = value
+
+    def test_load_runtime_config_uses_explicit_loader_boundary_under_unittest(self):
+        runtime_config.load_runtime_config("mock")
+
+        self.load_dotenv_once.assert_called_once_with()
 
     def test_default_profile_is_mock_and_simulation_safe(self):
         cfg = runtime_config.load_runtime_config()

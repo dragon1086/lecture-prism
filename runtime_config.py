@@ -14,6 +14,7 @@ from typing import Iterator
 
 from brokers.config import load_dotenv_once, normalize_mode, truthy
 from brokers.factory import selected_broker_name
+from operations_runtime import LIVE_BROKER_UNATTENDED_ACK
 
 
 _PROFILE_DEFAULTS = {

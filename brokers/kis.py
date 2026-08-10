@@ -9,7 +9,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from .base import BrokerOrder
+from .base import (
+    DEFAULT_QUOTE_MAX_AGE,
+    BrokerOrder,
+    BrokerQuote,
+    BrokerQuoteError,
+    real_mode_mutation_block,
+    validate_broker_quote,
+)
 from .config import normalize_mode
 
 _DEFAULT_KIS_CONFIG = Path(__file__).resolve().parents[1] / "trading" / "trading" / "config" / "kis_devlp.yaml"
@@ -63,12 +70,16 @@ class KISBrokerAdapter:
         self._gate = gate
         self._clock = clock or (lambda: datetime.now(timezone.utc))
 
-    def _dependencies(self):
+    def _client_dependency(self):
         if self._client is None:
             from .kis_client import KISClient, KISConfig
 
             config_mode = "paper" if self.mode == "demo" else "real"
             self._client = KISClient(KISConfig.from_env(config_mode))
+        return self._client
+
+    def _dependencies(self):
+        self._client_dependency()
         if self._gate is None:
             import db
             from market_calendar import MarketGate
@@ -95,6 +106,9 @@ class KISBrokerAdapter:
         }
 
     async def place_order(self, order: BrokerOrder) -> dict[str, Any]:
+        blocked = real_mode_mutation_block(self.name, self.mode)
+        if blocked is not None:
+            return blocked
         try:
             client, gate = self._dependencies()
             market_status = await asyncio.to_thread(
@@ -147,6 +161,26 @@ class KISBrokerAdapter:
         client, _ = self._dependencies()
         return await asyncio.to_thread(client.get_balance)
 
+    async def check_authentication(self) -> dict[str, Any]:
+        client = self._client_dependency()
+        await asyncio.to_thread(client.authenticate)
+        return {"authenticated": True}
+
+    async def get_quote(self, ticker: str) -> BrokerQuote:
+        client = self._client_dependency()
+        try:
+            quote = await asyncio.to_thread(client.get_quote, ticker)
+            return validate_broker_quote(
+                quote,
+                expected_ticker=ticker,
+                now=self._clock(),
+                max_age=DEFAULT_QUOTE_MAX_AGE,
+            )
+        except BrokerQuoteError:
+            raise
+        except Exception as exc:
+            raise BrokerQuoteError(f"KIS quote unavailable: {exc}") from exc
+
     async def get_orderable_quantity(self, ticker: str, price: int) -> int:
         client, _ = self._dependencies()
         return await asyncio.to_thread(
@@ -168,7 +202,24 @@ class KISBrokerAdapter:
             business_date=selected_date,
         )
 
+    async def get_pending_orders(
+        self, *, business_date: str | None = None
+    ) -> dict[str, Any]:
+        client, _ = self._dependencies()
+        from market_calendar import KST
+
+        selected_date = business_date or self._clock().astimezone(KST).strftime(
+            "%Y%m%d"
+        )
+        return await asyncio.to_thread(
+            client.get_pending_orders,
+            business_date=selected_date,
+        )
+
     async def cancel_order(self, order_no: str, **details) -> dict[str, Any]:
+        blocked = real_mode_mutation_block(self.name, self.mode)
+        if blocked is not None:
+            return blocked
         client, _ = self._dependencies()
         return await asyncio.to_thread(
             client.cancel_order, order_no, **details

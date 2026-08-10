@@ -9,7 +9,7 @@ import os
 import re
 from typing import Any
 
-from .base import BrokerOrder
+from .base import BrokerOrder, BrokerQuote, real_mode_mutation_block
 from .config import normalize_mode
 from .tossctl import (
     TossctlClient,
@@ -329,6 +329,9 @@ class TossBrokerAdapter:
                 "Toss WTS에는 모의투자 backend가 없어 real 모드에서만 주문할 수 있습니다.",
                 mode="mode_blocked",
             )
+        blocked = real_mode_mutation_block(self.name, self.mode)
+        if blocked is not None:
+            return blocked
         auth = await self.check_auth()
         if not auth.get("success"):
             return auth
@@ -439,6 +442,9 @@ class TossBrokerAdapter:
                 "Toss WTS 취소는 real 모드에서만 실행할 수 있습니다.",
                 mode="mode_blocked",
             )
+        blocked = real_mode_mutation_block(self.name, self.mode)
+        if blocked is not None:
+            return blocked
         auth = await self.check_auth()
         if not auth.get("success"):
             return auth
@@ -489,3 +495,337 @@ class TossBrokerAdapter:
                 "mode": "toss_cancel_preview_blocked",
                 "message": str(exc),
             }
+
+
+class TossOfficialError(RuntimeError):
+    """Base error for the official Toss Open API teaching boundary."""
+
+
+class TossOfficialConfigurationError(TossOfficialError):
+    """Raised when official Open API credentials/client are unavailable."""
+
+
+class TossOfficialRateLimitError(TossOfficialError):
+    """Raised when official REST rate limits make readiness unsafe."""
+
+
+class TossOfficialSchemaError(TossOfficialError):
+    """Raised when official REST payloads are missing required fields."""
+
+
+def _official_block(message: str, *, mode: str) -> dict[str, Any]:
+    return {
+        "success": False,
+        "status": "blocked",
+        "accepted": False,
+        "executed": False,
+        "terminal": True,
+        "mode": f"toss_official_{mode}",
+        "order_no": None,
+        "message": message,
+    }
+
+
+def _strict_decimal(payload: dict[str, Any], key: str) -> Decimal:
+    if key not in payload or payload[key] is None or isinstance(payload[key], bool):
+        raise TossOfficialSchemaError(f"Toss official field is required: {key}")
+    try:
+        parsed = Decimal(str(payload[key]))
+    except (InvalidOperation, TypeError, ValueError) as exc:
+        raise TossOfficialSchemaError(
+            f"Toss official field must be numeric: {key}"
+        ) from exc
+    if not parsed.is_finite() or parsed < 0:
+        raise TossOfficialSchemaError(
+            f"Toss official field must be finite and non-negative: {key}"
+        )
+    return parsed
+
+
+def _official_iso(value: Any, *, fallback) -> datetime:
+    if value in (None, ""):
+        now = fallback()
+        if now.tzinfo is None:
+            now = now.replace(tzinfo=timezone.utc)
+        return now.astimezone(timezone.utc)
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except (TypeError, ValueError) as exc:
+        raise TossOfficialSchemaError("Toss official timestamp is malformed") from exc
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def _call_error(exc: Exception) -> Exception:
+    text = str(exc).lower()
+    if isinstance(exc, TossOfficialError):
+        return exc
+    if "429" in text or "rate limit" in text or "rate-limit" in text:
+        return TossOfficialRateLimitError("Toss official REST rate limit exceeded")
+    return exc
+
+
+class TossOfficialOpenAPIAdapter:
+    """Official Toss Open API read-only/lifecycle boundary.
+
+    This class deliberately does not implement live order E2E. The official
+    API has no paper/demo environment, and order/cancel calls remain blocked
+    until a separately approved real-account E2E is added.
+    """
+
+    name = "toss"
+    integration = "official_open_api"
+    credential_keys = (
+        "TOSS_OPENAPI_CLIENT_ID",
+        "TOSS_OPENAPI_CLIENT_SECRET",
+        "TOSS_OPENAPI_ACCOUNT_SEQ",
+    )
+
+    def __init__(
+        self,
+        *,
+        mode: str | None = None,
+        client: Any | None = None,
+        env: dict[str, str] | None = None,
+        clock=None,
+    ) -> None:
+        source = env if env is not None else os.environ
+        self.mode = normalize_mode(
+            mode
+            or source.get("TOSS_OPENAPI_MODE")
+            or source.get("TOSS_SECURITIES_MODE")
+            or source.get("LECTURE_BROKER_MODE"),
+            default="real",
+        )
+        self._client = client
+        self._clock = clock or (lambda: datetime.now(timezone.utc))
+
+    @classmethod
+    def missing_credentials(cls, env: dict[str, str] | Any) -> list[str]:
+        return [key for key in cls.credential_keys if not str(env.get(key, "")).strip()]
+
+    async def _call(self, *names: str, args: tuple[Any, ...] = ()):
+        if self._client is None:
+            raise TossOfficialConfigurationError(
+                "Toss official Open API client is not configured"
+            )
+        method = None
+        for name in names:
+            candidate = getattr(self._client, name, None)
+            if callable(candidate):
+                method = candidate
+                break
+        if method is None:
+            raise TossOfficialConfigurationError(
+                "Toss official Open API client is missing read capability"
+            )
+        try:
+            result = method(*args)
+            if hasattr(result, "__await__"):
+                return await result
+            return result
+        except Exception as exc:  # noqa: BLE001 - classify external read failures
+            raise _call_error(exc) from exc
+
+    def _require_live_read(self) -> None:
+        if self.mode != "real":
+            raise TossOfficialConfigurationError(
+                "Toss official Open API has no paper/demo environment"
+            )
+
+    async def check_authentication(self) -> dict[str, Any]:
+        await self.get_account()
+        return {"authenticated": True}
+
+    async def get_account(self) -> dict[str, Any]:
+        self._require_live_read()
+        payload = await self._call("accounts", "Accounts")
+        if not isinstance(payload, list):
+            raise TossOfficialSchemaError("Toss official accounts payload must be a list")
+        accounts: list[dict[str, Any]] = []
+        for item in payload:
+            if not isinstance(item, dict):
+                raise TossOfficialSchemaError("Toss official account item is malformed")
+            seq = item.get("accountSeq", item.get("id"))
+            if seq in (None, "") or isinstance(seq, bool):
+                raise TossOfficialSchemaError(
+                    "Toss official accountSeq is required"
+                )
+            accounts.append(
+                {
+                    "account_seq": str(seq),
+                    "account_type": str(item.get("accountType") or item.get("type") or ""),
+                }
+            )
+        return {"accounts_count": len(accounts), "accounts": accounts}
+
+    async def get_sellable_quantity(self, ticker: str) -> int:
+        self._require_live_read()
+        payload = await self._call("holdings", "Holdings", args=(str(ticker),))
+        if not isinstance(payload, list):
+            raise TossOfficialSchemaError("Toss official holdings payload must be a list")
+        total = Decimal("0")
+        for item in payload:
+            if not isinstance(item, dict):
+                raise TossOfficialSchemaError("Toss official holdings item is malformed")
+            if str(item.get("symbol") or "") != str(ticker):
+                continue
+            quantity = _strict_decimal(item, "quantity")
+            if quantity != quantity.to_integral_value():
+                raise TossOfficialSchemaError(
+                    "Toss official KR holding quantity must be an integer"
+                )
+            total += quantity
+        return int(total)
+
+    async def get_orderable_quantity(self, ticker: str, price: int) -> int:
+        if price <= 0:
+            raise ValueError("price must be positive")
+        # The official REST buying-power endpoint is a read-only account path,
+        # but live order E2E is still blocked elsewhere.
+        self._require_live_read()
+        payload = await self._call("buying_power", "BuyingPower", args=("KRW",))
+        if not isinstance(payload, dict):
+            raise TossOfficialSchemaError(
+                "Toss official buying power payload must be an object"
+            )
+        amount = _strict_decimal(payload, "cashBuyingPower")
+        return max(int(amount // Decimal(str(price))), 0)
+
+    async def get_quote(self, ticker: str) -> BrokerQuote:
+        self._require_live_read()
+        payload = await self._call("quote", "Price", "Prices", args=(str(ticker),))
+        if isinstance(payload, list):
+            payload = next(
+                (item for item in payload if isinstance(item, dict) and str(item.get("symbol")) == str(ticker)),
+                None,
+            )
+        if not isinstance(payload, dict):
+            raise TossOfficialSchemaError("Toss official quote payload is malformed")
+        symbol = str(payload.get("symbol") or "")
+        if symbol != str(ticker):
+            raise TossOfficialSchemaError("Toss official quote ticker mismatch")
+        raw_price = payload.get("price", payload.get("lastPrice"))
+        price = _strict_decimal({"price": raw_price}, "price")
+        if price != price.to_integral_value():
+            raise TossOfficialSchemaError("Toss official KR quote price must be integral")
+        currency = str(payload.get("currency") or "").upper()
+        if currency != "KRW":
+            raise TossOfficialSchemaError("Toss official quote currency must be KRW")
+        market = str(payload.get("market") or payload.get("marketCountry") or "KRX").upper()
+        if market in {"KOSPI", "KOSDAQ", "KR", ""}:
+            market = "KRX"
+        observed = _official_iso(
+            payload.get("observedAt", payload.get("timestamp")),
+            fallback=self._clock,
+        )
+        return BrokerQuote(
+            ticker=symbol,
+            price=int(price),
+            currency="KRW",
+            market=market,
+            observed_at=observed,
+            source="toss.official.openapi",
+        )
+
+    async def get_pending_orders(self) -> list[dict[str, Any]]:
+        self._require_live_read()
+        payload = await self._call("pending_orders", "Orders")
+        if not isinstance(payload, list):
+            raise TossOfficialSchemaError(
+                "Toss official pending orders payload must be a list"
+            )
+        return [self.normalize_order_snapshot(item) for item in payload]
+
+    async def get_order_status(self, order_id: str, *, market: str = "kr") -> dict[str, Any]:
+        del market
+        self._require_live_read()
+        payload = await self._call("order_status", "OrderByID", args=(str(order_id),))
+        return self.normalize_order_snapshot(payload)
+
+    @staticmethod
+    def normalize_order_snapshot(payload: Any) -> dict[str, Any]:
+        if not isinstance(payload, dict):
+            raise TossOfficialSchemaError("Toss official order payload is malformed")
+        order_no = payload.get("orderId") or payload.get("id")
+        requested = _strict_decimal(payload, "quantity")
+        if requested != requested.to_integral_value() or requested <= 0:
+            raise TossOfficialSchemaError("Toss official order quantity is invalid")
+        execution = payload.get("execution") or {}
+        if not isinstance(execution, dict):
+            raise TossOfficialSchemaError("Toss official execution payload is malformed")
+        filled = _strict_decimal(
+            {"filledQuantity": execution.get("filledQuantity", "0")},
+            "filledQuantity",
+        )
+        if filled != filled.to_integral_value() or filled > requested:
+            raise TossOfficialSchemaError("Toss official filled quantity is invalid")
+        average = Decimal("0")
+        if filled:
+            average = _strict_decimal(
+                {"averageFilledPrice": execution.get("averageFilledPrice")},
+                "averageFilledPrice",
+            )
+            if average <= 0:
+                raise TossOfficialSchemaError(
+                    "Toss official filled order missing average price"
+                )
+        raw_status = str(payload.get("status") or "").strip().upper()
+        if raw_status == "OPEN":
+            status = "partial" if filled else "accepted"
+        elif raw_status == "CLOSED":
+            status = "filled" if filled == requested else "canceled"
+        elif raw_status in {"CANCELED", "CANCELLED"}:
+            status = "canceled"
+        elif raw_status == "REJECTED":
+            status = "rejected"
+        else:
+            status = "unknown"
+        terminal = status in {"filled", "canceled", "rejected"}
+        return {
+            "status": status,
+            "accepted": status in {"accepted", "partial", "filled", "canceled"},
+            "executed": status == "filled",
+            "terminal": terminal,
+            "order_no": str(order_no) if order_no else None,
+            "order_date": str(payload.get("orderedAt") or "")[:10] or None,
+            "requested_qty": int(requested),
+            "filled_qty": int(filled),
+            "remaining_qty": max(int(requested - filled), 0),
+            "average_fill_price": float(average) if filled else None,
+        }
+
+    async def place_order(self, order: BrokerOrder) -> dict[str, Any]:
+        del order
+        if self.mode != "real":
+            return _official_block(
+                "Toss official Open API has no paper/demo environment.",
+                mode="paper_unavailable",
+            )
+        blocked = real_mode_mutation_block(
+            "toss", self.mode, mode_prefix="toss_official"
+        )
+        if blocked is not None:
+            return blocked
+        return _official_block(
+            "Toss official live order E2E is not approved in lecture-prism.",
+            mode="order_e2e_required",
+        )
+
+    async def cancel_order(self, order_id: str, **details) -> dict[str, Any]:
+        del order_id, details
+        if self.mode != "real":
+            return _official_block(
+                "Toss official Open API has no paper/demo environment.",
+                mode="paper_unavailable",
+            )
+        blocked = real_mode_mutation_block(
+            "toss", self.mode, mode_prefix="toss_official"
+        )
+        if blocked is not None:
+            return blocked
+        return _official_block(
+            "Toss official live cancel E2E is not approved in lecture-prism.",
+            mode="order_e2e_required",
+        )

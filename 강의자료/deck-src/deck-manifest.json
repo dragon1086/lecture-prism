@@ -12,71 +12,76 @@
             {"id": "P3-S01", "title": "파트 3 · 실전 자동매매 시스템의 · 구현 패턴", "promptId": null},
             {"id": "P3-S02", "title": "코드는 공개하고, 판단은 기록으로 남깁니다", "promptId": null},
             {"id": "P3-S03", "title": "첫 5분, 왜 이걸 배울까", "promptId": null},
-            {"id": "P3-S04", "title": "자동매매는 이렇게 · 한 바퀴 돕니다", "promptId": null}
+            {"id": "P3-S04", "title": "오늘 수업이 끝나면, 이 네 가지를 할 수 있습니다", "promptId": null},
+            {"id": "P3-S05", "title": "자동매매는 이렇게 · 한 바퀴 돕니다", "promptId": null}
           ]
         },
         {
           "file": "part3/01-first-success.html",
           "slides": [
-            {"id": "P3-S05", "title": "한 번 실행하면, 이 파일들이 함께 움직입니다", "promptId": null},
-            {"id": "P3-S06", "title": "원본 PRISM은 시장부터 기억까지 한 줄로 잇습니다", "promptId": null}
+            {"id": "P3-S06", "title": "한 번 실행하면, 이 파일들이 함께 움직입니다", "promptId": null},
+            {"id": "P3-S07", "title": "원본 PRISM은 시장부터 기억까지 한 줄로 잇습니다", "promptId": null}
           ]
         },
         {
           "file": "part3/02-context.html",
           "slides": [
-            {"id": "P3-S07", "title": "시장이 흔들려도 어제와 같은 기준으로 후보를 골라도 될까요?", "promptId": null},
-            {"id": "P3-S08", "title": "분산일은 하루의 숫자가 아니라 상태 변화입니다", "promptId": null},
-            {"id": "P3-S09", "title": "시장 판단 두 가지는 서로 다른 일을 합니다", "promptId": null},
-            {"id": "P3-S10", "title": "오전과 오후는 서로 다른 움직임을 찾습니다", "promptId": null},
-            {"id": "P3-S11", "title": "후보를 다시 점수 매겨 최대 세 종목만 넘깁니다", "promptId": null},
-            {"id": "P3-S12", "title": "운영망을 한 파일의 필터 흐름으로 줄였습니다", "promptId": null},
-            {"id": "P3-S13", "title": "프롬프트 파일에서 P3-M1 전체를 복사합니다", "promptId": "P3-M1"}
+            {"id": "P3-S08", "title": "어제는 강세장, 오늘은 약세장입니다. 후보를 같은 기준으로 골라도 될까요?", "promptId": null},
+            {"id": "P3-S09", "title": "분산일은 하루의 숫자가 아니라 상태 변화입니다", "promptId": null},
+            {"id": "P3-S10", "title": "시장 판단 두 가지는 서로 다른 일을 합니다", "promptId": null},
+            {"id": "P3-S11", "title": "오전과 오후는 서로 다른 움직임을 찾습니다", "promptId": null},
+            {"id": "P3-S12", "title": "후보를 다시 점수 매겨 최대 세 종목만 넘깁니다", "promptId": null},
+            {"id": "P3-S13", "title": "운영망을 한 파일의 필터 흐름으로 줄였습니다", "promptId": null},
+            {"id": "P3-S14", "title": "프롬프트 파일에서 P3-M1 전체를 복사합니다", "promptId": "P3-M1"}
           ]
         },
         {
           "file": "part3/03-system-map.html",
           "slides": [
-            {"id": "P3-S14", "title": "차트가 좋아 보인다는 이유만으로 종목 분석을 끝내도 될까요?", "promptId": null},
-            {"id": "P3-S15", "title": "여섯 에이전트는 질문과 출력이 다릅니다", "promptId": null},
-            {"id": "P3-S16", "title": "숫자를 읽는 프롬프트는 계산과 근거를 강제합니다", "promptId": null},
-            {"id": "P3-S17", "title": "맥락을 읽는 프롬프트는 출처와 범위를 제한합니다", "promptId": null},
-            {"id": "P3-S18", "title": "여섯 보고서는 조건부 투자 전략과 요약으로 합쳐집니다", "promptId": null},
-            {"id": "P3-S19", "title": "강의용도 여섯 전문 에이전트와 편집 에이전트를 조립합니다", "promptId": null},
-            {"id": "P3-S20", "title": "프롬프트 파일에서 P3-M2 블록 전체를 복사합니다", "promptId": "P3-M2"}
+            {"id": "P3-S15", "title": "이 종목을 사기 전에, 어떤 정보까지 확인하고 싶으세요?", "promptId": null},
+            {"id": "P3-S16", "title": "여섯 에이전트는 질문과 출력이 다릅니다", "promptId": null},
+            {"id": "P3-S17", "title": "숫자를 읽는 프롬프트는 계산과 근거를 강제합니다", "promptId": null},
+            {"id": "P3-S18", "title": "맥락을 읽는 프롬프트는 출처와 범위를 제한합니다", "promptId": null},
+            {"id": "P3-S19", "title": "여섯 보고서는 조건부 투자 전략과 요약으로 합쳐집니다", "promptId": null},
+            {"id": "P3-S20", "title": "강의용도 여섯 전문 에이전트와 편집 에이전트를 조립합니다", "promptId": null},
+            {"id": "P3-S21", "title": "프롬프트 파일에서 P3-M2 블록 전체를 복사합니다", "promptId": "P3-M2"},
+            {"id": "P3-S22", "title": "보고서의 빈칸은 더 좋은 LLM이 아니라 알맞은 데이터로 채웁니다", "promptId": null}
           ]
         },
         {
           "file": "part3/04-guided-practice.html",
           "slides": [
-            {"id": "P3-S21", "title": "AI가 BUY 8점을 줬는데 주문이 0건이면 오류일까요?", "promptId": null},
-            {"id": "P3-S22", "title": "뒤의 세 글자는 리더십과 시장을 봅니다", "promptId": null},
-            {"id": "P3-S23", "title": "에이전트가 Enter라고 해도 코드 게이트를 통과해야 합니다", "promptId": null},
-            {"id": "P3-S24", "title": "수익 중인 강한 종목만 추가 진입을 검토합니다", "promptId": null},
-            {"id": "P3-S25", "title": "매도는 손실 제한부터 확인합니다", "promptId": null},
-            {"id": "P3-S26", "title": "보조 감시 루프가 포지션을 따로 지킵니다", "promptId": null},
-            {"id": "P3-S27", "title": "매수 에이전트의 의견 뒤에 코드 안전문을 둡니다", "promptId": null},
-            {"id": "P3-S28", "title": "브로커가 주문을 받았다고 매매가 끝난 것은 아닙니다", "promptId": null},
-            {"id": "P3-S29", "title": "프롬프트 파일에서 P3-M3 블록 전체를 복사합니다", "promptId": "P3-M3"},
-            {"id": "P3-S30", "title": "장 시작 때 한 번 돌렸다고 자동매매가 끝나지는 않습니다", "promptId": null}
+            {"id": "P3-S23", "title": "AI가 매수를 추천했습니다. 이 의견만 믿고 주문해도 될까요?", "promptId": null},
+            {"id": "P3-S24", "title": "기업 성장과 수급을 함께 봅니다", "promptId": null},
+            {"id": "P3-S25", "title": "뒤의 세 글자는 리더십과 시장을 봅니다", "promptId": null},
+            {"id": "P3-S26", "title": "에이전트가 Enter라고 해도 코드 게이트를 통과해야 합니다", "promptId": null},
+            {"id": "P3-S27", "title": "수익 중인 강한 종목만 추가 진입을 검토합니다", "promptId": null},
+            {"id": "P3-S28", "title": "매도는 손실 제한부터 확인합니다", "promptId": null},
+            {"id": "P3-S29", "title": "보조 감시 루프가 포지션을 따로 지킵니다", "promptId": null},
+            {"id": "P3-S30", "title": "AI가 매수를 제안해도 코드가 주문 조건을 다시 확인합니다", "promptId": null},
+            {"id": "P3-S31", "title": "브로커가 주문을 받았다고 매매가 끝난 것은 아닙니다", "promptId": null},
+            {"id": "P3-S32", "title": "프롬프트 파일에서 P3-M3 블록 전체를 복사합니다", "promptId": "P3-M3"}
           ]
         },
         {
           "file": "part3/05-bridge.html",
           "slides": [
-            {"id": "P3-S31", "title": "방금 샀는데 아직 결과도 모르면서 성공 교훈을 만들어도 될까요?", "promptId": null},
-            {"id": "P3-S32", "title": "기억은 저장만 해서는 다음 판단에 영향을 주지 못합니다", "promptId": null},
-            {"id": "P3-S33", "title": "실제 운영에서는 매주 기록을 압축합니다", "promptId": null},
-            {"id": "P3-S34", "title": "기억은 많이 쌓는 것보다 쓸 만하게 유지하는 게 중요합니다", "promptId": null},
-            {"id": "P3-S35", "title": "AI 회고와 기억 시스템을 기록·압축·예약 작업의 작은 루프로 줄였습니다", "promptId": null},
-            {"id": "P3-S36", "title": "프롬프트 파일에서 P3-M4 블록 전체를 복사합니다", "promptId": "P3-M4"},
-            {"id": "P3-S37", "title": "자동매매는 메인 로직과 보조 운영이 함께 있어야 돌아갑니다", "promptId": null}
+            {"id": "P3-S33", "title": "어제 손절한 종목이 오늘 다시 떴습니다. 다시 사도 될까요?", "promptId": null},
+            {"id": "P3-S34", "title": "기억은 저장만 해서는 다음 판단에 영향을 주지 못합니다", "promptId": null},
+            {"id": "P3-S35", "title": "실제 운영에서는 매주 기록을 압축합니다", "promptId": null},
+            {"id": "P3-S36", "title": "기억은 많이 쌓는 것보다 쓸 만하게 유지하는 게 중요합니다", "promptId": null},
+            {"id": "P3-S37", "title": "AI 회고와 기억 시스템을 기록·압축·예약 작업의 작은 루프로 줄였습니다", "promptId": null},
+            {"id": "P3-S38", "title": "프롬프트 파일에서 P3-M4 블록 전체를 복사합니다", "promptId": "P3-M4"},
+            {"id": "P3-S39", "title": "자동매매는 메인 로직과 보조 운영이 함께 있어야 돌아갑니다", "promptId": null},
+            {"id": "P3-S40", "title": "매일 돌리려면 다섯 가지를 따로 챙겨야 합니다", "promptId": null},
+            {"id": "P3-S41", "title": "내 컴퓨터에서는 이 순서로 준비 상태를 확인합니다", "promptId": "P3-M5"},
+            {"id": "P3-S42", "title": "대시보드에서는 실행 결과 세 곳만 확인합니다", "promptId": "P3-05"}
           ]
         },
         {
           "file": "part3/99-close.html",
           "slides": [
-            {"id": "P3-S38", "title": "오늘 바로 바꿔 볼 한 가지는 무엇입니까?", "promptId": null}
+            {"id": "P3-S43", "title": "오늘 배운 것 중 내 전략에 먼저 적용할 한 가지는 무엇입니까?", "promptId": null}
           ]
         }
       ]

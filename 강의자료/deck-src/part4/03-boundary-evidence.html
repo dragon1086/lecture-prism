@@ -1,0 +1,81 @@
+<!-- P4-S15 · 동결을 선언하면 AI가 함부로 못 고칩니다 -->
+<section class="slide">
+  <div class="kicker">순간 2 — 지킬 것을 정할 때</div>
+  <h2>동결을 선언하면 AI가 함부로 못 고칩니다</h2>
+  <div class="prompt" style="font-size:19px; line-height:1.6;">"너는 시스템 트레이딩 부검 분석가다. [동결 전략 — 변경 금지, 평가 기준일 뿐] … 숫자는 facts에 있는 값만 인용하고 새로 계산하지 마라. 룰 변경 제안 금지. 잦은 손절은 정상 비용이며 실패가 아니다"
+  <span class="cap">— 강사 실제 프롬프트 (2026-06, 매매 복기 자동화)</span></div>
+  <ul style="font-size:24px;">
+    <li><strong>동결 선언</strong> → <em>"손절 −7%는 건드리지 마. 수량 계산만 바꿔"</em></li>
+    <li><strong>지어내기 금지</strong> → <em>"실행 결과에 나온 숫자만 인용해"</em></li>
+    <li><strong>내 의도 설명</strong> → <em>"목표가를 지나쳐도 안 파는 게 내 전략이야"</em></li>
+  </ul>
+  <div class="src">근거: Anthropic 공식 가이드 — "수정 범위를 명시하고, 범위 밖 변경이 없는지 점검하라" · "근거 자료에 있는 값만 쓰게 하라" · "지시의 이유를 설명하면 목표를 더 정확히 이해한다"</div>
+  <div class="pagenum">12</div>
+</section>
+
+<!-- P4-S16 · AI의 보고를 그대로 믿지 않습니다 -->
+<section class="slide">
+  <div class="kicker">순간 3 — 결과를 받았을 때</div>
+  <h2>AI의 보고를 그대로 믿지 않습니다</h2>
+  <ul style="font-size:24px;">
+    <li><strong>고치기 전에 확인시킴</strong> → <em>"원인 넘겨짚지 말고, 실행해서 에러부터 보여줘"</em></li>
+    <li><strong>아니라고 말함 (+근거)</strong> · <strong>큰 일은 나눠 시킴</strong> ↓</li>
+  </ul>
+  <div class="prompt" style="font-size:19px;">"솔직히 그 방법은 안 될 것 같아. 그 점수는 AI가 임의로 정한 거고, 프롬프트가 손실회피 성향이면 점수를 무조건 낮게 부르더라고"
+  <span class="cap">— AI의 그럴듯한 제안을 1년 운영 경험으로 거절. 근거를 대면 AI가 방향을 바꿈</span></div>
+  <div class="prompt" style="font-size:19px;">"내 경험상 너는 최근 작업 몇 개만 기억하고 최신일수록 중요하다고 표시하는 경향이 있어. 단계를 세분화해서 여러 파일로 나눠 저장한 뒤 병합해줘"
+  <span class="cap">— AI가 틀리는 지점을 미리 알고 작업 '방식'까지 지정 (1년치 기록 정리)</span></div>
+  <div class="src">근거: Anthropic 공식 가이드 — "고치기 전에 문제를 재현하는 테스트부터 만들게 하라" · "궤도를 벗어나면 빨리, 자주 교정하라" · "큰 작업은 목록으로 쪼개 건별로 시켜라"</div>
+  <div class="pagenum">13</div>
+</section>
+
+<!-- P4-S17 · 강사가 실제로 겪은 AI 사고 3건 -->
+<section class="slide">
+  <div class="kicker">그래도 사고는 납니다</div>
+  <h2>강사가 실제로 겪은 AI 사고 3건</h2>
+  <ul>
+    <li><strong>원인을 넘겨짚고 손부터 댐</strong> — 진짜 원인은 설정 한 줄. "고치기 전에 확인부터 해"로 교정</li>
+    <li><strong>겁 없이 무거운 작업 실행</strong> — 시간제한 없는 백테스트가 운영 봇을 두 번 멈춤 → 긴 작업은 격리</li>
+    <li><strong>검증 꼼수</strong> — 코드 성적을 지표 트릭으로 올리려다 적발 → 정직한 개선 요구로 진짜 등급 상승</li>
+  </ul>
+  <p class="note">그래서 순간 3(검증)이 습관이어야 함 — 오늘 실습의 '전후 비교'가 그 시작</p>
+  <div class="src">출처: 강사 Claude Code 사용 리포트(/insights, 17세션·462메시지 실측)</div>
+  <div class="pagenum">14</div>
+</section>
+
+<!-- P4-S18 · AI가 과거를 기억하게 만드는 구조 -->
+<section class="slide">
+  <div class="kicker">프롬프트 다음 단계</div>
+  <h2>AI가 과거를 기억하게 만드는 구조</h2>
+  <p style="font-size:21px; color:var(--muted); margin:-14px 0 20px; line-height:1.5;">프롬프트를 잘 쓰는 게 1층이라면, <strong>AI 눈앞에 무엇을 보여줄지 설계하는 게 2층</strong> — 업계에서는 '컨텍스트 엔지니어링'이라 부름</p>
+  <div style="font-size:17px; font-weight:800; color: var(--accent); margin-bottom:10px;">AI와 일하는 습관 — 개발할 때</div>
+  <div class="tracks" style="margin-bottom:20px;">
+    <div class="track"><span class="tag">지도</span><div class="q">프로젝트 공통 규칙을 남긴다</div><div class="f">AGENTS.md·도구별 지침 — 자동으로 읽히는 방식은 도구마다 다름</div></div>
+    <div class="track"><span class="tag">연속성</span><div class="q">"한 것+할 일"을 파일로 남긴다</div><div class="f">handoff.md — 다음 세션이 이어받음</div></div>
+  </div>
+  <div style="font-size:17px; font-weight:800; color: var(--warn); margin-bottom:10px;">매매 시스템 설계 — 시스템 안에 심는 것</div>
+  <div class="tracks">
+    <div class="track" style="border-color: oklch(0.4 0.08 60);"><span class="tag" style="color:var(--warn); border-color:var(--warn);">판단 로깅</span><div class="q">모든 판단을 DB에 쌓는다</div><div class="f">교재 prism.db 3테이블이 그 축소판</div></div>
+    <div class="track" style="border-color: oklch(0.4 0.08 60);"><span class="tag" style="color:var(--warn); border-color:var(--warn);">압축</span><div class="q">오랜 기억은 요약→직관으로</div><div class="f">원본 PRISM: 1년치 검색 DB + 기억 압축 스크립트</div></div>
+  </div>
+  <p class="note">습관 2개는 오늘부터 쓰면 되고, 설계 2개는 교재에 이미 들어 있음</p>
+  <div class="src">기억은 전략 파일·공통 지침·도구별 local memory·handoff로 역할을 나눕니다. 자동 기억은 도구·컴퓨터별일 수 있으며 보안 규칙을 대신하지 않습니다.</div>
+  <div class="pagenum">15</div>
+</section>
+
+<!-- P4-S19 · 같은 실수 두 번이면, 규칙으로 만드세요 -->
+<section class="slide">
+  <div class="kicker">교정을 자산으로</div>
+  <h2>같은 실수 두 번이면, 규칙으로 만드세요</h2>
+  <div class="flow">
+    <div class="step"><div class="n">1단계</div><div class="t">말로 교정</div><div class="d">"그거 아니야,<br>이렇게 해줘"</div></div>
+    <div class="step"><div class="n">반복되면</div><div class="t">규칙으로</div><div class="d">"프로젝트 지침에<br>이 규칙을 추가해줘"</div></div>
+    <div class="step"><div class="n">작업 단위면</div><div class="t">스킬로</div><div class="d">반복 워크플로를<br>매뉴얼(스킬)로 저장</div></div>
+    <div class="step"><div class="n">절대 규칙이면</div><div class="t">훅으로 강제</div><div class="d">어기면 실행 자체가<br>막히게 (자동 검사)</div></div>
+  </div>
+  <ul style="margin-top:18px; font-size:24px;">
+    <li>스킬이 잘못 돌면 스킬 안에 <strong>gotcha(함정 목록)</strong>로 등록 — 다음엔 안 틀림</li>
+  </ul>
+  <div class="src">반복되는 실수는 프로젝트 지침 또는 검사 규칙으로 남기고, 다음 세션에 handoff로 이어 갑니다.</div>
+  <div class="pagenum">16</div>
+</section>
