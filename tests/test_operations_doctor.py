@@ -392,6 +392,27 @@ class OperationsDoctorKISReadinessTest(unittest.TestCase):
 
         checks = {check.name: check for check in report.checks}
         self.assertEqual(checks["local_runtime_dir"].status, "BLOCKED")
+        self.assertEqual(checks["local_runtime_dir"].message, "not created")
+
+    def test_doctor_reports_existing_unwritable_runtime_directory_separately(self):
+        from operations_doctor import run_doctor
+
+        with tempfile.TemporaryDirectory() as tmp:
+            runtime_dir = Path(tmp) / "runtime"
+            runtime_dir.mkdir()
+            report = asyncio.run(
+                run_doctor(
+                    profile="mock",
+                    env={"LECTURE_OPERATIONS_RUNTIME_DIR": str(runtime_dir)},
+                    unresolved_order_count=lambda: 0,
+                    directory_writable=lambda _path: False,
+                    project_root=Path.cwd(),
+                )
+            )
+
+        checks = {check.name: check for check in report.checks}
+        self.assertEqual(checks["local_runtime_dir"].status, "BLOCKED")
+        self.assertEqual(checks["local_runtime_dir"].message, "not writable")
 
     def test_missing_pending_order_capability_blocks_kis_readiness(self):
         from operations_doctor import run_doctor

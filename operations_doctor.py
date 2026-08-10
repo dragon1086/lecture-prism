@@ -162,11 +162,17 @@ def _common_checks(
 
     runtime_dir = operations_runtime.default_runtime_dir(env)
     runtime_writable = directory_writable(runtime_dir)
+    if runtime_writable:
+        runtime_message = "writable"
+    elif not runtime_dir.exists():
+        runtime_message = "not created"
+    else:
+        runtime_message = "not writable"
     checks.append(
         CheckResult(
             "local_runtime_dir",
             READY if runtime_writable else BLOCKED,
-            "writable" if runtime_writable else "not writable",
+            runtime_message,
         )
     )
 
