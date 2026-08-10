@@ -43,7 +43,7 @@ LLM 연결이 없으면 각 보고서 에이전트가 규칙 기반 작성기로
 
 `feedback.py`는 BUY 직후의 열린 거래를 결과 교훈으로 꾸며 내지 않습니다. SELL로 결과가 닫힌 뒤에만 판단 교훈을 남깁니다. `memory.py`는 7일이 지난 단기 기억을 중기로 옮기고, 30일이 지난 중기 기억 가운데 같은 교훈이 두 번 이상 반복될 때만 장기 원칙을 만듭니다. 활성 장기 기억은 기본 20건으로 제한하며, `trading.py`는 같은 종목의 최근 기억과 범용 장기 원칙을 합쳐 최대 5건만 읽습니다.
 
-Discord 알림은 기본값이 꺼져 있습니다. `LECTURE_NOTIFY_DISCORD=1`과 유효한 `DISCORD_WEBHOOK_URL`을 함께 설정하면 `main.py`가 단계가 끝날 때마다 `notifications.py`를 호출합니다. 메시지에는 계좌 잔고나 계좌번호가 아니라 후보·분석 근거·BUY/SELL/HOLD/PASS 판단만 들어갑니다. Discord가 실패해도 매매 판단과 DB 저장은 계속됩니다.
+Discord 알림은 기본값이 꺼져 있습니다. `LECTURE_NOTIFY_DISCORD=1`과 유효한 `DISCORD_WEBHOOK_URL`을 함께 설정하면 `main.py`가 단계가 끝날 때마다 `notifications.py`를 호출합니다. 메시지에는 계좌 잔고나 계좌번호가 아니라 후보·분석 근거·BUY/SELL/HOLD/PASS 판단과 피드백 저장 결과만 들어갑니다. Discord가 실패해도 매매 판단과 DB 저장은 계속됩니다.
 
 ## 4. 옵션별 전체 아키텍처
 
