@@ -45,7 +45,7 @@
             {"id": "P3-S19", "title": "여섯 보고서는 조건부 투자 전략과 요약으로 합쳐집니다", "promptId": null},
             {"id": "P3-S20", "title": "강의용도 여섯 전문 에이전트와 편집 에이전트를 조립합니다", "promptId": null},
             {"id": "P3-S21", "title": "프롬프트 파일에서 P3-M2 블록 전체를 복사합니다", "promptId": "P3-M2"},
-            {"id": "P3-S22", "title": "보고서의 빈칸은 더 좋은 LLM이 아니라 알맞은 데이터로 채웁니다", "promptId": null}
+            {"id": "P3-S22", "title": "데이터 보강은 빈칸 하나부터 시작합니다", "promptId": null}
           ]
         },
         {
@@ -111,8 +111,8 @@
             },
             {
               "id": "P4-S04",
-              "title": "수정 템플릿",
-              "promptId": null
+              "title": "KIS 실제 수급을 분석에 한 번 연결합니다",
+              "promptId": "P4-KIS"
             },
             {
               "id": "P4-S05",

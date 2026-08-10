@@ -444,8 +444,8 @@ class Part3StudentLearningContractTest(unittest.TestCase):
             self.assertIn(phrase, self.instructor, phrase)
 
         slide_text = re.sub(r"<[^>]+>", "", data_slide)
-        self.assertIn("더 좋은 LLM이 아니라 알맞은 데이터", slide_text)
-        self.assertIn("달라진 판단 확인", slide_text)
+        self.assertIn("데이터 보강은 빈칸 하나부터", slide_text)
+        self.assertIn("수급 섹션만", slide_text)
 
     def test_module_two_prefers_one_real_data_report_but_keeps_a_fallback(self):
         module_one = _markdown_block(self.prompts, "P3-M1")

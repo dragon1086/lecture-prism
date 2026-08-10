@@ -172,21 +172,27 @@ class Part3DeckContractTests(unittest.TestCase):
         slide_ids = re.findall(r"<!-- (P3-S\d{2})\b", self.sources)
         self.assertEqual([f"P3-S{number:02d}" for number in range(1, 44)], slide_ids)
 
-    def test_module_two_names_data_limits_and_a_safe_extension_sequence(self):
+    def test_module_two_shows_multiple_collection_paths_and_one_kis_example(self):
         slide = self._slide("P3-S22")
+        asset = DECK_ROOT / "assets" / "prism-data-enrichment-lab.png"
 
         for phrase in (
-            "더 좋은 LLM이 아니라 알맞은 데이터",
-            "가격 · 거래량 · 기본 재무",
-            "수급 · 공시 · 기사 본문 · 거시지표",
-            "빈칸 찾기",
-            "출처 고르기",
-            "필드만 추리기",
-            "담당 칸에 넣기",
-            "달라진 판단 확인",
-            "기준 시각·단위·갱신 주기·실패 시 동작",
+            "데이터 보강은 빈칸 하나부터",
+            "Open API",
+            "웹 크롤링",
+            "파일·DB",
+            "MCP",
+            "연결 통로",
+            "KIS",
+            "기관·외국인·개인",
+            "수급 섹션만",
+            "simulation",
+            "주문 0회",
         ):
             self.assertIn(phrase, slide)
+        self.assertIn("assets/prism-data-enrichment-lab.png", slide)
+        self.assertTrue(asset.exists())
+        self.assertEqual((1672, 941), self._png_size(asset))
 
     def test_operations_image_is_reserved_for_the_part_three_summary(self):
         slide_30 = self._slide("P3-S32")
