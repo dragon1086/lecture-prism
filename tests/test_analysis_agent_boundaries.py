@@ -83,6 +83,29 @@ class AnalysisAgentBoundaryTest(unittest.TestCase):
         self.assertTrue(_DECISION_FIELDS.issubset(result))
         self.assertIn("technical_summary", result)
 
+    def test_supply_section_reports_actual_kis_investor_flow(self):
+        rendered = analysis._section_supply({
+            "source": "yfinance",
+            "evidence_kind": "market_data",
+            "supply": {
+                "source": "kis",
+                "environment": "real",
+                "as_of": "2026-08-08",
+                "institution_net_buy": 1500,
+                "foreign_net_buy": 3500,
+                "individual_net_buy": -5000,
+            },
+        })
+
+        for phrase in (
+            "KIS",
+            "2026-08-08",
+            "기관 +1,500주",
+            "외국인 +3,500주",
+            "개인 -5,000주",
+        ):
+            self.assertIn(phrase, rendered)
+
 
 if __name__ == "__main__":
     unittest.main()
