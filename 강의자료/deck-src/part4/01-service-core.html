@@ -1,20 +1,107 @@
-<!-- P4-S07 · 후보 선별·재점수는 시장·섹터·신호를 여러 층으로 분리한다 -->
-<section class="slide split">
-  <div class="txt"><div class="kicker">PRISM Insight 서비스 구조</div><h2>후보 선별·재점수는 시장·섹터·신호를 여러 층으로 분리한다</h2><ul><li>시장·조건·근거를 반영해 후보를 다시 정렬</li><li>수강생은 먼저 <strong>내가 바꾼 조건이 후보를 어떻게 바꾸는지</strong>만 확인</li><li>Q3의 돌파 예시는 트랙 A의 한 규칙으로 시작</li></ul></div>
-  <div class="img"><img class="reference-shot" src="../docs/assets/prism-insight/candidate-screening-reranking-overview.png" alt="PRISM Insight 후보 선별과 재점수 개념도"><p class="caption">서비스 후보 선별·재점수 개념도입니다. lecture-prism은 이 전체를 구현하지 않고 screening.py의 한 조건 전후만 비교합니다.</p></div>
-  <div class="pagenum">후보 재정렬</div>
+<!-- P4-S06 · 디렉터리는 역할별 파일을 모아 둔 서랍입니다 -->
+<section class="slide" style="padding:44px 66px 38px; justify-content:flex-start;">
+  <div class="kicker" style="margin-bottom:6px;">개발 기초 · 프로젝트 폴더를 처음 열었을 때</div>
+  <h2 style="font-size:35px; margin-bottom:13px;">디렉터리는 파일을 숨기는 곳이 아니라, 역할을 찾는 지도입니다</h2>
+  <svg class="editorial-diagram" viewBox="0 0 1140 410" role="img" aria-labelledby="p4s06-title p4s06-desc">
+    <title id="p4s06-title">lecture-prism 실제 프로젝트 구조</title>
+    <desc id="p4s06-desc">프로젝트 루트 아래 실행 파일, 매매 파이프라인 파일, 운영과 안전 폴더, 수업 자료와 테스트 폴더를 보여 준다.</desc>
+    <rect x="22" y="26" width="260" height="54" class="focus"/><text x="48" y="60" class="label mono">lecture-prism/</text>
+    <path class="quiet-line" d="M152 80 V118 H44 M152 118 H1098"/>
+    <text x="42" y="144" class="flow-label">실행 시작점</text>
+    <rect x="22" y="157" width="210" height="65" class="node"/><text x="44" y="185" class="label mono">main.py</text><text x="44" y="208" class="sub-label">한 번 실행의 순서를 정함</text>
+    <text x="284" y="144" class="flow-label">매매 흐름을 만드는 파일</text>
+    <rect x="267" y="157" width="318" height="195" class="soft"/><text x="291" y="187" class="label mono">screening.py</text><text x="291" y="211" class="sub-label">후보 종목 찾기</text><text x="291" y="245" class="label mono">analysis.py · buy_agent.py</text><text x="291" y="269" class="sub-label">분석 보고서와 진입 시나리오</text><text x="291" y="303" class="label mono">trading.py</text><text x="291" y="327" class="sub-label">안전 조건을 다시 확인</text>
+    <text x="633" y="144" class="flow-label">기록과 확인 화면</text>
+    <rect x="616" y="157" width="250" height="195" class="soft"/><text x="640" y="187" class="label mono">feedback.py · db.py</text><text x="640" y="211" class="sub-label">결과와 교훈 저장</text><text x="640" y="245" class="label mono">dashboard.py</text><text x="640" y="269" class="sub-label">저장된 기록 다시 보기</text><text x="640" y="303" class="label mono">notifications.py</text><text x="640" y="327" class="sub-label">선택 알림 보내기</text>
+    <text x="915" y="144" class="flow-label">안전·자료·검증</text>
+    <rect x="897" y="157" width="221" height="195" class="soft"/><text x="920" y="187" class="label mono">brokers/</text><text x="920" y="211" class="sub-label">증권사 연결</text><text x="920" y="245" class="label mono">prism_core/ · tests/</text><text x="920" y="269" class="sub-label">안전 규칙과 확인</text><text x="920" y="303" class="label mono">lecture/ · docs/</text><text x="920" y="327" class="sub-label mono">강의자료/ · 실습 자료</text>
+    <text x="22" y="392" class="sub-label">처음에는 이 모든 파일을 읽을 필요가 없습니다. “내가 바꾸고 싶은 규칙”이 있는 줄기만 따라가면 됩니다.</text>
+  </svg>
+  <div class="pagenum">6</div>
 </section>
 
-<!-- P4-S08 · 서비스 청산은 코드 우선순위·AI 보조 판단·감사 기록을 분리한다 -->
-<section class="slide split">
-  <div class="txt"><div class="kicker">PRISM Insight 서비스 구조</div><h2>서비스 청산은 코드 우선순위·AI 보조 판단·감사 기록을 분리한다</h2><ul><li>Q4의 ATR은 청산 폭을 설계하는 확장</li><li>각 규칙이 따로 작동하는 검증용 예시 세 개로 확인</li><li>목표가를 넘어도 곧바로 전량 매도라는 뜻은 아님(Q19)</li></ul></div>
-  <div class="img"><img class="reference-shot" src="../docs/assets/prism-insight/trading-exit-overview.png" alt="PRISM Insight 청산 제어 개념도"><p class="caption">서비스 청산 제어 개념도입니다. lecture-prism P4-04는 이 전체가 아니라 손절·트레일링·목표가의 검증용 예시 세 개만 다룹니다.</p></div>
-  <div class="pagenum">청산 증거</div>
+<!-- P4-S07 · main.py가 필요한 이유는 전체 순서를 한곳에서 시작하기 위해서입니다 -->
+<section class="slide" style="padding:45px 66px 38px; justify-content:flex-start;">
+  <div class="kicker" style="margin-bottom:6px;">개발 기초 · 실행 진입점</div>
+  <h2 style="font-size:35px; margin-bottom:13px;"><span style="font-family:ui-monospace,monospace; color:var(--accent2);">main.py</span>는 ‘무엇을 어떤 순서로 할지’ 정하는 진행자입니다</h2>
+  <svg class="editorial-diagram" viewBox="0 0 1140 372" role="img" aria-labelledby="p4s07-title p4s07-desc">
+    <title id="p4s07-title">main.py가 연결하는 실제 실행 순서와 데이터 전달</title>
+    <desc id="p4s07-desc">main.py가 run_screening, run_analysis_report, run_buy_agent, run_trading, run_feedback을 순서대로 호출하고 후보 목록, 분석 보고서, 진입 시나리오, 매매 결과, DB 기록을 전달한다.</desc>
+    <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10" fill="none" stroke="currentColor" stroke-width="1.7"/></marker></defs>
+    <rect x="22" y="28" width="1096" height="61" class="focus"/><text x="50" y="66" class="label mono">main.py</text><text x="210" y="66" class="sub-label">“이제 후보를 찾고 → 보고서를 만들고 → 안전하게 판단하고 → 기록하자”</text>
+    <path class="line" d="M136 184 H211"/><path class="line" d="M355 184 H430"/><path class="line" d="M574 184 H649"/><path class="line" d="M793 184 H868"/>
+    <text x="173" y="151" text-anchor="middle" class="flow-label">후보 목록</text><text x="392" y="151" text-anchor="middle" class="flow-label">분석 보고서</text><text x="611" y="151" text-anchor="middle" class="flow-label">진입 시나리오</text><text x="830" y="151" text-anchor="middle" class="flow-label">매매 결과</text>
+    <rect x="22" y="165" width="114" height="91" class="node"/><text x="79" y="199" text-anchor="middle" class="label mono">01</text><text x="79" y="224" text-anchor="middle" class="sub-label mono">run_screening</text>
+    <rect x="211" y="165" width="144" height="91" class="node"/><text x="283" y="198" text-anchor="middle" class="label mono">02</text><text x="283" y="223" text-anchor="middle" class="sub-label mono">run_analysis_report</text>
+    <rect x="430" y="165" width="144" height="91" class="node"/><text x="502" y="198" text-anchor="middle" class="label mono">03</text><text x="502" y="223" text-anchor="middle" class="sub-label mono">run_buy_agent</text>
+    <rect x="649" y="165" width="144" height="91" class="node"/><text x="721" y="198" text-anchor="middle" class="label mono">04</text><text x="721" y="223" text-anchor="middle" class="sub-label mono">run_trading</text>
+    <rect x="868" y="165" width="250" height="91" class="node"/><text x="993" y="198" text-anchor="middle" class="label mono">05</text><text x="993" y="223" text-anchor="middle" class="sub-label mono">run_feedback → DB 기록</text>
+    <text x="22" y="314" class="sub-label">각 단계는 자기 일만 합니다. <tspan class="mono">main.py</tspan>가 앞 단계의 결과를 다음 단계의 입력으로 넘기기 때문에 한 번에 끝까지 실행됩니다.</text>
+  </svg>
+  <div class="takeaway" style="margin-top:7px; padding:11px 16px; font-size:19px;"><strong>왜 필요한가?</strong> 파일마다 실행 순서를 따로 기억하지 않아도, 한 곳에서 시작하면 같은 흐름으로 확인할 수 있습니다.</div>
+  <div class="pagenum">7</div>
 </section>
 
-<!-- P4-S09 · AI 제안은 코드 안전장치의 검증을 통과한 범위에서만 실행된다 -->
-<section class="slide split">
-  <div class="txt"><div class="kicker">PRISM Insight 서비스 구조</div><h2>AI 제안은 코드 안전장치의 검증을 통과한 범위에서만 실행된다</h2><ul><li>에이전트가 바꾼 내용은 코드 차이·테스트·연습 실행 완주로 확인</li><li>안전 경계는 프롬프트가 아니라 <strong>코드 계약</strong>으로도 유지</li><li>Q25의 재현성은 입력·프롬프트·출력·결과 기록에서 시작</li></ul></div>
-  <div class="img"><img class="reference-shot" src="../docs/assets/prism-insight/ai-code-guardrails-overview.png" alt="PRISM Insight AI 판단과 코드 안전장치 개념도"><p class="caption">서비스 AI 판단·코드 안전장치 개념도입니다. lecture-prism에서는 LLM이 정성 설명과 HOLD veto만 맡도록 더 작고 명확하게 제한합니다.</p></div>
-  <div class="pagenum">코드 안전장치</div>
+<!-- P4-S08 · 함수끼리 맞물리는 약속이 있어야 파일 하나만 바꿀 수 있습니다 -->
+<section class="slide" style="padding:44px 76px 37px; justify-content:flex-start;">
+  <div class="kicker" style="margin-bottom:6px;">개발 기초 · 함수</div>
+  <h2 style="font-size:35px; margin-bottom:12px;">함수는 “이 입력을 주면 이 결과를 돌려준다”는 작은 작업 약속입니다</h2>
+  <div style="display:grid; grid-template-columns:1.06fr .94fr; gap:28px; align-items:stretch;">
+    <div class="code-window" aria-label="screening.py의 run_screening 함수 약속 예시">
+      <pre><span class="keyword">async def</span> <span class="name">run_screening</span>(
+    <span class="value">target_ticker</span>=None, <span class="value">use_real</span>=False
+) -&gt; <span class="value">list[str]</span>:
+    <span class="comment"># 후보 종목 코드 목록을 돌려줌</span></pre>
+    </div>
+    <div style="border-left:1px solid oklch(0.31 0.02 264); padding-left:28px; display:grid; gap:13px; align-content:center;">
+      <div><div class="flow-label">입력</div><div style="font-size:21px; margin-top:4px;"><code>target_ticker</code>가 있으면 그 종목부터 봄<br><code>use_real</code>이 참이면 실제 데이터 재확인</div></div>
+      <div><div class="flow-label">처리</div><div style="font-size:21px; margin-top:4px;">조건에 맞는 후보만 고릅니다.</div></div>
+      <div><div class="flow-label">반환</div><div style="font-size:21px; margin-top:4px;"><code>list[str]</code> = 종목 코드가 담긴 목록<br>예: <code>["005930", "000660"]</code></div></div>
+    </div>
+  </div>
+  <div class="takeaway" style="margin-top:18px; font-size:20px;"><strong>시그니처</strong>는 함수 이름·입력·반환값의 약속입니다. 후보 목록 대신 다른 모양을 돌려주면, 다음 단계인 <code>main.py</code>도 그 약속을 이해하지 못합니다.</div>
+  <div class="pagenum">8</div>
+</section>
+
+<!-- P4-S09 · import와 반환값으로 코드가 서로 이어집니다 -->
+<section class="slide" style="padding:43px 76px 36px; justify-content:flex-start;">
+  <div class="kicker" style="margin-bottom:6px;">개발 기초 · 파일이 이어지는 순간</div>
+  <h2 style="font-size:35px; margin-bottom:12px;">코드는 다른 파일의 함수를 가져와, 받은 결과에 이름을 붙여 다음 단계로 넘깁니다</h2>
+  <div class="code-window" style="padding:18px 25px;">
+    <pre><span class="keyword">from</span> screening <span class="keyword">import</span> <span class="name">run_screening</span>      <span class="comment"># 1. screening.py의 함수를 main.py로 가져옴</span>
+
+<span class="name">candidates</span> = <span class="keyword">await</span> <span class="name">run_screening</span>(...)     <span class="comment"># 2. 함수가 return한 후보 목록에 candidates라는 이름을 붙임</span>
+
+<span class="keyword">for</span> ticker <span class="keyword">in</span> <span class="name">candidates</span>:                         <span class="comment"># 3. 목록의 종목을 하나씩 다음 단계에 전달</span>
+    report = <span class="keyword">await</span> <span class="name">run_analysis_report</span>(ticker)</pre>
+  </div>
+  <svg class="editorial-diagram" viewBox="0 0 1120 150" role="img" aria-labelledby="p4s09-title p4s09-desc" style="margin-top:13px;">
+    <title id="p4s09-title">import, 호출, return, 다음 단계의 관계</title>
+    <desc id="p4s09-desc">screening.py 함수가 main.py로 import되고, 호출 결과 candidates가 analysis.py로 전달된다.</desc>
+    <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10" fill="none" stroke="currentColor" stroke-width="1.7"/></marker></defs>
+    <path class="line" d="M254 74 H410"/><path class="line" d="M664 74 H820"/>
+    <rect x="20" y="35" width="234" height="78" class="node"/><text x="137" y="68" text-anchor="middle" class="label mono">screening.py</text><text x="137" y="93" text-anchor="middle" class="sub-label">함수를 내보냄</text>
+    <rect x="410" y="25" width="254" height="98" class="focus"/><text x="537" y="63" text-anchor="middle" class="label mono">main.py</text><text x="537" y="89" text-anchor="middle" class="sub-label">import → 호출 → candidates</text>
+    <rect x="820" y="35" width="280" height="78" class="node"/><text x="960" y="68" text-anchor="middle" class="label mono">analysis.py</text><text x="960" y="93" text-anchor="middle" class="sub-label">후보 한 종목을 보고서로 바꿈</text>
+    <text x="332" y="48" text-anchor="middle" class="flow-label">import</text><text x="742" y="48" text-anchor="middle" class="flow-label">return한 결과를 다음 단계로</text>
+  </svg>
+  <div class="pagenum">9</div>
+</section>
+
+<!-- P4-S10 · 코드와 운영 설정을 나누면 같은 프로그램을 안전하게 바꿔 쓸 수 있습니다 -->
+<section class="slide" style="padding:48px 78px 40px; justify-content:flex-start;">
+  <div class="kicker" style="margin-bottom:6px;">개발 기초 · 코드와 설정을 구분하는 이유</div>
+  <h2 style="font-size:35px; margin-bottom:14px;">“어떻게 움직일지”는 코드에, “오늘 어떤 환경에서 돌릴지”는 설정에 둡니다</h2>
+  <svg class="editorial-diagram" viewBox="0 0 1110 310" role="img" aria-labelledby="p4s10-title p4s10-desc">
+    <title id="p4s10-title">코드와 런타임 설정의 역할 분리</title>
+    <desc id="p4s10-desc">main.py가 같은 코드 흐름을 사용하되 runtime_config와 .env의 설정에 따라 mock, real_data, paper 같은 환경을 고른다.</desc>
+    <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10" fill="none" stroke="currentColor" stroke-width="1.7"/></marker></defs>
+    <rect x="20" y="56" width="330" height="186" class="focus"/><text x="52" y="96" class="label">코드: 매번 같은 안전 규칙</text><text x="52" y="135" class="sub-label mono">main.py · screening.py · trading.py</text><text x="52" y="171" class="sub-label">후보를 고르는 방법</text><text x="52" y="198" class="sub-label">안전 조건을 다시 확인하는 방법</text><text x="52" y="225" class="sub-label">결과를 기록하는 방법</text>
+    <path class="line" d="M350 149 H535"/><text x="442" y="125" text-anchor="middle" class="flow-label">어떤 환경인지 읽음</text>
+    <rect x="535" y="56" width="250" height="186" class="node"/><text x="566" y="96" class="label mono">runtime_config.py</text><text x="566" y="135" class="sub-label">.env의 값을 읽어</text><text x="566" y="162" class="sub-label">실행 프로필을 고릅니다.</text><text x="566" y="205" class="sub-label mono">LECTURE_PROFILE=mock</text>
+    <path class="line" d="M785 149 H908"/><text x="846" y="125" text-anchor="middle" class="flow-label">같은 코드, 다른 준비</text>
+    <text x="938" y="82" class="flow-label">수업에서 먼저 쓰는 값</text><text x="938" y="117" class="label mono">mock</text><text x="938" y="143" class="sub-label">연습 데이터 · simulation</text><text x="938" y="184" class="label mono">paper</text><text x="938" y="210" class="sub-label">모의투자 준비 단계</text>
+  </svg>
+  <div class="takeaway" style="margin-top:7px; font-size:19px;">코드는 버전 관리하지만, API 키·토큰·계좌번호 같은 비밀값은 <strong>.env에도 공유하지 않고 Git에 올리지 않습니다.</strong></div>
+  <div class="pagenum">10</div>
 </section>

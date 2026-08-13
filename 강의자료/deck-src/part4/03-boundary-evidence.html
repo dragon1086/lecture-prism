@@ -1,81 +1,56 @@
-<!-- P4-S15 · 동결을 선언하면 AI가 함부로 못 고칩니다 -->
-<section class="slide">
-  <div class="kicker">순간 2 — 지킬 것을 정할 때</div>
-  <h2>동결을 선언하면 AI가 함부로 못 고칩니다</h2>
-  <div class="prompt" style="font-size:19px; line-height:1.6;">"너는 시스템 트레이딩 부검 분석가다. [동결 전략 — 변경 금지, 평가 기준일 뿐] … 숫자는 facts에 있는 값만 인용하고 새로 계산하지 마라. 룰 변경 제안 금지. 잦은 손절은 정상 비용이며 실패가 아니다"
-  <span class="cap">— 강사 실제 프롬프트 (2026-06, 매매 복기 자동화)</span></div>
-  <ul style="font-size:24px;">
-    <li><strong>동결 선언</strong> → <em>"손절 −7%는 건드리지 마. 수량 계산만 바꿔"</em></li>
-    <li><strong>지어내기 금지</strong> → <em>"실행 결과에 나온 숫자만 인용해"</em></li>
-    <li><strong>내 의도 설명</strong> → <em>"목표가를 지나쳐도 안 파는 게 내 전략이야"</em></li>
-  </ul>
-  <div class="src">근거: Anthropic 공식 가이드 — "수정 범위를 명시하고, 범위 밖 변경이 없는지 점검하라" · "근거 자료에 있는 값만 쓰게 하라" · "지시의 이유를 설명하면 목표를 더 정확히 이해한다"</div>
-  <div class="pagenum">12</div>
-</section>
-
-<!-- P4-S16 · AI의 보고를 그대로 믿지 않습니다 -->
-<section class="slide">
-  <div class="kicker">순간 3 — 결과를 받았을 때</div>
-  <h2>AI의 보고를 그대로 믿지 않습니다</h2>
-  <ul style="font-size:24px;">
-    <li><strong>고치기 전에 확인시킴</strong> → <em>"원인 넘겨짚지 말고, 실행해서 에러부터 보여줘"</em></li>
-    <li><strong>아니라고 말함 (+근거)</strong> · <strong>큰 일은 나눠 시킴</strong> ↓</li>
-  </ul>
-  <div class="prompt" style="font-size:19px;">"솔직히 그 방법은 안 될 것 같아. 그 점수는 AI가 임의로 정한 거고, 프롬프트가 손실회피 성향이면 점수를 무조건 낮게 부르더라고"
-  <span class="cap">— AI의 그럴듯한 제안을 1년 운영 경험으로 거절. 근거를 대면 AI가 방향을 바꿈</span></div>
-  <div class="prompt" style="font-size:19px;">"내 경험상 너는 최근 작업 몇 개만 기억하고 최신일수록 중요하다고 표시하는 경향이 있어. 단계를 세분화해서 여러 파일로 나눠 저장한 뒤 병합해줘"
-  <span class="cap">— AI가 틀리는 지점을 미리 알고 작업 '방식'까지 지정 (1년치 기록 정리)</span></div>
-  <div class="src">근거: Anthropic 공식 가이드 — "고치기 전에 문제를 재현하는 테스트부터 만들게 하라" · "궤도를 벗어나면 빨리, 자주 교정하라" · "큰 작업은 목록으로 쪼개 건별로 시켜라"</div>
-  <div class="pagenum">13</div>
-</section>
-
-<!-- P4-S17 · 강사가 실제로 겪은 AI 사고 3건 -->
-<section class="slide">
-  <div class="kicker">그래도 사고는 납니다</div>
-  <h2>강사가 실제로 겪은 AI 사고 3건</h2>
-  <ul>
-    <li><strong>원인을 넘겨짚고 손부터 댐</strong> — 진짜 원인은 설정 한 줄. "고치기 전에 확인부터 해"로 교정</li>
-    <li><strong>겁 없이 무거운 작업 실행</strong> — 시간제한 없는 백테스트가 운영 봇을 두 번 멈춤 → 긴 작업은 격리</li>
-    <li><strong>검증 꼼수</strong> — 코드 성적을 지표 트릭으로 올리려다 적발 → 정직한 개선 요구로 진짜 등급 상승</li>
-  </ul>
-  <p class="note">그래서 순간 3(검증)이 습관이어야 함 — 오늘 실습의 '전후 비교'가 그 시작</p>
-  <div class="src">출처: 강사 Claude Code 사용 리포트(/insights, 17세션·462메시지 실측)</div>
-  <div class="pagenum">14</div>
-</section>
-
-<!-- P4-S18 · AI가 과거를 기억하게 만드는 구조 -->
-<section class="slide">
-  <div class="kicker">프롬프트 다음 단계</div>
-  <h2>AI가 과거를 기억하게 만드는 구조</h2>
-  <p style="font-size:21px; color:var(--muted); margin:-14px 0 20px; line-height:1.5;">프롬프트를 잘 쓰는 게 1층이라면, <strong>AI 눈앞에 무엇을 보여줄지 설계하는 게 2층</strong> — 업계에서는 '컨텍스트 엔지니어링'이라 부름</p>
-  <div style="font-size:17px; font-weight:800; color: var(--accent); margin-bottom:10px;">AI와 일하는 습관 — 개발할 때</div>
-  <div class="tracks" style="margin-bottom:20px;">
-    <div class="track"><span class="tag">지도</span><div class="q">프로젝트 공통 규칙을 남긴다</div><div class="f">AGENTS.md·도구별 지침 — 자동으로 읽히는 방식은 도구마다 다름</div></div>
-    <div class="track"><span class="tag">연속성</span><div class="q">"한 것+할 일"을 파일로 남긴다</div><div class="f">handoff.md — 다음 세션이 이어받음</div></div>
-  </div>
-  <div style="font-size:17px; font-weight:800; color: var(--warn); margin-bottom:10px;">매매 시스템 설계 — 시스템 안에 심는 것</div>
-  <div class="tracks">
-    <div class="track" style="border-color: oklch(0.4 0.08 60);"><span class="tag" style="color:var(--warn); border-color:var(--warn);">판단 로깅</span><div class="q">모든 판단을 DB에 쌓는다</div><div class="f">교재 prism.db 3테이블이 그 축소판</div></div>
-    <div class="track" style="border-color: oklch(0.4 0.08 60);"><span class="tag" style="color:var(--warn); border-color:var(--warn);">압축</span><div class="q">오랜 기억은 요약→직관으로</div><div class="f">원본 PRISM: 1년치 검색 DB + 기억 압축 스크립트</div></div>
-  </div>
-  <p class="note">습관 2개는 오늘부터 쓰면 되고, 설계 2개는 교재에 이미 들어 있음</p>
-  <div class="src">기억은 전략 파일·공통 지침·도구별 local memory·handoff로 역할을 나눕니다. 자동 기억은 도구·컴퓨터별일 수 있으며 보안 규칙을 대신하지 않습니다.</div>
-  <div class="pagenum">15</div>
-</section>
-
-<!-- P4-S19 · 같은 실수 두 번이면, 규칙으로 만드세요 -->
-<section class="slide">
-  <div class="kicker">교정을 자산으로</div>
-  <h2>같은 실수 두 번이면, 규칙으로 만드세요</h2>
-  <div class="flow">
-    <div class="step"><div class="n">1단계</div><div class="t">말로 교정</div><div class="d">"그거 아니야,<br>이렇게 해줘"</div></div>
-    <div class="step"><div class="n">반복되면</div><div class="t">규칙으로</div><div class="d">"프로젝트 지침에<br>이 규칙을 추가해줘"</div></div>
-    <div class="step"><div class="n">작업 단위면</div><div class="t">스킬로</div><div class="d">반복 워크플로를<br>매뉴얼(스킬)로 저장</div></div>
-    <div class="step"><div class="n">절대 규칙이면</div><div class="t">훅으로 강제</div><div class="d">어기면 실행 자체가<br>막히게 (자동 검사)</div></div>
-  </div>
-  <ul style="margin-top:18px; font-size:24px;">
-    <li>스킬이 잘못 돌면 스킬 안에 <strong>gotcha(함정 목록)</strong>로 등록 — 다음엔 안 틀림</li>
-  </ul>
-  <div class="src">반복되는 실수는 프로젝트 지침 또는 검사 규칙으로 남기고, 다음 세션에 handoff로 이어 갑니다.</div>
+<!-- P4-S16 · 좋은 프롬프트에는 여섯 가지가 들어갑니다 -->
+<section class="slide" style="padding:43px 78px 36px; justify-content:flex-start;">
+  <div class="kicker" style="margin-bottom:6px;">공통 실습 P4-03 · 요청을 작업 명세로 바꾸기</div>
+  <h2 style="font-size:35px; margin-bottom:12px;">좋은 프롬프트는 AI에게 잘 부탁하는 글이 아니라, 확인 가능한 작업 지시서입니다</h2>
+  <div class="code-window" style="padding:16px 24px;"><pre><span class="comment">[1 현재]</span>  지금 <span class="name">screening.py</span>는 거래량·시가총액·이동평균으로 후보를 고른다.
+<span class="comment">[2 결과]</span>  거래량 기준을 바꾼 뒤 mock 후보 목록이 어떻게 달라지는지 보고 싶다.
+<span class="comment">[3 범위]</span>  <span class="name">VOLUME_SURGE_RATIO</span>와 관련 필터만 검토한다.
+<span class="comment">[4 금지선]</span> <span class="name">run_screening</span>의 입력·<span class="value">list[str]</span> 반환, simulation, 실주문 금지는 유지한다.
+<span class="comment">[5 확인]</span>  수정 전후 후보 목록과 mock 전체 실행 로그를 비교한다.
+<span class="comment">[6 실패]</span>  원하는 비교를 못 하면 수정하지 말고, 원인과 선택지를 보고한다.</pre></div>
+  <div class="takeaway" style="margin-top:15px; font-size:19px;">여섯 줄이 있으면 수강생은 “무엇을 확인할지” 알고, 에이전트는 “어디까지 해도 되는지” 압니다.</div>
   <div class="pagenum">16</div>
+</section>
+
+<!-- P4-S17 · 알아서 고쳐줘보다 결과와 경계를 함께 말합니다 -->
+<section class="slide" style="padding:48px 82px 40px; justify-content:flex-start;">
+  <div class="kicker" style="margin-bottom:6px;">요청을 좁히는 법</div>
+  <h2 style="font-size:35px; margin-bottom:14px;">“알아서 고쳐줘”는 답이 아니라 질문을 돌려받을 요청입니다</h2>
+  <div style="display:grid; grid-template-columns:.72fr 1.28fr; gap:30px; align-items:stretch;">
+    <div style="border-left:3px solid var(--bad); padding:18px 22px; background:oklch(0.145 0.03 25);"><div class="flow-label" style="color:var(--bad);">막히는 요청</div><p style="font-size:27px; line-height:1.55; margin-top:15px;">“매매를 더 잘하게 전체적으로 고쳐줘.”</p><p style="font-size:18px; color:var(--muted); margin-top:22px;">무엇을, 어느 파일에서, 어떤 결과로 판단할지 빠져 있습니다.</p></div>
+    <div class="code-window"><pre><span class="comment">[원하는 결과]</span> 손절이 -5%에 먼저 작동하는지 확인하고 싶다.
+<span class="comment">[범위]</span> <span class="name">trading.py</span>의 <span class="name">_decide_exit</span>만 검토한다.
+<span class="comment">[유지]</span> holding·current_price 입력과 반환 형식은 바꾸지 않는다.
+<span class="comment">[증거]</span> 손절·트레일링·목표가 세 사례와 mock 실행으로 확인한다.</pre></div>
+  </div>
+  <p class="note">파일 이름을 모르면 “먼저 실제 코드를 찾아 담당 파일과 선택지를 보여주고, 아직 수정하지 마”라고 말하면 됩니다.</p>
+  <div class="pagenum">17</div>
+</section>
+
+<!-- P4-S18 · 모를 때는 코드를 쓰게 하기 전에 조사부터 시킵니다 -->
+<section class="slide" style="padding:47px 82px 39px; justify-content:flex-start;">
+  <div class="kicker" style="margin-bottom:6px;">조사 프롬프트 · 구현 전에 길 찾기</div>
+  <h2 style="font-size:35px; margin-bottom:13px;">모를 때는 “고쳐줘”보다 “내가 판단할 재료를 찾아줘”라고 먼저 요청합니다</h2>
+  <div class="code-window"><pre>내가 바꾸고 싶은 것은 <span class="value">[예: 손절 기준]</span>이야.
+실제 코드를 읽고 <span class="name">담당 파일 · 함수 · 입력 · 반환 · 영향 범위</span>를 표로 보여줘.
+선택지는 세 개까지 제안하되, <span class="keyword">아직 코드·설정·DB는 수정하거나 실행하지 마.</span></pre></div>
+  <svg class="editorial-diagram" viewBox="0 0 1100 155" role="img" aria-labelledby="p4s18-title p4s18-desc" style="margin-top:20px;"><title id="p4s18-title">조사 후 수강생이 결정하고 구현으로 넘어가는 흐름</title><desc id="p4s18-desc">수강생이 원하는 변화를 말하면 에이전트가 실제 코드 근거를 찾아 표로 보여주고 수강생이 하나를 선택한 뒤에만 구현으로 넘어간다.</desc><defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10" fill="none" stroke="currentColor" stroke-width="1.7"/></marker></defs><path class="line" d="M230 76 H420"/><path class="line" d="M680 76 H870"/><rect x="20" y="36" width="210" height="80" class="node"/><text x="125" y="67" text-anchor="middle" class="label">바꾸고 싶은 것</text><text x="125" y="93" text-anchor="middle" class="sub-label">수강생의 한 문장</text><rect x="420" y="25" width="260" height="102" class="focus"/><text x="550" y="63" text-anchor="middle" class="label">조사 결과 표</text><text x="550" y="89" text-anchor="middle" class="sub-label">파일 · 함수 · 영향 · 선택지</text><rect x="870" y="36" width="210" height="80" class="node"/><text x="975" y="67" text-anchor="middle" class="label">수강생 선택</text><text x="975" y="93" text-anchor="middle" class="sub-label">그 다음에만 구현</text></svg>
+  <div class="pagenum">18</div>
+</section>
+
+<!-- P4-S19 · 바꾸지 않을 것을 말해야 기존에 되던 기능을 지킬 수 있습니다 -->
+<section class="slide" style="padding:46px 80px 38px; justify-content:flex-start;">
+  <div class="kicker" style="margin-bottom:6px;">변경 금지선 · 이미 되는 것을 지키는 문장</div>
+  <h2 style="font-size:35px; margin-bottom:13px;">바꿀 곳을 말한 뒤에는, 그대로여야 할 약속도 함께 적습니다</h2>
+  <svg class="editorial-diagram" viewBox="0 0 1110 280" role="img" aria-labelledby="p4s19-title p4s19-desc"><title id="p4s19-title">안전한 변경 요청의 네 가지 금지선</title><desc id="p4s19-desc">함수 시그니처, API 키 없는 mock 실행, 실주문 금지, 관련 파일 범위 제한을 지키는 프롬프트 경계를 보여준다.</desc><path class="quiet-line" d="M35 91 H1075 M35 154 H1075 M35 217 H1075"/><text x="35" y="58" class="flow-label">함수 약속</text><text x="250" y="58" class="label mono">run_screening의 입력과 list[str] 반환은 유지</text><text x="35" y="121" class="flow-label">기본 실행</text><text x="250" y="121" class="label">API 키 없는 mock·simulation 전체 실행은 유지</text><text x="35" y="184" class="flow-label">안전</text><text x="250" y="184" class="label">실제 주문·브로커·계좌·시크릿은 사용하지 않기</text><text x="35" y="247" class="flow-label">수정 범위</text><text x="250" y="247" class="label">관련 규칙 하나와 파일 하나만 수정하기</text></svg>
+  <div class="takeaway" style="margin-top:8px; font-size:20px;">금지선은 AI를 의심해서만 쓰는 것이 아닙니다. <strong>내가 바꾼 결과가 무엇 때문인지 알기 위해</strong> 범위를 좁히는 장치입니다.</div>
+  <div class="pagenum">19</div>
+</section>
+
+<!-- P4-S20 · AI의 완료 보고보다 직접 확인한 증거를 믿습니다 -->
+<section class="slide" style="padding:44px 76px 37px; justify-content:flex-start;">
+  <div class="kicker" style="margin-bottom:6px;">검증 습관 · “완료했습니다” 다음에 볼 네 가지</div>
+  <h2 style="font-size:35px; margin-bottom:12px;">AI의 완료 보고는 증거를 확인하는 출발점입니다</h2>
+  <svg class="editorial-diagram" viewBox="0 0 1120 300" role="img" aria-labelledby="p4s20-title p4s20-desc"><title id="p4s20-title">수정의 네 가지 증거</title><desc id="p4s20-desc">코드 차이, 테스트, 로그, DB 기록의 네 가지 증거를 순서대로 읽어 다음 변경 여부를 판단한다.</desc><defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10" fill="none" stroke="currentColor" stroke-width="1.7"/></marker></defs><path class="line" d="M234 145 H310"/><path class="line" d="M514 145 H590"/><path class="line" d="M794 145 H870"/><rect x="20" y="83" width="214" height="124" class="node"/><text x="46" y="119" class="flow-label">1 · 코드 차이</text><text x="46" y="153" class="label">무엇을 바꿨나</text><text x="46" y="180" class="sub-label">파일·규칙·변경 전후</text><rect x="310" y="83" width="204" height="124" class="node"/><text x="336" y="119" class="flow-label">2 · 테스트</text><text x="336" y="153" class="label">약속을 지켰나</text><text x="336" y="180" class="sub-label">기존 기능 회귀 확인</text><rect x="590" y="73" width="204" height="144" class="focus"/><text x="616" y="109" class="flow-label">3 · mock 실행 로그</text><text x="616" y="143" class="label">실제로 돌았나</text><text x="616" y="170" class="sub-label">어느 단계에서 멈췄나</text><text x="616" y="196" class="sub-label">simulation인지</text><rect x="870" y="83" width="230" height="124" class="node"/><text x="896" y="119" class="flow-label">4 · DB 기록·대시보드</text><text x="896" y="153" class="label">결과가 남았나</text><text x="896" y="180" class="sub-label">새 행·표시 값 확인</text><text x="20" y="270" class="sub-label">네 가지가 모두 필요하지 않은 작업도 있습니다. 다만 “무엇을 확인했는지”를 말할 수 있어야 완료인지, 다음 질문이 필요한지 판단할 수 있습니다.</text></svg>
+  <div class="pagenum">20</div>
 </section>

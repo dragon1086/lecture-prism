@@ -3,17 +3,18 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<title>파트4 — 본인만의 로직을 담은 자동매매 시스템으로 발전하기</title>
+<title>파트4 — 자동매매를 만들며 자립형 바이브코더로 성장하기</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
   :root {
     --bg: oklch(0.13 0.015 264); --card: oklch(0.17 0.015 264);
     --fg: oklch(0.96 0.005 264); --muted: oklch(0.65 0.01 264);
     --accent: oklch(0.75 0.15 145); --accent2: oklch(0.72 0.19 264);
-    --warn: oklch(0.78 0.15 60); --bad: oklch(0.7 0.19 25);
+    --warn: oklch(0.78 0.15 60); --bad: oklch(0.7 0.19 25); --screen-scale: 1;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
   body { background: oklch(0.09 0.01 264); font-family: 'Apple SD Gothic Neo','Pretendard','Noto Sans KR',system-ui,sans-serif; }
+  body.viewer-open { overflow: hidden; }
 
   .slide {
     width: 1280px; height: 720px; margin: 24px auto; padding: 64px 80px;
@@ -35,6 +36,25 @@
   li em { font-style: normal; color: var(--warn); }
   .note { margin-top: auto; padding-top: 22px; font-size: 20px; color: var(--warn); }
   .src { position: absolute; bottom: 20px; left: 32px; font-size: 13.5px; color: oklch(0.52 0.01 264); }
+
+  /* 수강생이 관계를 읽어야 하는 슬라이드용 편집형 도식. 장식용 카드가 아니라 경로와 전달물을 먼저 보인다. */
+  .editorial-diagram { width:100%; display:block; overflow:visible; }
+  .editorial-diagram text { font-family:'Apple SD Gothic Neo','Pretendard','Noto Sans KR',system-ui,sans-serif; }
+  .editorial-diagram .mono { font-family:'SFMono-Regular','Cascadia Code','Consolas',monospace; }
+  .editorial-diagram .node { fill:oklch(0.155 0.016 264); stroke:oklch(0.37 0.025 264); stroke-width:1.5; }
+  .editorial-diagram .focus { fill:oklch(0.18 0.045 145); stroke:var(--accent); stroke-width:2; }
+  .editorial-diagram .soft { fill:oklch(0.145 0.012 264); stroke:oklch(0.28 0.02 264); stroke-width:1; }
+  .editorial-diagram .line { stroke:oklch(0.58 0.025 264); stroke-width:2; fill:none; marker-end:url(#arrow); }
+  .editorial-diagram .quiet-line { stroke:oklch(0.37 0.02 264); stroke-width:1.25; fill:none; }
+  .editorial-diagram .label { fill:var(--fg); font-size:20px; font-weight:750; }
+  .editorial-diagram .sub-label { fill:var(--muted); font-size:15px; }
+  .editorial-diagram .flow-label { fill:var(--accent); font-size:14px; font-weight:800; letter-spacing:.2px; }
+  .code-window { margin-top:6px; padding:18px 22px; border-left:3px solid var(--accent2); background:oklch(0.105 0.012 264); }
+  .code-window pre { overflow:visible; color:#e5e7f1; font:18px/1.62 'SFMono-Regular','Cascadia Code','Consolas',monospace; white-space:pre-wrap; }
+  .code-window .comment { color:#8992ad; }
+  .code-window .keyword { color:#9b8cf2; }
+  .code-window .name { color:#70d9aa; }
+  .code-window .value { color:#f0c16c; }
 
   .cover { text-align: center; align-items: center; }
   .cover .kicker { font-size: 24px; }
@@ -105,10 +125,28 @@
     font-size: 16px; font-weight: 800;
   }
 
+  .slide img[data-fullscreenable="true"] { cursor: zoom-in; }
+  .slide img[data-fullscreenable="true"]:focus-visible { outline: 4px solid var(--warn); outline-offset: 3px; }
+  .image-viewer {
+    position: fixed; inset: 0; z-index: 99999; display: none;
+    align-items: center; justify-content: center; padding: 0;
+    background: rgba(0, 0, 0, 0.97);
+  }
+  .image-viewer.open { display: flex; }
+  .image-viewer img {
+    width: auto; height: auto; max-width: 100vw; max-height: 100vh;
+    object-fit: contain; cursor: zoom-out; display: block;
+  }
+
+  @media screen {
+    .slide { zoom: var(--screen-scale); margin: 6px auto; }
+  }
+
   @media print {
     body { background: none; }
     @page { size: 1280px 720px; margin: 0; }
-    .slide { margin: 0; border-radius: 0; break-after: page; page-break-after: always; }
+    .slide { zoom: 1 !important; margin: 0; border-radius: 0; break-after: page; page-break-after: always; }
+    .image-viewer { display: none !important; }
   }
 </style>
 </head>

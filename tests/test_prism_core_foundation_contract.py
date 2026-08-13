@@ -135,25 +135,23 @@ class PrismCoreFoundationContractTest(unittest.TestCase):
                 with self.subTest(phrase=phrase):
                     self.assertIn(phrase, text)
         self.assertNotIn("북극성", part3)
-        self.assertIn("북극성", part4)
+        self.assertNotIn("북극성", part4)
+        self.assertIn("고치고 싶은 것", part4)
 
     def test_part4_selection_and_scheduler_prompts_do_not_mutate_during_class(self):
         text = (
             ROOT / "lecture/exercises/수강생_붙여넣기_프롬프트_파트4.md"
         ).read_text(encoding="utf-8")
-        selection = self._section(
-            text, "## P4-02 · 하네스로 한 트랙과 파일만 고르기"
-        )
+        selection = self._section(text, "## P4-04 · 한 트랙과 파일만 고르기")
         self.assertIn("아직 코드", selection)
-        self.assertIn("수정하거나 읽지 말고, 실행도 하지 마", selection)
-        self.assertNotIn("최소한으로 수정", selection)
+        self.assertIn("수정하지 말고 실행도 하지 마", selection)
+        self.assertNotIn("최소 수정", selection)
 
-        scheduler = self._section(
-            text, "## P4-08 · 오전 1회·오후 1회 연습 배치 설계하기"
-        )
-        self.assertIn("아직 예약 작업을 만들거나 등록하지 말고", scheduler)
-        self.assertNotIn("예약 작업을 등록해줘", scheduler)
-        self.assertIn("## O-01 · 수업 후 선택", text)
+        scheduler = self._section(text, "## P4-11 · 3분 뒤 로컬 예약 실행 설계하기")
+        self.assertIn("내가 승인하기 전에는 코드 수정이나 예약 변경을 하지 마", scheduler)
+        self.assertNotIn("임시 예약을 등록해줘", scheduler)
+        self.assertIn("## P4-12 · 승인 후 예약하고 증거 확인하기", text)
+        self.assertIn("## P4-13 · 임시 예약 삭제하고 반복 주기 설계하기", text)
 
     def test_docs_reject_contradictory_completion_claims(self):
         combined = "\n".join(

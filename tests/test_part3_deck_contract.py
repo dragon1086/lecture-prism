@@ -266,7 +266,7 @@ class Part3DeckContractTests(unittest.TestCase):
             "P3-S40": "매일 돌리려면 다섯 가지를 따로 챙겨야 합니다",
             "P3-S41": "내 컴퓨터에서는 이 순서로 준비 상태를 확인합니다",
             "P3-S42": "대시보드에서는 실행 결과 세 곳만 확인합니다",
-            "P3-S43": "오늘 배운 것 중 내 전략에 먼저 적용할 한 가지는 무엇입니까?",
+            "P3-S43": "파트 4에서 고치고 싶은 것을 한 문장으로 정해 옵니다",
         }
         for slide_id, title in expected_titles.items():
             with self.subTest(slide_id=slide_id):
@@ -324,9 +324,10 @@ class Part3DeckContractTests(unittest.TestCase):
     def test_final_slide_ends_with_one_immediate_application(self):
         slide = self._slide("P3-S43")
 
-        self.assertIn("오늘 배운 것 중 내 전략에 먼저 적용할 한 가지", slide)
-        self.assertIn("데이터 근거", slide)
-        self.assertIn("내 전략에서 ___을 먼저 바꿔 보고 싶다", slide)
+        self.assertIn("파트 4 준비", slide)
+        self.assertIn("고치고 싶은 것", slide)
+        self.assertIn("내 전략에서 ___을 ___하게 바꾸고 싶다", slide)
+        self.assertIn("다음 수업에 가져오세요", slide)
         self.assertNotIn("<h1>Q&amp;A</h1>", slide)
 
     @classmethod
