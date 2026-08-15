@@ -400,7 +400,7 @@ class Part4DeckContractTests(unittest.TestCase):
             for module in self.manifest["decks"]["part4"]["modules"]
             for item in module["slides"]
         ]
-        self.assertEqual(53, len(rows))
+        self.assertEqual(52, len(rows))
         row = next(item for item in rows if item["id"] == "P4-S21")
         self.assertIn("명세", row["title"])
         self.assertEqual("P4-03", row["promptId"])
@@ -422,6 +422,49 @@ class Part4DeckContractTests(unittest.TestCase):
                 self.assertIn(phrase, slide)
         self.assertIn('data-fullscreenable="true"', slide)
         self.assertIn('tabindex="0"', slide)
+
+    def test_personal_practice_handoff_and_instructor_demo_use_observable_evidence(self):
+        rows = [
+            item
+            for module in self.manifest["decks"]["part4"]["modules"]
+            for item in module["slides"]
+        ]
+        self.assertEqual(
+            [f"P4-S{index:02d}" for index in range(1, 53)],
+            [row["id"] for row in rows],
+        )
+        self.assertFalse(
+            any("계산은 코드에 맡기고 시장 상황 설명은 AI에게 맡깁니다" in row["title"] for row in rows)
+        )
+
+        practice = next(row for row in rows if row["id"] == "P4-S25")
+        evidence = next(row for row in rows if row["id"] == "P4-S26")
+        demo_close = next(row for row in rows if row["id"] == "P4-S38")
+        self.assertIn("한 파일만 바꿔", practice["title"])
+        self.assertEqual("P4-05~P4-08", practice["promptId"])
+        self.assertIn("달라진 결과", evidence["title"])
+        self.assertEqual("P4-05~P4-08", evidence["promptId"])
+        self.assertEqual("P4-05~P4-08", demo_close["promptId"])
+
+        for phrase in (
+            "P4-D1.md의 수정 전후 결과 표",
+            "P4-D2.md의 입력 확인 표",
+            "P4-D3.md의 market_condition 경로 표",
+            "P4-D4.md의 사용 경로",
+            "완료 / 폴백으로 검증 / 다음 작업",
+            "결과가 아직 없으면",
+        ):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, self.sources + self.instructor_script)
+
+        for stale in (
+            "예상과 다르면 로그에서 첫 차이를 찾습니다",
+            "데이터 필드를 확인하지 않고 계산부터 만들면 중단시키고",
+            "P4-D2로 같은 계좌자산",
+            "P4-D3로 KOSPI 시황",
+        ):
+            with self.subTest(stale=stale):
+                self.assertNotIn(stale, self.sources + self.instructor_script)
 
     def test_instructor_uses_one_sequential_prompt_for_all_four_demo_checkpoints(self):
         start = self.instructor_script.index("P4-D1~P4-D4 · 강사 통합 시연")
