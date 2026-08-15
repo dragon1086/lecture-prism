@@ -17,7 +17,7 @@
 | P4-S11 | P4-02 | `part4/02-prompt-basics.html` | 에이전트는 맡은 역할과 입력·출력이 정해진 AI 작업자입니다 |
 | P4-S12 | P4-02 | `part4/02-prompt-basics.html` | 도구 호출은 필요한 입력을 보내고 돌아온 결과를 받는 과정입니다 |
 | P4-S13 | P4-02 | `part4/02-prompt-basics.html` | 앞 에이전트의 결과가 다음 에이전트의 입력이 됩니다 |
-| P4-S14 | P4-02 | `part4/02-prompt-basics.html` | 맡길 일이 다를 때만 에이전트의 역할을 나눕니다 |
+| P4-S14 | P4-02 | `part4/02-prompt-basics.html` | 여러 에이전트를 연결하는 여섯 디자인 패턴 |
 | P4-S15 | P4-02 | `part4/02-prompt-basics.html` | 하네스는 인터뷰·구현·검증을 나눠 엉뚱한 수정을 막습니다 |
 | P4-S16 | P4-03 | `part4/03-boundary-evidence.html` | 좋은 프롬프트는 부탁문이 아니라 확인할 수 있는 작업 지시서입니다 |
 | P4-S17 | P4-03 | `part4/03-boundary-evidence.html` | 알아서 고쳐 달라고 하면 무엇을 바꿀지 다시 물을 수밖에 없습니다 |

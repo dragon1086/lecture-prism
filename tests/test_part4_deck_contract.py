@@ -356,6 +356,44 @@ class Part4DeckContractTests(unittest.TestCase):
         ):
             self.assertIn(safety_phrase, self.prompts)
 
+    def test_slide_fourteen_teaches_six_visual_agent_patterns_and_the_real_project_shape(self):
+        slide = self._slide("P4-S14")
+
+        for phrase in (
+            "Sequential / Pipeline",
+            "Concurrent / Fan-out·Fan-in",
+            "Routing / Handoff",
+            "Orchestrator–Workers",
+            "Maker–Checker",
+            "Magentic / Adaptive planning",
+            "screening → analysis → buy → trading → feedback",
+            "asyncio.gather",
+            "순차 파이프라인",
+            "병렬 전문가",
+            "Anthropic",
+            "Microsoft",
+            "OpenAI",
+        ):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, slide)
+
+        diagrams = re.findall(r'<img\b[^>]*class="pattern-diagram"[^>]*>', slide)
+        self.assertEqual(6, len(diagrams))
+        for diagram in diagrams:
+            self.assertIn('data-fullscreenable="true"', diagram)
+            self.assertIn('tabindex="0"', diagram)
+
+        for phrase in (
+            "Sequential / Pipeline",
+            "Concurrent / Fan-out·Fan-in",
+            "Routing / Handoff",
+            "Orchestrator–Workers",
+            "Maker–Checker",
+            "Magentic / Adaptive planning",
+        ):
+            self.assertIn(phrase, self.prompts)
+            self.assertIn(phrase, self.instructor_script)
+
     def test_strategy_tracks_and_evidence_loop_remain_in_the_reworked_course(self):
         for phrase in (
             "트랙 A",
