@@ -450,7 +450,7 @@ class Part4DeckContractTests(unittest.TestCase):
             "P4-D1.md의 수정 전후 결과 표",
             "P4-D2.md의 입력 확인 표",
             "P4-D3.md의 market_condition 경로 표",
-            "P4-D4.md의 사용 경로",
+            "P4-D4.md에는 `사용 경로 / 수집 건수",
             "완료 / 폴백으로 검증 / 다음 작업",
             "결과가 아직 없으면",
         ):
@@ -465,6 +465,44 @@ class Part4DeckContractTests(unittest.TestCase):
         ):
             with self.subTest(stale=stale):
                 self.assertNotIn(stale, self.sources + self.instructor_script)
+
+    def test_external_evidence_is_filtered_before_llm_input_and_close_points_to_a_new_system(self):
+        quality_flow = self._slide("P4-S36") + self._slide("P4-S37")
+        for phrase in (
+            "응답 정상 여부",
+            "분석 질문과 관련 있는가",
+            "날짜·출처·중복",
+            "최대 3건",
+            "통신 오류 문구",
+            "임원 개인 사건",
+            "출처 없는 AI 요약",
+            "수집 건수",
+            "제외 이유",
+            "LLM에 넘긴 자료",
+        ):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, quality_flow + self.instructor_script)
+
+        close = self._slide("P4-S52")
+        for phrase in (
+            "lecture-prism",
+            "prism-insight",
+            "여러분만의 전략과 시스템",
+            "정원 가꾸듯",
+            "비공개",
+            "GitHub 계정명",
+            "munsangrok@gmail.com",
+        ):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, close + self.instructor_script)
+
+        rows = [
+            item
+            for module in self.manifest["decks"]["part4"]["modules"]
+            for item in module["slides"]
+        ]
+        closing_row = next(item for item in rows if item["id"] == "P4-S52")
+        self.assertIn("여러분만의 전략과 시스템", closing_row["title"])
 
     def test_instructor_uses_one_sequential_prompt_for_all_four_demo_checkpoints(self):
         start = self.instructor_script.index("P4-D1~P4-D4 · 강사 통합 시연")

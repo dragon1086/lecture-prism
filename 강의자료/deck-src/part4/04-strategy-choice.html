@@ -221,39 +221,44 @@
   <div class="pagenum">35</div>
 </section>
 
-<!-- P4-S36 · 외부 자료는 확인된 구조로 바꾼 뒤 넣습니다 -->
+<!-- P4-S36 · 외부 응답은 품질 게이트를 거쳐 LLM에 넘깁니다 -->
 <section class="slide" style="padding:44px 74px 54px; justify-content:flex-start;">
-  <div class="kicker">4단계 · DART RSS와 확인한 공시</div>
-  <h2 style="font-size:36px; margin-bottom:12px;">RSS는 공시 링크를 가져오고 사람은 핵심 주장을 확인합니다</h2>
-  <svg class="editorial-diagram" viewBox="0 0 1130 245" role="img" aria-labelledby="p4s50-title p4s50-desc">
-    <title id="p4s50-title">외부 자료를 확인된 분석 입력으로 바꾸는 흐름</title>
-    <desc id="p4s50-desc">사용자가 가진 캡처와 공시에서 종목, 작성일, 출처, 핵심 주장, 유효기간을 정리하고 확인한 최신 자료만 analysis.py에 넘긴다.</desc>
-    <defs><marker id="p4s50-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="oklch(0.68 0.03 264)"/></marker></defs>
-    <path class="diagram-edge" marker-end="url(#p4s50-arrow)" d="M236 126 H348"/><path class="diagram-edge" marker-end="url(#p4s50-arrow)" d="M684 126 H796"/>
-    <g class="edge-label"><rect x="258" y="80" width="68" height="20" rx="3"/><text x="292" y="95" text-anchor="middle">내용 정리</text></g>
-    <g class="edge-label"><rect x="704" y="80" width="72" height="20" rx="3"/><text x="740" y="95" text-anchor="middle">확인한 자료</text></g>
-    <rect x="20" y="72" width="216" height="108" class="node"/><text x="128" y="110" text-anchor="middle" class="label">캡처 · 공시</text><text x="128" y="144" text-anchor="middle" class="sub-label">사용자가 가진 자료</text>
-    <rect x="348" y="48" width="336" height="156" class="focus"/><text x="516" y="88" text-anchor="middle" class="label">분석에 넣을 정보만 정리</text><text x="516" y="124" text-anchor="middle" class="sub-label">종목 · 작성일 · 출처</text><text x="516" y="150" text-anchor="middle" class="sub-label">핵심 주장 · 유효기간</text><text x="516" y="180" text-anchor="middle" class="flow-label">사용자가 확인</text>
-    <rect x="796" y="72" width="314" height="108" class="node"/><text x="953" y="110" text-anchor="middle" class="label mono">analysis.py</text><text x="953" y="144" text-anchor="middle" class="sub-label">확인한 최신 자료만 종목 근거에 추가</text>
-  </svg>
+  <div class="kicker">4단계 · 외부 자료 품질 게이트</div>
+  <h2 style="font-size:36px; margin-bottom:12px;">가져온 자료를 그대로 넘기지 않고 분석 질문에 맞는 근거만 남깁니다</h2>
+  <table class="plain-table" aria-label="외부 자료를 LLM 입력으로 바꾸기 전 확인 순서">
+    <thead><tr><th style="width:18%;">확인 순서</th><th style="width:44%;">통과 기준</th><th>통과하지 못하면</th></tr></thead>
+    <tbody>
+      <tr><td><strong>응답 정상 여부</strong></td><td>HTTP 성공 · XML/JSON 파싱 성공 · 오류 문구가 아님</td><td>자료로 넣지 않고 폴백 경로 표시</td></tr>
+      <tr><td><strong>관련성</strong></td><td>대상 종목과 <strong>분석 질문과 관련 있는가</strong></td><td>무관 자료 또는 검토 대기로 분리</td></tr>
+      <tr><td><strong>자료 품질</strong></td><td>날짜·출처·중복 여부와 유효기간 확인</td><td>오래되거나 중복된 자료 제외</td></tr>
+      <tr><td><strong>입력 크기</strong></td><td>관련도 높은 <strong>최대 3건</strong> · 건별 300자 이내</td><td>원문 대신 구조화한 짧은 근거만 전달</td></tr>
+    </tbody>
+  </table>
   <div class="action-pair">
-    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy"><code>P4-D4.md</code>의 사용 경로와 포함·제외 표에서 확인된 공시만 분석에 들어갔는지 봅니다.</div></div>
-    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">자기 전략에 꼭 필요한 외부 자료가 있다면 출처·날짜·유효기간을 적고, 수집보다 확인 절차부터 정합니다.</div></div>
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy"><code>P4-D4.md</code>에서 수집 건수·제외 이유·LLM에 넘긴 자료를 한 표로 보여줍니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">자료를 찾기 전에 “어떤 질문에 답할 근거인가?”를 한 문장으로 먼저 적습니다.</div></div>
   </div>
   <div class="pagenum">36</div>
 </section>
 
-<!-- P4-S37 · 외부 자료는 함수에 넘길 값과 저장하지 않을 값을 나눕니다 -->
-<section class="slide" style="padding:45px 76px 54px; justify-content:flex-start;">
-  <div class="kicker">개발 기초 · 함수에 넘길 값과 저장할 값</div>
-  <h2 style="font-size:36px; margin-bottom:14px;">외부 자료를 넣을 때는 저장하지 않을 정보도 정합니다</h2>
-  <div style="display:grid; grid-template-columns:1fr 1fr; gap:34px;">
-    <div><div class="flow-label">분석에 넘길 값</div><ul style="margin-top:8px;"><li style="font-size:21px;">종목과 자료 유형</li><li style="font-size:21px;">작성일·출처·유효기간</li><li style="font-size:21px;">사용자가 확인한 핵심 주장</li></ul></div>
-    <div><div class="flow-label" style="color:var(--warn);">저장하거나 재배포하지 않을 값</div><ul style="margin-top:8px;"><li style="font-size:21px;">유료 콘텐츠 원문</li><li style="font-size:21px;">로그인 정보와 시크릿</li><li style="font-size:21px;">확인하지 않은 AI 해석</li></ul></div>
-  </div>
+<!-- P4-S37 · 수집 자료는 포함과 제외 이유를 함께 남깁니다 -->
+<section class="slide" style="padding:40px 76px 48px; justify-content:flex-start;">
+  <div class="kicker">개발 기초 · 노이즈와 오류를 거르는 법</div>
+  <h2 style="font-size:36px; margin-bottom:12px;">수집 건수보다 무엇을 왜 제외했는지가 더 중요합니다</h2>
+  <table class="plain-table" aria-label="외부 자료의 포함과 제외 예시">
+    <thead><tr><th style="width:46%;">수집된 값</th><th style="width:14%;">판정</th><th>제외하거나 포함한 이유</th></tr></thead>
+    <tbody>
+      <tr><td>종목·작성일·공식 URL이 있는 최근 공시</td><td><strong style="color:var(--accent);">포함</strong></td><td>질문과 관련 있고 사람이 핵심 주장을 확인함</td></tr>
+      <tr><td><code>HTTP 503 · Service Unavailable</code></td><td><strong style="color:var(--warn);">제외</strong></td><td>통신 오류 문구이지 투자 근거가 아님</td></tr>
+      <tr><td>같은 URL·제목으로 반복 수집된 기사</td><td><strong style="color:var(--warn);">제외</strong></td><td>중복 자료라서 입력만 길어짐</td></tr>
+      <tr><td>실적을 묻는데 나온 임원 개인 사건 기사</td><td><strong style="color:var(--warn);">제외</strong></td><td>대상 회사와 관련돼도 이번 분석 질문과 무관함</td></tr>
+      <tr><td>오래된 기사·출처 없는 AI 요약</td><td><strong style="color:var(--warn);">제외</strong></td><td>유효기간이나 원문 근거를 확인할 수 없음</td></tr>
+    </tbody>
+  </table>
+  <p class="note" style="margin-top:10px;">안전 경계: 유료 콘텐츠 원문·로그인 정보·시크릿은 저장하거나 재배포하지 않습니다.</p>
   <div class="action-pair">
-    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy"><code>P4-D4.md</code>의 저장 점검에서 구조화한 요약만 전달되고 원문·시크릿은 남지 않았음을 확인합니다.</div></div>
-    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">자기 자료에서 분석에 필요한 필드와 저장하면 안 되는 정보를 각각 적습니다.</div></div>
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">오류·중복·무관 자료가 제외되고 최종 3건 이하만 분석 입력이 된 결과를 읽습니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">자기 자료에서도 포함 기준 하나와 제외 기준 하나를 먼저 정합니다.</div></div>
   </div>
   <div class="pagenum">37</div>
 </section>

@@ -149,8 +149,8 @@
             {"id": "P4-S33", "title": "ATR 계산은 데이터와 함수 약속을 먼저 확인합니다", "promptId": "P4-D1~P4-D4", "guideAudience": "instructor"},
             {"id": "P4-S34", "title": "KOSPI가 약하면 새로 들어가는 기준을 더 까다롭게 잡습니다", "promptId": "P4-D1~P4-D4", "guideAudience": "instructor"},
             {"id": "P4-S35", "title": "숫자는 코드가 계산하고, 해석은 AI가 돕습니다", "promptId": "P4-D1~P4-D4", "guideAudience": "instructor"},
-            {"id": "P4-S36", "title": "DART RSS는 공시 링크를 가져오고 사람은 핵심 주장을 확인합니다", "promptId": "P4-D1~P4-D4", "guideAudience": "instructor"},
-            {"id": "P4-S37", "title": "외부 자료는 함수에 넘길 값과 저장하지 않을 값을 나눕니다", "promptId": "P4-D1~P4-D4", "guideAudience": "instructor"},
+            {"id": "P4-S36", "title": "가져온 자료를 그대로 넘기지 않고 분석 질문에 맞는 근거만 남깁니다", "promptId": "P4-D1~P4-D4", "guideAudience": "instructor"},
+            {"id": "P4-S37", "title": "수집 건수보다 무엇을 왜 제외했는지가 더 중요합니다", "promptId": "P4-D1~P4-D4", "guideAudience": "instructor"},
             {"id": "P4-S38", "title": "강사 시연과 개인 실습은 같은 확인 순서로 끝납니다", "promptId": "P4-05~P4-08"}
           ]
         },
@@ -181,7 +181,7 @@
         {
           "file": "part4/99-close.html",
           "slides": [
-            {"id": "P4-S52", "title": "이제 원하는 변화를 설명하고 직접 결과를 확인하며 다음 수정을 이어 갑니다", "promptId": null}
+            {"id": "P4-S52", "title": "두 프로젝트를 참고해 여러분만의 전략과 시스템을 작은 것부터 키워 갑니다", "promptId": null}
           ]
         }
       ]

@@ -39,8 +39,8 @@
 | P4-S33 | P4-D1~P4-D4 | `part4/04-strategy-choice.html` | ATR 계산은 데이터와 함수 약속을 먼저 확인합니다 |
 | P4-S34 | P4-D1~P4-D4 | `part4/04-strategy-choice.html` | KOSPI가 약하면 새로 들어가는 기준을 더 까다롭게 잡습니다 |
 | P4-S35 | P4-D1~P4-D4 | `part4/04-strategy-choice.html` | 숫자는 코드가 계산하고, 해석은 AI가 돕습니다 |
-| P4-S36 | P4-D1~P4-D4 | `part4/04-strategy-choice.html` | DART RSS는 공시 링크를 가져오고 사람은 핵심 주장을 확인합니다 |
-| P4-S37 | P4-D1~P4-D4 | `part4/04-strategy-choice.html` | 외부 자료는 함수에 넘길 값과 저장하지 않을 값을 나눕니다 |
+| P4-S36 | P4-D1~P4-D4 | `part4/04-strategy-choice.html` | 가져온 자료를 그대로 넘기지 않고 분석 질문에 맞는 근거만 남깁니다 |
+| P4-S37 | P4-D1~P4-D4 | `part4/04-strategy-choice.html` | 수집 건수보다 무엇을 왜 제외했는지가 더 중요합니다 |
 | P4-S38 | P4-05~P4-08 | `part4/04-strategy-choice.html` | 강사 시연과 개인 실습은 같은 확인 순서로 끝납니다 |
 | P4-S39 | P4-09 | `part4/05-operations.html` | 디버깅은 처음 문제가 생긴 곳을 찾는 일입니다 |
 | P4-S40 | P4-09 | `part4/05-operations.html` | 로그를 보면 어느 단계까지 실행됐는지 알 수 있습니다 |
@@ -55,4 +55,4 @@
 | P4-S49 | P4-12 | `part4/05-operations.html` | 3분 뒤 로그와 DB에 새 기록이 생겼는지 확인합니다 |
 | P4-S50 | P4-13 | `part4/05-operations.html` | 실습 예약은 지우고 반복 주기는 설계로만 남깁니다 |
 | P4-S51 | P4-14 | `part4/06-sharing.html` | 수업이 끝난 뒤에도 다음 작업은 이 다섯 문장으로 정리합니다 |
-| P4-S52 | — | `part4/99-close.html` | 이제 원하는 변화를 설명하고 직접 결과를 확인하며 다음 수정을 이어 갑니다 |
+| P4-S52 | — | `part4/99-close.html` | 두 프로젝트를 참고해 여러분만의 전략과 시스템을 작은 것부터 키워 갑니다 |
