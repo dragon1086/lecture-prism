@@ -142,7 +142,7 @@ class PrismCoreFoundationContractTest(unittest.TestCase):
         text = (
             ROOT / "lecture/exercises/수강생_붙여넣기_프롬프트_파트4.md"
         ).read_text(encoding="utf-8")
-        selection = self._section(text, "## P4-04 · 한 트랙과 파일만 고르기")
+        selection = self._section(text, "## P4-04 · 하네스로 트랙 순서와 첫 작업 고르기")
         self.assertIn("아직 코드", selection)
         self.assertIn("수정하지 말고 실행도 하지 마", selection)
         self.assertNotIn("최소 수정", selection)

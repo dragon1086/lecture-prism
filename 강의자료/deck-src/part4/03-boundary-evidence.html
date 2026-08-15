@@ -73,3 +73,26 @@
   <p class="note" style="font-size:19px;">작업마다 필요한 확인 방법은 다릅니다. 이번 수정에서 무엇을 직접 봤는지 말할 수 있으면 됩니다.</p>
   <div class="pagenum">20</div>
 </section>
+
+<!-- P4-S21 · 명세와 검증 피드백 루프가 에이전트 작업을 완성합니다 -->
+<section class="slide" style="padding:34px 66px 30px; justify-content:flex-start;">
+  <div class="kicker" style="margin-bottom:5px;">명세 기반 바이브코딩 · 검증 피드백 루프</div>
+  <h2 style="font-size:32px; margin-bottom:9px;">잘 시키는 사람은 한 번에 완성을 요구하지 않고, 증거가 나올 때까지 루프를 돕니다</h2>
+  <div style="display:grid; grid-template-columns:.82fr 1.18fr; gap:27px; align-items:center; min-height:386px;">
+    <figure style="margin:0; display:flex; align-items:center; justify-content:center;">
+      <img src="assets/agent-development-feedback-loop.png" alt="여섯 단계가 원을 이루고 피드백이 앞 단계로 돌아가는 개발 루프" data-fullscreenable="true" tabindex="0" style="width:100%; max-height:370px; object-fit:contain; cursor:zoom-in; border-radius:20px;" />
+    </figure>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px 16px;">
+      <div style="border-left:3px solid var(--accent); padding:4px 0 4px 12px;"><strong style="font-size:18px;">1 · PRD / Spec</strong><p style="font-size:15px; margin:3px 0 0; color:var(--muted);">무엇을 왜 만들고, 언제 완료인지 정합니다.</p></div>
+      <div style="border-left:3px solid var(--accent); padding:4px 0 4px 12px;"><strong style="font-size:18px;">2 · 작업·검증 계획</strong><p style="font-size:15px; margin:3px 0 0; color:var(--muted);">순서와 확인할 증거를 함께 정합니다.</p></div>
+      <div style="border-left:3px solid var(--accent); padding:4px 0 4px 12px;"><strong style="font-size:18px;">3 · 설계</strong><p style="font-size:15px; margin:3px 0 0; color:var(--muted);">파일·함수·데이터·안전 경계를 잇습니다.</p></div>
+      <div style="border-left:3px solid var(--accent); padding:4px 0 4px 12px;"><strong style="font-size:18px;">4 · 구현</strong><p style="font-size:15px; margin:3px 0 0; color:var(--muted);">범위를 작게 나눠 코드를 바꿉니다.</p></div>
+      <div style="border-left:3px solid var(--accent); padding:4px 0 4px 12px;"><strong style="font-size:18px;">5 · 검증</strong><p style="font-size:15px; margin:3px 0 0; color:var(--muted);">테스트·로그·DB·화면을 직접 봅니다.</p></div>
+      <div style="border-left:3px solid var(--purple); padding:4px 0 4px 12px;"><strong style="font-size:18px;">6 · 피드백</strong><p style="font-size:15px; margin:3px 0 0; color:var(--muted);">어긋난 요구·계획·설계부터 다시 고칩니다.</p></div>
+      <div style="grid-column:1 / -1; margin-top:5px; padding:10px 14px; background:oklch(0.19 0.03 255); border-radius:12px; font-size:16px; line-height:1.45;"><strong>사람은 방향과 완료 조건을 정하고, 에이전트는 설계·실행·검증을 반복합니다.</strong><br><span style="color:var(--muted);">약 40만 Claude Code 세션에서 사람은 계획 결정의 약 70%, Claude는 실행 결정의 약 80%를 맡았습니다.</span></div>
+    </div>
+  </div>
+  <div class="takeaway" style="margin-top:7px; padding:9px 16px; font-size:16px;">검증이 실패하면 코드만 덧칠하지 않습니다. 요구·계획·설계 중 잘못된 지점부터 고치고 다시 루프를 돕니다.</div>
+  <p style="font-size:10px; line-height:1.35; margin:7px 0 0; color:var(--muted);">출처: <a href="https://github.blog/ai-and-ml/generative-ai/spec-driven-development-with-ai-get-started-with-a-new-open-source-toolkit/" target="_blank" rel="noopener">[G] GitHub Spec Kit</a> · <a href="https://www.anthropic.com/engineering/claude-code-best-practices" target="_blank" rel="noopener">[A] Anthropic Claude Code best practices</a> 및 <a href="https://www.anthropic.com/research/claude-code-expertise" target="_blank" rel="noopener">약 40만 세션 연구</a> · <a href="https://openai.com/index/harness-engineering/" target="_blank" rel="noopener">[O] OpenAI Harness Engineering</a> (2025–2026, 2026-08-16 확인)</p>
+  <div class="pagenum">21</div>
+</section>

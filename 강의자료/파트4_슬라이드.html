@@ -618,7 +618,29 @@
   <div class="prompt-guide">수강생 자료 → P4-03 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S21" class="slide">
+<section data-slide-id="P4-S21" class="slide" style="padding:34px 66px 30px; justify-content:flex-start;">
+  <div class="kicker" style="margin-bottom:5px;">명세 기반 바이브코딩 · 검증 피드백 루프</div>
+  <h2 style="font-size:32px; margin-bottom:9px;">잘 시키는 사람은 한 번에 완성을 요구하지 않고, 증거가 나올 때까지 루프를 돕니다</h2>
+  <div style="display:grid; grid-template-columns:.82fr 1.18fr; gap:27px; align-items:center; min-height:386px;">
+    <figure style="margin:0; display:flex; align-items:center; justify-content:center;">
+      <img src="assets/agent-development-feedback-loop.png" alt="여섯 단계가 원을 이루고 피드백이 앞 단계로 돌아가는 개발 루프" data-fullscreenable="true" tabindex="0" style="width:100%; max-height:370px; object-fit:contain; cursor:zoom-in; border-radius:20px;" />
+    </figure>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px 16px;">
+      <div style="border-left:3px solid var(--accent); padding:4px 0 4px 12px;"><strong style="font-size:18px;">1 · PRD / Spec</strong><p style="font-size:15px; margin:3px 0 0; color:var(--muted);">무엇을 왜 만들고, 언제 완료인지 정합니다.</p></div>
+      <div style="border-left:3px solid var(--accent); padding:4px 0 4px 12px;"><strong style="font-size:18px;">2 · 작업·검증 계획</strong><p style="font-size:15px; margin:3px 0 0; color:var(--muted);">순서와 확인할 증거를 함께 정합니다.</p></div>
+      <div style="border-left:3px solid var(--accent); padding:4px 0 4px 12px;"><strong style="font-size:18px;">3 · 설계</strong><p style="font-size:15px; margin:3px 0 0; color:var(--muted);">파일·함수·데이터·안전 경계를 잇습니다.</p></div>
+      <div style="border-left:3px solid var(--accent); padding:4px 0 4px 12px;"><strong style="font-size:18px;">4 · 구현</strong><p style="font-size:15px; margin:3px 0 0; color:var(--muted);">범위를 작게 나눠 코드를 바꿉니다.</p></div>
+      <div style="border-left:3px solid var(--accent); padding:4px 0 4px 12px;"><strong style="font-size:18px;">5 · 검증</strong><p style="font-size:15px; margin:3px 0 0; color:var(--muted);">테스트·로그·DB·화면을 직접 봅니다.</p></div>
+      <div style="border-left:3px solid var(--purple); padding:4px 0 4px 12px;"><strong style="font-size:18px;">6 · 피드백</strong><p style="font-size:15px; margin:3px 0 0; color:var(--muted);">어긋난 요구·계획·설계부터 다시 고칩니다.</p></div>
+      <div style="grid-column:1 / -1; margin-top:5px; padding:10px 14px; background:oklch(0.19 0.03 255); border-radius:12px; font-size:16px; line-height:1.45;"><strong>사람은 방향과 완료 조건을 정하고, 에이전트는 설계·실행·검증을 반복합니다.</strong><br><span style="color:var(--muted);">약 40만 Claude Code 세션에서 사람은 계획 결정의 약 70%, Claude는 실행 결정의 약 80%를 맡았습니다.</span></div>
+    </div>
+  </div>
+  <div class="takeaway" style="margin-top:7px; padding:9px 16px; font-size:16px;">검증이 실패하면 코드만 덧칠하지 않습니다. 요구·계획·설계 중 잘못된 지점부터 고치고 다시 루프를 돕니다.</div>
+  <p style="font-size:10px; line-height:1.35; margin:7px 0 0; color:var(--muted);">출처: <a href="https://github.blog/ai-and-ml/generative-ai/spec-driven-development-with-ai-get-started-with-a-new-open-source-toolkit/" target="_blank" rel="noopener">[G] GitHub Spec Kit</a> · <a href="https://www.anthropic.com/engineering/claude-code-best-practices" target="_blank" rel="noopener">[A] Anthropic Claude Code best practices</a> 및 <a href="https://www.anthropic.com/research/claude-code-expertise" target="_blank" rel="noopener">약 40만 세션 연구</a> · <a href="https://openai.com/index/harness-engineering/" target="_blank" rel="noopener">[O] OpenAI Harness Engineering</a> (2025–2026, 2026-08-16 확인)</p>
+  <div class="prompt-guide">수강생 자료 → P4-03 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
+</section>
+
+<section data-slide-id="P4-S22" class="slide">
   <div class="kicker">개인 실습 · 트랙 고르기</div>
   <h2>내 아이디어는 진입·분석·청산·리스크 중 한곳에서 시작합니다</h2>
   <div style="display:grid; grid-template-columns:130px 1fr 1fr; border-top:1px solid oklch(0.36 0.02 264);">
@@ -628,36 +650,37 @@
     <div style="padding:16px 10px; border-bottom:1px solid oklch(0.27 0.02 264); font-size:23px; font-weight:800;">C · 청산</div><div style="padding:16px 10px; border-bottom:1px solid oklch(0.27 0.02 264); font-size:20px;">언제 손실을 끊고 수익을 지킬까?</div><div style="padding:16px 10px; border-bottom:1px solid oklch(0.27 0.02 264); font-size:20px;"><code>trading.py · _decide_exit</code> · 세 청산 사례</div>
     <div style="padding:16px 10px; border-bottom:1px solid oklch(0.27 0.02 264); font-size:23px; font-weight:800;">D · 리스크</div><div style="padding:16px 10px; border-bottom:1px solid oklch(0.27 0.02 264); font-size:20px;">몇 종목에 얼마씩 나눌까?</div><div style="padding:16px 10px; border-bottom:1px solid oklch(0.27 0.02 264); font-size:20px;"><code>trading.py</code> 상수 · 수량과 통과 기준</div>
   </div>
-  <p class="note">트랙은 정답지가 아닙니다. <strong>오늘 한 파일에서 확인 가능한 규칙 하나를 고르는 지도</strong>입니다.</p>
-  <div class="prompt-guide">수강생 자료 → P4-04 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
-</section>
-
-<section data-slide-id="P4-S22" class="slide">
-  <div class="kicker">공통 실습 P4-04</div>
-  <h2>전략 전체를 고치지 말고 오늘 확인할 규칙 하나만 고릅니다</h2>
-  <div class="code-window"><pre><span class="comment">내 문장</span>  “거래량이 충분히 늘어난 종목만 보고 싶다.”
-<span class="comment">트랙</span>    A · 진입
-<span class="comment">파일·규칙</span> <span class="name">screening.py</span>의 <span class="name">VOLUME_SURGE_RATIO</span> 또는 관련 필터
-<span class="comment">확인할 결과</span> 같은 mock 데이터에서 <span class="value">후보 목록이 어떻게 달라지는지</span> 비교</pre></div>
-  <div class="action-pair compact">
-    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">구독자 질문을 터틀·ATR·KOSPI·외부 근거의 네 작업으로 나눕니다.</div></div>
-    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">P4-04로 자기 전략의 트랙, 파일 하나, 확인할 결과를 정합니다.</div></div>
-  </div>
+  <p class="note"><code>MY_STRATEGY.md</code>를 하네스가 읽고 필요한 트랙을 고릅니다. 여러 트랙이어도 <strong>현재는 한 트랙만</strong> 실행합니다.</p>
   <div class="prompt-guide">수강생 자료 → P4-04 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
 <section data-slide-id="P4-S23" class="slide">
-  <div class="kicker">선택 실습 P4-05~P4-08</div>
-  <h2>파일 하나와 규칙 하나를 정해 에이전트에게 맡깁니다</h2>
-  <div class="prompt" style="font-size:23px;">내 전략은 <strong>[한 줄]</strong>이다.<br><strong>[파일 하나]</strong>의 <strong>[규칙 하나]</strong>만 바꿔줘.<br><strong>[함수 약속·mock·simulation]</strong>은 유지해.<br>수정 전후를 <strong>[후보·설명·청산·수량]</strong>으로 비교하고 직접 실행해 확인해줘.</div>
+  <div class="kicker">공통 실습 P4-04</div>
+  <h2>하네스는 내 전략에서 현재 트랙과 다음 순서를 고릅니다</h2>
+  <div class="code-window"><pre><span class="comment">원문</span>      <span class="name">MY_STRATEGY.md</span>
+<span class="comment">하네스 판단</span> A · 진입 → D · 리스크
+<span class="comment">현재 사이클</span> <span class="name">screening.py</span>의 규칙 하나
+<span class="comment">다음 사이클</span> 현재 검증이 끝난 뒤에만 <span class="value">trading.py</span>
+<span class="comment">계획표</span>    같은 대화에 현재·다음 트랙을 유지</pre></div>
   <div class="action-pair compact">
-    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">P4-D1부터 한 단계씩 실행하며 수정 전 결과와 그대로 둘 부분을 먼저 확인합니다.</div></div>
-    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">수강생 자료에서 P4-05~P4-08 중 자기 트랙 번호 하나만 사용합니다.</div></div>
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">구독자 질문을 터틀·ATR·KOSPI·외부 근거의 네 작업으로 나눕니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">P4-04로 MY_STRATEGY.md를 하네스에 맡겨 현재 트랙과 뒤 순서를 정합니다.</div></div>
+  </div>
+  <div class="prompt-guide">수강생 자료 → P4-04 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
+</section>
+
+<section data-slide-id="P4-S24" class="slide">
+  <div class="kicker">선택 실습 P4-05~P4-08</div>
+  <h2>전략을 다시 입력하지 않고 현재 트랙을 이어서 실행합니다</h2>
+  <div class="prompt" style="font-size:22px;"><strong>MY_STRATEGY.md</strong>와 <strong>P4-04 계획표</strong>를 읽어줘.<br>현재 트랙의 파일 하나·규칙 하나만 수정해줘.<br><strong>회귀 사례 → 구현 → mock 검증 → 전후 비교</strong>를 끝내줘.<br>다음 트랙이 있으면 시작하지 말고 번호만 알려줘.</div>
+  <div class="action-pair compact">
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">D1~D4 통합 프롬프트를 한 번 실행하고 체크포인트별 증거를 읽습니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">P4-04가 알려 준 번호를 실행하고, 검증 뒤 다음 번호가 있으면 이어갑니다.</div></div>
   </div>
   <div class="prompt-guide">수강생 자료 → P4-05~P4-08 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S24" class="slide split">
+<section data-slide-id="P4-S25" class="slide split">
   <div class="txt">
     <div class="kicker">누가 무엇을 맡을까</div>
     <h2>계산은 코드에 맡기고 시장 상황 설명은 AI에게 맡깁니다</h2>
@@ -671,18 +694,18 @@
   <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S25" class="slide divider">
+<section data-slide-id="P4-S26" class="slide divider">
   <div class="chnum">25분 개인 실습</div>
   <h1>먼저 결과를 예상하고<br>한 파일만 바꿔 확인합니다</h1>
-  <p class="sub">트랙 A · B · C · D 가운데 하나만 선택합니다</p>
+  <p class="sub">한 트랙씩 수정·검증하고, 필요한 사람만 다음 트랙으로 이어갑니다</p>
   <div class="action-pair compact" style="width:960px; text-align:left; margin-top:26px;">
     <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">실제 질문 사례를 단계별로 보여줍니다.</div></div>
-    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">같은 시간에 자기 트랙 하나를 구현합니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">같은 시간에 현재 트랙을 구현하고, 끝난 사람만 계획표의 다음 트랙으로 갑니다.</div></div>
   </div>
   <div class="prompt-guide">수강생 자료 → P4-05~P4-08 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S26" class="slide">
+<section data-slide-id="P4-S27" class="slide">
   <div class="kicker">개인 실습 · 확인할 것</div>
   <h2>잘 고쳤는지는 코드 양이 아니라 달라진 결과로 판단합니다</h2>
   <div class="compare">
@@ -693,19 +716,19 @@
   <div class="prompt-guide">수강생 자료 → P4-14 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S27" class="slide" style="padding:50px 78px 54px; justify-content:flex-start;">
+<section data-slide-id="P4-S28" class="slide" style="padding:50px 78px 54px; justify-content:flex-start;">
   <div class="kicker">강사 시연의 출발점 · 실제 구독자 질문</div>
   <h2 style="font-size:37px; margin-bottom:18px;">“터틀 추세추종에 ATR과 시황 판단, 외부 근거까지 넣고 싶습니다”</h2>
   <div class="prompt" style="font-size:24px; line-height:1.7;">
     20일 신고가 돌파로 들어가고 10일 저가 이탈로 나옵니다. ATR로 손절가와 수량을 정하고, KOSPI 시황이 약하면 포지션을 줄입니다. 외국인 리포트 캡처와 공시도 판단 근거로 참고하고 싶습니다.
   </div>
-  <p class="note">이 질문을 한 번에 구현하지 않습니다. 서로 다른 책임을 네 단계로 나눠 하나씩 확인합니다.</p>
+  <p class="note">프롬프트는 한 번만 붙여넣되, 서로 다른 책임은 네 체크포인트로 나눠 하나씩 검증합니다.</p>
   <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S28" class="slide" style="padding:48px 74px 54px; justify-content:flex-start;">
+<section data-slide-id="P4-S29" class="slide" style="padding:48px 74px 54px; justify-content:flex-start;">
   <div class="kicker">요구사항을 개발 순서로 바꾸기</div>
-  <h2 style="font-size:36px; margin-bottom:16px;">큰 요청은 네 번의 작은 작업으로 나눕니다</h2>
+  <h2 style="font-size:36px; margin-bottom:16px;">한 통합 프롬프트 안에서도 네 작업은 순서대로 검증합니다</h2>
   <div class="flow">
     <div class="step"><div class="n">1 · P4-D1</div><div class="t">터틀</div><div class="d">20일 신고가 진입<br>10일 저가 청산</div></div>
     <div class="step"><div class="n">2 · P4-D2</div><div class="t">ATR</div><div class="d">변동성 손절<br>허용손실 기준 수량</div></div>
@@ -713,13 +736,13 @@
     <div class="step"><div class="n">4 · P4-D4</div><div class="t">외부 근거</div><div class="d">확인된 리포트·공시<br>분석 입력에 추가</div></div>
   </div>
   <div class="action-pair">
-    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">강사는 구독자 질문을 네 작업으로 나누고, 각 작업이 어느 파일에 들어갈지 먼저 묻습니다.</div></div>
-    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">수강생은 자기 전략을 진입·분석·청산·리스크 중 한 축으로 줄이고, 오늘 확인할 규칙 하나를 고릅니다.</div></div>
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">통합 프롬프트가 D1→D2→D3→D4 순서와 각 완료 증거를 지키는지 봅니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">하네스가 고른 현재 트랙만 끝내고, 다음 트랙은 계획표에 대기시킵니다.</div></div>
   </div>
   <div class="prompt-guide">수강생 자료 → P4-04 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S29" class="slide" style="padding:46px 76px 54px; justify-content:flex-start;">
+<section data-slide-id="P4-S30" class="slide" style="padding:46px 76px 54px; justify-content:flex-start;">
   <div class="kicker">1단계 · 터틀 추세추종</div>
   <h2 style="font-size:36px; margin-bottom:15px;">진입은 <code>screening.py</code>, 청산은 <code>trading.py</code>가 맡습니다</h2>
   <table class="plain-table" aria-label="터틀 전략의 진입과 청산 책임 구분">
@@ -734,10 +757,10 @@
     <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">진입과 청산을 한 함수에 넣지 않는 이유를 실제 파일과 반환값으로 보여줍니다.</div></div>
     <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">자기 규칙이 “어떤 종목을 볼지”인지 “언제 나올지”인지 구분하고 담당 파일을 적습니다.</div></div>
   </div>
-  <div class="prompt-guide">강사 자료 → P4-D1 · 강사용 진행 스크립트의 해당 블록을 사용합니다</div><div class="pagenum"></div>
+  <div class="prompt-guide">강사 자료 → P4-D1~P4-D4 · 강사용 진행 스크립트의 해당 블록을 사용합니다</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S30" class="slide" style="padding:45px 76px 54px; justify-content:flex-start;">
+<section data-slide-id="P4-S31" class="slide" style="padding:45px 76px 54px; justify-content:flex-start;">
   <div class="kicker">강사 시연 P4-D1</div>
   <h2 style="font-size:36px; margin-bottom:14px;">“터틀 전략을 넣어줘”보다 계산 기준과 확인 방법을 함께 적습니다</h2>
   <div class="code-window"><pre><span class="comment">원하는 결과</span>  20일 신고가 돌파 → 후보 / 10일 저가 이탈 → 청산
@@ -745,13 +768,13 @@
 <span class="comment">지킬 약속</span>    함수 입력·반환, mock·simulation, 실거래 차단
 <span class="comment">확인할 방법</span>  고정 가격 예시, 관련 테스트, 전체 실행 로그</pre></div>
   <div class="action-pair">
-    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">P4-D1을 붙여넣고, 에이전트가 수정 전에 보여주는 파일·입력값·테스트 계획을 함께 읽습니다.</div></div>
-    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">P4-05 또는 P4-07에서 자기 진입·청산 규칙 한 가지만 적고, 예상 결과를 먼저 남깁니다.</div></div>
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">통합 프롬프트의 D1 체크포인트에서 파일·입력값·테스트 계획을 함께 읽습니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">P4-05 또는 P4-07이 MY_STRATEGY.md의 진입·청산 원칙을 제대로 읽었는지 확인합니다.</div></div>
   </div>
-  <div class="prompt-guide">강사 자료 → P4-D1 · 강사용 진행 스크립트의 해당 블록을 사용합니다</div><div class="pagenum"></div>
+  <div class="prompt-guide">강사 자료 → P4-D1~P4-D4 · 강사용 진행 스크립트의 해당 블록을 사용합니다</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S31" class="slide" style="padding:46px 76px 54px; justify-content:flex-start;">
+<section data-slide-id="P4-S32" class="slide" style="padding:46px 76px 54px; justify-content:flex-start;">
   <div class="kicker">1단계의 완료 기준</div>
   <h2 style="font-size:36px; margin-bottom:14px;">같은 가격을 넣었을 때 어떤 판단이 나오는지 확인합니다</h2>
   <table style="width:100%; border-collapse:collapse; font-size:20px; line-height:1.45;">
@@ -766,10 +789,10 @@
     <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">수정 전후 후보와 청산 사유를 나란히 보여주고, 예상과 다르면 로그에서 첫 차이를 찾습니다.</div></div>
     <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">자기 규칙도 통과 예시 하나와 보류 예시 하나를 만들고 결과가 예상과 같은지 확인합니다.</div></div>
   </div>
-  <div class="prompt-guide">강사 자료 → P4-D1 · 강사용 진행 스크립트의 해당 블록을 사용합니다</div><div class="pagenum"></div>
+  <div class="prompt-guide">강사 자료 → P4-D1~P4-D4 · 강사용 진행 스크립트의 해당 블록을 사용합니다</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S32" class="slide" style="padding:46px 76px 54px; justify-content:flex-start;">
+<section data-slide-id="P4-S33" class="slide" style="padding:46px 76px 54px; justify-content:flex-start;">
   <div class="kicker">2단계 · ATR 손절과 비중 조절</div>
   <h2 style="font-size:36px; margin-bottom:14px;">가격이 많이 흔들리는 종목은 손절 폭을 넓히고 수량을 줄입니다</h2>
   <div style="display:grid; grid-template-columns:1.05fr .95fr; gap:32px; align-items:stretch;">
@@ -783,13 +806,13 @@
     </div>
   </div>
   <div class="action-pair">
-    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">P4-D2로 같은 계좌자산에서 ATR만 달라질 때 손절가와 수량이 어떻게 바뀌는지 비교합니다.</div></div>
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">통합 프롬프트의 D2 체크포인트에서 ATR만 달라질 때 손절가와 수량을 비교합니다.</div></div>
     <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">리스크 트랙을 고른 수강생은 P4-08에서 최대 보유 수·현금 비중·점수 기준 중 하나만 바꿉니다.</div></div>
   </div>
-  <div class="prompt-guide">강사 자료 → P4-D2 · 강사용 진행 스크립트의 해당 블록을 사용합니다</div><div class="pagenum"></div>
+  <div class="prompt-guide">강사 자료 → P4-D1~P4-D4 · 강사용 진행 스크립트의 해당 블록을 사용합니다</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S33" class="slide" style="padding:45px 76px 54px; justify-content:flex-start;">
+<section data-slide-id="P4-S34" class="slide" style="padding:45px 76px 54px; justify-content:flex-start;">
   <div class="kicker">개발 기초 · 계산을 넣기 전에 확인할 것</div>
   <h2 style="font-size:36px; margin-bottom:14px;">공식보다 먼저 고가·저가·종가가 실제 입력에 있는지 확인합니다</h2>
   <svg class="editorial-diagram" viewBox="0 0 1120 230" role="img" aria-labelledby="p4s47-title p4s47-desc">
@@ -807,10 +830,10 @@
     <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">에이전트가 데이터 필드를 확인하지 않고 계산부터 만들면 중단시키고, 입력 구조부터 다시 조사하게 합니다.</div></div>
     <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">자기 규칙에 필요한 입력값이 어느 파일에서 오는지 P4-01 답변 표에서 다시 찾습니다.</div></div>
   </div>
-  <div class="prompt-guide">강사 자료 → P4-D2 · 강사용 진행 스크립트의 해당 블록을 사용합니다</div><div class="pagenum"></div>
+  <div class="prompt-guide">강사 자료 → P4-D1~P4-D4 · 강사용 진행 스크립트의 해당 블록을 사용합니다</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S34" class="slide" style="padding:45px 76px 54px; justify-content:flex-start;">
+<section data-slide-id="P4-S35" class="slide" style="padding:45px 76px 54px; justify-content:flex-start;">
   <div class="kicker">3단계 · KOSPI 시황에 맞춘 대응</div>
   <h2 style="font-size:36px; margin-bottom:14px;">KOSPI가 약하면 새로 들어가는 기준을 더 까다롭게 잡습니다</h2>
   <table style="width:100%; border-collapse:collapse; font-size:20px; line-height:1.45;">
@@ -822,13 +845,13 @@
     </tbody>
   </table>
   <div class="action-pair">
-    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">P4-D3로 KOSPI 시황이 `market_condition`이 되어 trading.py까지 전달되는 길을 보여줍니다.</div></div>
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">통합 프롬프트의 D3 체크포인트에서 `market_condition`이 trading.py까지 가는 길을 보여줍니다.</div></div>
     <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">자기 전략에서 약세장에 줄일 한 가지를 고릅니다. 후보 수, 점수 문턱, 최대 보유 수 가운데 하나면 충분합니다.</div></div>
   </div>
-  <div class="prompt-guide">강사 자료 → P4-D3 · 강사용 진행 스크립트의 해당 블록을 사용합니다</div><div class="pagenum"></div>
+  <div class="prompt-guide">강사 자료 → P4-D1~P4-D4 · 강사용 진행 스크립트의 해당 블록을 사용합니다</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S35" class="slide" style="padding:45px 76px 54px; justify-content:flex-start;">
+<section data-slide-id="P4-S36" class="slide" style="padding:45px 76px 54px; justify-content:flex-start;">
   <div class="kicker">개발 기초 · 코드와 AI의 역할</div>
   <h2 style="font-size:36px; margin-bottom:14px;">숫자는 코드가 계산하고, 해석은 AI가 돕습니다</h2>
   <div class="compare">
@@ -839,12 +862,12 @@
     <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">KOSPI 이동평균은 코드가 계산하고, 장세가 업종에 미칠 영향만 AI가 설명하도록 나눕니다.</div></div>
     <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">자기 전략의 규칙을 ‘숫자로 계산할 것’과 ‘근거를 읽어 설명할 것’으로 한 줄씩 나눕니다.</div></div>
   </div>
-  <div class="prompt-guide">강사 자료 → P4-D3 · 강사용 진행 스크립트의 해당 블록을 사용합니다</div><div class="pagenum"></div>
+  <div class="prompt-guide">강사 자료 → P4-D1~P4-D4 · 강사용 진행 스크립트의 해당 블록을 사용합니다</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S36" class="slide" style="padding:44px 74px 54px; justify-content:flex-start;">
-  <div class="kicker">4단계 · 리포트 캡처와 공시</div>
-  <h2 style="font-size:36px; margin-bottom:12px;">캡처와 공시는 출처·작성일·유효기간을 확인한 뒤 넣습니다</h2>
+<section data-slide-id="P4-S37" class="slide" style="padding:44px 74px 54px; justify-content:flex-start;">
+  <div class="kicker">4단계 · DART RSS와 확인한 공시</div>
+  <h2 style="font-size:36px; margin-bottom:12px;">RSS는 공시 링크를 가져오고 사람은 핵심 주장을 확인합니다</h2>
   <svg class="editorial-diagram" viewBox="0 0 1130 245" role="img" aria-labelledby="p4s50-title p4s50-desc">
     <title id="p4s50-title">외부 자료를 확인된 분석 입력으로 바꾸는 흐름</title>
     <desc id="p4s50-desc">사용자가 가진 캡처와 공시에서 종목, 작성일, 출처, 핵심 주장, 유효기간을 정리하고 확인한 최신 자료만 analysis.py에 넘긴다.</desc>
@@ -857,13 +880,13 @@
     <rect x="796" y="72" width="314" height="108" class="node"/><text x="953" y="110" text-anchor="middle" class="label mono">analysis.py</text><text x="953" y="144" text-anchor="middle" class="sub-label">확인한 최신 자료만 종목 근거에 추가</text>
   </svg>
   <div class="action-pair">
-    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">P4-D4로 확인된 공시 한 건과 미확인 리포트 요약 한 건을 넣고, 첫 번째만 분석 근거에 들어가는지 봅니다.</div></div>
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">통합 프롬프트의 D4 체크포인트에서 DART RSS와 저장 XML 폴백을 차례로 확인합니다.</div></div>
     <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">자기 전략에 꼭 필요한 외부 자료가 있다면 출처·날짜·유효기간을 적고, 수집보다 확인 절차부터 정합니다.</div></div>
   </div>
-  <div class="prompt-guide">강사 자료 → P4-D4 · 강사용 진행 스크립트의 해당 블록을 사용합니다</div><div class="pagenum"></div>
+  <div class="prompt-guide">강사 자료 → P4-D1~P4-D4 · 강사용 진행 스크립트의 해당 블록을 사용합니다</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S37" class="slide" style="padding:45px 76px 54px; justify-content:flex-start;">
+<section data-slide-id="P4-S38" class="slide" style="padding:45px 76px 54px; justify-content:flex-start;">
   <div class="kicker">개발 기초 · 함수에 넘길 값과 저장할 값</div>
   <h2 style="font-size:36px; margin-bottom:14px;">외부 자료를 넣을 때는 저장하지 않을 정보도 정합니다</h2>
   <div style="display:grid; grid-template-columns:1fr 1fr; gap:34px;">
@@ -874,10 +897,10 @@
     <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">정해진 항목으로 정리한 요약은 함수에 넘기되, 원문 이미지와 유료 본문은 DB와 로그에 남기지 않습니다.</div></div>
     <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">자기 자료에서 분석에 필요한 필드와 저장하면 안 되는 정보를 각각 적습니다.</div></div>
   </div>
-  <div class="prompt-guide">강사 자료 → P4-D4 · 강사용 진행 스크립트의 해당 블록을 사용합니다</div><div class="pagenum"></div>
+  <div class="prompt-guide">강사 자료 → P4-D1~P4-D4 · 강사용 진행 스크립트의 해당 블록을 사용합니다</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S38" class="slide" style="padding:46px 76px 54px; justify-content:flex-start;">
+<section data-slide-id="P4-S39" class="slide" style="padding:46px 76px 54px; justify-content:flex-start;">
   <div class="kicker">강사 사례에서 내 전략으로 돌아오기</div>
   <h2 style="font-size:36px; margin-bottom:14px;">전략은 달라도 작업 순서는 같습니다</h2>
   <div class="flow">
@@ -893,7 +916,7 @@
   <div class="prompt-guide">수강생 자료 → P4-14 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S39" class="slide">
+<section data-slide-id="P4-S40" class="slide">
   <div class="kicker">개발 기초 · 디버깅</div>
   <h2>디버깅은 처음 문제가 생긴 곳을 찾는 일입니다</h2>
   <div class="code-window"><pre><span class="comment">1. 재현</span> 같은 입력·같은 프로필에서 한 번 다시 실행
@@ -905,7 +928,7 @@
   <div class="prompt-guide">수강생 자료 → P4-09 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S40" class="slide">
+<section data-slide-id="P4-S41" class="slide">
   <div class="kicker">개발 기초 · 로그</div>
   <h2>로그를 보면 어느 단계까지 실행됐는지 알 수 있습니다</h2>
   <div class="code-window"><pre><span class="value">00:58:13</span> [INFO] <span class="name">main</span> — [2/5] 분석 보고서 작성
@@ -916,7 +939,7 @@
   <div class="prompt-guide">수강생 자료 → P4-09 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S41" class="slide">
+<section data-slide-id="P4-S42" class="slide">
   <div class="kicker">공통 실습 P4-09</div>
   <h2>오류를 그대로 보내고 같은 조건에서 다시 확인해 달라고 합니다</h2>
   <div class="prompt" style="font-size:22px;">“이 오류를 같은 조건에서 한 번 재현해줘. 로그에서 처음 실패한 위치와 입력을 찾고, 원인 가설을 하나씩 확인해. 원인이 확인되면 관련 파일만 최소 수정하고, 같은 재현과 기본 mock 전체 실행으로 다시 검증해줘.”</div>
@@ -931,7 +954,7 @@
   <div class="prompt-guide">수강생 자료 → P4-09 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S42" class="slide" style="padding:46px 76px 38px; justify-content:flex-start;">
+<section data-slide-id="P4-S43" class="slide" style="padding:46px 76px 38px; justify-content:flex-start;">
   <div class="kicker" style="margin-bottom:6px;">오류와 대체 경로 · 실제로 쓴 데이터는 로그로 확인합니다</div>
   <h2 style="font-size:35px; margin-bottom:13px;">외부 연결이 막히면 연습용 경로로 바꾸고 로그에 남깁니다</h2>
   <svg class="editorial-diagram" viewBox="0 0 1120 292" role="img" aria-labelledby="p4s30-title p4s30-desc"><title id="p4s30-title">외부 연결이 실패했을 때 쓰는 두 가지 대체 경로</title><desc id="p4s30-desc">실데이터 조회가 실패하면 모의 데이터로, LLM 분석이 실패하면 규칙 보고서로 전환하고 각 전환 사실을 로그에 남긴다.</desc><defs><marker id="p4s30-arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10" fill="none" stroke="currentColor" stroke-width="1.7"/></marker></defs>
@@ -948,7 +971,7 @@
   <div class="prompt-guide">수강생 자료 → P4-09 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S43" class="slide">
+<section data-slide-id="P4-S44" class="slide">
   <div class="kicker">개발 기초 · DB와 테이블</div>
   <h2><span class="mono">prism.db</span> 안에는 성격이 다른 세 개의 표가 있습니다</h2>
   <svg class="editorial-diagram" viewBox="0 0 1115 300" role="img" aria-labelledby="p4s31-title p4s31-desc"><title id="p4s31-title">prism.db 안의 세 테이블</title><desc id="p4s31-desc">prism.db에는 분석 판단, 매매 기록, 피드백 교훈을 담는 세 테이블이 있다.</desc><rect x="20" y="36" width="1075" height="228" class="focus"/><text x="50" y="76" class="label mono">prism.db</text><text x="50" y="103" class="sub-label">DB = 관련된 표들을 한곳에 보관하는 파일</text><path class="quiet-line" d="M48 124 H1067"/><rect x="48" y="147" width="303" height="89" class="node"/><text x="72" y="178" class="label mono">analysis_decisions</text><text x="72" y="205" class="sub-label">언제 · 어떤 종목 · 추천 · 점수</text><rect x="406" y="147" width="303" height="89" class="node"/><text x="430" y="178" class="label mono">trade_history</text><text x="430" y="205" class="sub-label">매수/매도 · 가격 · 수량 · 이유</text><rect x="764" y="147" width="303" height="89" class="node"/><text x="788" y="178" class="label mono">feedback_lessons</text><text x="788" y="205" class="sub-label">다음 판단에 남길 교훈</text></svg>
@@ -956,7 +979,7 @@
   <div class="prompt-guide">수강생 자료 → P4-10 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S44" class="slide" style="padding:46px 76px 38px; justify-content:flex-start;">
+<section data-slide-id="P4-S45" class="slide" style="padding:46px 76px 38px; justify-content:flex-start;">
   <div class="kicker" style="margin-bottom:6px;">공통 실습 P4-10 · 저장과 화면이 이어지는 길</div>
   <h2 style="font-size:35px; margin-bottom:13px;">저장한 기록을 대시보드가 다시 읽어 화면에 보여 줍니다</h2>
   <svg class="editorial-diagram" viewBox="0 0 1120 280" role="img" aria-labelledby="p4s32-title p4s32-desc"><title id="p4s32-title">feedback.py가 남긴 기록을 dashboard.py가 읽는 흐름</title><desc id="p4s32-desc">feedback.py가 db.py를 통해 prism.db에 결과를 저장하고 dashboard.py가 최근 기록을 조회해 화면에 표시한다.</desc><defs><marker id="p4s32-arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10" fill="none" stroke="currentColor" stroke-width="1.7"/></marker></defs>
@@ -969,14 +992,14 @@
   <div class="prompt-guide">수강생 자료 → P4-10 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S45" class="slide divider">
+<section data-slide-id="P4-S46" class="slide divider">
   <div class="chnum">로컬 운영 실습</div>
   <h1>이제 3분 뒤에 프로그램이<br>스스로 시작되게 만듭니다</h1>
   <p class="sub">mock·simulation 한 번 실행 → 로그와 DB 확인 → 임시 예약 삭제</p>
   <div class="prompt-guide">수강생 자료 → P4-11 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S46" class="slide">
+<section data-slide-id="P4-S47" class="slide">
   <div class="kicker">개발 기초 · 배치와 스케줄러</div>
   <h2>배치는 할 일, 스케줄러는 시작할 때를 정합니다</h2>
   <svg class="editorial-diagram" viewBox="0 0 1120 292" role="img" aria-labelledby="p4s34-title p4s34-desc"><title id="p4s34-title">배치와 스케줄러의 역할 비교</title><desc id="p4s34-desc">배치는 후보 찾기부터 기록까지 실행할 일을 묶고, 스케줄러는 그 일을 언제 시작할지 정한다.</desc>
@@ -995,7 +1018,7 @@
   <div class="prompt-guide">수강생 자료 → P4-11 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S47" class="slide">
+<section data-slide-id="P4-S48" class="slide">
   <div class="kicker">개발 기초 · 로컬과 서버</div>
   <h2>로컬은 내 컴퓨터, 서버는 계속 켜 둔 별도 컴퓨터입니다</h2>
   <div class="compare">
@@ -1006,7 +1029,7 @@
   <div class="prompt-guide">수강생 자료 → P4-11 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S48" class="slide dense-ops">
+<section data-slide-id="P4-S49" class="slide dense-ops">
   <div class="kicker">공통 실습 P4-11 · 설계</div>
   <h2>예약을 등록하기 전에 실행 시각과 삭제 방법부터 확인합니다</h2>
   <div class="tracks">
@@ -1023,7 +1046,7 @@
   <div class="prompt-guide">수강생 자료 → P4-11 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S49" class="slide">
+<section data-slide-id="P4-S50" class="slide">
   <div class="kicker">공통 실습 P4-12 · 승인 후 실행</div>
   <h2>3분 뒤 로그와 DB에 새 기록이 생겼는지 확인합니다</h2>
   <svg class="editorial-diagram" viewBox="0 0 1120 250" role="img" aria-labelledby="p4s37-title p4s37-desc"><title id="p4s37-title">3분 뒤 한 번 실행되는 예약의 확인 순서</title><desc id="p4s37-desc">예약 등록, 3분 대기, 로그 확인, 데이터베이스 기록 확인의 네 장면을 시간 순서로 보여 준다.</desc>
@@ -1041,7 +1064,7 @@
   <div class="prompt-guide">수강생 자료 → P4-12 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S50" class="slide">
+<section data-slide-id="P4-S51" class="slide">
   <div class="kicker">공통 실습 P4-13 · 정리</div>
   <h2>실습 예약은 지우고 반복 주기는 설계로만 남깁니다</h2>
   <div class="compare">
@@ -1055,7 +1078,7 @@
   <div class="prompt-guide">수강생 자료 → P4-13 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S51" class="slide">
+<section data-slide-id="P4-S52" class="slide">
   <div class="kicker">마무리 · 실전 운영 팁</div>
   <h2>수업이 끝난 뒤에도 다음 작업은 이 다섯 문장으로 정리합니다</h2>
   <div class="flow">
@@ -1072,7 +1095,7 @@
   <div class="prompt-guide">수강생 자료 → P4-14 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S52" class="slide cover">
+<section data-slide-id="P4-S53" class="slide cover">
   <div class="kicker">파트 4 · 마무리</div>
   <h1 style="font-size:56px;">이제 원하는 변화를 설명하고<br>직접 결과를 확인하며<br>다음 수정을 이어 갑니다</h1>
   <p class="sub">말하기 → 구조 읽기 → 작게 고치기 → 디버깅하기 → 결과 확인 → 예약 실행</p>

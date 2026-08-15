@@ -112,7 +112,7 @@ class Part4DeckContractTests(unittest.TestCase):
             "터틀 20일 신고가 진입과 10일 저가 청산",
             "ATR 손절과 위험 기준 수량",
             "KOSPI 장세별 진입 강도",
-            "확인된 리포트·공시 입력",
+            "API 키 없는 DART RSS와 확인된 공시 입력",
             "작업 순서",
             "담당 파일",
             "확인할 증거",
@@ -394,6 +394,91 @@ class Part4DeckContractTests(unittest.TestCase):
             self.assertIn(phrase, self.prompts)
             self.assertIn(phrase, self.instructor_script)
 
+    def test_slide_twenty_one_connects_prompting_to_a_spec_and_verification_loop(self):
+        rows = [
+            item
+            for module in self.manifest["decks"]["part4"]["modules"]
+            for item in module["slides"]
+        ]
+        self.assertEqual(53, len(rows))
+        row = next(item for item in rows if item["id"] == "P4-S21")
+        self.assertIn("명세", row["title"])
+        self.assertEqual("P4-03", row["promptId"])
+
+        slide = self._slide("P4-S21")
+        for phrase in (
+            "PRD / Spec",
+            "작업·검증 계획",
+            "설계",
+            "구현",
+            "검증",
+            "피드백",
+            "GitHub Spec Kit",
+            "Anthropic",
+            "OpenAI",
+            "약 40만",
+        ):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, slide)
+        self.assertIn('data-fullscreenable="true"', slide)
+        self.assertIn('tabindex="0"', slide)
+
+    def test_instructor_uses_one_sequential_prompt_for_all_four_demo_checkpoints(self):
+        start = self.instructor_script.index("P4-D1~P4-D4 · 강사 통합 시연")
+        end = self.instructor_script.index("**이 구간의 완료 기준:**", start)
+        block = self.instructor_script[start:end]
+        self.assertEqual(1, block.count("```text"))
+        for phrase in (
+            "D1 → D2 → D3 → D4",
+            "P4-D1 · 터틀",
+            "P4-D2 · ATR",
+            "P4-D3 · KOSPI",
+            "P4-D4 · DART RSS",
+            "PRD",
+            "작업 계획",
+            "검증 계획",
+            "설계",
+            "구현",
+            "검증",
+            "피드백",
+            "tasks/instructor-demo/",
+            "개선 루프는 한 번만",
+        ):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, block)
+
+        d4 = block[block.index("P4-D4 · DART RSS") :]
+        for phrase in (
+            "DART RSS",
+            "API 키가 필요하지",
+            "urllib.request",
+            "xml.etree.ElementTree",
+            "회사별 공시",
+            "저장한 XML",
+            "고정 교육용 예제",
+            "자동 재시도",
+        ):
+            self.assertIn(phrase, d4)
+        self.assertNotIn("OpenDART API를 연결", d4)
+
+    def test_student_tracks_reuse_my_strategy_and_harness_without_placeholder_strategy(self):
+        start = self.prompts.index("## P4-04")
+        end = self.prompts.index("## P4-09", start)
+        block = self.prompts[start:end]
+        for phrase in (
+            "MY_STRATEGY.md",
+            "docs/harness-lite.md",
+            "Strategy Harness Lite",
+            "P4-04가 정한 트랙 계획",
+            "한 트랙 수정 → 데모 검증 → 전후 비교",
+            "다음 트랙",
+        ):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, block)
+        self.assertNotIn("내 전략: [", block)
+        self.assertNotIn("내 원칙: [", block)
+        self.assertNotIn("tasks/student-strategy-plan.md", block)
+
     def test_strategy_tracks_and_evidence_loop_remain_in_the_reworked_course(self):
         for phrase in (
             "트랙 A",
@@ -423,21 +508,11 @@ class Part4DeckContractTests(unittest.TestCase):
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, combined)
 
-        instructor_headings = (
-            "P4-D1 · 강사 시연: 터틀 진입과 청산 구현하기",
-            "P4-D2 · 강사 시연: ATR 손절과 수량 계산 추가하기",
-            "P4-D3 · 강사 시연: KOSPI 시황에 따라 포지션 조절하기",
-            "P4-D4 · 강사 시연: 리포트 캡처와 공시를 분석 근거로 넣기",
-        )
-        for heading in instructor_headings:
-            with self.subTest(heading=heading):
-                self.assertIn(heading, self.instructor_script)
-                self.assertNotIn(heading, self.prompts)
-
-        self.assertGreaterEqual(
-            self.instructor_script.count("### 코딩 에이전트에 붙여넣기"),
-            len(instructor_headings),
-        )
+        self.assertIn("P4-D1~P4-D4 · 강사 통합 시연", self.instructor_script)
+        for checkpoint in ("P4-D1 · 터틀", "P4-D2 · ATR", "P4-D3 · KOSPI", "P4-D4 · DART RSS"):
+            with self.subTest(checkpoint=checkpoint):
+                self.assertIn(checkpoint, self.instructor_script)
+                self.assertNotIn(checkpoint, self.prompts)
         self.assertNotIn("수강생_붙여넣기_프롬프트_파트4.md#p4-d", self.instructor_script)
 
     def test_every_slide_tells_the_learner_where_the_copy_prompt_is(self):
@@ -449,12 +524,11 @@ class Part4DeckContractTests(unittest.TestCase):
             self.assertRegex(slide, r"수강생 자료|강사 자료|다음 붙여넣기|붙여넣지 않습니다")
 
     def test_instructor_demo_prompt_guides_do_not_point_to_student_materials(self):
-        for prompt_id in ("P4-D1", "P4-D2", "P4-D3", "P4-D4"):
-            with self.subTest(prompt_id=prompt_id):
-                self.assertIn(f"강사 자료 → {prompt_id}", self.assembled)
-                self.assertNotIn(f"수강생 자료 → {prompt_id}", self.assembled)
-                self.assertIn(prompt_id, self.instructor_script)
-                self.assertNotIn(prompt_id, self.prompts)
+        prompt_id = "P4-D1~P4-D4"
+        self.assertIn(f"강사 자료 → {prompt_id}", self.assembled)
+        self.assertNotIn(f"수강생 자료 → {prompt_id}", self.assembled)
+        self.assertIn(prompt_id, self.instructor_script)
+        self.assertNotIn(prompt_id, self.prompts)
 
     def test_practice_slides_pair_instructor_and_student_actions(self):
         self.assertGreaterEqual(self.sources.count('class="instructor-action"'), 8)
@@ -465,8 +539,8 @@ class Part4DeckContractTests(unittest.TestCase):
         for phrase in (
             "강사 시연",
             "수강생 실습",
-            "강사는 구독자 질문",
-            "수강생은 자기 전략",
+            "통합 프롬프트",
+            "하네스가 고른 현재 트랙",
         ):
             self.assertIn(phrase, self.sources)
 

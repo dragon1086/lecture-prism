@@ -24,35 +24,36 @@
 | P4-S18 | P4-03 | `part4/03-boundary-evidence.html` | 파일을 모르면 수정 전에 판단할 자료부터 찾아 달라고 합니다 |
 | P4-S19 | P4-03 | `part4/03-boundary-evidence.html` | 바꿀 곳과 함께 그대로 둬야 할 약속도 적습니다 |
 | P4-S20 | P4-03 | `part4/03-boundary-evidence.html` | 완료됐다는 답을 받으면 코드·테스트·로그를 직접 확인합니다 |
-| P4-S21 | P4-04 | `part4/04-strategy-choice.html` | 내 아이디어는 진입·분석·청산·리스크 중 한곳에서 시작합니다 |
-| P4-S22 | P4-04 | `part4/04-strategy-choice.html` | 전략 전체를 고치지 말고 오늘 확인할 규칙 하나만 고릅니다 |
-| P4-S23 | P4-05~P4-08 | `part4/04-strategy-choice.html` | 파일 하나와 규칙 하나를 정해 에이전트에게 맡깁니다 |
-| P4-S24 | — | `part4/04-strategy-choice.html` | 계산은 코드에 맡기고 시장 상황 설명은 AI에게 맡깁니다 |
-| P4-S25 | P4-05~P4-08 | `part4/04-strategy-choice.html` | 먼저 결과를 예상하고 한 파일만 바꿔 확인합니다 |
-| P4-S26 | P4-14 | `part4/04-strategy-choice.html` | 잘 고쳤는지는 코드 양이 아니라 달라진 결과로 판단합니다 |
-| P4-S27 | — | `part4/04-strategy-choice.html` | 실제 구독자 질문을 오늘의 강사 시연으로 사용합니다 |
-| P4-S28 | P4-04 | `part4/04-strategy-choice.html` | 큰 요청은 네 번의 작은 작업으로 나눕니다 |
-| P4-S29 | P4-D1 | `part4/04-strategy-choice.html` | 진입은 screening.py, 청산은 trading.py가 맡습니다 |
-| P4-S30 | P4-D1 | `part4/04-strategy-choice.html` | 터틀 구현 프롬프트에는 입력과 확인 방법을 함께 적습니다 |
-| P4-S31 | P4-D1 | `part4/04-strategy-choice.html` | 터틀 구현은 후보와 청산 사유로 확인합니다 |
-| P4-S32 | P4-D2 | `part4/04-strategy-choice.html` | ATR은 변동성을 손절 폭과 수량으로 바꿉니다 |
-| P4-S33 | P4-D2 | `part4/04-strategy-choice.html` | ATR 계산은 데이터와 함수 약속을 먼저 확인합니다 |
-| P4-S34 | P4-D3 | `part4/04-strategy-choice.html` | KOSPI가 약하면 새로 들어가는 기준을 더 까다롭게 잡습니다 |
-| P4-S35 | P4-D3 | `part4/04-strategy-choice.html` | 숫자는 코드가 계산하고, 해석은 AI가 돕습니다 |
-| P4-S36 | P4-D4 | `part4/04-strategy-choice.html` | 외부 자료는 확인된 구조로 바꾼 뒤 넣습니다 |
-| P4-S37 | P4-D4 | `part4/04-strategy-choice.html` | 외부 자료는 함수에 넘길 값과 저장하지 않을 값을 나눕니다 |
-| P4-S38 | P4-14 | `part4/04-strategy-choice.html` | 강사 시연과 개인 실습은 같은 확인 순서로 끝납니다 |
-| P4-S39 | P4-09 | `part4/05-operations.html` | 디버깅은 처음 문제가 생긴 곳을 찾는 일입니다 |
-| P4-S40 | P4-09 | `part4/05-operations.html` | 로그를 보면 어느 단계까지 실행됐는지 알 수 있습니다 |
-| P4-S41 | P4-09 | `part4/05-operations.html` | 오류를 그대로 보내고 같은 조건에서 다시 확인해 달라고 합니다 |
-| P4-S42 | P4-09 | `part4/05-operations.html` | 외부 연결이 막히면 연습용 경로로 바꾸고 로그에 남깁니다 |
-| P4-S43 | P4-10 | `part4/05-operations.html` | prism.db 안에는 성격이 다른 세 개의 표가 있습니다 |
-| P4-S44 | P4-10 | `part4/05-operations.html` | 저장한 기록을 대시보드가 다시 읽어 화면에 보여 줍니다 |
-| P4-S45 | P4-11 | `part4/05-operations.html` | 이제 3분 뒤에 프로그램이 스스로 시작되게 만듭니다 |
-| P4-S46 | P4-11 | `part4/05-operations.html` | 배치는 할 일, 스케줄러는 시작할 때를 정합니다 |
-| P4-S47 | P4-11 | `part4/05-operations.html` | 로컬은 내 컴퓨터, 서버는 계속 켜 둔 별도 컴퓨터입니다 |
-| P4-S48 | P4-11 | `part4/05-operations.html` | 예약을 등록하기 전에 실행 시각과 삭제 방법부터 확인합니다 |
-| P4-S49 | P4-12 | `part4/05-operations.html` | 3분 뒤 로그와 DB에 새 기록이 생겼는지 확인합니다 |
-| P4-S50 | P4-13 | `part4/05-operations.html` | 실습 예약은 지우고 반복 주기는 설계로만 남깁니다 |
-| P4-S51 | P4-14 | `part4/06-sharing.html` | 수업이 끝난 뒤에도 다음 작업은 이 다섯 문장으로 정리합니다 |
-| P4-S52 | — | `part4/99-close.html` | 이제 원하는 변화를 설명하고 직접 결과를 확인하며 다음 수정을 이어 갑니다 |
+| P4-S21 | P4-03 | `part4/03-boundary-evidence.html` | 명세·계획·설계·구현·검증·피드백을 증거가 나올 때까지 반복합니다 |
+| P4-S22 | P4-04 | `part4/04-strategy-choice.html` | 내 아이디어는 진입·분석·청산·리스크 중 한곳에서 시작합니다 |
+| P4-S23 | P4-04 | `part4/04-strategy-choice.html` | 하네스가 MY_STRATEGY.md에서 현재 트랙과 다음 순서를 고릅니다 |
+| P4-S24 | P4-05~P4-08 | `part4/04-strategy-choice.html` | 전략을 다시 입력하지 않고 현재 트랙을 이어서 실행합니다 |
+| P4-S25 | — | `part4/04-strategy-choice.html` | 계산은 코드에 맡기고 시장 상황 설명은 AI에게 맡깁니다 |
+| P4-S26 | P4-05~P4-08 | `part4/04-strategy-choice.html` | 먼저 결과를 예상하고 한 파일만 바꿔 확인합니다 |
+| P4-S27 | P4-14 | `part4/04-strategy-choice.html` | 잘 고쳤는지는 코드 양이 아니라 달라진 결과로 판단합니다 |
+| P4-S28 | — | `part4/04-strategy-choice.html` | 실제 구독자 질문을 오늘의 강사 시연으로 사용합니다 |
+| P4-S29 | P4-04 | `part4/04-strategy-choice.html` | 한 통합 프롬프트 안에서도 네 작업은 순서대로 검증합니다 |
+| P4-S30 | P4-D1~P4-D4 | `part4/04-strategy-choice.html` | 진입은 screening.py, 청산은 trading.py가 맡습니다 |
+| P4-S31 | P4-D1~P4-D4 | `part4/04-strategy-choice.html` | 터틀 구현 프롬프트에는 입력과 확인 방법을 함께 적습니다 |
+| P4-S32 | P4-D1~P4-D4 | `part4/04-strategy-choice.html` | 터틀 구현은 후보와 청산 사유로 확인합니다 |
+| P4-S33 | P4-D1~P4-D4 | `part4/04-strategy-choice.html` | ATR은 변동성을 손절 폭과 수량으로 바꿉니다 |
+| P4-S34 | P4-D1~P4-D4 | `part4/04-strategy-choice.html` | ATR 계산은 데이터와 함수 약속을 먼저 확인합니다 |
+| P4-S35 | P4-D1~P4-D4 | `part4/04-strategy-choice.html` | KOSPI가 약하면 새로 들어가는 기준을 더 까다롭게 잡습니다 |
+| P4-S36 | P4-D1~P4-D4 | `part4/04-strategy-choice.html` | 숫자는 코드가 계산하고, 해석은 AI가 돕습니다 |
+| P4-S37 | P4-D1~P4-D4 | `part4/04-strategy-choice.html` | DART RSS는 공시 링크를 가져오고 사람은 핵심 주장을 확인합니다 |
+| P4-S38 | P4-D1~P4-D4 | `part4/04-strategy-choice.html` | 외부 자료는 함수에 넘길 값과 저장하지 않을 값을 나눕니다 |
+| P4-S39 | P4-14 | `part4/04-strategy-choice.html` | 강사 시연과 개인 실습은 같은 확인 순서로 끝납니다 |
+| P4-S40 | P4-09 | `part4/05-operations.html` | 디버깅은 처음 문제가 생긴 곳을 찾는 일입니다 |
+| P4-S41 | P4-09 | `part4/05-operations.html` | 로그를 보면 어느 단계까지 실행됐는지 알 수 있습니다 |
+| P4-S42 | P4-09 | `part4/05-operations.html` | 오류를 그대로 보내고 같은 조건에서 다시 확인해 달라고 합니다 |
+| P4-S43 | P4-09 | `part4/05-operations.html` | 외부 연결이 막히면 연습용 경로로 바꾸고 로그에 남깁니다 |
+| P4-S44 | P4-10 | `part4/05-operations.html` | prism.db 안에는 성격이 다른 세 개의 표가 있습니다 |
+| P4-S45 | P4-10 | `part4/05-operations.html` | 저장한 기록을 대시보드가 다시 읽어 화면에 보여 줍니다 |
+| P4-S46 | P4-11 | `part4/05-operations.html` | 이제 3분 뒤에 프로그램이 스스로 시작되게 만듭니다 |
+| P4-S47 | P4-11 | `part4/05-operations.html` | 배치는 할 일, 스케줄러는 시작할 때를 정합니다 |
+| P4-S48 | P4-11 | `part4/05-operations.html` | 로컬은 내 컴퓨터, 서버는 계속 켜 둔 별도 컴퓨터입니다 |
+| P4-S49 | P4-11 | `part4/05-operations.html` | 예약을 등록하기 전에 실행 시각과 삭제 방법부터 확인합니다 |
+| P4-S50 | P4-12 | `part4/05-operations.html` | 3분 뒤 로그와 DB에 새 기록이 생겼는지 확인합니다 |
+| P4-S51 | P4-13 | `part4/05-operations.html` | 실습 예약은 지우고 반복 주기는 설계로만 남깁니다 |
+| P4-S52 | P4-14 | `part4/06-sharing.html` | 수업이 끝난 뒤에도 다음 작업은 이 다섯 문장으로 정리합니다 |
+| P4-S53 | — | `part4/99-close.html` | 이제 원하는 변화를 설명하고 직접 결과를 확인하며 다음 수정을 이어 갑니다 |
