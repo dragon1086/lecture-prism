@@ -366,8 +366,12 @@ class Part3StudentLearningContractTest(unittest.TestCase):
             "Discord 선택 준비 프롬프트",
             'DISCORD_WEBHOOK_URL=""',
             "내가 `.env` 파일을 직접 열어 URL만 넣고 저장할 수 있게",
+            "운영체제의 기본 텍스트 편집기",
             "웹후크 주소를 이 채팅에 붙여넣으라고 요구하지 마",
             "웹후크 주소는 코딩 에이전트 채팅에 붙여넣지 마세요",
+            "준비됨 / 비어 있음 / 형식 오류",
+            ".gitignore",
+            "로컬 파일 읽기까지 막지는",
             "실제 주문·브로커·계좌·main.py 실행은 하지 마",
         ):
             self.assertIn(phrase, first_run, phrase)

@@ -144,6 +144,53 @@ class OperationsDocumentationContractTest(unittest.TestCase):
         self.assertNotIn("LECTURE_OPERATIONS_RECONCILE_INTERVAL_MINUTES", introduced)
         self.assertNotIn("LECTURE_STALE_QUOTE_SECONDS", introduced)
 
+    def test_beginner_secret_setup_separates_read_only_kis_from_broker_accounts(self):
+        docs = self._docs()
+        env = docs["env"]
+        runtime = docs["runtime"]
+
+        for phrase in (
+            "KIS_PAPER_APP_KEY=\"\"",
+            "KIS_PAPER_APP_SECRET=\"\"",
+            "KIS_REAL_APP_KEY=\"\"",
+            "KIS_REAL_APP_SECRET=\"\"",
+            "읽기 전용 시장 데이터",
+            "계좌번호는 필요하지 않습니다",
+        ):
+            self.assertIn(phrase, env)
+
+        for phrase in (
+            "운영체제의 기본 텍스트 편집기",
+            "준비됨 / 비어 있음 / 형식 오류",
+            ".gitignore",
+            "로컬 파일 읽기까지 막지는",
+            "모의·실거래 브로커 심화",
+        ):
+            self.assertIn(phrase, runtime)
+
+    def test_discord_setup_uses_redacted_default_editor_flow_before_execution(self):
+        runtime = self._docs()["runtime"]
+        discord_section = runtime.split("## 6. Discord로 AI 판단 받기", 1)[1].split(
+            "## 7. 보고서 산출물", 1
+        )[0]
+
+        for phrase in (
+            ".env.example",
+            'DISCORD_WEBHOOK_URL=""',
+            "운영체제의 기본 텍스트 편집기",
+            "직접 입력",
+            "준비됨 / 비어 있음 / 형식 오류",
+            "아직 main.py는 실행하지 마",
+            "값 자체를 출력하지",
+        ):
+            self.assertIn(phrase, discord_section)
+
+        self.assertNotIn(
+            'DISCORD_WEBHOOK_URL="내 Discord 채널에서 만든 Incoming Webhook URL"',
+            discord_section,
+        )
+        self.assertGreaterEqual(discord_section.count("```text"), 2)
+
 
 if __name__ == "__main__":
     unittest.main()

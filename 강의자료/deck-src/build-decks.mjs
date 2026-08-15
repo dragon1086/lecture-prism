@@ -7,10 +7,21 @@ const manifestPath = path.join(sourceRoot, "deck-manifest.json");
 const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
 
 const sectionPattern = /<section class="slide[^>]*>[\s\S]*?<\/section>/g;
-const addSlideId = (section, id) => section.replace(
-  /^<section\s+class=/,
-  `<section data-slide-id="${id}" class=`
-);
+const addSlideMeta = (section, slide) => {
+  const guide = slide.guideAudience === "instructor"
+    ? `강사 자료 → ${slide.promptId} · 강사용 진행 스크립트의 해당 블록을 사용합니다`
+    : slide.promptId
+    ? `수강생 자료 → ${slide.promptId} · 해당 번호의 text 블록 전체를 붙여넣으세요`
+    : "지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다";
+  const withId = section.replace(
+    /^<section\s+class=/,
+    `<section data-slide-id="${slide.id}" class=`
+  );
+  return withId.replace(
+    /<div class="pagenum">[\s\S]*?<\/div>\s*<\/section>$/,
+    `<div class="prompt-guide">${guide}</div><div class="pagenum"></div>\n</section>`
+  );
+};
 
 const writeIndex = (deckKey, deck) => {
   const rows = deck.modules.flatMap((module) =>
@@ -45,7 +56,7 @@ for (const [deckKey, deck] of Object.entries(manifest.decks)) {
         `${module.file}: expected ${module.slides.length} slides, found ${found.length}`
       );
     }
-    found.forEach((section, index) => sections.push(addSlideId(section, module.slides[index].id)));
+    found.forEach((section, index) => sections.push(addSlideMeta(section, module.slides[index])));
   }
 
   const output = [

@@ -1,7 +1,7 @@
-<!-- P4-S21 · 내 아이디어는 네 트랙 가운데 하나에서 시작합니다 -->
+<!-- P4-S21 · 내 아이디어는 진입·분석·청산·리스크 중 한곳에서 시작합니다 -->
 <section class="slide">
   <div class="kicker">개인 실습 · 트랙 고르기</div>
-  <h2>내 아이디어는 네 트랙 가운데 하나에서 시작합니다</h2>
+  <h2>내 아이디어는 진입·분석·청산·리스크 중 한곳에서 시작합니다</h2>
   <div style="display:grid; grid-template-columns:130px 1fr 1fr; border-top:1px solid oklch(0.36 0.02 264);">
     <div style="padding:13px 10px; border-bottom:1px solid oklch(0.27 0.02 264); color:var(--accent); font-weight:800;">트랙</div><div style="padding:13px 10px; border-bottom:1px solid oklch(0.27 0.02 264); color:var(--muted);">내가 바꾸고 싶은 질문</div><div style="padding:13px 10px; border-bottom:1px solid oklch(0.27 0.02 264); color:var(--muted);">실제로 먼저 읽을 파일과 확인할 결과</div>
     <div style="padding:16px 10px; border-bottom:1px solid oklch(0.27 0.02 264); font-size:23px; font-weight:800;">A · 진입</div><div style="padding:16px 10px; border-bottom:1px solid oklch(0.27 0.02 264); font-size:20px;">어떤 종목을 후보로 볼까?</div><div style="padding:16px 10px; border-bottom:1px solid oklch(0.27 0.02 264); font-size:20px;"><code>screening.py</code> · 수정 전후 후보 목록</div>
@@ -12,59 +12,279 @@
   <p class="note">트랙은 정답지가 아닙니다. <strong>오늘 한 파일에서 확인 가능한 규칙 하나를 고르는 지도</strong>입니다.</p>
   <div class="pagenum">21</div>
 </section>
-
 <!-- P4-S22 · 전략 전체가 아니라 오늘 확인할 규칙 하나를 고릅니다 -->
 <section class="slide">
   <div class="kicker">공통 실습 P4-04</div>
-  <h2>전략 전체가 아니라 오늘 확인할 규칙 하나를 고릅니다</h2>
+  <h2>전략 전체를 고치지 말고 오늘 확인할 규칙 하나만 고릅니다</h2>
   <div class="code-window"><pre><span class="comment">내 문장</span>  “거래량이 충분히 늘어난 종목만 보고 싶다.”
 <span class="comment">트랙</span>    A · 진입
 <span class="comment">파일·규칙</span> <span class="name">screening.py</span>의 <span class="name">VOLUME_SURGE_RATIO</span> 또는 관련 필터
-<span class="comment">예측·증거</span> 같은 mock 데이터에서 <span class="value">후보 목록이 어떻게 달라지는지</span> 비교</pre></div>
-  <p class="note">트랙 B는 실제 LLM이 연결돼야 문장 변화를 확인하기 쉽습니다. 기본 성공 경로는 A·C·D입니다.</p>
+<span class="comment">확인할 결과</span> 같은 mock 데이터에서 <span class="value">후보 목록이 어떻게 달라지는지</span> 비교</pre></div>
+  <div class="action-pair compact">
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">구독자 질문을 터틀·ATR·KOSPI·외부 근거의 네 작업으로 나눕니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">P4-04로 자기 전략의 트랙, 파일 하나, 확인할 결과를 정합니다.</div></div>
+  </div>
   <div class="pagenum">22</div>
 </section>
-
 <!-- P4-S23 · 에이전트에게 범위가 있는 변경을 맡깁니다 -->
 <section class="slide">
   <div class="kicker">선택 실습 P4-05~P4-08</div>
-  <h2>에이전트에게 범위가 있는 변경을 맡깁니다</h2>
+  <h2>파일 하나와 규칙 하나를 정해 에이전트에게 맡깁니다</h2>
   <div class="prompt" style="font-size:23px;">내 전략은 <strong>[한 줄]</strong>이다.<br><strong>[파일 하나]</strong>의 <strong>[규칙 하나]</strong>만 바꿔줘.<br><strong>[함수 약속·mock·simulation]</strong>은 유지해.<br>수정 전후를 <strong>[후보·설명·청산·수량]</strong>으로 비교하고 직접 실행해 확인해줘.</div>
-  <p class="note">프롬프트 전문은 수강생 복붙 파일에서 자기 트랙 번호 하나만 사용합니다.</p>
+  <div class="action-pair compact">
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">P4-D1부터 한 단계씩 실행하며 수정 전 결과와 그대로 둘 부분을 먼저 확인합니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">수강생 자료에서 P4-05~P4-08 중 자기 트랙 번호 하나만 사용합니다.</div></div>
+  </div>
   <div class="pagenum">23</div>
 </section>
 
-<!-- P4-S24 · 계산은 코드에 맡기고 맥락은 AI에게 맡깁니다 -->
+<!-- P4-S24 · 계산은 코드에 맡기고 시장 상황 설명은 AI에게 맡깁니다 -->
 <section class="slide split">
   <div class="txt">
-    <div class="kicker">책임 분리</div>
-    <h2>계산은 코드에 맡기고 맥락은 AI에게 맡깁니다</h2>
+    <div class="kicker">누가 무엇을 맡을까</div>
+    <h2>계산은 코드에 맡기고 시장 상황 설명은 AI에게 맡깁니다</h2>
     <ul>
       <li><strong>코드:</strong> 점수, 손익비, 수량, 손절 순서</li>
-      <li><strong>LLM:</strong> 뉴스와 시장 맥락, 근거의 충돌, HOLD 의견</li>
+      <li><strong>LLM:</strong> 뉴스와 시장 상황, 근거가 엇갈리는 이유, HOLD 의견</li>
       <li><strong>사람:</strong> 전략 방향, 허용 위험, 실제 운영 여부</li>
     </ul>
   </div>
-  <div class="img"><img class="reference-shot" src="../docs/assets/prism-insight/ai-code-guardrails-overview.png" alt="AI 제안과 코드 안전장치의 경계"><p class="caption">AI 제안은 코드 안전장치가 허용한 범위 안에서만 실행됩니다.</p></div>
+  <div class="img" style="flex:none; height:500px;"><img class="reference-shot" style="height:310px;" src="../docs/assets/prism-insight/ai-code-guardrails-overview.png" alt="AI 제안과 코드 실행 조건의 관계"><p class="caption">AI가 의견을 내도 실제 계산과 실행은 코드에 적힌 원칙을 따릅니다.</p></div>
   <div class="pagenum">24</div>
 </section>
 
 <!-- P4-S25 · 개인 실습은 예측 수정 실행 확인의 순서로 진행합니다 -->
 <section class="slide divider">
   <div class="chnum">25분 개인 실습</div>
-  <h1>예측하고, 한 파일만 바꾸고,<br>직접 실행해 확인합니다</h1>
+  <h1>먼저 결과를 예상하고<br>한 파일만 바꿔 확인합니다</h1>
   <p class="sub">트랙 A · B · C · D 가운데 하나만 선택합니다</p>
+  <div class="action-pair compact" style="width:960px; text-align:left; margin-top:26px;">
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">실제 질문 사례를 단계별로 보여줍니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">같은 시간에 자기 트랙 하나를 구현합니다.</div></div>
+  </div>
   <div class="pagenum">25</div>
 </section>
 
-<!-- P4-S26 · 성공 기준은 코드가 많아진 것이 아니라 결과가 설명되는 것입니다 -->
+<!-- P4-S26 · 잘 고쳤는지는 코드 양이 아니라 달라진 결과로 판단합니다 -->
 <section class="slide">
-  <div class="kicker">개인 실습 · 성공 증거</div>
-  <h2>성공 기준은 코드가 많아진 것이 아니라 결과가 설명되는 것입니다</h2>
+  <div class="kicker">개인 실습 · 확인할 것</div>
+  <h2>잘 고쳤는지는 코드 양이 아니라 달라진 결과로 판단합니다</h2>
   <div class="compare">
     <div class="cbox bad"><div class="label">아직 부족한 보고</div>“수정 완료했습니다.”</div>
     <div class="cbox good"><div class="label">수정 전후가 보이는 보고</div>“screening.py의 거래량 기준을 바꾸자 후보가 2개에서 3개로 늘었고, mock 전체 실행도 끝났습니다.”</div>
   </div>
-  <div class="prompt" style="margin-top:24px;">내 전략 → 바꾼 파일과 규칙 → <strong>내 실행에서</strong> 달라진 결과 → 확인한 증거</div>
+  <div class="prompt" style="margin-top:24px;">내 전략 → 바꾼 파일과 규칙 → <strong>내 실행에서</strong> 달라진 결과 → 직접 확인한 내용</div>
   <div class="pagenum">26</div>
+</section>
+
+<!-- P4-S27 · 실제 구독자 질문을 오늘의 강사 시연으로 사용합니다 -->
+<section class="slide" style="padding:50px 78px 54px; justify-content:flex-start;">
+  <div class="kicker">강사 시연의 출발점 · 실제 구독자 질문</div>
+  <h2 style="font-size:37px; margin-bottom:18px;">“터틀 추세추종에 ATR과 시황 판단, 외부 근거까지 넣고 싶습니다”</h2>
+  <div class="prompt" style="font-size:24px; line-height:1.7;">
+    20일 신고가 돌파로 들어가고 10일 저가 이탈로 나옵니다. ATR로 손절가와 수량을 정하고, KOSPI 시황이 약하면 포지션을 줄입니다. 외국인 리포트 캡처와 공시도 판단 근거로 참고하고 싶습니다.
+  </div>
+  <p class="note">이 질문을 한 번에 구현하지 않습니다. 서로 다른 책임을 네 단계로 나눠 하나씩 확인합니다.</p>
+  <div class="pagenum">27</div>
+</section>
+
+<!-- P4-S28 · 큰 요청은 확인 가능한 네 단계로 나눕니다 -->
+<section class="slide" style="padding:48px 74px 54px; justify-content:flex-start;">
+  <div class="kicker">요구사항을 개발 순서로 바꾸기</div>
+  <h2 style="font-size:36px; margin-bottom:16px;">큰 요청은 네 번의 작은 작업으로 나눕니다</h2>
+  <div class="flow">
+    <div class="step"><div class="n">1 · P4-D1</div><div class="t">터틀</div><div class="d">20일 신고가 진입<br>10일 저가 청산</div></div>
+    <div class="step"><div class="n">2 · P4-D2</div><div class="t">ATR</div><div class="d">변동성 손절<br>허용손실 기준 수량</div></div>
+    <div class="step"><div class="n">3 · P4-D3</div><div class="t">KOSPI</div><div class="d">장세별 진입 문턱<br>최대 보유 수 조절</div></div>
+    <div class="step"><div class="n">4 · P4-D4</div><div class="t">외부 근거</div><div class="d">확인된 리포트·공시<br>분석 입력에 추가</div></div>
+  </div>
+  <div class="action-pair">
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">강사는 구독자 질문을 네 작업으로 나누고, 각 작업이 어느 파일에 들어갈지 먼저 묻습니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">수강생은 자기 전략을 진입·분석·청산·리스크 중 한 축으로 줄이고, 오늘 확인할 규칙 하나를 고릅니다.</div></div>
+  </div>
+  <div class="pagenum">28</div>
+</section>
+
+<!-- P4-S29 · 진입은 screening.py, 청산은 trading.py가 맡습니다 -->
+<section class="slide" style="padding:46px 76px 54px; justify-content:flex-start;">
+  <div class="kicker">1단계 · 터틀 추세추종</div>
+  <h2 style="font-size:36px; margin-bottom:15px;">진입은 <code>screening.py</code>, 청산은 <code>trading.py</code>가 맡습니다</h2>
+  <table class="plain-table" aria-label="터틀 전략의 진입과 청산 책임 구분">
+    <thead><tr><th style="width:16%;">구분</th><th style="width:24%;">담당 파일</th><th>입력과 판단</th><th style="width:22%;">확인할 결과</th></tr></thead>
+    <tbody>
+      <tr><td><strong>진입</strong></td><td><code>screening.py</code></td><td>오늘 가격이 이전 20일 최고가를 넘었는지 확인</td><td>후보 목록에 포함</td></tr>
+      <tr><td><strong>청산</strong></td><td><code>trading.py</code></td><td>보유 뒤 현재가가 최근 10일 최저가를 밑돌았는지 확인</td><td>청산 사유 반환</td></tr>
+    </tbody>
+  </table>
+  <div class="takeaway" style="margin-top:14px; font-size:18px;">‘터틀 전략’이라는 이름으로 한곳에 몰아넣지 않습니다. <strong>후보를 고르는 일과 보유 종목을 파는 일은 실행 시점이 다릅니다.</strong></div>
+  <div class="action-pair">
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">진입과 청산을 한 함수에 넣지 않는 이유를 실제 파일과 반환값으로 보여줍니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">자기 규칙이 “어떤 종목을 볼지”인지 “언제 나올지”인지 구분하고 담당 파일을 적습니다.</div></div>
+  </div>
+  <div class="pagenum">29</div>
+</section>
+
+<!-- P4-S30 · 터틀 구현 프롬프트에는 입력과 확인 방법을 함께 적습니다 -->
+<section class="slide" style="padding:45px 76px 54px; justify-content:flex-start;">
+  <div class="kicker">강사 시연 P4-D1</div>
+  <h2 style="font-size:36px; margin-bottom:14px;">“터틀 전략을 넣어줘”보다 계산 기준과 확인 방법을 함께 적습니다</h2>
+  <div class="code-window"><pre><span class="comment">원하는 결과</span>  20일 신고가 돌파 → 후보 / 10일 저가 이탈 → 청산
+<span class="comment">바꿀 곳</span>      screening.py 진입, trading.py 청산
+<span class="comment">지킬 약속</span>    함수 입력·반환, mock·simulation, 실거래 차단
+<span class="comment">확인할 방법</span>  고정 가격 예시, 관련 테스트, 전체 실행 로그</pre></div>
+  <div class="action-pair">
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">P4-D1을 붙여넣고, 에이전트가 수정 전에 보여주는 파일·입력값·테스트 계획을 함께 읽습니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">P4-05 또는 P4-07에서 자기 진입·청산 규칙 한 가지만 적고, 예상 결과를 먼저 남깁니다.</div></div>
+  </div>
+  <div class="pagenum">30</div>
+</section>
+
+<!-- P4-S31 · 터틀 구현은 후보와 청산 사유로 확인합니다 -->
+<section class="slide" style="padding:46px 76px 54px; justify-content:flex-start;">
+  <div class="kicker">1단계의 완료 기준</div>
+  <h2 style="font-size:36px; margin-bottom:14px;">같은 가격을 넣었을 때 어떤 판단이 나오는지 확인합니다</h2>
+  <table style="width:100%; border-collapse:collapse; font-size:20px; line-height:1.45;">
+    <thead><tr style="color:var(--accent); border-bottom:2px solid var(--accent);"><th style="text-align:left; padding:10px;">확인 장면</th><th style="text-align:left; padding:10px;">입력</th><th style="text-align:left; padding:10px;">기대 결과</th><th style="text-align:left; padding:10px;">어디서 확인할까</th></tr></thead>
+    <tbody>
+      <tr style="border-bottom:1px solid #353848;"><td style="padding:12px 10px;">진입</td><td>오늘 가격 &gt; 이전 20일 최고가</td><td>후보 목록에 포함</td><td>후보 전후 표</td></tr>
+      <tr style="border-bottom:1px solid #353848;"><td style="padding:12px 10px;">진입 보류</td><td>신고가 미돌파</td><td>후보에서 제외</td><td>제외 사유</td></tr>
+      <tr><td style="padding:12px 10px;">청산</td><td>현재가 &lt; 최근 10일 최저가</td><td>SELL 사유 반환</td><td>청산 테스트·로그</td></tr>
+    </tbody>
+  </table>
+  <div class="action-pair">
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">수정 전후 후보와 청산 사유를 나란히 보여주고, 예상과 다르면 로그에서 첫 차이를 찾습니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">자기 규칙도 통과 예시 하나와 보류 예시 하나를 만들고 결과가 예상과 같은지 확인합니다.</div></div>
+  </div>
+  <div class="pagenum">31</div>
+</section>
+
+<!-- P4-S32 · ATR은 변동성을 손절 폭과 수량으로 바꿉니다 -->
+<section class="slide" style="padding:46px 76px 54px; justify-content:flex-start;">
+  <div class="kicker">2단계 · ATR 손절과 비중 조절</div>
+  <h2 style="font-size:36px; margin-bottom:14px;">가격이 많이 흔들리는 종목은 손절 폭을 넓히고 수량을 줄입니다</h2>
+  <div style="display:grid; grid-template-columns:1.05fr .95fr; gap:32px; align-items:stretch;">
+    <div class="code-window"><pre><span class="name">허용손실</span> = 계좌자산 × 위험률
+<span class="name">ATR 손절가</span> = 진입가 - ATR × 손절 배수
+<span class="name">1주 위험</span> = 진입가 - ATR 손절가
+<span class="name">수량</span> = 허용손실 ÷ 1주 위험</pre></div>
+    <div style="padding:14px 0 0 28px; border-left:1px solid #3c4052;">
+      <p style="font-size:22px; line-height:1.6;">ATR이 커지면 1주당 잃을 수 있는 금액이 커집니다.</p>
+      <p style="font-size:22px; line-height:1.6; margin-top:18px; color:var(--accent);">한 거래에서 감수할 손실을 고정하면 최종 수량은 줄어듭니다.</p>
+    </div>
+  </div>
+  <div class="action-pair">
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">P4-D2로 같은 계좌자산에서 ATR만 달라질 때 손절가와 수량이 어떻게 바뀌는지 비교합니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">리스크 트랙을 고른 수강생은 P4-08에서 최대 보유 수·현금 비중·점수 기준 중 하나만 바꿉니다.</div></div>
+  </div>
+  <div class="pagenum">32</div>
+</section>
+
+<!-- P4-S33 · ATR 계산은 데이터와 함수 약속을 먼저 확인합니다 -->
+<section class="slide" style="padding:45px 76px 54px; justify-content:flex-start;">
+  <div class="kicker">개발 기초 · 계산을 넣기 전에 확인할 것</div>
+  <h2 style="font-size:36px; margin-bottom:14px;">공식보다 먼저 고가·저가·종가가 실제 입력에 있는지 확인합니다</h2>
+  <svg class="editorial-diagram" viewBox="0 0 1120 230" role="img" aria-labelledby="p4s47-title p4s47-desc">
+    <title id="p4s47-title">ATR 계산에 필요한 가격이 수량 계산으로 넘어가는 흐름</title>
+    <desc id="p4s47-desc">data_source.py의 고가, 저가, 종가 배열로 ATR을 계산하고 trading.py가 손절가와 한 주 위험을 이용해 최종 수량을 정한다.</desc>
+    <defs><marker id="p4s47-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="oklch(0.68 0.03 264)"/></marker></defs>
+    <path class="diagram-edge" marker-end="url(#p4s47-arrow)" d="M270 124 H424"/><path class="diagram-edge" marker-end="url(#p4s47-arrow)" d="M696 124 H850"/>
+    <g class="edge-label"><rect x="310" y="78" width="72" height="20" rx="3"/><text x="346" y="93" text-anchor="middle">가격 배열</text></g>
+    <g class="edge-label"><rect x="724" y="78" width="98" height="20" rx="3"/><text x="773" y="93" text-anchor="middle">손절가·1주 위험</text></g>
+    <rect x="24" y="66" width="246" height="116" class="node"/><text x="147" y="104" text-anchor="middle" class="label mono">data_source.py</text><text x="147" y="138" text-anchor="middle" class="sub-label">고가 · 저가 · 종가</text><text x="147" y="164" text-anchor="middle" class="flow-label">입력 확인</text>
+    <rect x="424" y="54" width="272" height="140" class="focus"/><text x="560" y="96" text-anchor="middle" class="label">ATR 계산</text><text x="560" y="132" text-anchor="middle" class="sub-label">같은 가격에는 같은 ATR</text><text x="560" y="162" text-anchor="middle" class="flow-label">손절 폭 계산</text>
+    <rect x="850" y="66" width="246" height="116" class="node"/><text x="973" y="104" text-anchor="middle" class="label mono">trading.py</text><text x="973" y="138" text-anchor="middle" class="sub-label">허용손실 ÷ 1주 위험</text><text x="973" y="164" text-anchor="middle" class="flow-label">최종 수량</text>
+  </svg>
+  <div class="action-pair">
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">에이전트가 데이터 필드를 확인하지 않고 계산부터 만들면 중단시키고, 입력 구조부터 다시 조사하게 합니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">자기 규칙에 필요한 입력값이 어느 파일에서 오는지 P4-01 답변 표에서 다시 찾습니다.</div></div>
+  </div>
+  <div class="pagenum">33</div>
+</section>
+
+<!-- P4-S34 · KOSPI 시황은 장세별 진입 문턱을 바꿉니다 -->
+<section class="slide" style="padding:45px 76px 54px; justify-content:flex-start;">
+  <div class="kicker">3단계 · KOSPI 시황에 맞춘 대응</div>
+  <h2 style="font-size:36px; margin-bottom:14px;">KOSPI가 약하면 새로 들어가는 기준을 더 까다롭게 잡습니다</h2>
+  <table style="width:100%; border-collapse:collapse; font-size:20px; line-height:1.45;">
+    <thead><tr style="color:var(--accent); border-bottom:2px solid var(--accent);"><th style="text-align:left; padding:10px;">시장 상태</th><th style="text-align:left; padding:10px;">신규 진입 문턱</th><th style="text-align:left; padding:10px;">최대 보유 수</th><th style="text-align:left; padding:10px;">수강생이 읽을 뜻</th></tr></thead>
+    <tbody>
+      <tr style="border-bottom:1px solid #353848;"><td style="padding:12px 10px;">강세</td><td>기본 기준</td><td>기본값</td><td>조건을 통과한 종목을 정상 검토</td></tr>
+      <tr style="border-bottom:1px solid #353848;"><td style="padding:12px 10px;">횡보</td><td>기본보다 보수적</td><td>한 단계 축소</td><td>애매한 후보를 줄임</td></tr>
+      <tr><td style="padding:12px 10px;">약세</td><td>점수·손익비 상향</td><td>더 크게 축소</td><td>현금과 안전 여유를 늘림</td></tr>
+    </tbody>
+  </table>
+  <div class="action-pair">
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">P4-D3로 KOSPI 시황이 `market_condition`이 되어 trading.py까지 전달되는 길을 보여줍니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">자기 전략에서 약세장에 줄일 한 가지를 고릅니다. 후보 수, 점수 문턱, 최대 보유 수 가운데 하나면 충분합니다.</div></div>
+  </div>
+  <div class="pagenum">34</div>
+</section>
+
+<!-- P4-S35 · 시황 계산은 코드가 하고 해석은 AI가 돕습니다 -->
+<section class="slide" style="padding:45px 76px 54px; justify-content:flex-start;">
+  <div class="kicker">개발 기초 · 코드와 AI의 역할</div>
+  <h2 style="font-size:36px; margin-bottom:14px;">숫자는 코드가 계산하고, 해석은 AI가 돕습니다</h2>
+  <div class="compare">
+    <div class="cbox good"><div class="label">Python 코드</div>이동평균, 수익률, 변동성, 진입 점수, 최대 보유 수처럼 계산과 재현이 필요한 값</div>
+    <div class="cbox" style="background:oklch(0.16 0.035 264); border:1px solid #41465a;"><div class="label" style="color:var(--accent2);">분석 에이전트</div>주도 업종, 위험 사건의 영향, 뉴스 재료의 지속성처럼 여러 근거를 읽어야 하는 설명</div>
+  </div>
+  <div class="action-pair">
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">KOSPI 이동평균은 코드가 계산하고, 장세가 업종에 미칠 영향만 AI가 설명하도록 나눕니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">자기 전략의 규칙을 ‘숫자로 계산할 것’과 ‘근거를 읽어 설명할 것’으로 한 줄씩 나눕니다.</div></div>
+  </div>
+  <div class="pagenum">35</div>
+</section>
+
+<!-- P4-S36 · 외부 자료는 확인된 구조로 바꾼 뒤 넣습니다 -->
+<section class="slide" style="padding:44px 74px 54px; justify-content:flex-start;">
+  <div class="kicker">4단계 · 리포트 캡처와 공시</div>
+  <h2 style="font-size:36px; margin-bottom:12px;">캡처와 공시는 출처·작성일·유효기간을 확인한 뒤 넣습니다</h2>
+  <svg class="editorial-diagram" viewBox="0 0 1130 245" role="img" aria-labelledby="p4s50-title p4s50-desc">
+    <title id="p4s50-title">외부 자료를 확인된 분석 입력으로 바꾸는 흐름</title>
+    <desc id="p4s50-desc">사용자가 가진 캡처와 공시에서 종목, 작성일, 출처, 핵심 주장, 유효기간을 정리하고 확인한 최신 자료만 analysis.py에 넘긴다.</desc>
+    <defs><marker id="p4s50-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="oklch(0.68 0.03 264)"/></marker></defs>
+    <path class="diagram-edge" marker-end="url(#p4s50-arrow)" d="M236 126 H348"/><path class="diagram-edge" marker-end="url(#p4s50-arrow)" d="M684 126 H796"/>
+    <g class="edge-label"><rect x="258" y="80" width="68" height="20" rx="3"/><text x="292" y="95" text-anchor="middle">내용 정리</text></g>
+    <g class="edge-label"><rect x="704" y="80" width="72" height="20" rx="3"/><text x="740" y="95" text-anchor="middle">확인한 자료</text></g>
+    <rect x="20" y="72" width="216" height="108" class="node"/><text x="128" y="110" text-anchor="middle" class="label">캡처 · 공시</text><text x="128" y="144" text-anchor="middle" class="sub-label">사용자가 가진 자료</text>
+    <rect x="348" y="48" width="336" height="156" class="focus"/><text x="516" y="88" text-anchor="middle" class="label">분석에 넣을 정보만 정리</text><text x="516" y="124" text-anchor="middle" class="sub-label">종목 · 작성일 · 출처</text><text x="516" y="150" text-anchor="middle" class="sub-label">핵심 주장 · 유효기간</text><text x="516" y="180" text-anchor="middle" class="flow-label">사용자가 확인</text>
+    <rect x="796" y="72" width="314" height="108" class="node"/><text x="953" y="110" text-anchor="middle" class="label mono">analysis.py</text><text x="953" y="144" text-anchor="middle" class="sub-label">확인한 최신 자료만 종목 근거에 추가</text>
+  </svg>
+  <div class="action-pair">
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">P4-D4로 확인된 공시 한 건과 미확인 리포트 요약 한 건을 넣고, 첫 번째만 분석 근거에 들어가는지 봅니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">자기 전략에 꼭 필요한 외부 자료가 있다면 출처·날짜·유효기간을 적고, 수집보다 확인 절차부터 정합니다.</div></div>
+  </div>
+  <div class="pagenum">36</div>
+</section>
+
+<!-- P4-S37 · 외부 자료는 함수에 넘길 값과 저장하지 않을 값을 나눕니다 -->
+<section class="slide" style="padding:45px 76px 54px; justify-content:flex-start;">
+  <div class="kicker">개발 기초 · 함수에 넘길 값과 저장할 값</div>
+  <h2 style="font-size:36px; margin-bottom:14px;">외부 자료를 넣을 때는 저장하지 않을 정보도 정합니다</h2>
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:34px;">
+    <div><div class="flow-label">분석에 넘길 값</div><ul style="margin-top:8px;"><li style="font-size:21px;">종목과 자료 유형</li><li style="font-size:21px;">작성일·출처·유효기간</li><li style="font-size:21px;">사용자가 확인한 핵심 주장</li></ul></div>
+    <div><div class="flow-label" style="color:var(--warn);">저장하거나 재배포하지 않을 값</div><ul style="margin-top:8px;"><li style="font-size:21px;">유료 콘텐츠 원문</li><li style="font-size:21px;">로그인 정보와 시크릿</li><li style="font-size:21px;">확인하지 않은 AI 해석</li></ul></div>
+  </div>
+  <div class="action-pair">
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">정해진 항목으로 정리한 요약은 함수에 넘기되, 원문 이미지와 유료 본문은 DB와 로그에 남기지 않습니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">자기 자료에서 분석에 필요한 필드와 저장하면 안 되는 정보를 각각 적습니다.</div></div>
+  </div>
+  <div class="pagenum">37</div>
+</section>
+
+<!-- P4-S38 · 강사 시연과 개인 실습은 같은 확인 순서로 끝납니다 -->
+<section class="slide" style="padding:46px 76px 54px; justify-content:flex-start;">
+  <div class="kicker">강사 사례에서 내 전략으로 돌아오기</div>
+  <h2 style="font-size:36px; margin-bottom:14px;">전략은 달라도 작업 순서는 같습니다</h2>
+  <div class="flow">
+    <div class="step"><div class="n">1</div><div class="t">현재</div><div class="d">어떤 코드와 결과가 있는가</div></div>
+    <div class="step"><div class="n">2</div><div class="t">원하는 변화</div><div class="d">무엇이 달라져야 하는가</div></div>
+    <div class="step"><div class="n">3</div><div class="t">바꿀 곳</div><div class="d">파일 하나와 규칙 하나</div></div>
+    <div class="step"><div class="n">4</div><div class="t">확인</div><div class="d">테스트·로그·DB·전후 표</div></div>
+  </div>
+  <div class="action-pair">
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">터틀·ATR·KOSPI·외부 근거 가운데 실제로 확인한 결과와 남은 과제를 구분해 정리합니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">자기 전략의 수정 전후를 같은 네 칸으로 정리하고, 확인하지 못한 결과는 성공이라고 쓰지 않습니다.</div></div>
+  </div>
+  <div class="pagenum">38</div>
 </section>

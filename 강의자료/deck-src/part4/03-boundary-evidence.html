@@ -1,56 +1,75 @@
-<!-- P4-S16 · 좋은 프롬프트에는 여섯 가지가 들어갑니다 -->
-<section class="slide" style="padding:43px 78px 36px; justify-content:flex-start;">
-  <div class="kicker" style="margin-bottom:6px;">공통 실습 P4-03 · 요청을 작업 명세로 바꾸기</div>
-  <h2 style="font-size:35px; margin-bottom:12px;">좋은 프롬프트는 AI에게 잘 부탁하는 글이 아니라, 확인 가능한 작업 지시서입니다</h2>
-  <div class="code-window" style="padding:16px 24px;"><pre><span class="comment">[1 현재]</span>  지금 <span class="name">screening.py</span>는 거래량·시가총액·이동평균으로 후보를 고른다.
-<span class="comment">[2 결과]</span>  거래량 기준을 바꾼 뒤 mock 후보 목록이 어떻게 달라지는지 보고 싶다.
-<span class="comment">[3 범위]</span>  <span class="name">VOLUME_SURGE_RATIO</span>와 관련 필터만 검토한다.
-<span class="comment">[4 금지선]</span> <span class="name">run_screening</span>의 입력·<span class="value">list[str]</span> 반환, simulation, 실주문 금지는 유지한다.
-<span class="comment">[5 확인]</span>  수정 전후 후보 목록과 mock 전체 실행 로그를 비교한다.
-<span class="comment">[6 실패]</span>  원하는 비교를 못 하면 수정하지 말고, 원인과 선택지를 보고한다.</pre></div>
-  <div class="takeaway" style="margin-top:15px; font-size:19px;">여섯 줄이 있으면 수강생은 “무엇을 확인할지” 알고, 에이전트는 “어디까지 해도 되는지” 압니다.</div>
+<!-- P4-S16 · 프롬프트에는 여섯 가지를 빠뜨리지 않습니다 -->
+<section class="slide" style="padding:42px 76px 38px; justify-content:flex-start;">
+  <div class="kicker" style="margin-bottom:6px;">공통 실습 P4-03 · 부탁을 개발 작업으로 바꾸기</div>
+  <h2 style="font-size:35px; margin-bottom:10px;">프롬프트에는 여섯 가지를 빠뜨리지 않습니다</h2>
+  <div class="code-window" style="padding:15px 22px;"><pre><span class="comment">[1 지금]</span>  <span class="name">screening.py</span>는 거래량·시가총액·이동평균으로 후보를 고른다.
+<span class="comment">[2 바라는 결과]</span>  거래량 기준을 바꿨을 때 후보 목록이 어떻게 달라지는지 보고 싶다.
+<span class="comment">[3 바꿀 곳]</span>  <span class="name">VOLUME_SURGE_RATIO</span>와 관련 필터만 본다.
+<span class="comment">[4 그대로 둘 것]</span>  <span class="name">run_screening</span>의 입력과 <span class="value">list[str]</span> 반환, simulation, 실주문 차단은 유지한다.
+<span class="comment">[5 확인할 것]</span>  수정 전후 후보 목록과 mock 전체 실행 로그를 비교한다.
+<span class="comment">[6 막혔을 때]</span>  억지로 고치지 말고 원인과 선택지를 알려준다.</pre></div>
+  <div class="takeaway" style="margin-top:13px; font-size:18px;">이 여섯 줄이 있으면 수강생은 확인할 결과를 알고, 에이전트는 어디까지 고쳐야 하는지 압니다.</div>
   <div class="pagenum">16</div>
 </section>
 
-<!-- P4-S17 · 알아서 고쳐줘보다 결과와 경계를 함께 말합니다 -->
-<section class="slide" style="padding:48px 82px 40px; justify-content:flex-start;">
-  <div class="kicker" style="margin-bottom:6px;">요청을 좁히는 법</div>
-  <h2 style="font-size:35px; margin-bottom:14px;">“알아서 고쳐줘”는 답이 아니라 질문을 돌려받을 요청입니다</h2>
-  <div style="display:grid; grid-template-columns:.72fr 1.28fr; gap:30px; align-items:stretch;">
-    <div style="border-left:3px solid var(--bad); padding:18px 22px; background:oklch(0.145 0.03 25);"><div class="flow-label" style="color:var(--bad);">막히는 요청</div><p style="font-size:27px; line-height:1.55; margin-top:15px;">“매매를 더 잘하게 전체적으로 고쳐줘.”</p><p style="font-size:18px; color:var(--muted); margin-top:22px;">무엇을, 어느 파일에서, 어떤 결과로 판단할지 빠져 있습니다.</p></div>
-    <div class="code-window"><pre><span class="comment">[원하는 결과]</span> 손절이 -5%에 먼저 작동하는지 확인하고 싶다.
-<span class="comment">[범위]</span> <span class="name">trading.py</span>의 <span class="name">_decide_exit</span>만 검토한다.
-<span class="comment">[유지]</span> holding·current_price 입력과 반환 형식은 바꾸지 않는다.
-<span class="comment">[증거]</span> 손절·트레일링·목표가 세 사례와 mock 실행으로 확인한다.</pre></div>
+<!-- P4-S17 · 알아서 고쳐줘 대신 원하는 결과와 범위를 말합니다 -->
+<section class="slide" style="padding:46px 78px 39px; justify-content:flex-start;">
+  <div class="kicker" style="margin-bottom:6px;">요청을 구체적으로 말하는 법</div>
+  <h2 style="font-size:35px; margin-bottom:12px;">“알아서 고쳐줘” 대신 원하는 결과와 범위를 말합니다</h2>
+  <div style="display:grid; grid-template-columns:.72fr 1.28fr; gap:28px; align-items:stretch;">
+    <div style="border-left:3px solid var(--bad); padding:18px 22px; background:oklch(0.145 0.03 25);"><div class="flow-label" style="color:var(--bad);">무엇을 해야 할지 알기 어려운 요청</div><p style="font-size:27px; line-height:1.55; margin-top:15px;">“매매를 더 잘하게 전체적으로 고쳐줘.”</p><p style="font-size:18px; color:var(--muted); margin-top:22px;">파일, 결과, 확인 방법이 빠져 있습니다.</p></div>
+    <div class="code-window"><pre><span class="comment">[바라는 결과]</span> 손절이 -5%에서 먼저 작동하는지 확인하고 싶다.
+<span class="comment">[바꿀 곳]</span> <span class="name">trading.py</span>의 <span class="name">_decide_exit</span>만 본다.
+<span class="comment">[그대로 둘 것]</span> holding·current_price 입력과 반환 형식은 바꾸지 않는다.
+<span class="comment">[확인]</span> 손절·트레일링·목표가 세 사례와 mock 실행으로 확인한다.</pre></div>
   </div>
-  <p class="note">파일 이름을 모르면 “먼저 실제 코드를 찾아 담당 파일과 선택지를 보여주고, 아직 수정하지 마”라고 말하면 됩니다.</p>
+  <p class="note" style="margin-top:12px; padding-top:0; font-size:18px;">파일 이름을 모르면 먼저 실제 코드를 읽고 담당 파일과 선택지를 보여 달라고 하면 됩니다.</p>
   <div class="pagenum">17</div>
 </section>
 
-<!-- P4-S18 · 모를 때는 코드를 쓰게 하기 전에 조사부터 시킵니다 -->
-<section class="slide" style="padding:47px 82px 39px; justify-content:flex-start;">
-  <div class="kicker" style="margin-bottom:6px;">조사 프롬프트 · 구현 전에 길 찾기</div>
-  <h2 style="font-size:35px; margin-bottom:13px;">모를 때는 “고쳐줘”보다 “내가 판단할 재료를 찾아줘”라고 먼저 요청합니다</h2>
+<!-- P4-S18 · 파일을 모르면 먼저 찾아 달라고 시킵니다 -->
+<section class="slide" style="padding:45px 78px 38px; justify-content:flex-start;">
+  <div class="kicker" style="margin-bottom:6px;">조사 프롬프트 · 고치기 전에 길 찾기</div>
+  <h2 style="font-size:35px; margin-bottom:11px;">파일을 모르면 먼저 찾아 달라고 시킵니다</h2>
   <div class="code-window"><pre>내가 바꾸고 싶은 것은 <span class="value">[예: 손절 기준]</span>이야.
 실제 코드를 읽고 <span class="name">담당 파일 · 함수 · 입력 · 반환 · 영향 범위</span>를 표로 보여줘.
-선택지는 세 개까지 제안하되, <span class="keyword">아직 코드·설정·DB는 수정하거나 실행하지 마.</span></pre></div>
-  <svg class="editorial-diagram" viewBox="0 0 1100 155" role="img" aria-labelledby="p4s18-title p4s18-desc" style="margin-top:20px;"><title id="p4s18-title">조사 후 수강생이 결정하고 구현으로 넘어가는 흐름</title><desc id="p4s18-desc">수강생이 원하는 변화를 말하면 에이전트가 실제 코드 근거를 찾아 표로 보여주고 수강생이 하나를 선택한 뒤에만 구현으로 넘어간다.</desc><defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10" fill="none" stroke="currentColor" stroke-width="1.7"/></marker></defs><path class="line" d="M230 76 H420"/><path class="line" d="M680 76 H870"/><rect x="20" y="36" width="210" height="80" class="node"/><text x="125" y="67" text-anchor="middle" class="label">바꾸고 싶은 것</text><text x="125" y="93" text-anchor="middle" class="sub-label">수강생의 한 문장</text><rect x="420" y="25" width="260" height="102" class="focus"/><text x="550" y="63" text-anchor="middle" class="label">조사 결과 표</text><text x="550" y="89" text-anchor="middle" class="sub-label">파일 · 함수 · 영향 · 선택지</text><rect x="870" y="36" width="210" height="80" class="node"/><text x="975" y="67" text-anchor="middle" class="label">수강생 선택</text><text x="975" y="93" text-anchor="middle" class="sub-label">그 다음에만 구현</text></svg>
+선택지는 세 개까지만 제안하고, <span class="keyword">아직 코드·설정·DB는 바꾸거나 실행하지 마.</span></pre></div>
+  <div class="flow" style="margin-top:24px;">
+    <div class="step"><div class="n">1</div><div class="t">내가 말한다</div><div class="d">바꾸고 싶은 것을 한 문장으로 적습니다.</div></div>
+    <div class="step"><div class="n">2</div><div class="t">에이전트가 찾는다</div><div class="d">실제 파일·함수·영향 범위를 조사합니다.</div></div>
+    <div class="step"><div class="n">3</div><div class="t">내가 고른다</div><div class="d">조사 결과를 보고 한 가지를 선택합니다.</div></div>
+    <div class="step"><div class="n">4</div><div class="t">그다음 고친다</div><div class="d">선택하기 전에는 코드를 건드리지 않습니다.</div></div>
+  </div>
   <div class="pagenum">18</div>
 </section>
 
-<!-- P4-S19 · 바꾸지 않을 것을 말해야 기존에 되던 기능을 지킬 수 있습니다 -->
-<section class="slide" style="padding:46px 80px 38px; justify-content:flex-start;">
-  <div class="kicker" style="margin-bottom:6px;">변경 금지선 · 이미 되는 것을 지키는 문장</div>
-  <h2 style="font-size:35px; margin-bottom:13px;">바꿀 곳을 말한 뒤에는, 그대로여야 할 약속도 함께 적습니다</h2>
-  <svg class="editorial-diagram" viewBox="0 0 1110 280" role="img" aria-labelledby="p4s19-title p4s19-desc"><title id="p4s19-title">안전한 변경 요청의 네 가지 금지선</title><desc id="p4s19-desc">함수 시그니처, API 키 없는 mock 실행, 실주문 금지, 관련 파일 범위 제한을 지키는 프롬프트 경계를 보여준다.</desc><path class="quiet-line" d="M35 91 H1075 M35 154 H1075 M35 217 H1075"/><text x="35" y="58" class="flow-label">함수 약속</text><text x="250" y="58" class="label mono">run_screening의 입력과 list[str] 반환은 유지</text><text x="35" y="121" class="flow-label">기본 실행</text><text x="250" y="121" class="label">API 키 없는 mock·simulation 전체 실행은 유지</text><text x="35" y="184" class="flow-label">안전</text><text x="250" y="184" class="label">실제 주문·브로커·계좌·시크릿은 사용하지 않기</text><text x="35" y="247" class="flow-label">수정 범위</text><text x="250" y="247" class="label">관련 규칙 하나와 파일 하나만 수정하기</text></svg>
-  <div class="takeaway" style="margin-top:8px; font-size:20px;">금지선은 AI를 의심해서만 쓰는 것이 아닙니다. <strong>내가 바꾼 결과가 무엇 때문인지 알기 위해</strong> 범위를 좁히는 장치입니다.</div>
+<!-- P4-S19 · 바꿀 곳과 그대로 둘 것을 함께 적습니다 -->
+<section class="slide" style="padding:44px 78px 39px; justify-content:flex-start;">
+  <div class="kicker" style="margin-bottom:6px;">작업 범위를 정하는 법</div>
+  <h2 style="font-size:35px; margin-bottom:11px;">바꿀 곳과 그대로 둘 것을 함께 적습니다</h2>
+  <table class="plain-table" aria-label="코딩 에이전트에게 함께 알려줄 네 가지 유지 사항">
+    <thead><tr><th style="width:24%;">그대로 둘 것</th><th>이 수업에서 쓰는 문장</th></tr></thead>
+    <tbody>
+      <tr><td><strong>함수의 입출력</strong></td><td><code>run_screening()</code>이 받는 값과 <code>list[str]</code> 반환은 바꾸지 마.</td></tr>
+      <tr><td><strong>기본 실행</strong></td><td>API 키 없이 mock·simulation 전체 실행이 끝나야 해.</td></tr>
+      <tr><td><strong>실제 주문 차단</strong></td><td>브로커·계좌·시크릿을 쓰거나 실제 주문을 보내지 마.</td></tr>
+      <tr><td><strong>수정 범위</strong></td><td>관련 파일 하나와 규칙 하나만 고쳐.</td></tr>
+    </tbody>
+  </table>
+  <div class="takeaway" style="margin-top:16px; font-size:18px;">바꾸지 말아야 할 것을 적어 두면, 이미 잘 되던 부분까지 함께 흔드는 일을 줄일 수 있습니다.</div>
   <div class="pagenum">19</div>
 </section>
 
-<!-- P4-S20 · AI의 완료 보고보다 직접 확인한 증거를 믿습니다 -->
-<section class="slide" style="padding:44px 76px 37px; justify-content:flex-start;">
-  <div class="kicker" style="margin-bottom:6px;">검증 습관 · “완료했습니다” 다음에 볼 네 가지</div>
-  <h2 style="font-size:35px; margin-bottom:12px;">AI의 완료 보고는 증거를 확인하는 출발점입니다</h2>
-  <svg class="editorial-diagram" viewBox="0 0 1120 300" role="img" aria-labelledby="p4s20-title p4s20-desc"><title id="p4s20-title">수정의 네 가지 증거</title><desc id="p4s20-desc">코드 차이, 테스트, 로그, DB 기록의 네 가지 증거를 순서대로 읽어 다음 변경 여부를 판단한다.</desc><defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10" fill="none" stroke="currentColor" stroke-width="1.7"/></marker></defs><path class="line" d="M234 145 H310"/><path class="line" d="M514 145 H590"/><path class="line" d="M794 145 H870"/><rect x="20" y="83" width="214" height="124" class="node"/><text x="46" y="119" class="flow-label">1 · 코드 차이</text><text x="46" y="153" class="label">무엇을 바꿨나</text><text x="46" y="180" class="sub-label">파일·규칙·변경 전후</text><rect x="310" y="83" width="204" height="124" class="node"/><text x="336" y="119" class="flow-label">2 · 테스트</text><text x="336" y="153" class="label">약속을 지켰나</text><text x="336" y="180" class="sub-label">기존 기능 회귀 확인</text><rect x="590" y="73" width="204" height="144" class="focus"/><text x="616" y="109" class="flow-label">3 · mock 실행 로그</text><text x="616" y="143" class="label">실제로 돌았나</text><text x="616" y="170" class="sub-label">어느 단계에서 멈췄나</text><text x="616" y="196" class="sub-label">simulation인지</text><rect x="870" y="83" width="230" height="124" class="node"/><text x="896" y="119" class="flow-label">4 · DB 기록·대시보드</text><text x="896" y="153" class="label">결과가 남았나</text><text x="896" y="180" class="sub-label">새 행·표시 값 확인</text><text x="20" y="270" class="sub-label">네 가지가 모두 필요하지 않은 작업도 있습니다. 다만 “무엇을 확인했는지”를 말할 수 있어야 완료인지, 다음 질문이 필요한지 판단할 수 있습니다.</text></svg>
+<!-- P4-S20 · 완료라는 답보다 직접 확인한 결과를 봅니다 -->
+<section class="slide" style="padding:44px 72px 39px; justify-content:flex-start;">
+  <div class="kicker" style="margin-bottom:6px;">수정 뒤 확인하는 법</div>
+  <h2 style="font-size:35px; margin-bottom:10px;">“완료했습니다”라는 답보다 직접 확인한 결과를 봅니다</h2>
+  <div class="flow" style="margin-top:22px;">
+    <div class="step"><div class="n">1 · 코드 차이</div><div class="t">무엇을 바꿨나</div><div class="d">파일과 규칙의 수정 전후를 봅니다.</div></div>
+    <div class="step"><div class="n">2 · 테스트</div><div class="t">원래 기능도 되나</div><div class="d">함수 약속과 기존 테스트를 확인합니다.</div></div>
+    <div class="step"><div class="n">3 · 실행 로그</div><div class="t">실제로 끝까지 돌았나</div><div class="d">mock·simulation과 완료 문구를 찾습니다.</div></div>
+    <div class="step"><div class="n">4 · DB·화면</div><div class="t">결과가 남았나</div><div class="d">새 기록과 표시 값을 확인합니다.</div></div>
+  </div>
+  <p class="note" style="font-size:19px;">작업마다 필요한 확인 방법은 다릅니다. 이번 수정에서 무엇을 직접 봤는지 말할 수 있으면 됩니다.</p>
   <div class="pagenum">20</div>
 </section>

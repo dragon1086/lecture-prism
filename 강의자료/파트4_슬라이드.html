@@ -15,18 +15,43 @@
     --warn: oklch(0.78 0.15 60); --bad: oklch(0.7 0.19 25); --screen-scale: 1;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-  body { background: oklch(0.09 0.01 264); font-family: 'Apple SD Gothic Neo','Pretendard','Noto Sans KR',system-ui,sans-serif; }
+  body { background: oklch(0.09 0.01 264); font-family: 'Apple SD Gothic Neo','Pretendard','Noto Sans KR',system-ui,sans-serif; counter-reset: slide-count; }
   body.viewer-open { overflow: hidden; }
 
   .slide {
     width: 1280px; height: 720px; margin: 24px auto; padding: 64px 80px;
     background: var(--bg); color: var(--fg); position: relative;
     display: flex; flex-direction: column; justify-content: center;
-    border-radius: 6px; overflow: hidden;
+    border-radius: 6px; overflow: hidden; counter-increment: slide-count;
   }
   .slide::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 6px;
     background: linear-gradient(90deg, var(--accent), oklch(0.7 0.15 200)); }
-  .pagenum { position: absolute; bottom: 22px; right: 32px; font-size: 15px; color: var(--muted); }
+  .pagenum { position: absolute; bottom: 20px; right: 32px; font-size: 0; color: var(--muted); }
+  .pagenum::after { content: counter(slide-count); font-size: 15px; }
+  .prompt-guide { position:absolute; left:80px; right:80px; bottom:17px; min-height:24px; padding-top:7px;
+    border-top:1px solid oklch(0.28 0.02 264); color:oklch(0.72 0.018 264); font-size:15px; line-height:1.25; }
+  .action-pair { display:grid; grid-template-columns:1fr 1fr; gap:22px; margin-top:14px; }
+  .instructor-action, .student-action { min-height:154px; padding:20px 23px; border-top:3px solid var(--accent2); background:oklch(0.155 0.015 264); }
+  .student-action { border-top-color:var(--accent); }
+  .action-label { font-size:17px; font-weight:800; margin-bottom:9px; color:var(--accent2); }
+  .student-action .action-label { color:var(--accent); }
+  .action-copy { font-size:20px; line-height:1.55; color:oklch(0.9 0.01 264); }
+  .action-pair.compact { gap:16px; margin-top:14px; }
+  .action-pair.compact .instructor-action, .action-pair.compact .student-action { min-height:92px; padding:13px 17px; }
+  .action-pair.compact .action-label { font-size:15px; margin-bottom:5px; }
+  .action-pair.compact .action-copy { font-size:17px; line-height:1.4; }
+  .dense-ops { padding:42px 80px 52px; justify-content:flex-start; }
+  .dense-ops h2 { font-size:35px; margin-bottom:15px; }
+  .dense-ops .tracks { gap:12px; margin-top:0; }
+  .dense-ops .track { padding:18px 20px; }
+  .dense-ops .track .tag { margin-bottom:5px; }
+  .dense-ops .track .q { font-size:22px; margin-bottom:0; }
+  .dense-ops .prompt { margin:14px 0 0 !important; padding:17px 22px; font-size:19px; line-height:1.45; }
+  .dense-ops .action-pair.compact { margin-top:12px; }
+  .dense-ops .action-pair.compact .instructor-action,
+  .dense-ops .action-pair.compact .student-action { min-height:102px; padding:13px 17px; }
+  .dense-ops .action-pair.compact .action-label { margin-bottom:5px; }
+  .dense-ops .action-pair.compact .action-copy { font-size:17px; line-height:1.4; }
   .kicker { font-size: 20px; font-weight: 700; color: var(--accent); margin-bottom: 14px; letter-spacing: 0.5px; }
   h1 { font-size: 54px; font-weight: 800; line-height: 1.25; letter-spacing: -1px; }
   h2 { font-size: 40px; font-weight: 800; line-height: 1.3; margin-bottom: 34px; letter-spacing: -0.5px; }
@@ -51,6 +76,20 @@
   .editorial-diagram .label { fill:var(--fg); font-size:20px; font-weight:750; }
   .editorial-diagram .sub-label { fill:var(--muted); font-size:15px; }
   .editorial-diagram .flow-label { fill:var(--accent); font-size:14px; font-weight:800; letter-spacing:.2px; }
+  .editorial-diagram .diagram-edge { stroke:oklch(0.68 0.03 264); stroke-width:2; fill:none; }
+  .editorial-diagram .diagram-edge-quiet { stroke:oklch(0.46 0.025 264); stroke-width:1.5; fill:none; stroke-dasharray:5 4; }
+  .editorial-diagram .diagram-step { fill:var(--accent); font-size:15px; font-weight:850; }
+  .editorial-diagram .edge-label rect { fill:var(--bg); stroke:oklch(0.31 0.02 264); stroke-width:.8; }
+  .editorial-diagram .edge-label text { fill:oklch(0.84 0.04 145); font-size:12px; font-weight:750; }
+  .directory-map { display:grid; grid-template-columns:1.12fr .88fr; gap:30px; align-items:stretch; }
+  .directory-tree { background:oklch(0.105 0.012 264); border-left:3px solid var(--accent2); padding:18px 24px; font:18px/1.58 'SFMono-Regular','Cascadia Code','Consolas',monospace; color:#e5e7f1; }
+  .directory-tree .root { color:var(--accent); font-weight:800; }
+  .directory-tree .core { color:#70d9aa; font-weight:700; }
+  .directory-tree .support { color:#aab1c6; }
+  .plain-table { width:100%; border-collapse:collapse; }
+  .plain-table th, .plain-table td { border-bottom:1px solid oklch(0.29 0.02 264); padding:12px 14px; text-align:left; vertical-align:top; }
+  .plain-table th { color:var(--accent); font-size:17px; font-weight:800; }
+  .plain-table td { color:oklch(0.88 0.01 264); font-size:19px; line-height:1.45; }
   .code-window { margin-top:6px; padding:18px 22px; border-left:3px solid var(--accent2); background:oklch(0.105 0.012 264); }
   .code-window pre { overflow:visible; color:#e5e7f1; font:18px/1.62 'SFMono-Regular','Cascadia Code','Consolas',monospace; white-space:pre-wrap; }
   .code-window .comment { color:#8992ad; }
@@ -89,11 +128,14 @@
   .track .q { font-size: 24px; font-weight: 800; margin-bottom: 6px; }
   .track .f { font-size: 17px; color: var(--muted); font-family: ui-monospace, monospace; }
 
-  .flow { display: flex; gap: 16px; margin-top: 8px; }
-  .step { flex: 1; background: var(--card); border: 1px solid oklch(0.3 0.02 264); border-radius: 12px; padding: 22px 20px; }
-  .step .n { font-size: 15px; color: var(--accent); font-weight: 800; }
-  .step .t { font-size: 24px; font-weight: 800; margin: 6px 0; }
-  .step .d { font-size: 16.5px; color: var(--muted); line-height: 1.5; }
+  .flow { display:grid; grid-auto-flow:column; grid-auto-columns:1fr; gap:0; margin-top:18px; border-top:1px solid oklch(0.39 0.025 264); }
+  .step { position:relative; min-width:0; background:transparent; border:0; border-right:1px solid oklch(0.27 0.02 264); border-radius:0; padding:24px 18px 10px; }
+  .step:last-child { border-right:0; }
+  .step::before { content:""; position:absolute; top:-6px; left:18px; width:11px; height:11px; border-radius:50%; background:oklch(0.58 0.03 264); border:2px solid var(--bg); }
+  .step:last-child::before { background:var(--accent); }
+  .step .n { font-size:14px; color:var(--accent); font-weight:800; }
+  .step .t { font-size:23px; font-weight:800; margin:7px 0; }
+  .step .d { font-size:16.5px; color:var(--muted); line-height:1.5; }
 
   .compare { display: flex; gap: 20px; margin-top: 8px; }
   .cbox { flex: 1; border-radius: 12px; padding: 26px; font-size: 23px; line-height: 1.6; }
@@ -158,36 +200,39 @@
 
 <section data-slide-id="P4-S01" class="slide cover" style="background-image:linear-gradient(90deg,rgba(14,16,28,.94) 0%,rgba(14,16,28,.78) 46%,rgba(14,16,28,.18) 100%),url('assets/part4-cover-strategy-console.png'); background-size:cover; background-position:center; text-align:left; align-items:flex-start;">
   <div class="kicker" style="position:relative; z-index:1;">파트 4 · 내 의지대로 개발하고 운영하기</div>
-  <h1 style="position:relative; z-index:1; font-size:58px;">자동매매를 만들며<br>자립형 바이브코더로<br>성장합니다</h1>
+  <h1 style="position:relative; z-index:1; font-size:58px;">내 전략을 코드로 옮기고<br>혼자서 다음 수정까지<br>이어 갑니다</h1>
   <p class="sub" style="position:relative; z-index:1; color:#d4d8e8;">코딩 에이전트 활용 · 개발 기초 · 문제 해결 · 로컬 운영</p>
-  <div class="pagenum">1</div>
+  <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
 </section>
 
 <section data-slide-id="P4-S02" class="slide">
-  <div class="kicker">오늘 수업의 도착점</div>
-  <h2>혼자서도 다음 변경을 이어 갈 수 있습니다</h2>
+  <div class="kicker">오늘 수업에서 가져갈 것</div>
+  <h2>수업이 끝나면 원하는 변화를 직접 맡기고 확인할 수 있습니다</h2>
   <div class="flow">
     <div class="step"><div class="n">1</div><div class="t">말한다</div><div class="d">원하는 변화를 개발 작업으로 바꿉니다.</div></div>
     <div class="step"><div class="n">2</div><div class="t">맡긴다</div><div class="d">범위와 확인 방법을 넣어 에이전트에게 요청합니다.</div></div>
     <div class="step"><div class="n">3</div><div class="t">확인한다</div><div class="d">코드·로그·DB에서 바뀐 근거를 찾습니다.</div></div>
     <div class="step"><div class="n">4</div><div class="t">운영한다</div><div class="d">내 컴퓨터에서 예약 실행하고 다시 고칩니다.</div></div>
   </div>
-  <p class="note">자동매매는 오늘의 실습 재료입니다. 진짜 목표는 다른 프로젝트에도 써먹을 수 있는 개발 습관입니다.</p>
-  <div class="pagenum">2</div>
+  <p class="note">자동매매는 연습할 대상입니다. 오늘 익힌 개발 순서는 다른 프로젝트에서도 그대로 쓸 수 있습니다.</p>
+  <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S03" class="slide" style="padding-top:50px; padding-bottom:50px;">
+<section data-slide-id="P4-S03" class="slide" style="padding-top:42px; padding-bottom:54px; justify-content:flex-start;">
   <div class="kicker">공통 실습 P4-00</div>
-  <h2>파트3에서 적은 문장이 오늘의 개발 요청이 됩니다</h2>
-  <div class="prompt" style="font-size:29px; text-align:center; padding:26px;">내 전략에서 <strong>___</strong>을 <strong>___</strong>하게 바꾸고 싶다.<br>이유는 <strong>___</strong>이다.</div>
-  <div class="tracks" style="margin-top:16px; gap:12px;">
+  <h2 style="font-size:36px; margin-bottom:14px;">MY_STRATEGY.md에서 오늘 바꿀 한 가지를 고릅니다</h2>
+  <div class="prompt" style="font-size:25px; text-align:center; padding:18px;"><strong>전략 원본</strong>을 읽고 → 오늘 다룰 <strong>한 트랙</strong>을 고르고 → <strong>확인할 결과</strong>를 정합니다.</div>
+  <div class="tracks" style="margin-top:10px; gap:10px;">
     <div class="track"><span class="tag">진입</span><div class="q">어떤 종목을 볼까?</div></div>
     <div class="track"><span class="tag">분석</span><div class="q">AI가 무엇을 읽을까?</div></div>
     <div class="track"><span class="tag">청산</span><div class="q">언제 나올까?</div></div>
     <div class="track"><span class="tag">리스크</span><div class="q">얼마나 살까?</div></div>
   </div>
-  <p class="note">아직 코드를 고치지 않습니다. 먼저 이 문장이 어느 파일에 들어가는지 찾습니다.</p>
-  <div class="pagenum">3</div>
+  <div class="action-pair compact" style="margin-top:10px;">
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">오늘 시연할 네 작업을 구현 순서와 확인할 결과로 먼저 정리합니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">MY_STRATEGY.md를 읽게 하고, 오늘 바꿀 규칙 하나를 정합니다.</div></div>
+  </div>
+  <div class="prompt-guide">수강생 자료 → P4-00 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
 <section data-slide-id="P4-S04" class="slide">
@@ -195,278 +240,348 @@
   <h2>KIS 실제 수급을 분석에 한 번 연결합니다</h2>
   <div class="flow">
     <div class="step"><div class="n">종목</div><div class="t">005930</div><div class="d">삼성전자 한 종목만 비교</div></div>
-    <div class="step"><div class="n">환경</div><div class="t">KIS real</div><div class="d">가장 최근 영업일 기준</div></div>
+    <div class="step"><div class="n">환경</div><div class="t">KIS real</div><div class="d">App Key·Secret만 · 계좌번호 불필요</div></div>
     <div class="step"><div class="n">읽는 값</div><div class="t">기관·외국인·개인</div><div class="d">일별 순매수와 가격</div></div>
     <div class="step"><div class="n">바뀌는 곳</div><div class="t">수급 섹션만</div><div class="d">다른 분석은 그대로 유지</div></div>
   </div>
   <div class="takeaway" style="margin-top:26px;">매매는 simulation · 주문·취소·정정·잔고·계좌 호출은 0회</div>
-  <p class="note">KIS가 준비되지 않았다면 거래량 프록시로 합류합니다. 실패를 실제 데이터 성공처럼 말하지 않습니다.</p>
-  <div class="pagenum">4</div>
+  <div class="action-pair compact">
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">005930의 가장 최근 영업일 수급만 읽고, 수급 섹션 전후를 비교합니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">KIS가 준비된 사람만 P4-KIS를 실행합니다. 나머지는 거래량 프록시로 합류합니다.</div></div>
+  </div>
+  <div class="prompt-guide">수강생 자료 → P4-KIS · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S05" class="slide" style="padding:48px 68px 40px; justify-content:flex-start;">
-  <div class="kicker" style="margin-bottom:7px;">공통 실습 P4-01 · 먼저 전체 길 보기</div>
-  <h2 style="font-size:36px; margin-bottom:14px;">파일 이름을 외우기 전, 한 번 실행할 때 지나가는 길부터 봅니다</h2>
-  <svg class="editorial-diagram" viewBox="0 0 1130 388" role="img" aria-labelledby="p4s05-title p4s05-desc">
-    <title id="p4s05-title">lecture-prism 한 번 실행의 큰 흐름</title>
-    <desc id="p4s05-desc">main.py가 후보 선별, 분석 보고서, 진입 시나리오, 시뮬레이션 매매, 기록 저장 순서로 각 파일을 연결한다.</desc>
-    <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10" fill="none" stroke="currentColor" stroke-width="1.7"/></marker></defs>
-    <path class="line" d="M201 178 H254"/><path class="line" d="M419 178 H472"/><path class="line" d="M638 178 H691"/><path class="line" d="M858 178 H911"/>
-    <text x="226" y="144" text-anchor="middle" class="flow-label">후보 목록</text><text x="445" y="144" text-anchor="middle" class="flow-label">분석 보고서</text><text x="665" y="144" text-anchor="middle" class="flow-label">진입 시나리오</text><text x="885" y="144" text-anchor="middle" class="flow-label">매매 결과</text>
-    <rect x="25" y="120" width="176" height="116" class="focus"/><text x="113" y="158" text-anchor="middle" class="label mono">main.py</text><text x="113" y="190" text-anchor="middle" class="sub-label">실행 순서를 시작하고</text><text x="113" y="212" text-anchor="middle" class="sub-label">다음 파일에 넘김</text>
-    <rect x="254" y="120" width="165" height="116" class="node"/><text x="336" y="158" text-anchor="middle" class="label mono">screening.py</text><text x="336" y="190" text-anchor="middle" class="sub-label">볼 종목을 고름</text>
-    <rect x="472" y="120" width="166" height="116" class="node"/><text x="555" y="151" text-anchor="middle" class="label mono">analysis.py</text><text x="555" y="176" text-anchor="middle" class="sub-label">+ buy_agent.py</text><text x="555" y="207" text-anchor="middle" class="sub-label">근거를 읽고 판단 초안 작성</text>
-    <rect x="691" y="120" width="167" height="116" class="node"/><text x="774" y="158" text-anchor="middle" class="label mono">trading.py</text><text x="774" y="190" text-anchor="middle" class="sub-label">안전 조건을 다시 확인</text>
-    <rect x="911" y="120" width="192" height="116" class="node"/><text x="1007" y="151" text-anchor="middle" class="label mono">feedback.py</text><text x="1007" y="176" text-anchor="middle" class="sub-label">+ db.py</text><text x="1007" y="207" text-anchor="middle" class="sub-label">결과와 교훈을 기록</text>
-    <path class="quiet-line" d="M1007 237 V303 H774"/><text x="880" y="292" text-anchor="middle" class="sub-label">기록은 다음 실행과 대시보드에서 다시 읽습니다</text>
+<section data-slide-id="P4-S05" class="slide" style="padding:46px 68px 40px; justify-content:flex-start;">
+  <div class="kicker" style="margin-bottom:7px;">개발 기초 · 전체 실행 지도</div>
+  <h2 style="font-size:36px; margin-bottom:8px;">한 번 실행하면 다섯 단계가 차례로 움직입니다</h2>
+  <p style="font-size:20px; color:var(--muted); margin:0 0 10px;">이 지도를 먼저 보면 뒤에서 배우는 파일·함수·DB가 왜 필요한지 알 수 있습니다.</p>
+  <svg class="editorial-diagram" viewBox="0 0 1130 324" role="img" aria-labelledby="p4s05-title p4s05-desc">
+    <title id="p4s05-title">lecture-prism 전체 실행 지도</title>
+    <desc id="p4s05-desc">한 번 실행하면 후보 고르기, 보고서 작성, 진입 판단, 모의 매매, DB 기록의 다섯 단계가 앞 결과를 다음 입력으로 넘긴다.</desc>
+    <defs>
+      <marker id="p4s05-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="oklch(0.68 0.03 264)"/></marker>
+    </defs>
+    <path class="diagram-edge" marker-end="url(#p4s05-arrow)" d="M200 168 H244"/>
+    <path class="diagram-edge" marker-end="url(#p4s05-arrow)" d="M420 168 H464"/>
+    <path class="diagram-edge" marker-end="url(#p4s05-arrow)" d="M640 168 H684"/>
+    <path class="diagram-edge" marker-end="url(#p4s05-arrow)" d="M860 168 H904"/>
+    <g class="edge-label"><rect x="196" y="122" width="52" height="20" rx="3"/><text x="222" y="137" text-anchor="middle">후보 목록</text></g>
+    <g class="edge-label"><rect x="402" y="122" width="80" height="20" rx="3"/><text x="442" y="137" text-anchor="middle">분석 보고서</text></g>
+    <g class="edge-label"><rect x="618" y="122" width="88" height="20" rx="3"/><text x="662" y="137" text-anchor="middle">진입 시나리오</text></g>
+    <g class="edge-label"><rect x="830" y="122" width="76" height="20" rx="3"/><text x="868" y="137" text-anchor="middle">매매 결과</text></g>
+    <g><rect x="20" y="144" width="180" height="112" class="focus"/><text x="40" y="178" class="diagram-step">1</text><text x="40" y="210" class="label">후보 고르기</text><text x="40" y="238" class="sub-label mono">screening.py</text></g>
+    <g><rect x="244" y="144" width="176" height="112" class="node"/><text x="264" y="178" class="diagram-step">2</text><text x="264" y="210" class="label">보고서 만들기</text><text x="264" y="238" class="sub-label mono">analysis.py</text></g>
+    <g><rect x="464" y="144" width="176" height="112" class="node"/><text x="484" y="178" class="diagram-step">3</text><text x="484" y="210" class="label">진입 판단</text><text x="484" y="238" class="sub-label mono">buy_agent.py</text></g>
+    <g><rect x="684" y="144" width="176" height="112" class="node"/><text x="704" y="178" class="diagram-step">4</text><text x="704" y="210" class="label">모의 매매</text><text x="704" y="238" class="sub-label mono">trading.py</text></g>
+    <g><rect x="904" y="132" width="206" height="136" class="node"/><text x="924" y="170" class="diagram-step">5</text><text x="924" y="202" class="label">기록 남기기</text><text x="924" y="230" class="sub-label mono">feedback.py → db.py</text><text x="924" y="252" class="flow-label">DB 기록</text></g>
   </svg>
-  <div class="takeaway" style="margin-top:10px; padding:11px 16px; font-size:19px;">오늘 고칠 곳은 이 길 전체가 아닙니다. <strong>내 아이디어가 처음 영향을 주는 파일 하나</strong>부터 찾습니다.</div>
-  <div class="pagenum">5</div>
+  <div class="takeaway" style="margin-top:3px; padding:11px 16px; font-size:19px;">앞 단계의 결과가 다음 단계의 재료가 됩니다. 다음 장부터는 이 길을 실제 파일과 함수로 나눠 봅니다.</div>
+  <div class="prompt-guide">수강생 자료 → P4-01 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S06" class="slide" style="padding:44px 66px 38px; justify-content:flex-start;">
-  <div class="kicker" style="margin-bottom:6px;">개발 기초 · 프로젝트 폴더를 처음 열었을 때</div>
-  <h2 style="font-size:35px; margin-bottom:13px;">디렉터리는 파일을 숨기는 곳이 아니라, 역할을 찾는 지도입니다</h2>
-  <svg class="editorial-diagram" viewBox="0 0 1140 410" role="img" aria-labelledby="p4s06-title p4s06-desc">
-    <title id="p4s06-title">lecture-prism 실제 프로젝트 구조</title>
-    <desc id="p4s06-desc">프로젝트 루트 아래 실행 파일, 매매 파이프라인 파일, 운영과 안전 폴더, 수업 자료와 테스트 폴더를 보여 준다.</desc>
-    <rect x="22" y="26" width="260" height="54" class="focus"/><text x="48" y="60" class="label mono">lecture-prism/</text>
-    <path class="quiet-line" d="M152 80 V118 H44 M152 118 H1098"/>
-    <text x="42" y="144" class="flow-label">실행 시작점</text>
-    <rect x="22" y="157" width="210" height="65" class="node"/><text x="44" y="185" class="label mono">main.py</text><text x="44" y="208" class="sub-label">한 번 실행의 순서를 정함</text>
-    <text x="284" y="144" class="flow-label">매매 흐름을 만드는 파일</text>
-    <rect x="267" y="157" width="318" height="195" class="soft"/><text x="291" y="187" class="label mono">screening.py</text><text x="291" y="211" class="sub-label">후보 종목 찾기</text><text x="291" y="245" class="label mono">analysis.py · buy_agent.py</text><text x="291" y="269" class="sub-label">분석 보고서와 진입 시나리오</text><text x="291" y="303" class="label mono">trading.py</text><text x="291" y="327" class="sub-label">안전 조건을 다시 확인</text>
-    <text x="633" y="144" class="flow-label">기록과 확인 화면</text>
-    <rect x="616" y="157" width="250" height="195" class="soft"/><text x="640" y="187" class="label mono">feedback.py · db.py</text><text x="640" y="211" class="sub-label">결과와 교훈 저장</text><text x="640" y="245" class="label mono">dashboard.py</text><text x="640" y="269" class="sub-label">저장된 기록 다시 보기</text><text x="640" y="303" class="label mono">notifications.py</text><text x="640" y="327" class="sub-label">선택 알림 보내기</text>
-    <text x="915" y="144" class="flow-label">안전·자료·검증</text>
-    <rect x="897" y="157" width="221" height="195" class="soft"/><text x="920" y="187" class="label mono">brokers/</text><text x="920" y="211" class="sub-label">증권사 연결</text><text x="920" y="245" class="label mono">prism_core/ · tests/</text><text x="920" y="269" class="sub-label">안전 규칙과 확인</text><text x="920" y="303" class="label mono">lecture/ · docs/</text><text x="920" y="327" class="sub-label mono">강의자료/ · 실습 자료</text>
-    <text x="22" y="392" class="sub-label">처음에는 이 모든 파일을 읽을 필요가 없습니다. “내가 바꾸고 싶은 규칙”이 있는 줄기만 따라가면 됩니다.</text>
-  </svg>
-  <div class="pagenum">6</div>
-</section>
-
-<section data-slide-id="P4-S07" class="slide" style="padding:45px 66px 38px; justify-content:flex-start;">
-  <div class="kicker" style="margin-bottom:6px;">개발 기초 · 실행 진입점</div>
-  <h2 style="font-size:35px; margin-bottom:13px;"><span style="font-family:ui-monospace,monospace; color:var(--accent2);">main.py</span>는 ‘무엇을 어떤 순서로 할지’ 정하는 진행자입니다</h2>
-  <svg class="editorial-diagram" viewBox="0 0 1140 372" role="img" aria-labelledby="p4s07-title p4s07-desc">
-    <title id="p4s07-title">main.py가 연결하는 실제 실행 순서와 데이터 전달</title>
-    <desc id="p4s07-desc">main.py가 run_screening, run_analysis_report, run_buy_agent, run_trading, run_feedback을 순서대로 호출하고 후보 목록, 분석 보고서, 진입 시나리오, 매매 결과, DB 기록을 전달한다.</desc>
-    <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10" fill="none" stroke="currentColor" stroke-width="1.7"/></marker></defs>
-    <rect x="22" y="28" width="1096" height="61" class="focus"/><text x="50" y="66" class="label mono">main.py</text><text x="210" y="66" class="sub-label">“이제 후보를 찾고 → 보고서를 만들고 → 안전하게 판단하고 → 기록하자”</text>
-    <path class="line" d="M136 184 H211"/><path class="line" d="M355 184 H430"/><path class="line" d="M574 184 H649"/><path class="line" d="M793 184 H868"/>
-    <text x="173" y="151" text-anchor="middle" class="flow-label">후보 목록</text><text x="392" y="151" text-anchor="middle" class="flow-label">분석 보고서</text><text x="611" y="151" text-anchor="middle" class="flow-label">진입 시나리오</text><text x="830" y="151" text-anchor="middle" class="flow-label">매매 결과</text>
-    <rect x="22" y="165" width="114" height="91" class="node"/><text x="79" y="199" text-anchor="middle" class="label mono">01</text><text x="79" y="224" text-anchor="middle" class="sub-label mono">run_screening</text>
-    <rect x="211" y="165" width="144" height="91" class="node"/><text x="283" y="198" text-anchor="middle" class="label mono">02</text><text x="283" y="223" text-anchor="middle" class="sub-label mono">run_analysis_report</text>
-    <rect x="430" y="165" width="144" height="91" class="node"/><text x="502" y="198" text-anchor="middle" class="label mono">03</text><text x="502" y="223" text-anchor="middle" class="sub-label mono">run_buy_agent</text>
-    <rect x="649" y="165" width="144" height="91" class="node"/><text x="721" y="198" text-anchor="middle" class="label mono">04</text><text x="721" y="223" text-anchor="middle" class="sub-label mono">run_trading</text>
-    <rect x="868" y="165" width="250" height="91" class="node"/><text x="993" y="198" text-anchor="middle" class="label mono">05</text><text x="993" y="223" text-anchor="middle" class="sub-label mono">run_feedback → DB 기록</text>
-    <text x="22" y="314" class="sub-label">각 단계는 자기 일만 합니다. <tspan class="mono">main.py</tspan>가 앞 단계의 결과를 다음 단계의 입력으로 넘기기 때문에 한 번에 끝까지 실행됩니다.</text>
-  </svg>
-  <div class="takeaway" style="margin-top:7px; padding:11px 16px; font-size:19px;"><strong>왜 필요한가?</strong> 파일마다 실행 순서를 따로 기억하지 않아도, 한 곳에서 시작하면 같은 흐름으로 확인할 수 있습니다.</div>
-  <div class="pagenum">7</div>
-</section>
-
-<section data-slide-id="P4-S08" class="slide" style="padding:44px 76px 37px; justify-content:flex-start;">
-  <div class="kicker" style="margin-bottom:6px;">개발 기초 · 함수</div>
-  <h2 style="font-size:35px; margin-bottom:12px;">함수는 “이 입력을 주면 이 결과를 돌려준다”는 작은 작업 약속입니다</h2>
-  <div style="display:grid; grid-template-columns:1.06fr .94fr; gap:28px; align-items:stretch;">
-    <div class="code-window" aria-label="screening.py의 run_screening 함수 약속 예시">
-      <pre><span class="keyword">async def</span> <span class="name">run_screening</span>(
-    <span class="value">target_ticker</span>=None, <span class="value">use_real</span>=False
-) -&gt; <span class="value">list[str]</span>:
-    <span class="comment"># 후보 종목 코드 목록을 돌려줌</span></pre>
+<section data-slide-id="P4-S06" class="slide" style="padding:43px 72px 40px; justify-content:flex-start;">
+  <div class="kicker" style="margin-bottom:6px;">개발 기초 · 실제 디렉터리</div>
+  <h2 style="font-size:35px; margin-bottom:12px;">프로젝트 폴더에는 역할별 파일이 모여 있습니다</h2>
+  <div class="directory-map">
+    <div class="directory-tree" aria-label="lecture-prism 프로젝트의 실제 루트 디렉터리 구조">
+      <div class="root">lecture-prism/</div>
+      <div class="core">├─ main.py</div>
+      <div class="core">├─ screening.py</div>
+      <div class="core">├─ analysis.py · analysis_agents.py</div>
+      <div class="core">├─ buy_agent.py · trading.py</div>
+      <div class="core">├─ feedback.py · db.py · dashboard.py</div>
+      <div class="support">├─ brokers/ · prism_core/</div>
+      <div class="support">├─ tests/</div>
+      <div class="support">├─ lecture/ · docs/</div>
+      <div class="support">└─ 강의자료/</div>
     </div>
-    <div style="border-left:1px solid oklch(0.31 0.02 264); padding-left:28px; display:grid; gap:13px; align-content:center;">
-      <div><div class="flow-label">입력</div><div style="font-size:21px; margin-top:4px;"><code>target_ticker</code>가 있으면 그 종목부터 봄<br><code>use_real</code>이 참이면 실제 데이터 재확인</div></div>
-      <div><div class="flow-label">처리</div><div style="font-size:21px; margin-top:4px;">조건에 맞는 후보만 고릅니다.</div></div>
-      <div><div class="flow-label">반환</div><div style="font-size:21px; margin-top:4px;"><code>list[str]</code> = 종목 코드가 담긴 목록<br>예: <code>["005930", "000660"]</code></div></div>
+    <table class="plain-table" aria-label="중심 실행 파일과 보조 폴더의 역할">
+      <thead><tr><th style="width:27%;">어디를 볼까</th><th>무엇이 있나</th></tr></thead>
+      <tbody>
+        <tr><td><strong>원본 보기</strong></td><td>GitHub·브라우저에서 파일을 열거나, 에이전트에게 담당 함수를 찾아 달라고 합니다.</td></tr>
+        <tr><td><strong>필요한 만큼만</strong></td><td>함수 주변 10~20줄과 파일·함수 이름, 입력·반환값, 다음 연결 지점만 봅니다.</td></tr>
+        <tr><td><strong>바뀐 근거 보기</strong></td><td>변경 전후 차이와 관련 테스트·로그·결과 화면을 에이전트가 찾아 보여 줍니다.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="takeaway" style="margin-top:12px; font-size:18px;"><strong>IDE를 설치하거나 전체 코드를 외울 필요는 없습니다.</strong> P4-01에서 내 전략과 가까운 파일·함수만 찾아 읽습니다.</div>
+  <div class="prompt-guide">수강생 자료 → P4-01 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
+</section>
+
+<section data-slide-id="P4-S07" class="slide" style="padding:43px 64px 39px; justify-content:flex-start;">
+  <div class="kicker" style="margin-bottom:6px;">개발 기초 · main.py가 하는 일</div>
+  <h2 style="font-size:35px; margin-bottom:7px;"><code>main.py</code>의 <code>run_pipeline()</code>이 다른 파일의 함수를 순서대로 부릅니다</h2>
+  <p style="font-size:19px; color:var(--muted); margin:0 0 7px;">실제 실행은 <code>run_pipeline()</code>에서 시작해 내부의 <code>_run_pipeline_scoped()</code>가 아래 순서를 이어 갑니다.</p>
+  <svg class="editorial-diagram" viewBox="0 0 1152 360" role="img" aria-labelledby="p4s07-title p4s07-desc">
+    <title id="p4s07-title">main.py가 파일별 함수를 부르는 실제 순서</title>
+    <desc id="p4s07-desc">main.py.run_pipeline()이 screening.py.run_screening(), analysis.py.run_analysis_report(), buy_agent.py.run_buy_agent(), trading.py.run_trading(), feedback.py.run_feedback()을 순서대로 호출한다.</desc>
+    <defs><marker id="p4s07-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="oklch(0.68 0.03 264)"/></marker></defs>
+    <rect x="20" y="24" width="1112" height="64" class="focus"/>
+    <text x="48" y="62" class="label mono">main.py.run_pipeline()</text><text x="306" y="62" class="sub-label">실행을 시작하고, 앞 함수의 결과를 다음 함수에 넘깁니다.</text>
+    <path class="diagram-edge" marker-end="url(#p4s07-arrow)" d="M212 238 H236"/>
+    <path class="diagram-edge" marker-end="url(#p4s07-arrow)" d="M436 238 H460"/>
+    <path class="diagram-edge" marker-end="url(#p4s07-arrow)" d="M660 238 H684"/>
+    <path class="diagram-edge" marker-end="url(#p4s07-arrow)" d="M884 238 H908"/>
+    <g class="edge-label"><rect x="198" y="192" width="52" height="20" rx="3"/><text x="224" y="207" text-anchor="middle">후보 목록</text></g>
+    <g class="edge-label"><rect x="402" y="192" width="92" height="20" rx="3"/><text x="448" y="207" text-anchor="middle">분석 보고서</text></g>
+    <g class="edge-label"><rect x="626" y="192" width="92" height="20" rx="3"/><text x="672" y="207" text-anchor="middle">진입 시나리오</text></g>
+    <g class="edge-label"><rect x="850" y="192" width="92" height="20" rx="3"/><text x="896" y="207" text-anchor="middle">매매 결과</text></g>
+    <g><rect x="12" y="216" width="200" height="112" class="node"/><text x="32" y="246" class="diagram-step">1 · 후보 고르기</text><text x="32" y="277" class="sub-label mono">screening.py</text><text x="32" y="305" class="flow-label mono">run_screening()</text></g>
+    <g><rect x="236" y="216" width="200" height="112" class="node"/><text x="256" y="246" class="diagram-step">2 · 보고서 만들기</text><text x="256" y="277" class="sub-label mono">analysis.py</text><text x="256" y="305" class="flow-label mono">run_analysis_report()</text></g>
+    <g><rect x="460" y="216" width="200" height="112" class="node"/><text x="480" y="246" class="diagram-step">3 · 진입 판단</text><text x="480" y="277" class="sub-label mono">buy_agent.py</text><text x="480" y="305" class="flow-label mono">run_buy_agent()</text></g>
+    <g><rect x="684" y="216" width="200" height="112" class="node"/><text x="704" y="246" class="diagram-step">4 · 모의 매매</text><text x="704" y="277" class="sub-label mono">trading.py</text><text x="704" y="305" class="flow-label mono">run_trading()</text></g>
+    <g><rect x="908" y="204" width="232" height="126" class="node"/><text x="928" y="235" class="diagram-step">5 · 기록 남기기</text><text x="928" y="265" class="sub-label mono">feedback.py</text><text x="928" y="291" class="flow-label mono">run_feedback()</text><text x="928" y="315" class="flow-label">db.py에 DB 기록</text></g>
+  </svg>
+  <div class="takeaway" style="margin-top:1px; font-size:18px;"><strong><code>main.py</code>는 실행 순서를 맡고, 각 파일의 함수는 자기 일만 처리합니다.</strong></div>
+  <div class="prompt-guide">수강생 자료 → P4-01 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
+</section>
+
+<section data-slide-id="P4-S08" class="slide" style="padding:42px 72px 39px; justify-content:flex-start;">
+  <div class="kicker" style="margin-bottom:6px;">개발 기초 · 함수와 자료구조</div>
+  <h2 style="font-size:35px; margin-bottom:11px;">함수는 값을 받아 일을 하고 결과를 돌려줍니다</h2>
+  <div style="display:grid; grid-template-columns:1.06fr .94fr; gap:26px; align-items:stretch;">
+    <div class="code-window" aria-label="screening.py의 run_screening 함수 정의">
+      <pre><span class="comment"># screening.py</span>
+<span class="keyword">async def</span> <span class="name">run_screening</span>(
+    <span class="value">target_ticker</span>=None,
+    <span class="value">use_real</span>=False
+) -&gt; <span class="value">list[str]</span>:
+    <span class="comment"># 조건에 맞는 종목 코드를 돌려줌</span></pre>
+    </div>
+    <table class="plain-table" aria-label="run_screening 함수의 입력 처리 반환">
+      <tbody>
+        <tr><th>입력</th><td><code>target_ticker</code>는 종목 코드, <code>use_real</code>은 실제 데이터 확인 여부</td></tr>
+        <tr><th>하는 일</th><td>조건에 맞는 후보 종목만 고릅니다.</td></tr>
+        <tr><th>반환</th><td><code>list[str]</code><br><code>["005930", "000660"]</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div style="margin-top:14px; border-top:1px solid oklch(0.31 0.02 264); padding-top:11px;">
+    <div class="flow-label" style="margin-bottom:8px;">자료구조 = 데이터를 담는 모양</div>
+    <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:14px; font-size:18px; line-height:1.45;">
+      <div><code>str</code><br><span style="color:var(--muted);">글자·종목 코드</span></div>
+      <div><code>bool</code><br><span style="color:var(--muted);">참 또는 거짓</span></div>
+      <div><code>list</code><br><span style="color:var(--muted);">순서가 있는 목록</span></div>
+      <div><code>dict</code><br><span style="color:var(--muted);">이름표가 붙은 값 묶음</span></div>
     </div>
   </div>
-  <div class="takeaway" style="margin-top:18px; font-size:20px;"><strong>시그니처</strong>는 함수 이름·입력·반환값의 약속입니다. 후보 목록 대신 다른 모양을 돌려주면, 다음 단계인 <code>main.py</code>도 그 약속을 이해하지 못합니다.</div>
-  <div class="pagenum">8</div>
+  <div class="takeaway" style="margin-top:13px; font-size:18px;"><strong>함수 시그니처</strong>는 함수 이름, 받는 값, 돌려주는 결과를 적은 약속입니다. 이 모양이 바뀌면 다음 단계도 함께 고쳐야 합니다.</div>
+  <div class="prompt-guide">수강생 자료 → P4-01 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S09" class="slide" style="padding:43px 76px 36px; justify-content:flex-start;">
-  <div class="kicker" style="margin-bottom:6px;">개발 기초 · 파일이 이어지는 순간</div>
-  <h2 style="font-size:35px; margin-bottom:12px;">코드는 다른 파일의 함수를 가져와, 받은 결과에 이름을 붙여 다음 단계로 넘깁니다</h2>
-  <div class="code-window" style="padding:18px 25px;">
-    <pre><span class="keyword">from</span> screening <span class="keyword">import</span> <span class="name">run_screening</span>      <span class="comment"># 1. screening.py의 함수를 main.py로 가져옴</span>
-
-<span class="name">candidates</span> = <span class="keyword">await</span> <span class="name">run_screening</span>(...)     <span class="comment"># 2. 함수가 return한 후보 목록에 candidates라는 이름을 붙임</span>
-
-<span class="keyword">for</span> ticker <span class="keyword">in</span> <span class="name">candidates</span>:                         <span class="comment"># 3. 목록의 종목을 하나씩 다음 단계에 전달</span>
+<section data-slide-id="P4-S09" class="slide" style="padding:42px 72px 39px; justify-content:flex-start;">
+  <div class="kicker" style="margin-bottom:6px;">개발 기초 · import, 호출, return</div>
+  <h2 style="font-size:35px; margin-bottom:10px;"><code>main.py</code>는 다른 파일의 함수를 가져와 실행하고 결과를 넘깁니다</h2>
+  <div class="code-window" style="padding:15px 22px;">
+    <pre><span class="keyword">from</span> screening <span class="keyword">import</span> <span class="name">run_screening</span>  <span class="comment"># screening.py의 함수를 가져옴</span>
+<span class="name">candidates</span> = <span class="keyword">await</span> <span class="name">run_screening</span>(...) <span class="comment"># 실행하고 반환값에 이름을 붙임</span>
+<span class="keyword">for</span> ticker <span class="keyword">in</span> <span class="name">candidates</span>:             <span class="comment"># 목록을 다음 함수에 하나씩 넘김</span>
     report = <span class="keyword">await</span> <span class="name">run_analysis_report</span>(ticker)</pre>
   </div>
-  <svg class="editorial-diagram" viewBox="0 0 1120 150" role="img" aria-labelledby="p4s09-title p4s09-desc" style="margin-top:13px;">
-    <title id="p4s09-title">import, 호출, return, 다음 단계의 관계</title>
-    <desc id="p4s09-desc">screening.py 함수가 main.py로 import되고, 호출 결과 candidates가 analysis.py로 전달된다.</desc>
-    <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10" fill="none" stroke="currentColor" stroke-width="1.7"/></marker></defs>
-    <path class="line" d="M254 74 H410"/><path class="line" d="M664 74 H820"/>
-    <rect x="20" y="35" width="234" height="78" class="node"/><text x="137" y="68" text-anchor="middle" class="label mono">screening.py</text><text x="137" y="93" text-anchor="middle" class="sub-label">함수를 내보냄</text>
-    <rect x="410" y="25" width="254" height="98" class="focus"/><text x="537" y="63" text-anchor="middle" class="label mono">main.py</text><text x="537" y="89" text-anchor="middle" class="sub-label">import → 호출 → candidates</text>
-    <rect x="820" y="35" width="280" height="78" class="node"/><text x="960" y="68" text-anchor="middle" class="label mono">analysis.py</text><text x="960" y="93" text-anchor="middle" class="sub-label">후보 한 종목을 보고서로 바꿈</text>
-    <text x="332" y="48" text-anchor="middle" class="flow-label">import</text><text x="742" y="48" text-anchor="middle" class="flow-label">return한 결과를 다음 단계로</text>
+  <svg class="editorial-diagram" viewBox="0 0 1120 178" role="img" aria-labelledby="p4s09-title p4s09-desc" style="margin-top:8px;">
+    <title id="p4s09-title">screening.py 함수가 main.py로 들어와 analysis.py로 결과를 넘기는 과정</title>
+    <desc id="p4s09-desc">main.py가 screening.py의 run_screening 함수를 import해 호출하고, return한 후보 목록 candidates를 analysis.py의 run_analysis_report에 넘긴다.</desc>
+    <defs><marker id="p4s09-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="oklch(0.68 0.03 264)"/></marker></defs>
+    <path class="diagram-edge" marker-end="url(#p4s09-arrow)" d="M286 96 H420"/>
+    <path class="diagram-edge" marker-end="url(#p4s09-arrow)" d="M700 96 H834"/>
+    <g class="edge-label"><rect x="326" y="50" width="56" height="20" rx="3"/><text x="354" y="65" text-anchor="middle">import</text></g>
+    <g class="edge-label"><rect x="726" y="50" width="84" height="20" rx="3"/><text x="768" y="65" text-anchor="middle">후보 목록</text></g>
+    <rect x="20" y="70" width="266" height="84" class="node"/><text x="153" y="103" text-anchor="middle" class="label mono">screening.py</text><text x="153" y="130" text-anchor="middle" class="sub-label mono">return list[str]</text>
+    <rect x="420" y="58" width="280" height="108" class="focus"/><text x="560" y="94" text-anchor="middle" class="label mono">main.py</text><text x="560" y="122" text-anchor="middle" class="sub-label">호출 결과에 candidates라는 이름을 붙임</text><text x="560" y="147" text-anchor="middle" class="flow-label">return한 후보 목록</text>
+    <rect x="834" y="70" width="266" height="84" class="node"/><text x="967" y="103" text-anchor="middle" class="label mono">analysis.py</text><text x="967" y="130" text-anchor="middle" class="sub-label mono">다음 단계 · run_analysis_report(ticker)</text>
   </svg>
-  <div class="pagenum">9</div>
+  <div class="prompt-guide">수강생 자료 → P4-01 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S10" class="slide" style="padding:48px 78px 40px; justify-content:flex-start;">
-  <div class="kicker" style="margin-bottom:6px;">개발 기초 · 코드와 설정을 구분하는 이유</div>
-  <h2 style="font-size:35px; margin-bottom:14px;">“어떻게 움직일지”는 코드에, “오늘 어떤 환경에서 돌릴지”는 설정에 둡니다</h2>
-  <svg class="editorial-diagram" viewBox="0 0 1110 310" role="img" aria-labelledby="p4s10-title p4s10-desc">
-    <title id="p4s10-title">코드와 런타임 설정의 역할 분리</title>
-    <desc id="p4s10-desc">main.py가 같은 코드 흐름을 사용하되 runtime_config와 .env의 설정에 따라 mock, real_data, paper 같은 환경을 고른다.</desc>
-    <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10" fill="none" stroke="currentColor" stroke-width="1.7"/></marker></defs>
-    <rect x="20" y="56" width="330" height="186" class="focus"/><text x="52" y="96" class="label">코드: 매번 같은 안전 규칙</text><text x="52" y="135" class="sub-label mono">main.py · screening.py · trading.py</text><text x="52" y="171" class="sub-label">후보를 고르는 방법</text><text x="52" y="198" class="sub-label">안전 조건을 다시 확인하는 방법</text><text x="52" y="225" class="sub-label">결과를 기록하는 방법</text>
-    <path class="line" d="M350 149 H535"/><text x="442" y="125" text-anchor="middle" class="flow-label">어떤 환경인지 읽음</text>
-    <rect x="535" y="56" width="250" height="186" class="node"/><text x="566" y="96" class="label mono">runtime_config.py</text><text x="566" y="135" class="sub-label">.env의 값을 읽어</text><text x="566" y="162" class="sub-label">실행 프로필을 고릅니다.</text><text x="566" y="205" class="sub-label mono">LECTURE_PROFILE=mock</text>
-    <path class="line" d="M785 149 H908"/><text x="846" y="125" text-anchor="middle" class="flow-label">같은 코드, 다른 준비</text>
-    <text x="938" y="82" class="flow-label">수업에서 먼저 쓰는 값</text><text x="938" y="117" class="label mono">mock</text><text x="938" y="143" class="sub-label">연습 데이터 · simulation</text><text x="938" y="184" class="label mono">paper</text><text x="938" y="210" class="sub-label">모의투자 준비 단계</text>
-  </svg>
-  <div class="takeaway" style="margin-top:7px; font-size:19px;">코드는 버전 관리하지만, API 키·토큰·계좌번호 같은 비밀값은 <strong>.env에도 공유하지 않고 Git에 올리지 않습니다.</strong></div>
-  <div class="pagenum">10</div>
-</section>
-
-<section data-slide-id="P4-S11" class="slide" style="padding:45px 74px 38px; justify-content:flex-start;">
-  <div class="kicker" style="margin-bottom:6px;">에이전트 원리 · 먼저 구분하기</div>
-  <h2 style="font-size:35px; margin-bottom:14px;">에이전트는 역할·입력·출력이 정해진 AI 작업 단위입니다</h2>
-  <svg class="editorial-diagram" viewBox="0 0 1120 350" role="img" aria-labelledby="p4s11-title p4s11-desc">
-    <title id="p4s11-title">analysis_agents.py에 정의된 수급 분석가의 역할</title>
-    <desc id="p4s11-desc">수급 분석가 에이전트는 입력 근거를 받고, 수급만 설명하며, supply_summary 키의 JSON 결과를 낸다.</desc>
-    <rect x="410" y="87" width="300" height="160" class="focus"/><text x="560" y="125" text-anchor="middle" class="label mono">AgentSpec</text><text x="560" y="158" text-anchor="middle" class="label">수급 분석가</text><text x="560" y="190" text-anchor="middle" class="sub-label">“수급만 설명하고 매수 판단은 하지 않는다”</text><text x="560" y="217" text-anchor="middle" class="sub-label mono">output_key = supply_summary</text>
-    <path class="line" d="M287 166 H410"/><path class="line" d="M710 166 H833"/>
-    <rect x="22" y="107" width="265" height="118" class="node"/><text x="48" y="143" class="flow-label">입력</text><text x="48" y="176" class="label">evidence</text><text x="48" y="202" class="sub-label">가격·거래량·수급 근거 묶음</text>
-    <rect x="833" y="107" width="265" height="118" class="node"/><text x="859" y="143" class="flow-label">출력 약속</text><text x="859" y="176" class="label mono">{"summary": "..."}</text><text x="859" y="202" class="sub-label">JSON 한 개만 반환</text>
-    <text x="348" y="142" text-anchor="middle" class="flow-label">받아 읽음</text><text x="772" y="142" text-anchor="middle" class="flow-label">정해진 형식으로 남김</text>
-    <text x="22" y="302" class="sub-label">코딩 에이전트는 파일 읽기·수정·실행 같은 도구를 쓸 수 있습니다. 반면 이 코드 안의 분석 에이전트는 “한 분석 역할 + 한 JSON 결과”에 좁혀 둔 구성요소입니다.</text>
-  </svg>
-  <div class="pagenum">11</div>
-</section>
-
-<section data-slide-id="P4-S12" class="slide" style="padding:45px 72px 38px; justify-content:flex-start;">
-  <div class="kicker" style="margin-bottom:6px;">에이전트 원리 · 이 프로젝트의 호출 한 번</div>
-  <h2 style="font-size:35px; margin-bottom:13px;">도구 호출은 입력을 보내고, 결과를 확인하는 일입니다</h2>
-  <svg class="editorial-diagram" viewBox="0 0 1125 316" role="img" aria-labelledby="p4s12-title p4s12-desc">
-    <title id="p4s12-title">분석 에이전트가 LLM 호출 결과를 보고서 섹션으로 만드는 과정</title>
-    <desc id="p4s12-desc">analysis.py가 evidence를 만들고, analysis_agents.py가 llm_complete를 호출하며, extract_json이 summary를 읽어 sections에 저장한다. 호출이 실패하면 규칙 보고서 폴백을 사용한다.</desc>
-    <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10" fill="none" stroke="currentColor" stroke-width="1.7"/></marker></defs>
-    <path class="line" d="M180 150 H255"/><path class="line" d="M430 150 H505"/><path class="line" d="M680 150 H755"/><path class="line" d="M930 150 H1000"/>
-    <rect x="22" y="102" width="158" height="96" class="node"/><text x="101" y="140" text-anchor="middle" class="label mono">evidence</text><text x="101" y="167" text-anchor="middle" class="sub-label">근거 dict</text>
-    <rect x="255" y="102" width="175" height="96" class="node"/><text x="342" y="140" text-anchor="middle" class="label mono">AgentSpec</text><text x="342" y="167" text-anchor="middle" class="sub-label">역할별 prompt</text>
-    <rect x="505" y="92" width="175" height="116" class="focus"/><text x="592" y="135" text-anchor="middle" class="label mono">llm_complete</text><text x="592" y="163" text-anchor="middle" class="sub-label">prompt + evidence 전송</text><text x="592" y="188" text-anchor="middle" class="sub-label">응답 텍스트 수신</text>
-    <rect x="755" y="102" width="175" height="96" class="node"/><text x="842" y="140" text-anchor="middle" class="label mono">extract_json</text><text x="842" y="167" text-anchor="middle" class="sub-label">{"summary": "..."} 확인</text>
-    <rect x="1000" y="102" width="103" height="96" class="node"/><text x="1051" y="140" text-anchor="middle" class="label mono">sections</text><text x="1051" y="167" text-anchor="middle" class="sub-label">보고서</text>
-    <text x="217" y="78" text-anchor="middle" class="flow-label">준비</text><text x="467" y="78" text-anchor="middle" class="flow-label">호출</text><text x="717" y="78" text-anchor="middle" class="flow-label">검사</text><text x="965" y="78" text-anchor="middle" class="flow-label">저장</text>
-    <path class="quiet-line" d="M592 208 V267 H842"/><text x="720" y="288" text-anchor="middle" class="sub-label">호출·JSON 검사가 실패하면: 규칙 보고서 폴백으로 그 섹션만 채움</text>
-  </svg>
-  <div class="takeaway" style="margin-top:9px; font-size:19px;">중요한 점은 “AI가 알아서 했다”가 아닙니다. <strong>무슨 근거를 보냈고, 어떤 형식의 결과만 받을지</strong> 코드가 정해 둡니다.</div>
-  <div class="pagenum">12</div>
-</section>
-
-<section data-slide-id="P4-S13" class="slide" style="padding:44px 74px 37px; justify-content:flex-start;">
-  <div class="kicker" style="margin-bottom:6px;">에이전트 원리 · 통신</div>
-  <h2 style="font-size:35px; margin-bottom:12px;">에이전트는 결과에 이름표를 붙여 다음 단계에 넘깁니다</h2>
-  <svg class="editorial-diagram" viewBox="0 0 1120 325" role="img" aria-labelledby="p4s13-title p4s13-desc">
-    <title id="p4s13-title">여섯 분석가, 편집 에이전트, 매수 에이전트의 결과 전달</title>
-    <desc id="p4s13-desc">여섯 분석가가 technical_summary 등 이름 붙은 결과를 만들고, 편집 에이전트가 executive_summary를 만든 다음 run_buy_agent가 이를 읽는다.</desc>
-    <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10" fill="none" stroke="currentColor" stroke-width="1.7"/></marker></defs>
-    <rect x="20" y="60" width="330" height="194" class="node"/><text x="48" y="95" class="label">여섯 전문 분석가</text><text x="48" y="127" class="sub-label mono">technical_summary</text><text x="48" y="151" class="sub-label mono">supply_summary · financial_summary</text><text x="48" y="175" class="sub-label mono">industry_summary · news_summary</text><text x="48" y="199" class="sub-label mono">market_condition</text><text x="48" y="231" class="sub-label">각자 맡은 한 관점만 설명</text>
-    <path class="line" d="M350 157 H466"/><text x="408" y="131" text-anchor="middle" class="flow-label">sections dict</text>
-    <rect x="466" y="60" width="276" height="194" class="focus"/><text x="604" y="96" text-anchor="middle" class="label">편집 에이전트</text><text x="604" y="130" text-anchor="middle" class="sub-label">겹치는 근거와 충돌을 정리</text><text x="604" y="173" text-anchor="middle" class="flow-label mono">executive_summary</text><text x="604" y="208" text-anchor="middle" class="sub-label">새 매수 판단은 추가하지 않음</text>
-    <path class="line" d="M742 157 H858"/><text x="800" y="131" text-anchor="middle" class="flow-label">완성 보고서</text>
-    <rect x="858" y="60" width="242" height="194" class="node"/><text x="979" y="96" text-anchor="middle" class="label mono">run_buy_agent</text><text x="979" y="130" text-anchor="middle" class="sub-label">보고서와 정량 근거를 읽고</text><text x="979" y="163" text-anchor="middle" class="sub-label">진입 시나리오를 제안</text><text x="979" y="205" text-anchor="middle" class="sub-label">그 뒤에도 trading.py가 안전 조건 재확인</text>
-    <text x="20" y="300" class="sub-label">따라서 “통신”은 채팅방이 아닙니다. <strong>키 이름과 JSON 구조</strong>가 다음 단계가 이해할 수 있는 공용 언어가 됩니다.</text>
-  </svg>
-  <div class="pagenum">13</div>
-</section>
-
-<section data-slide-id="P4-S14" class="slide" style="padding:44px 80px 38px; justify-content:flex-start;">
-  <div class="kicker" style="margin-bottom:6px;">에이전트 원리 · 패턴을 고르는 기준</div>
-  <h2 style="font-size:35px; margin-bottom:12px;">에이전트는 많이 붙일수록 좋은 것이 아니라, 일이 달라질 때만 역할을 나눕니다</h2>
-  <div style="display:grid; grid-template-columns:180px 1fr 1.15fr; border-top:1px solid oklch(0.36 0.02 264);">
-    <div style="padding:13px 12px; border-bottom:1px solid oklch(0.27 0.02 264); color:var(--accent); font-weight:800;">패턴</div><div style="padding:13px 12px; border-bottom:1px solid oklch(0.27 0.02 264); color:var(--muted);">언제 쓰나</div><div style="padding:13px 12px; border-bottom:1px solid oklch(0.27 0.02 264); color:var(--muted);">이 프로젝트의 가까운 사례</div>
-    <div style="padding:15px 12px; border-bottom:1px solid oklch(0.27 0.02 264); font-size:21px; font-weight:750;">순차 실행</div><div style="padding:15px 12px; border-bottom:1px solid oklch(0.27 0.02 264); font-size:19px;">앞 결과가 다음 입력일 때</div><div style="padding:15px 12px; border-bottom:1px solid oklch(0.27 0.02 264); font-size:19px;"><code>main.py</code>의 후보 → 보고서 → 매매</div>
-    <div style="padding:15px 12px; border-bottom:1px solid oklch(0.27 0.02 264); font-size:21px; font-weight:750;">병렬 조사 후 편집</div><div style="padding:15px 12px; border-bottom:1px solid oklch(0.27 0.02 264); font-size:19px;">서로 다른 관점을 모을 때</div><div style="padding:15px 12px; border-bottom:1px solid oklch(0.27 0.02 264); font-size:19px;">여섯 분석가 → 편집 에이전트</div>
-    <div style="padding:15px 12px; border-bottom:1px solid oklch(0.27 0.02 264); font-size:21px; font-weight:750;">라우터</div><div style="padding:15px 12px; border-bottom:1px solid oklch(0.27 0.02 264); font-size:19px;">요청 종류에 따라 길이 달라질 때</div><div style="padding:15px 12px; border-bottom:1px solid oklch(0.27 0.02 264); font-size:19px;">트랙 A/B/C/D 중 담당 파일 고르기</div>
-    <div style="padding:15px 12px; border-bottom:1px solid oklch(0.27 0.02 264); font-size:21px; font-weight:750;">평가·수정 반복</div><div style="padding:15px 12px; border-bottom:1px solid oklch(0.27 0.02 264); font-size:19px;">수정 뒤 증거를 다시 볼 때</div><div style="padding:15px 12px; border-bottom:1px solid oklch(0.27 0.02 264); font-size:19px;">테스트·mock 실행·로그 확인</div>
-    <div style="padding:15px 12px; border-bottom:1px solid oklch(0.27 0.02 264); font-size:21px; font-weight:750;">사람 승인</div><div style="padding:15px 12px; border-bottom:1px solid oklch(0.27 0.02 264); font-size:19px;">실제 변경 전 선택이 필요할 때</div><div style="padding:15px 12px; border-bottom:1px solid oklch(0.27 0.02 264); font-size:19px;">3분 뒤 로컬 예약을 등록하기 전</div>
+<section data-slide-id="P4-S10" class="slide" style="padding:45px 76px 40px; justify-content:flex-start;">
+  <div class="kicker" style="margin-bottom:6px;">개발 기초 · 코드와 설정</div>
+  <h2 style="font-size:35px; margin-bottom:13px;">설정값은 기본 편집기로 직접 넣고, 에이전트는 상태만 확인합니다</h2>
+  <div class="flow" style="gap:12px;">
+    <div class="step"><div class="n">1</div><div class="t">견본 복사</div><div class="d"><code>.env.example</code>을 <code>.env</code>로 복사</div></div>
+    <div class="step"><div class="n">2</div><div class="t">파일 열기</div><div class="d">에이전트가 운영체제의 기본 텍스트 편집기로 열기</div></div>
+    <div class="step"><div class="n">3</div><div class="t">사람이 저장</div><div class="d">실행할 때 고르는 값과 비밀값을 직접 입력·저장</div></div>
+    <div class="step"><div class="n">4</div><div class="t">상태만 확인</div><div class="d"><strong style="font-size:15px; white-space:nowrap;">준비됨 / 비어 있음 / 형식 오류</strong></div></div>
   </div>
-  <div class="pagenum">14</div>
+  <div class="takeaway" style="margin-top:18px; font-size:18px;"><strong>반드시 지킬 원칙:</strong> API 키·토큰·계좌번호를 채팅이나 출력에 넣지 않습니다. <code>.gitignore</code>는 Git 업로드를 막지만 에이전트의 로컬 파일 읽기까지 막지는 않습니다.</div>
+  <p style="font-size:17px; color:var(--muted); margin:12px 0 0;">기본 실습은 <code>mock</code>·<code>simulation</code>으로 끝까지 실행되고, 실제 주문은 기본으로 차단됩니다.</p>
+  <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S15" class="slide" style="padding:45px 74px 37px; justify-content:flex-start;">
-  <div class="kicker" style="margin-bottom:6px;">Strategy Harness Lite · 전략을 안전하게 코드로 옮기는 절차</div>
-  <h2 style="font-size:35px; margin-bottom:12px;">하네스는 “내 전략을 바꿔줘”라는 말이 엉뚱한 수정으로 번지지 않게 막아 줍니다</h2>
-  <svg class="editorial-diagram" viewBox="0 0 1120 314" role="img" aria-labelledby="p4s15-title p4s15-desc">
-    <title id="p4s15-title">Strategy Harness Lite의 인터뷰, 구현, 검증 흐름</title>
-    <desc id="p4s15-desc">MY_STRATEGY.md나 수강생의 말에서 시작해 lecture-strategy-interviewer, lecture-strategy-implementer, lecture-strategy-verifier가 한 파일 수정과 mock 검증을 차례로 수행한다.</desc>
-    <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10" fill="none" stroke="currentColor" stroke-width="1.7"/></marker></defs>
-    <path class="line" d="M235 155 H330"/><path class="line" d="M550 155 H645"/><path class="line" d="M865 155 H960"/>
-    <rect x="20" y="92" width="215" height="126" class="node"/><text x="48" y="128" class="label mono">MY_STRATEGY.md</text><text x="48" y="156" class="sub-label">또는 수강생의 한 문장</text><text x="48" y="188" class="sub-label">“무엇을 바꾸고 싶은가”</text>
-    <rect x="330" y="72" width="220" height="166" class="focus"/><text x="440" y="113" text-anchor="middle" class="label mono">lecture-strategy-</text><text x="440" y="137" text-anchor="middle" class="label mono">interviewer</text><text x="440" y="173" text-anchor="middle" class="sub-label">트랙과 규칙 하나로 정리</text><text x="440" y="203" text-anchor="middle" class="sub-label">모르면 한 번 더 질문</text>
-    <rect x="645" y="72" width="220" height="166" class="node"/><text x="755" y="113" text-anchor="middle" class="label mono">lecture-strategy-</text><text x="755" y="137" text-anchor="middle" class="label mono">implementer</text><text x="755" y="173" text-anchor="middle" class="sub-label">트랙 한 곳, 한 파일만 수정</text><text x="755" y="203" text-anchor="middle" class="sub-label">API 키 없이 데모 실행</text>
-    <rect x="960" y="92" width="140" height="126" class="node"/><text x="1030" y="127" text-anchor="middle" class="label mono">lecture-</text><text x="1030" y="151" text-anchor="middle" class="label mono">strategy-</text><text x="1030" y="175" text-anchor="middle" class="label mono">verifier</text><text x="1030" y="200" text-anchor="middle" class="sub-label">전후 증거</text>
-    <text x="282" y="127" text-anchor="middle" class="flow-label">요구사항</text><text x="597" y="127" text-anchor="middle" class="flow-label">수정 지시</text><text x="912" y="127" text-anchor="middle" class="flow-label">검증</text>
-    <text x="20" y="283" class="sub-label">하네스의 성과는 “많이 고쳤다”가 아닙니다. <strong>한 파일만 바꿨고, mock 결과가 의도와 맞는지 설명할 수 있다</strong>가 성과입니다.</text>
+<section data-slide-id="P4-S11" class="slide" style="padding:44px 72px 39px; justify-content:flex-start;">
+  <div class="kicker" style="margin-bottom:6px;">에이전트 기초 · 역할</div>
+  <h2 style="font-size:35px; margin-bottom:10px;">에이전트는 맡은 일과 결과 형식을 미리 정해 둔 AI 작업자입니다</h2>
+  <svg class="editorial-diagram" viewBox="0 0 1120 324" role="img" aria-labelledby="p4s11-title p4s11-desc">
+    <title id="p4s11-title">수급 분석가 에이전트의 입력, 역할, 출력</title>
+    <desc id="p4s11-desc">AgentSpec으로 정의한 수급 분석가는 evidence를 받아 수급만 설명하고 supply_summary 키가 있는 JSON 결과를 돌려준다.</desc>
+    <defs><marker id="p4s11-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="oklch(0.68 0.03 264)"/></marker></defs>
+    <path class="diagram-edge" marker-end="url(#p4s11-arrow)" d="M286 158 H410"/>
+    <path class="diagram-edge" marker-end="url(#p4s11-arrow)" d="M710 158 H834"/>
+    <g class="edge-label"><rect x="322" y="112" width="52" height="20" rx="3"/><text x="348" y="127" text-anchor="middle">근거 묶음</text></g>
+    <g class="edge-label"><rect x="746" y="112" width="52" height="20" rx="3"/><text x="772" y="127" text-anchor="middle">JSON</text></g>
+    <rect x="20" y="100" width="266" height="116" class="node"/><text x="46" y="137" class="diagram-step">입력</text><text x="46" y="171" class="label mono">evidence</text><text x="46" y="199" class="sub-label">가격·거래량·수급 자료</text>
+    <rect x="410" y="76" width="300" height="164" class="focus"/><text x="560" y="115" text-anchor="middle" class="diagram-step mono">AgentSpec</text><text x="560" y="151" text-anchor="middle" class="label">수급 분석가</text><text x="560" y="183" text-anchor="middle" class="sub-label">수급만 설명하고 매수 판단은 하지 않음</text><text x="560" y="215" text-anchor="middle" class="flow-label mono">output_key = supply_summary</text>
+    <rect x="834" y="100" width="266" height="116" class="node"/><text x="860" y="137" class="diagram-step">출력</text><text x="860" y="171" class="label mono">{"summary": "..."}</text><text x="860" y="199" class="sub-label">약속한 키가 있는 JSON</text>
+    <text x="20" y="286" class="sub-label">여기서 보는 에이전트는 코드 안에서 분석 한 가지를 맡습니다. 코딩 에이전트처럼 파일 전체를 마음대로 고치는 역할이 아닙니다.</text>
   </svg>
-  <div class="pagenum">15</div>
+  <div class="prompt-guide">수강생 자료 → P4-02 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S16" class="slide" style="padding:43px 78px 36px; justify-content:flex-start;">
-  <div class="kicker" style="margin-bottom:6px;">공통 실습 P4-03 · 요청을 작업 명세로 바꾸기</div>
-  <h2 style="font-size:35px; margin-bottom:12px;">좋은 프롬프트는 AI에게 잘 부탁하는 글이 아니라, 확인 가능한 작업 지시서입니다</h2>
-  <div class="code-window" style="padding:16px 24px;"><pre><span class="comment">[1 현재]</span>  지금 <span class="name">screening.py</span>는 거래량·시가총액·이동평균으로 후보를 고른다.
-<span class="comment">[2 결과]</span>  거래량 기준을 바꾼 뒤 mock 후보 목록이 어떻게 달라지는지 보고 싶다.
-<span class="comment">[3 범위]</span>  <span class="name">VOLUME_SURGE_RATIO</span>와 관련 필터만 검토한다.
-<span class="comment">[4 금지선]</span> <span class="name">run_screening</span>의 입력·<span class="value">list[str]</span> 반환, simulation, 실주문 금지는 유지한다.
-<span class="comment">[5 확인]</span>  수정 전후 후보 목록과 mock 전체 실행 로그를 비교한다.
-<span class="comment">[6 실패]</span>  원하는 비교를 못 하면 수정하지 말고, 원인과 선택지를 보고한다.</pre></div>
-  <div class="takeaway" style="margin-top:15px; font-size:19px;">여섯 줄이 있으면 수강생은 “무엇을 확인할지” 알고, 에이전트는 “어디까지 해도 되는지” 압니다.</div>
-  <div class="pagenum">16</div>
+<section data-slide-id="P4-S12" class="slide" style="padding:43px 66px 38px; justify-content:flex-start;">
+  <div class="kicker" style="margin-bottom:6px;">에이전트 기초 · 도구 호출</div>
+  <h2 style="font-size:35px; margin-bottom:9px;">에이전트가 바깥 정보를 읽으려면 도구가 필요합니다</h2>
+  <p style="font-size:19px; color:var(--muted); margin:0 0 5px;">이 프로젝트에서는 LLM 호출도 입력을 보내고 결과를 받는 하나의 도구 사용입니다.</p>
+  <svg class="editorial-diagram" viewBox="0 0 1150 312" role="img" aria-labelledby="p4s12-title p4s12-desc">
+    <title id="p4s12-title">근거 준비부터 LLM 도구 호출과 JSON 확인까지</title>
+    <desc id="p4s12-desc">analysis.py가 evidence를 만들고 AgentSpec이 프롬프트를 정한 뒤 llm_complete를 호출한다. extract_json이 summary JSON을 확인해 sections에 저장하며 실패하면 규칙 보고서 폴백을 사용한다.</desc>
+    <defs><marker id="p4s12-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="oklch(0.68 0.03 264)"/></marker></defs>
+    <path class="diagram-edge" marker-end="url(#p4s12-arrow)" d="M196 156 H244"/>
+    <path class="diagram-edge" marker-end="url(#p4s12-arrow)" d="M416 156 H464"/>
+    <path class="diagram-edge" marker-end="url(#p4s12-arrow)" d="M636 156 H684"/>
+    <path class="diagram-edge" marker-end="url(#p4s12-arrow)" d="M856 156 H904"/>
+    <rect x="12" y="108" width="184" height="96" class="node"/><text x="32" y="141" class="diagram-step">1 · 준비</text><text x="32" y="172" class="label mono">evidence</text><text x="32" y="193" class="sub-label">근거 dict</text>
+    <rect x="244" y="108" width="172" height="96" class="node"/><text x="264" y="141" class="diagram-step">2 · 역할</text><text x="264" y="172" class="label mono">AgentSpec</text><text x="264" y="193" class="sub-label">프롬프트 구성</text>
+    <rect x="464" y="96" width="172" height="120" class="focus"/><text x="484" y="133" class="diagram-step">3 · 도구 호출</text><text x="484" y="166" class="label mono">llm_complete</text><text x="484" y="193" class="sub-label">입력 전송 · 응답 수신</text>
+    <rect x="684" y="108" width="172" height="96" class="node"/><text x="704" y="141" class="diagram-step">4 · 확인</text><text x="704" y="172" class="label mono">extract_json</text><text x="704" y="193" class="sub-label mono">{"summary": "..."}</text>
+    <rect x="904" y="108" width="232" height="96" class="node"/><text x="924" y="141" class="diagram-step">5 · 저장</text><text x="924" y="172" class="label mono">sections</text><text x="924" y="193" class="sub-label">보고서 한 부분이 됨</text>
+    <path class="diagram-edge-quiet" d="M550 216 V260 H770"/><text x="790" y="265" class="sub-label">호출이나 JSON 확인이 실패하면 해당 부분만 규칙 보고서로 대체</text>
+  </svg>
+  <div class="takeaway" style="margin-top:5px; font-size:18px;">도구 호출은 거창한 기능이 아닙니다. <strong>필요한 입력을 보내고, 돌아온 결과가 약속한 모양인지 확인하는 과정</strong>입니다.</div>
+  <div class="prompt-guide">수강생 자료 → P4-02 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S17" class="slide" style="padding:48px 82px 40px; justify-content:flex-start;">
-  <div class="kicker" style="margin-bottom:6px;">요청을 좁히는 법</div>
-  <h2 style="font-size:35px; margin-bottom:14px;">“알아서 고쳐줘”는 답이 아니라 질문을 돌려받을 요청입니다</h2>
-  <div style="display:grid; grid-template-columns:.72fr 1.28fr; gap:30px; align-items:stretch;">
-    <div style="border-left:3px solid var(--bad); padding:18px 22px; background:oklch(0.145 0.03 25);"><div class="flow-label" style="color:var(--bad);">막히는 요청</div><p style="font-size:27px; line-height:1.55; margin-top:15px;">“매매를 더 잘하게 전체적으로 고쳐줘.”</p><p style="font-size:18px; color:var(--muted); margin-top:22px;">무엇을, 어느 파일에서, 어떤 결과로 판단할지 빠져 있습니다.</p></div>
-    <div class="code-window"><pre><span class="comment">[원하는 결과]</span> 손절이 -5%에 먼저 작동하는지 확인하고 싶다.
-<span class="comment">[범위]</span> <span class="name">trading.py</span>의 <span class="name">_decide_exit</span>만 검토한다.
-<span class="comment">[유지]</span> holding·current_price 입력과 반환 형식은 바꾸지 않는다.
-<span class="comment">[증거]</span> 손절·트레일링·목표가 세 사례와 mock 실행으로 확인한다.</pre></div>
+<section data-slide-id="P4-S13" class="slide" style="padding:44px 72px 38px; justify-content:flex-start;">
+  <div class="kicker" style="margin-bottom:6px;">에이전트 기초 · 결과 전달</div>
+  <h2 style="font-size:35px; margin-bottom:10px;">에이전트끼리 직접 대화하지 않고 결과를 다음 입력으로 넘깁니다</h2>
+  <svg class="editorial-diagram" viewBox="0 0 1120 318" role="img" aria-labelledby="p4s13-title p4s13-desc">
+    <title id="p4s13-title">전문 분석가의 결과가 편집 에이전트와 매수 에이전트로 넘어가는 흐름</title>
+    <desc id="p4s13-desc">전문 분석가가 technical_summary와 supply_summary 등을 만들고 편집 에이전트가 executive_summary를 만든 뒤 run_buy_agent가 완성 보고서를 읽는다.</desc>
+    <defs><marker id="p4s13-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="oklch(0.68 0.03 264)"/></marker></defs>
+    <path class="diagram-edge" marker-end="url(#p4s13-arrow)" d="M334 156 H438"/>
+    <path class="diagram-edge" marker-end="url(#p4s13-arrow)" d="M718 156 H822"/>
+    <g class="edge-label"><rect x="360" y="110" width="78" height="20" rx="3"/><text x="399" y="125" text-anchor="middle">sections dict</text></g>
+    <g class="edge-label"><rect x="742" y="110" width="82" height="20" rx="3"/><text x="783" y="125" text-anchor="middle">완성 보고서</text></g>
+    <rect x="14" y="72" width="320" height="168" class="node"/><text x="40" y="108" class="diagram-step">여섯 전문 분석가</text><text x="40" y="140" class="sub-label mono">technical_summary · supply_summary</text><text x="40" y="166" class="sub-label mono">financial_summary · industry_summary</text><text x="40" y="192" class="sub-label mono">news_summary · market_condition</text><text x="40" y="222" class="sub-label">각자 맡은 관점만 정리</text>
+    <rect x="438" y="60" width="280" height="192" class="focus"/><text x="578" y="101" text-anchor="middle" class="diagram-step">편집 에이전트</text><text x="578" y="139" text-anchor="middle" class="label">겹치는 내용과 충돌을 정리</text><text x="578" y="178" text-anchor="middle" class="flow-label mono">executive_summary</text><text x="578" y="214" text-anchor="middle" class="sub-label">새 매수 판단은 보태지 않음</text>
+    <rect x="822" y="72" width="284" height="168" class="node"/><text x="848" y="108" class="diagram-step mono">run_buy_agent</text><text x="848" y="142" class="label">보고서를 읽고</text><text x="848" y="173" class="sub-label">진입 시나리오를 만듦</text><text x="848" y="207" class="sub-label">그다음 trading.py가 다시 확인</text>
+    <text x="14" y="290" class="sub-label">통신의 핵심은 대화가 아니라 <strong>키 이름과 JSON 구조를 맞춰 결과를 넘기는 것</strong>입니다.</text>
+  </svg>
+  <div class="prompt-guide">수강생 자료 → P4-02 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
+</section>
+
+<section data-slide-id="P4-S14" class="slide" style="padding:42px 78px 39px; justify-content:flex-start;">
+  <div class="kicker" style="margin-bottom:6px;">에이전트 기초 · 자주 쓰는 방식</div>
+  <h2 style="font-size:35px; margin-bottom:10px;">에이전트는 맡길 일이 다를 때만 역할을 나눕니다</h2>
+  <table class="plain-table" aria-label="에이전트 협업 방식과 lecture-prism의 사례">
+    <thead><tr><th style="width:22%;">방식</th><th style="width:35%;">언제 쓰나</th><th>이 프로젝트에서는</th></tr></thead>
+    <tbody>
+      <tr><td><strong>순서대로 실행</strong></td><td>앞 결과가 있어야 다음 일을 시작할 때</td><td><code>main.py</code>의 후보 → 보고서 → 매매</td></tr>
+      <tr><td><strong>나눠 조사한 뒤 편집</strong></td><td>여러 관점을 한꺼번에 모을 때</td><td>여섯 분석가 → 편집 에이전트</td></tr>
+      <tr><td><strong>담당자 고르기</strong></td><td>요청에 따라 고칠 곳이 달라질 때</td><td>트랙 A/B/C/D에서 담당 파일 선택</td></tr>
+      <tr><td><strong>검사하고 다시 고치기</strong></td><td>수정 뒤 결과를 다시 확인할 때</td><td>테스트 → mock 실행 → 로그 확인</td></tr>
+      <tr><td><strong>사람이 결정하기</strong></td><td>컴퓨터 설정이나 위험한 변경 전</td><td>3분 뒤 예약을 등록하기 전 승인</td></tr>
+    </tbody>
+  </table>
+  <div class="takeaway" style="margin-top:14px; font-size:18px;">역할을 많이 나눈다고 더 좋은 것은 아닙니다. <strong>책임과 결과가 달라질 때만 나눕니다.</strong></div>
+  <div class="prompt-guide">수강생 자료 → P4-02 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
+</section>
+
+<section data-slide-id="P4-S15" class="slide" style="padding:43px 66px 38px; justify-content:flex-start;">
+  <div class="kicker" style="margin-bottom:6px;">Strategy Harness Lite · 역할을 나눈 이유</div>
+  <h2 style="font-size:35px; margin-bottom:10px;">하네스는 전략 정리, 구현, 검증을 차례로 맡깁니다</h2>
+  <svg class="editorial-diagram" viewBox="0 0 1152 316" role="img" aria-labelledby="p4s15-title p4s15-desc">
+    <title id="p4s15-title">Strategy Harness Lite의 세 역할</title>
+    <desc id="p4s15-desc">MY_STRATEGY.md에서 출발해 lecture-strategy-interviewer가 요구를 정리하고 lecture-strategy-implementer가 한 파일을 수정한 뒤 lecture-strategy-verifier가 mock 결과를 확인한다.</desc>
+    <defs><marker id="p4s15-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="oklch(0.68 0.03 264)"/></marker></defs>
+    <path class="diagram-edge" marker-end="url(#p4s15-arrow)" d="M238 158 H292"/>
+    <path class="diagram-edge" marker-end="url(#p4s15-arrow)" d="M544 158 H598"/>
+    <path class="diagram-edge" marker-end="url(#p4s15-arrow)" d="M850 158 H904"/>
+    <g class="edge-label"><rect x="242" y="112" width="48" height="20" rx="3"/><text x="266" y="127" text-anchor="middle">요구</text></g>
+    <g class="edge-label"><rect x="548" y="112" width="48" height="20" rx="3"/><text x="572" y="127" text-anchor="middle">작업</text></g>
+    <g class="edge-label"><rect x="854" y="112" width="48" height="20" rx="3"/><text x="878" y="127" text-anchor="middle">결과</text></g>
+    <rect x="12" y="102" width="226" height="112" class="node"/><text x="36" y="138" class="diagram-step">전략 원문</text><text x="36" y="172" class="label mono">MY_STRATEGY.md</text><text x="36" y="198" class="sub-label">수강생이 적어 온 규칙</text>
+    <rect x="292" y="82" width="252" height="152" class="focus"/><text x="418" y="120" text-anchor="middle" class="diagram-step">전략 정리</text><text x="418" y="153" text-anchor="middle" class="sub-label mono">lecture-strategy-interviewer</text><text x="418" y="184" text-anchor="middle" class="label">트랙과 규칙 하나로 좁힘</text><text x="418" y="211" text-anchor="middle" class="sub-label">모르면 질문 한 번</text>
+    <rect x="598" y="82" width="252" height="152" class="node"/><text x="724" y="120" text-anchor="middle" class="diagram-step">구현</text><text x="724" y="153" text-anchor="middle" class="sub-label mono">lecture-strategy-implementer</text><text x="724" y="184" text-anchor="middle" class="label">한 파일만 수정</text><text x="724" y="211" text-anchor="middle" class="sub-label">API 키 없이 데모 실행</text>
+    <rect x="904" y="82" width="236" height="152" class="node"/><text x="1022" y="120" text-anchor="middle" class="diagram-step">검증</text><text x="1022" y="153" text-anchor="middle" class="sub-label mono">lecture-strategy-verifier</text><text x="1022" y="184" text-anchor="middle" class="label">전후 결과 확인</text><text x="1022" y="211" text-anchor="middle" class="sub-label">의도와 mock 결과 비교</text>
+    <text x="12" y="282" class="sub-label">잘 끝났다면 <strong>왜 이 파일을 바꿨고 결과가 어떻게 달라졌는지</strong> 설명할 수 있습니다.</text>
+  </svg>
+  <div class="prompt-guide">수강생 자료 → P4-02 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
+</section>
+
+<section data-slide-id="P4-S16" class="slide" style="padding:42px 76px 38px; justify-content:flex-start;">
+  <div class="kicker" style="margin-bottom:6px;">공통 실습 P4-03 · 부탁을 개발 작업으로 바꾸기</div>
+  <h2 style="font-size:35px; margin-bottom:10px;">프롬프트에는 여섯 가지를 빠뜨리지 않습니다</h2>
+  <div class="code-window" style="padding:15px 22px;"><pre><span class="comment">[1 지금]</span>  <span class="name">screening.py</span>는 거래량·시가총액·이동평균으로 후보를 고른다.
+<span class="comment">[2 바라는 결과]</span>  거래량 기준을 바꿨을 때 후보 목록이 어떻게 달라지는지 보고 싶다.
+<span class="comment">[3 바꿀 곳]</span>  <span class="name">VOLUME_SURGE_RATIO</span>와 관련 필터만 본다.
+<span class="comment">[4 그대로 둘 것]</span>  <span class="name">run_screening</span>의 입력과 <span class="value">list[str]</span> 반환, simulation, 실주문 차단은 유지한다.
+<span class="comment">[5 확인할 것]</span>  수정 전후 후보 목록과 mock 전체 실행 로그를 비교한다.
+<span class="comment">[6 막혔을 때]</span>  억지로 고치지 말고 원인과 선택지를 알려준다.</pre></div>
+  <div class="takeaway" style="margin-top:13px; font-size:18px;">이 여섯 줄이 있으면 수강생은 확인할 결과를 알고, 에이전트는 어디까지 고쳐야 하는지 압니다.</div>
+  <div class="prompt-guide">수강생 자료 → P4-03 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
+</section>
+
+<section data-slide-id="P4-S17" class="slide" style="padding:46px 78px 39px; justify-content:flex-start;">
+  <div class="kicker" style="margin-bottom:6px;">요청을 구체적으로 말하는 법</div>
+  <h2 style="font-size:35px; margin-bottom:12px;">“알아서 고쳐줘” 대신 원하는 결과와 범위를 말합니다</h2>
+  <div style="display:grid; grid-template-columns:.72fr 1.28fr; gap:28px; align-items:stretch;">
+    <div style="border-left:3px solid var(--bad); padding:18px 22px; background:oklch(0.145 0.03 25);"><div class="flow-label" style="color:var(--bad);">무엇을 해야 할지 알기 어려운 요청</div><p style="font-size:27px; line-height:1.55; margin-top:15px;">“매매를 더 잘하게 전체적으로 고쳐줘.”</p><p style="font-size:18px; color:var(--muted); margin-top:22px;">파일, 결과, 확인 방법이 빠져 있습니다.</p></div>
+    <div class="code-window"><pre><span class="comment">[바라는 결과]</span> 손절이 -5%에서 먼저 작동하는지 확인하고 싶다.
+<span class="comment">[바꿀 곳]</span> <span class="name">trading.py</span>의 <span class="name">_decide_exit</span>만 본다.
+<span class="comment">[그대로 둘 것]</span> holding·current_price 입력과 반환 형식은 바꾸지 않는다.
+<span class="comment">[확인]</span> 손절·트레일링·목표가 세 사례와 mock 실행으로 확인한다.</pre></div>
   </div>
-  <p class="note">파일 이름을 모르면 “먼저 실제 코드를 찾아 담당 파일과 선택지를 보여주고, 아직 수정하지 마”라고 말하면 됩니다.</p>
-  <div class="pagenum">17</div>
+  <p class="note" style="margin-top:12px; padding-top:0; font-size:18px;">파일 이름을 모르면 먼저 실제 코드를 읽고 담당 파일과 선택지를 보여 달라고 하면 됩니다.</p>
+  <div class="prompt-guide">수강생 자료 → P4-03 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S18" class="slide" style="padding:47px 82px 39px; justify-content:flex-start;">
-  <div class="kicker" style="margin-bottom:6px;">조사 프롬프트 · 구현 전에 길 찾기</div>
-  <h2 style="font-size:35px; margin-bottom:13px;">모를 때는 “고쳐줘”보다 “내가 판단할 재료를 찾아줘”라고 먼저 요청합니다</h2>
+<section data-slide-id="P4-S18" class="slide" style="padding:45px 78px 38px; justify-content:flex-start;">
+  <div class="kicker" style="margin-bottom:6px;">조사 프롬프트 · 고치기 전에 길 찾기</div>
+  <h2 style="font-size:35px; margin-bottom:11px;">파일을 모르면 먼저 찾아 달라고 시킵니다</h2>
   <div class="code-window"><pre>내가 바꾸고 싶은 것은 <span class="value">[예: 손절 기준]</span>이야.
 실제 코드를 읽고 <span class="name">담당 파일 · 함수 · 입력 · 반환 · 영향 범위</span>를 표로 보여줘.
-선택지는 세 개까지 제안하되, <span class="keyword">아직 코드·설정·DB는 수정하거나 실행하지 마.</span></pre></div>
-  <svg class="editorial-diagram" viewBox="0 0 1100 155" role="img" aria-labelledby="p4s18-title p4s18-desc" style="margin-top:20px;"><title id="p4s18-title">조사 후 수강생이 결정하고 구현으로 넘어가는 흐름</title><desc id="p4s18-desc">수강생이 원하는 변화를 말하면 에이전트가 실제 코드 근거를 찾아 표로 보여주고 수강생이 하나를 선택한 뒤에만 구현으로 넘어간다.</desc><defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10" fill="none" stroke="currentColor" stroke-width="1.7"/></marker></defs><path class="line" d="M230 76 H420"/><path class="line" d="M680 76 H870"/><rect x="20" y="36" width="210" height="80" class="node"/><text x="125" y="67" text-anchor="middle" class="label">바꾸고 싶은 것</text><text x="125" y="93" text-anchor="middle" class="sub-label">수강생의 한 문장</text><rect x="420" y="25" width="260" height="102" class="focus"/><text x="550" y="63" text-anchor="middle" class="label">조사 결과 표</text><text x="550" y="89" text-anchor="middle" class="sub-label">파일 · 함수 · 영향 · 선택지</text><rect x="870" y="36" width="210" height="80" class="node"/><text x="975" y="67" text-anchor="middle" class="label">수강생 선택</text><text x="975" y="93" text-anchor="middle" class="sub-label">그 다음에만 구현</text></svg>
-  <div class="pagenum">18</div>
+선택지는 세 개까지만 제안하고, <span class="keyword">아직 코드·설정·DB는 바꾸거나 실행하지 마.</span></pre></div>
+  <div class="flow" style="margin-top:24px;">
+    <div class="step"><div class="n">1</div><div class="t">내가 말한다</div><div class="d">바꾸고 싶은 것을 한 문장으로 적습니다.</div></div>
+    <div class="step"><div class="n">2</div><div class="t">에이전트가 찾는다</div><div class="d">실제 파일·함수·영향 범위를 조사합니다.</div></div>
+    <div class="step"><div class="n">3</div><div class="t">내가 고른다</div><div class="d">조사 결과를 보고 한 가지를 선택합니다.</div></div>
+    <div class="step"><div class="n">4</div><div class="t">그다음 고친다</div><div class="d">선택하기 전에는 코드를 건드리지 않습니다.</div></div>
+  </div>
+  <div class="prompt-guide">수강생 자료 → P4-03 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S19" class="slide" style="padding:46px 80px 38px; justify-content:flex-start;">
-  <div class="kicker" style="margin-bottom:6px;">변경 금지선 · 이미 되는 것을 지키는 문장</div>
-  <h2 style="font-size:35px; margin-bottom:13px;">바꿀 곳을 말한 뒤에는, 그대로여야 할 약속도 함께 적습니다</h2>
-  <svg class="editorial-diagram" viewBox="0 0 1110 280" role="img" aria-labelledby="p4s19-title p4s19-desc"><title id="p4s19-title">안전한 변경 요청의 네 가지 금지선</title><desc id="p4s19-desc">함수 시그니처, API 키 없는 mock 실행, 실주문 금지, 관련 파일 범위 제한을 지키는 프롬프트 경계를 보여준다.</desc><path class="quiet-line" d="M35 91 H1075 M35 154 H1075 M35 217 H1075"/><text x="35" y="58" class="flow-label">함수 약속</text><text x="250" y="58" class="label mono">run_screening의 입력과 list[str] 반환은 유지</text><text x="35" y="121" class="flow-label">기본 실행</text><text x="250" y="121" class="label">API 키 없는 mock·simulation 전체 실행은 유지</text><text x="35" y="184" class="flow-label">안전</text><text x="250" y="184" class="label">실제 주문·브로커·계좌·시크릿은 사용하지 않기</text><text x="35" y="247" class="flow-label">수정 범위</text><text x="250" y="247" class="label">관련 규칙 하나와 파일 하나만 수정하기</text></svg>
-  <div class="takeaway" style="margin-top:8px; font-size:20px;">금지선은 AI를 의심해서만 쓰는 것이 아닙니다. <strong>내가 바꾼 결과가 무엇 때문인지 알기 위해</strong> 범위를 좁히는 장치입니다.</div>
-  <div class="pagenum">19</div>
+<section data-slide-id="P4-S19" class="slide" style="padding:44px 78px 39px; justify-content:flex-start;">
+  <div class="kicker" style="margin-bottom:6px;">작업 범위를 정하는 법</div>
+  <h2 style="font-size:35px; margin-bottom:11px;">바꿀 곳과 그대로 둘 것을 함께 적습니다</h2>
+  <table class="plain-table" aria-label="코딩 에이전트에게 함께 알려줄 네 가지 유지 사항">
+    <thead><tr><th style="width:24%;">그대로 둘 것</th><th>이 수업에서 쓰는 문장</th></tr></thead>
+    <tbody>
+      <tr><td><strong>함수의 입출력</strong></td><td><code>run_screening()</code>이 받는 값과 <code>list[str]</code> 반환은 바꾸지 마.</td></tr>
+      <tr><td><strong>기본 실행</strong></td><td>API 키 없이 mock·simulation 전체 실행이 끝나야 해.</td></tr>
+      <tr><td><strong>실제 주문 차단</strong></td><td>브로커·계좌·시크릿을 쓰거나 실제 주문을 보내지 마.</td></tr>
+      <tr><td><strong>수정 범위</strong></td><td>관련 파일 하나와 규칙 하나만 고쳐.</td></tr>
+    </tbody>
+  </table>
+  <div class="takeaway" style="margin-top:16px; font-size:18px;">바꾸지 말아야 할 것을 적어 두면, 이미 잘 되던 부분까지 함께 흔드는 일을 줄일 수 있습니다.</div>
+  <div class="prompt-guide">수강생 자료 → P4-03 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S20" class="slide" style="padding:44px 76px 37px; justify-content:flex-start;">
-  <div class="kicker" style="margin-bottom:6px;">검증 습관 · “완료했습니다” 다음에 볼 네 가지</div>
-  <h2 style="font-size:35px; margin-bottom:12px;">AI의 완료 보고는 증거를 확인하는 출발점입니다</h2>
-  <svg class="editorial-diagram" viewBox="0 0 1120 300" role="img" aria-labelledby="p4s20-title p4s20-desc"><title id="p4s20-title">수정의 네 가지 증거</title><desc id="p4s20-desc">코드 차이, 테스트, 로그, DB 기록의 네 가지 증거를 순서대로 읽어 다음 변경 여부를 판단한다.</desc><defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10" fill="none" stroke="currentColor" stroke-width="1.7"/></marker></defs><path class="line" d="M234 145 H310"/><path class="line" d="M514 145 H590"/><path class="line" d="M794 145 H870"/><rect x="20" y="83" width="214" height="124" class="node"/><text x="46" y="119" class="flow-label">1 · 코드 차이</text><text x="46" y="153" class="label">무엇을 바꿨나</text><text x="46" y="180" class="sub-label">파일·규칙·변경 전후</text><rect x="310" y="83" width="204" height="124" class="node"/><text x="336" y="119" class="flow-label">2 · 테스트</text><text x="336" y="153" class="label">약속을 지켰나</text><text x="336" y="180" class="sub-label">기존 기능 회귀 확인</text><rect x="590" y="73" width="204" height="144" class="focus"/><text x="616" y="109" class="flow-label">3 · mock 실행 로그</text><text x="616" y="143" class="label">실제로 돌았나</text><text x="616" y="170" class="sub-label">어느 단계에서 멈췄나</text><text x="616" y="196" class="sub-label">simulation인지</text><rect x="870" y="83" width="230" height="124" class="node"/><text x="896" y="119" class="flow-label">4 · DB 기록·대시보드</text><text x="896" y="153" class="label">결과가 남았나</text><text x="896" y="180" class="sub-label">새 행·표시 값 확인</text><text x="20" y="270" class="sub-label">네 가지가 모두 필요하지 않은 작업도 있습니다. 다만 “무엇을 확인했는지”를 말할 수 있어야 완료인지, 다음 질문이 필요한지 판단할 수 있습니다.</text></svg>
-  <div class="pagenum">20</div>
+<section data-slide-id="P4-S20" class="slide" style="padding:44px 72px 39px; justify-content:flex-start;">
+  <div class="kicker" style="margin-bottom:6px;">수정 뒤 확인하는 법</div>
+  <h2 style="font-size:35px; margin-bottom:10px;">“완료했습니다”라는 답보다 직접 확인한 결과를 봅니다</h2>
+  <div class="flow" style="margin-top:22px;">
+    <div class="step"><div class="n">1 · 코드 차이</div><div class="t">무엇을 바꿨나</div><div class="d">파일과 규칙의 수정 전후를 봅니다.</div></div>
+    <div class="step"><div class="n">2 · 테스트</div><div class="t">원래 기능도 되나</div><div class="d">함수 약속과 기존 테스트를 확인합니다.</div></div>
+    <div class="step"><div class="n">3 · 실행 로그</div><div class="t">실제로 끝까지 돌았나</div><div class="d">mock·simulation과 완료 문구를 찾습니다.</div></div>
+    <div class="step"><div class="n">4 · DB·화면</div><div class="t">결과가 남았나</div><div class="d">새 기록과 표시 값을 확인합니다.</div></div>
+  </div>
+  <p class="note" style="font-size:19px;">작업마다 필요한 확인 방법은 다릅니다. 이번 수정에서 무엇을 직접 봤는지 말할 수 있으면 됩니다.</p>
+  <div class="prompt-guide">수강생 자료 → P4-03 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
 <section data-slide-id="P4-S21" class="slide">
   <div class="kicker">개인 실습 · 트랙 고르기</div>
-  <h2>내 아이디어는 네 트랙 가운데 하나에서 시작합니다</h2>
+  <h2>내 아이디어는 진입·분석·청산·리스크 중 한곳에서 시작합니다</h2>
   <div style="display:grid; grid-template-columns:130px 1fr 1fr; border-top:1px solid oklch(0.36 0.02 264);">
     <div style="padding:13px 10px; border-bottom:1px solid oklch(0.27 0.02 264); color:var(--accent); font-weight:800;">트랙</div><div style="padding:13px 10px; border-bottom:1px solid oklch(0.27 0.02 264); color:var(--muted);">내가 바꾸고 싶은 질문</div><div style="padding:13px 10px; border-bottom:1px solid oklch(0.27 0.02 264); color:var(--muted);">실제로 먼저 읽을 파일과 확인할 결과</div>
     <div style="padding:16px 10px; border-bottom:1px solid oklch(0.27 0.02 264); font-size:23px; font-weight:800;">A · 진입</div><div style="padding:16px 10px; border-bottom:1px solid oklch(0.27 0.02 264); font-size:20px;">어떤 종목을 후보로 볼까?</div><div style="padding:16px 10px; border-bottom:1px solid oklch(0.27 0.02 264); font-size:20px;"><code>screening.py</code> · 수정 전후 후보 목록</div>
@@ -475,202 +590,455 @@
     <div style="padding:16px 10px; border-bottom:1px solid oklch(0.27 0.02 264); font-size:23px; font-weight:800;">D · 리스크</div><div style="padding:16px 10px; border-bottom:1px solid oklch(0.27 0.02 264); font-size:20px;">몇 종목에 얼마씩 나눌까?</div><div style="padding:16px 10px; border-bottom:1px solid oklch(0.27 0.02 264); font-size:20px;"><code>trading.py</code> 상수 · 수량과 통과 기준</div>
   </div>
   <p class="note">트랙은 정답지가 아닙니다. <strong>오늘 한 파일에서 확인 가능한 규칙 하나를 고르는 지도</strong>입니다.</p>
-  <div class="pagenum">21</div>
+  <div class="prompt-guide">수강생 자료 → P4-04 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
 <section data-slide-id="P4-S22" class="slide">
   <div class="kicker">공통 실습 P4-04</div>
-  <h2>전략 전체가 아니라 오늘 확인할 규칙 하나를 고릅니다</h2>
+  <h2>전략 전체를 고치지 말고 오늘 확인할 규칙 하나만 고릅니다</h2>
   <div class="code-window"><pre><span class="comment">내 문장</span>  “거래량이 충분히 늘어난 종목만 보고 싶다.”
 <span class="comment">트랙</span>    A · 진입
 <span class="comment">파일·규칙</span> <span class="name">screening.py</span>의 <span class="name">VOLUME_SURGE_RATIO</span> 또는 관련 필터
-<span class="comment">예측·증거</span> 같은 mock 데이터에서 <span class="value">후보 목록이 어떻게 달라지는지</span> 비교</pre></div>
-  <p class="note">트랙 B는 실제 LLM이 연결돼야 문장 변화를 확인하기 쉽습니다. 기본 성공 경로는 A·C·D입니다.</p>
-  <div class="pagenum">22</div>
+<span class="comment">확인할 결과</span> 같은 mock 데이터에서 <span class="value">후보 목록이 어떻게 달라지는지</span> 비교</pre></div>
+  <div class="action-pair compact">
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">구독자 질문을 터틀·ATR·KOSPI·외부 근거의 네 작업으로 나눕니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">P4-04로 자기 전략의 트랙, 파일 하나, 확인할 결과를 정합니다.</div></div>
+  </div>
+  <div class="prompt-guide">수강생 자료 → P4-04 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
 <section data-slide-id="P4-S23" class="slide">
   <div class="kicker">선택 실습 P4-05~P4-08</div>
-  <h2>에이전트에게 범위가 있는 변경을 맡깁니다</h2>
+  <h2>파일 하나와 규칙 하나를 정해 에이전트에게 맡깁니다</h2>
   <div class="prompt" style="font-size:23px;">내 전략은 <strong>[한 줄]</strong>이다.<br><strong>[파일 하나]</strong>의 <strong>[규칙 하나]</strong>만 바꿔줘.<br><strong>[함수 약속·mock·simulation]</strong>은 유지해.<br>수정 전후를 <strong>[후보·설명·청산·수량]</strong>으로 비교하고 직접 실행해 확인해줘.</div>
-  <p class="note">프롬프트 전문은 수강생 복붙 파일에서 자기 트랙 번호 하나만 사용합니다.</p>
-  <div class="pagenum">23</div>
+  <div class="action-pair compact">
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">P4-D1부터 한 단계씩 실행하며 수정 전 결과와 그대로 둘 부분을 먼저 확인합니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">수강생 자료에서 P4-05~P4-08 중 자기 트랙 번호 하나만 사용합니다.</div></div>
+  </div>
+  <div class="prompt-guide">수강생 자료 → P4-05~P4-08 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
 <section data-slide-id="P4-S24" class="slide split">
   <div class="txt">
-    <div class="kicker">책임 분리</div>
-    <h2>계산은 코드에 맡기고 맥락은 AI에게 맡깁니다</h2>
+    <div class="kicker">누가 무엇을 맡을까</div>
+    <h2>계산은 코드에 맡기고 시장 상황 설명은 AI에게 맡깁니다</h2>
     <ul>
       <li><strong>코드:</strong> 점수, 손익비, 수량, 손절 순서</li>
-      <li><strong>LLM:</strong> 뉴스와 시장 맥락, 근거의 충돌, HOLD 의견</li>
+      <li><strong>LLM:</strong> 뉴스와 시장 상황, 근거가 엇갈리는 이유, HOLD 의견</li>
       <li><strong>사람:</strong> 전략 방향, 허용 위험, 실제 운영 여부</li>
     </ul>
   </div>
-  <div class="img"><img class="reference-shot" src="../docs/assets/prism-insight/ai-code-guardrails-overview.png" alt="AI 제안과 코드 안전장치의 경계"><p class="caption">AI 제안은 코드 안전장치가 허용한 범위 안에서만 실행됩니다.</p></div>
-  <div class="pagenum">24</div>
+  <div class="img" style="flex:none; height:500px;"><img class="reference-shot" style="height:310px;" src="../docs/assets/prism-insight/ai-code-guardrails-overview.png" alt="AI 제안과 코드 실행 조건의 관계"><p class="caption">AI가 의견을 내도 실제 계산과 실행은 코드에 적힌 원칙을 따릅니다.</p></div>
+  <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
 </section>
 
 <section data-slide-id="P4-S25" class="slide divider">
   <div class="chnum">25분 개인 실습</div>
-  <h1>예측하고, 한 파일만 바꾸고,<br>직접 실행해 확인합니다</h1>
+  <h1>먼저 결과를 예상하고<br>한 파일만 바꿔 확인합니다</h1>
   <p class="sub">트랙 A · B · C · D 가운데 하나만 선택합니다</p>
-  <div class="pagenum">25</div>
+  <div class="action-pair compact" style="width:960px; text-align:left; margin-top:26px;">
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">실제 질문 사례를 단계별로 보여줍니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">같은 시간에 자기 트랙 하나를 구현합니다.</div></div>
+  </div>
+  <div class="prompt-guide">수강생 자료 → P4-05~P4-08 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
 <section data-slide-id="P4-S26" class="slide">
-  <div class="kicker">개인 실습 · 성공 증거</div>
-  <h2>성공 기준은 코드가 많아진 것이 아니라 결과가 설명되는 것입니다</h2>
+  <div class="kicker">개인 실습 · 확인할 것</div>
+  <h2>잘 고쳤는지는 코드 양이 아니라 달라진 결과로 판단합니다</h2>
   <div class="compare">
     <div class="cbox bad"><div class="label">아직 부족한 보고</div>“수정 완료했습니다.”</div>
     <div class="cbox good"><div class="label">수정 전후가 보이는 보고</div>“screening.py의 거래량 기준을 바꾸자 후보가 2개에서 3개로 늘었고, mock 전체 실행도 끝났습니다.”</div>
   </div>
-  <div class="prompt" style="margin-top:24px;">내 전략 → 바꾼 파일과 규칙 → <strong>내 실행에서</strong> 달라진 결과 → 확인한 증거</div>
-  <div class="pagenum">26</div>
+  <div class="prompt" style="margin-top:24px;">내 전략 → 바꾼 파일과 규칙 → <strong>내 실행에서</strong> 달라진 결과 → 직접 확인한 내용</div>
+  <div class="prompt-guide">수강생 자료 → P4-14 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S27" class="slide">
+<section data-slide-id="P4-S27" class="slide" style="padding:50px 78px 54px; justify-content:flex-start;">
+  <div class="kicker">강사 시연의 출발점 · 실제 구독자 질문</div>
+  <h2 style="font-size:37px; margin-bottom:18px;">“터틀 추세추종에 ATR과 시황 판단, 외부 근거까지 넣고 싶습니다”</h2>
+  <div class="prompt" style="font-size:24px; line-height:1.7;">
+    20일 신고가 돌파로 들어가고 10일 저가 이탈로 나옵니다. ATR로 손절가와 수량을 정하고, KOSPI 시황이 약하면 포지션을 줄입니다. 외국인 리포트 캡처와 공시도 판단 근거로 참고하고 싶습니다.
+  </div>
+  <p class="note">이 질문을 한 번에 구현하지 않습니다. 서로 다른 책임을 네 단계로 나눠 하나씩 확인합니다.</p>
+  <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
+</section>
+
+<section data-slide-id="P4-S28" class="slide" style="padding:48px 74px 54px; justify-content:flex-start;">
+  <div class="kicker">요구사항을 개발 순서로 바꾸기</div>
+  <h2 style="font-size:36px; margin-bottom:16px;">큰 요청은 네 번의 작은 작업으로 나눕니다</h2>
+  <div class="flow">
+    <div class="step"><div class="n">1 · P4-D1</div><div class="t">터틀</div><div class="d">20일 신고가 진입<br>10일 저가 청산</div></div>
+    <div class="step"><div class="n">2 · P4-D2</div><div class="t">ATR</div><div class="d">변동성 손절<br>허용손실 기준 수량</div></div>
+    <div class="step"><div class="n">3 · P4-D3</div><div class="t">KOSPI</div><div class="d">장세별 진입 문턱<br>최대 보유 수 조절</div></div>
+    <div class="step"><div class="n">4 · P4-D4</div><div class="t">외부 근거</div><div class="d">확인된 리포트·공시<br>분석 입력에 추가</div></div>
+  </div>
+  <div class="action-pair">
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">강사는 구독자 질문을 네 작업으로 나누고, 각 작업이 어느 파일에 들어갈지 먼저 묻습니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">수강생은 자기 전략을 진입·분석·청산·리스크 중 한 축으로 줄이고, 오늘 확인할 규칙 하나를 고릅니다.</div></div>
+  </div>
+  <div class="prompt-guide">수강생 자료 → P4-04 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
+</section>
+
+<section data-slide-id="P4-S29" class="slide" style="padding:46px 76px 54px; justify-content:flex-start;">
+  <div class="kicker">1단계 · 터틀 추세추종</div>
+  <h2 style="font-size:36px; margin-bottom:15px;">진입은 <code>screening.py</code>, 청산은 <code>trading.py</code>가 맡습니다</h2>
+  <table class="plain-table" aria-label="터틀 전략의 진입과 청산 책임 구분">
+    <thead><tr><th style="width:16%;">구분</th><th style="width:24%;">담당 파일</th><th>입력과 판단</th><th style="width:22%;">확인할 결과</th></tr></thead>
+    <tbody>
+      <tr><td><strong>진입</strong></td><td><code>screening.py</code></td><td>오늘 가격이 이전 20일 최고가를 넘었는지 확인</td><td>후보 목록에 포함</td></tr>
+      <tr><td><strong>청산</strong></td><td><code>trading.py</code></td><td>보유 뒤 현재가가 최근 10일 최저가를 밑돌았는지 확인</td><td>청산 사유 반환</td></tr>
+    </tbody>
+  </table>
+  <div class="takeaway" style="margin-top:14px; font-size:18px;">‘터틀 전략’이라는 이름으로 한곳에 몰아넣지 않습니다. <strong>후보를 고르는 일과 보유 종목을 파는 일은 실행 시점이 다릅니다.</strong></div>
+  <div class="action-pair">
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">진입과 청산을 한 함수에 넣지 않는 이유를 실제 파일과 반환값으로 보여줍니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">자기 규칙이 “어떤 종목을 볼지”인지 “언제 나올지”인지 구분하고 담당 파일을 적습니다.</div></div>
+  </div>
+  <div class="prompt-guide">강사 자료 → P4-D1 · 강사용 진행 스크립트의 해당 블록을 사용합니다</div><div class="pagenum"></div>
+</section>
+
+<section data-slide-id="P4-S30" class="slide" style="padding:45px 76px 54px; justify-content:flex-start;">
+  <div class="kicker">강사 시연 P4-D1</div>
+  <h2 style="font-size:36px; margin-bottom:14px;">“터틀 전략을 넣어줘”보다 계산 기준과 확인 방법을 함께 적습니다</h2>
+  <div class="code-window"><pre><span class="comment">원하는 결과</span>  20일 신고가 돌파 → 후보 / 10일 저가 이탈 → 청산
+<span class="comment">바꿀 곳</span>      screening.py 진입, trading.py 청산
+<span class="comment">지킬 약속</span>    함수 입력·반환, mock·simulation, 실거래 차단
+<span class="comment">확인할 방법</span>  고정 가격 예시, 관련 테스트, 전체 실행 로그</pre></div>
+  <div class="action-pair">
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">P4-D1을 붙여넣고, 에이전트가 수정 전에 보여주는 파일·입력값·테스트 계획을 함께 읽습니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">P4-05 또는 P4-07에서 자기 진입·청산 규칙 한 가지만 적고, 예상 결과를 먼저 남깁니다.</div></div>
+  </div>
+  <div class="prompt-guide">강사 자료 → P4-D1 · 강사용 진행 스크립트의 해당 블록을 사용합니다</div><div class="pagenum"></div>
+</section>
+
+<section data-slide-id="P4-S31" class="slide" style="padding:46px 76px 54px; justify-content:flex-start;">
+  <div class="kicker">1단계의 완료 기준</div>
+  <h2 style="font-size:36px; margin-bottom:14px;">같은 가격을 넣었을 때 어떤 판단이 나오는지 확인합니다</h2>
+  <table style="width:100%; border-collapse:collapse; font-size:20px; line-height:1.45;">
+    <thead><tr style="color:var(--accent); border-bottom:2px solid var(--accent);"><th style="text-align:left; padding:10px;">확인 장면</th><th style="text-align:left; padding:10px;">입력</th><th style="text-align:left; padding:10px;">기대 결과</th><th style="text-align:left; padding:10px;">어디서 확인할까</th></tr></thead>
+    <tbody>
+      <tr style="border-bottom:1px solid #353848;"><td style="padding:12px 10px;">진입</td><td>오늘 가격 &gt; 이전 20일 최고가</td><td>후보 목록에 포함</td><td>후보 전후 표</td></tr>
+      <tr style="border-bottom:1px solid #353848;"><td style="padding:12px 10px;">진입 보류</td><td>신고가 미돌파</td><td>후보에서 제외</td><td>제외 사유</td></tr>
+      <tr><td style="padding:12px 10px;">청산</td><td>현재가 &lt; 최근 10일 최저가</td><td>SELL 사유 반환</td><td>청산 테스트·로그</td></tr>
+    </tbody>
+  </table>
+  <div class="action-pair">
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">수정 전후 후보와 청산 사유를 나란히 보여주고, 예상과 다르면 로그에서 첫 차이를 찾습니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">자기 규칙도 통과 예시 하나와 보류 예시 하나를 만들고 결과가 예상과 같은지 확인합니다.</div></div>
+  </div>
+  <div class="prompt-guide">강사 자료 → P4-D1 · 강사용 진행 스크립트의 해당 블록을 사용합니다</div><div class="pagenum"></div>
+</section>
+
+<section data-slide-id="P4-S32" class="slide" style="padding:46px 76px 54px; justify-content:flex-start;">
+  <div class="kicker">2단계 · ATR 손절과 비중 조절</div>
+  <h2 style="font-size:36px; margin-bottom:14px;">가격이 많이 흔들리는 종목은 손절 폭을 넓히고 수량을 줄입니다</h2>
+  <div style="display:grid; grid-template-columns:1.05fr .95fr; gap:32px; align-items:stretch;">
+    <div class="code-window"><pre><span class="name">허용손실</span> = 계좌자산 × 위험률
+<span class="name">ATR 손절가</span> = 진입가 - ATR × 손절 배수
+<span class="name">1주 위험</span> = 진입가 - ATR 손절가
+<span class="name">수량</span> = 허용손실 ÷ 1주 위험</pre></div>
+    <div style="padding:14px 0 0 28px; border-left:1px solid #3c4052;">
+      <p style="font-size:22px; line-height:1.6;">ATR이 커지면 1주당 잃을 수 있는 금액이 커집니다.</p>
+      <p style="font-size:22px; line-height:1.6; margin-top:18px; color:var(--accent);">한 거래에서 감수할 손실을 고정하면 최종 수량은 줄어듭니다.</p>
+    </div>
+  </div>
+  <div class="action-pair">
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">P4-D2로 같은 계좌자산에서 ATR만 달라질 때 손절가와 수량이 어떻게 바뀌는지 비교합니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">리스크 트랙을 고른 수강생은 P4-08에서 최대 보유 수·현금 비중·점수 기준 중 하나만 바꿉니다.</div></div>
+  </div>
+  <div class="prompt-guide">강사 자료 → P4-D2 · 강사용 진행 스크립트의 해당 블록을 사용합니다</div><div class="pagenum"></div>
+</section>
+
+<section data-slide-id="P4-S33" class="slide" style="padding:45px 76px 54px; justify-content:flex-start;">
+  <div class="kicker">개발 기초 · 계산을 넣기 전에 확인할 것</div>
+  <h2 style="font-size:36px; margin-bottom:14px;">공식보다 먼저 고가·저가·종가가 실제 입력에 있는지 확인합니다</h2>
+  <svg class="editorial-diagram" viewBox="0 0 1120 230" role="img" aria-labelledby="p4s47-title p4s47-desc">
+    <title id="p4s47-title">ATR 계산에 필요한 가격이 수량 계산으로 넘어가는 흐름</title>
+    <desc id="p4s47-desc">data_source.py의 고가, 저가, 종가 배열로 ATR을 계산하고 trading.py가 손절가와 한 주 위험을 이용해 최종 수량을 정한다.</desc>
+    <defs><marker id="p4s47-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="oklch(0.68 0.03 264)"/></marker></defs>
+    <path class="diagram-edge" marker-end="url(#p4s47-arrow)" d="M270 124 H424"/><path class="diagram-edge" marker-end="url(#p4s47-arrow)" d="M696 124 H850"/>
+    <g class="edge-label"><rect x="310" y="78" width="72" height="20" rx="3"/><text x="346" y="93" text-anchor="middle">가격 배열</text></g>
+    <g class="edge-label"><rect x="724" y="78" width="98" height="20" rx="3"/><text x="773" y="93" text-anchor="middle">손절가·1주 위험</text></g>
+    <rect x="24" y="66" width="246" height="116" class="node"/><text x="147" y="104" text-anchor="middle" class="label mono">data_source.py</text><text x="147" y="138" text-anchor="middle" class="sub-label">고가 · 저가 · 종가</text><text x="147" y="164" text-anchor="middle" class="flow-label">입력 확인</text>
+    <rect x="424" y="54" width="272" height="140" class="focus"/><text x="560" y="96" text-anchor="middle" class="label">ATR 계산</text><text x="560" y="132" text-anchor="middle" class="sub-label">같은 가격에는 같은 ATR</text><text x="560" y="162" text-anchor="middle" class="flow-label">손절 폭 계산</text>
+    <rect x="850" y="66" width="246" height="116" class="node"/><text x="973" y="104" text-anchor="middle" class="label mono">trading.py</text><text x="973" y="138" text-anchor="middle" class="sub-label">허용손실 ÷ 1주 위험</text><text x="973" y="164" text-anchor="middle" class="flow-label">최종 수량</text>
+  </svg>
+  <div class="action-pair">
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">에이전트가 데이터 필드를 확인하지 않고 계산부터 만들면 중단시키고, 입력 구조부터 다시 조사하게 합니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">자기 규칙에 필요한 입력값이 어느 파일에서 오는지 P4-01 답변 표에서 다시 찾습니다.</div></div>
+  </div>
+  <div class="prompt-guide">강사 자료 → P4-D2 · 강사용 진행 스크립트의 해당 블록을 사용합니다</div><div class="pagenum"></div>
+</section>
+
+<section data-slide-id="P4-S34" class="slide" style="padding:45px 76px 54px; justify-content:flex-start;">
+  <div class="kicker">3단계 · KOSPI 시황에 맞춘 대응</div>
+  <h2 style="font-size:36px; margin-bottom:14px;">KOSPI가 약하면 새로 들어가는 기준을 더 까다롭게 잡습니다</h2>
+  <table style="width:100%; border-collapse:collapse; font-size:20px; line-height:1.45;">
+    <thead><tr style="color:var(--accent); border-bottom:2px solid var(--accent);"><th style="text-align:left; padding:10px;">시장 상태</th><th style="text-align:left; padding:10px;">신규 진입 문턱</th><th style="text-align:left; padding:10px;">최대 보유 수</th><th style="text-align:left; padding:10px;">수강생이 읽을 뜻</th></tr></thead>
+    <tbody>
+      <tr style="border-bottom:1px solid #353848;"><td style="padding:12px 10px;">강세</td><td>기본 기준</td><td>기본값</td><td>조건을 통과한 종목을 정상 검토</td></tr>
+      <tr style="border-bottom:1px solid #353848;"><td style="padding:12px 10px;">횡보</td><td>기본보다 보수적</td><td>한 단계 축소</td><td>애매한 후보를 줄임</td></tr>
+      <tr><td style="padding:12px 10px;">약세</td><td>점수·손익비 상향</td><td>더 크게 축소</td><td>현금과 안전 여유를 늘림</td></tr>
+    </tbody>
+  </table>
+  <div class="action-pair">
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">P4-D3로 KOSPI 시황이 `market_condition`이 되어 trading.py까지 전달되는 길을 보여줍니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">자기 전략에서 약세장에 줄일 한 가지를 고릅니다. 후보 수, 점수 문턱, 최대 보유 수 가운데 하나면 충분합니다.</div></div>
+  </div>
+  <div class="prompt-guide">강사 자료 → P4-D3 · 강사용 진행 스크립트의 해당 블록을 사용합니다</div><div class="pagenum"></div>
+</section>
+
+<section data-slide-id="P4-S35" class="slide" style="padding:45px 76px 54px; justify-content:flex-start;">
+  <div class="kicker">개발 기초 · 코드와 AI의 역할</div>
+  <h2 style="font-size:36px; margin-bottom:14px;">숫자는 코드가 계산하고, 해석은 AI가 돕습니다</h2>
+  <div class="compare">
+    <div class="cbox good"><div class="label">Python 코드</div>이동평균, 수익률, 변동성, 진입 점수, 최대 보유 수처럼 계산과 재현이 필요한 값</div>
+    <div class="cbox" style="background:oklch(0.16 0.035 264); border:1px solid #41465a;"><div class="label" style="color:var(--accent2);">분석 에이전트</div>주도 업종, 위험 사건의 영향, 뉴스 재료의 지속성처럼 여러 근거를 읽어야 하는 설명</div>
+  </div>
+  <div class="action-pair">
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">KOSPI 이동평균은 코드가 계산하고, 장세가 업종에 미칠 영향만 AI가 설명하도록 나눕니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">자기 전략의 규칙을 ‘숫자로 계산할 것’과 ‘근거를 읽어 설명할 것’으로 한 줄씩 나눕니다.</div></div>
+  </div>
+  <div class="prompt-guide">강사 자료 → P4-D3 · 강사용 진행 스크립트의 해당 블록을 사용합니다</div><div class="pagenum"></div>
+</section>
+
+<section data-slide-id="P4-S36" class="slide" style="padding:44px 74px 54px; justify-content:flex-start;">
+  <div class="kicker">4단계 · 리포트 캡처와 공시</div>
+  <h2 style="font-size:36px; margin-bottom:12px;">캡처와 공시는 출처·작성일·유효기간을 확인한 뒤 넣습니다</h2>
+  <svg class="editorial-diagram" viewBox="0 0 1130 245" role="img" aria-labelledby="p4s50-title p4s50-desc">
+    <title id="p4s50-title">외부 자료를 확인된 분석 입력으로 바꾸는 흐름</title>
+    <desc id="p4s50-desc">사용자가 가진 캡처와 공시에서 종목, 작성일, 출처, 핵심 주장, 유효기간을 정리하고 확인한 최신 자료만 analysis.py에 넘긴다.</desc>
+    <defs><marker id="p4s50-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="oklch(0.68 0.03 264)"/></marker></defs>
+    <path class="diagram-edge" marker-end="url(#p4s50-arrow)" d="M236 126 H348"/><path class="diagram-edge" marker-end="url(#p4s50-arrow)" d="M684 126 H796"/>
+    <g class="edge-label"><rect x="258" y="80" width="68" height="20" rx="3"/><text x="292" y="95" text-anchor="middle">내용 정리</text></g>
+    <g class="edge-label"><rect x="704" y="80" width="72" height="20" rx="3"/><text x="740" y="95" text-anchor="middle">확인한 자료</text></g>
+    <rect x="20" y="72" width="216" height="108" class="node"/><text x="128" y="110" text-anchor="middle" class="label">캡처 · 공시</text><text x="128" y="144" text-anchor="middle" class="sub-label">사용자가 가진 자료</text>
+    <rect x="348" y="48" width="336" height="156" class="focus"/><text x="516" y="88" text-anchor="middle" class="label">분석에 넣을 정보만 정리</text><text x="516" y="124" text-anchor="middle" class="sub-label">종목 · 작성일 · 출처</text><text x="516" y="150" text-anchor="middle" class="sub-label">핵심 주장 · 유효기간</text><text x="516" y="180" text-anchor="middle" class="flow-label">사용자가 확인</text>
+    <rect x="796" y="72" width="314" height="108" class="node"/><text x="953" y="110" text-anchor="middle" class="label mono">analysis.py</text><text x="953" y="144" text-anchor="middle" class="sub-label">확인한 최신 자료만 종목 근거에 추가</text>
+  </svg>
+  <div class="action-pair">
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">P4-D4로 확인된 공시 한 건과 미확인 리포트 요약 한 건을 넣고, 첫 번째만 분석 근거에 들어가는지 봅니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">자기 전략에 꼭 필요한 외부 자료가 있다면 출처·날짜·유효기간을 적고, 수집보다 확인 절차부터 정합니다.</div></div>
+  </div>
+  <div class="prompt-guide">강사 자료 → P4-D4 · 강사용 진행 스크립트의 해당 블록을 사용합니다</div><div class="pagenum"></div>
+</section>
+
+<section data-slide-id="P4-S37" class="slide" style="padding:45px 76px 54px; justify-content:flex-start;">
+  <div class="kicker">개발 기초 · 함수에 넘길 값과 저장할 값</div>
+  <h2 style="font-size:36px; margin-bottom:14px;">외부 자료를 넣을 때는 저장하지 않을 정보도 정합니다</h2>
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:34px;">
+    <div><div class="flow-label">분석에 넘길 값</div><ul style="margin-top:8px;"><li style="font-size:21px;">종목과 자료 유형</li><li style="font-size:21px;">작성일·출처·유효기간</li><li style="font-size:21px;">사용자가 확인한 핵심 주장</li></ul></div>
+    <div><div class="flow-label" style="color:var(--warn);">저장하거나 재배포하지 않을 값</div><ul style="margin-top:8px;"><li style="font-size:21px;">유료 콘텐츠 원문</li><li style="font-size:21px;">로그인 정보와 시크릿</li><li style="font-size:21px;">확인하지 않은 AI 해석</li></ul></div>
+  </div>
+  <div class="action-pair">
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">정해진 항목으로 정리한 요약은 함수에 넘기되, 원문 이미지와 유료 본문은 DB와 로그에 남기지 않습니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">자기 자료에서 분석에 필요한 필드와 저장하면 안 되는 정보를 각각 적습니다.</div></div>
+  </div>
+  <div class="prompt-guide">강사 자료 → P4-D4 · 강사용 진행 스크립트의 해당 블록을 사용합니다</div><div class="pagenum"></div>
+</section>
+
+<section data-slide-id="P4-S38" class="slide" style="padding:46px 76px 54px; justify-content:flex-start;">
+  <div class="kicker">강사 사례에서 내 전략으로 돌아오기</div>
+  <h2 style="font-size:36px; margin-bottom:14px;">전략은 달라도 작업 순서는 같습니다</h2>
+  <div class="flow">
+    <div class="step"><div class="n">1</div><div class="t">현재</div><div class="d">어떤 코드와 결과가 있는가</div></div>
+    <div class="step"><div class="n">2</div><div class="t">원하는 변화</div><div class="d">무엇이 달라져야 하는가</div></div>
+    <div class="step"><div class="n">3</div><div class="t">바꿀 곳</div><div class="d">파일 하나와 규칙 하나</div></div>
+    <div class="step"><div class="n">4</div><div class="t">확인</div><div class="d">테스트·로그·DB·전후 표</div></div>
+  </div>
+  <div class="action-pair">
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">터틀·ATR·KOSPI·외부 근거 가운데 실제로 확인한 결과와 남은 과제를 구분해 정리합니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">자기 전략의 수정 전후를 같은 네 칸으로 정리하고, 확인하지 못한 결과는 성공이라고 쓰지 않습니다.</div></div>
+  </div>
+  <div class="prompt-guide">수강생 자료 → P4-14 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
+</section>
+
+<section data-slide-id="P4-S39" class="slide">
   <div class="kicker">개발 기초 · 디버깅</div>
-  <h2>디버깅은 원인을 좁히는 일입니다</h2>
+  <h2>디버깅은 처음 문제가 생긴 곳을 찾는 일입니다</h2>
   <div class="code-window"><pre><span class="comment">1. 재현</span> 같은 입력·같은 프로필에서 한 번 다시 실행
 <span class="comment">2. 관찰</span> 로그의 <span class="name">처음 WARNING/ERROR</span>와 바로 앞 단계 찾기
 <span class="comment">3. 가설</span> “입력이 비었나?”처럼 한 가지씩 코드로 확인
 <span class="comment">4. 최소 수정</span> 원인이 확인된 파일의 해당 규칙만 수정
 <span class="comment">5. 회귀 확인</span> 같은 재현 + API 키 없는 mock 전체 실행</pre></div>
-  <div class="takeaway" style="margin-top:20px;">“LLM 실패 → 규칙 보고서 폴백”은 <strong>실패 사실을 남긴 경고</strong>입니다. 마지막에 “파이프라인 완료”까지 갔다면, 바로 고쳐야 하는 오류와 구분합니다.</div>
-  <div class="pagenum">27</div>
+  <div class="takeaway" style="margin-top:20px;">“LLM 실패 → 규칙 보고서 폴백”은 <strong>규칙 보고서로 바꿨다는 경고</strong>입니다. 마지막에 “파이프라인 완료”까지 갔다면, 바로 고쳐야 하는 오류와 구분합니다.</div>
+  <div class="prompt-guide">수강생 자료 → P4-09 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S28" class="slide">
+<section data-slide-id="P4-S40" class="slide">
   <div class="kicker">개발 기초 · 로그</div>
-  <h2>로그는 프로그램이 남긴 작업 일지입니다</h2>
+  <h2>로그를 보면 어느 단계까지 실행됐는지 알 수 있습니다</h2>
   <div class="code-window"><pre><span class="value">00:58:13</span> [INFO] <span class="name">main</span> — [2/5] 분석 보고서 작성
 <span class="value">00:58:13</span> [INFO] <span class="name">analysis</span> — [005930] 데이터 원천: 모의 데이터(mock)
 <span class="value">00:58:14</span> [WARNING] <span class="name">analysis_agents</span> — 수급 분석가 실패 → 규칙 보고서 폴백
 <span class="value">00:58:14</span> [INFO] <span class="name">main</span> — 파이프라인 완료</pre></div>
   <div class="takeaway" style="margin-top:20px; font-size:20px;"><strong>읽는 순서:</strong> 시각 → 담당 모듈 → 단계 → 입력 상태 → 마지막 결과. 경고 한 줄만 보지 말고, 그 실행이 끝까지 갔는지 확인합니다.</div>
-  <div class="pagenum">28</div>
+  <div class="prompt-guide">수강생 자료 → P4-09 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S29" class="slide">
+<section data-slide-id="P4-S41" class="slide">
   <div class="kicker">공통 실습 P4-09</div>
-  <h2>에러 한 줄보다 재현과 최소 수정을 함께 요청합니다</h2>
+  <h2>오류를 그대로 보내고 같은 조건에서 다시 확인해 달라고 합니다</h2>
   <div class="prompt" style="font-size:22px;">“이 오류를 같은 조건에서 한 번 재현해줘. 로그에서 처음 실패한 위치와 입력을 찾고, 원인 가설을 하나씩 확인해. 원인이 확인되면 관련 파일만 최소 수정하고, 같은 재현과 기본 mock 전체 실행으로 다시 검증해줘.”</div>
   <div class="compare" style="margin-top:24px;">
     <div class="cbox bad"><div class="label">피할 요청</div>“에러 나니까 전부 다시 설치해줘.”</div>
     <div class="cbox good"><div class="label">좋은 요청</div>“범위를 넓히지 말고 처음 깨진 원인을 찾아줘.”</div>
   </div>
-  <div class="pagenum">29</div>
+  <div class="action-pair compact">
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">터틀·ATR 시연 로그에서 경고 한 줄을 골라 정상적인 대체 경로(폴백)인지 실제 오류인지 구분합니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">오류가 있으면 P4-09를 사용하고, 없으면 경고 하나의 원인과 최종 완료 여부를 확인합니다.</div></div>
+  </div>
+  <div class="prompt-guide">수강생 자료 → P4-09 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S30" class="slide" style="padding:46px 76px 38px; justify-content:flex-start;">
-  <div class="kicker" style="margin-bottom:6px;">오류와 폴백 · 무엇이 실제로 사용됐는지 남겨야 합니다</div>
-  <h2 style="font-size:35px; margin-bottom:13px;">폴백은 실패를 감추는 기능이 아니라, 외부 연결이 막혀도 연습을 이어 가는 안전장치입니다</h2>
-  <svg class="editorial-diagram" viewBox="0 0 1120 290" role="img" aria-labelledby="p4s30-title p4s30-desc"><title id="p4s30-title">실데이터와 LLM 실패 시의 lecture-prism 폴백 경로</title><desc id="p4s30-desc">실데이터 조회 실패 시 mock 데이터, LLM 분석 실패 시 규칙 보고서로 해당 경로만 전환하며 로그에 사실을 남긴다.</desc><defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10" fill="none" stroke="currentColor" stroke-width="1.7"/></marker></defs><path class="line" d="M320 93 H450"/><path class="line" d="M320 199 H450"/><rect x="20" y="49" width="300" height="88" class="node"/><text x="46" y="82" class="label">실데이터 조회</text><text x="46" y="110" class="sub-label">yfinance 등 외부 연결</text><rect x="20" y="155" width="300" height="88" class="node"/><text x="46" y="188" class="label">LLM 분석 호출</text><text x="46" y="216" class="sub-label">역할별 분석 응답</text><text x="385" y="75" text-anchor="middle" class="flow-label">실패 사실 로그</text><text x="385" y="181" text-anchor="middle" class="flow-label">실패 사실 로그</text><rect x="450" y="49" width="300" height="88" class="focus"/><text x="476" y="82" class="label">mock 데이터</text><text x="476" y="110" class="sub-label">연습용 입력으로 전환</text><rect x="450" y="155" width="300" height="88" class="focus"/><text x="476" y="188" class="label">규칙 보고서</text><text x="476" y="216" class="sub-label">해당 분석 섹션만 채움</text><path class="line" d="M750 146 H925"/><rect x="925" y="102" width="175" height="88" class="node"/><text x="1012" y="135" text-anchor="middle" class="label">계속 확인</text><text x="1012" y="163" text-anchor="middle" class="sub-label">사용 경로를 보고</text></svg>
-  <div class="pagenum">30</div>
+<section data-slide-id="P4-S42" class="slide" style="padding:46px 76px 38px; justify-content:flex-start;">
+  <div class="kicker" style="margin-bottom:6px;">오류와 대체 경로 · 실제로 쓴 데이터는 로그로 확인합니다</div>
+  <h2 style="font-size:35px; margin-bottom:13px;">외부 연결이 막히면 연습용 경로로 바꾸고 로그에 남깁니다</h2>
+  <svg class="editorial-diagram" viewBox="0 0 1120 292" role="img" aria-labelledby="p4s30-title p4s30-desc"><title id="p4s30-title">외부 연결이 실패했을 때 쓰는 두 가지 대체 경로</title><desc id="p4s30-desc">실데이터 조회가 실패하면 모의 데이터로, LLM 분석이 실패하면 규칙 보고서로 전환하고 각 전환 사실을 로그에 남긴다.</desc><defs><marker id="p4s30-arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10" fill="none" stroke="currentColor" stroke-width="1.7"/></marker></defs>
+    <path class="diagram-edge" marker-end="url(#p4s30-arrow)" d="M306 83 H430"/><path class="diagram-edge" marker-end="url(#p4s30-arrow)" d="M306 207 H430"/><path class="diagram-edge" marker-end="url(#p4s30-arrow)" d="M726 83 H850"/><path class="diagram-edge" marker-end="url(#p4s30-arrow)" d="M726 207 H850"/>
+    <rect x="18" y="39" width="288" height="88" rx="14" class="node"/><text x="42" y="74" class="label">실데이터 조회 실패</text><text x="42" y="103" class="sub-label">가격·뉴스를 받지 못함</text>
+    <rect x="430" y="39" width="296" height="88" rx="14" class="focus"/><text x="454" y="74" class="label">모의 데이터로 실행</text><text x="454" y="103" class="sub-label">파이프라인 흐름을 계속 연습</text>
+    <rect x="850" y="39" width="252" height="88" rx="14" class="node"/><text x="874" y="74" class="label">로그에 표시</text><text x="874" y="103" class="sub-label">데이터 원천: mock</text>
+    <rect x="18" y="163" width="288" height="88" rx="14" class="node"/><text x="42" y="198" class="label">LLM 분석 실패</text><text x="42" y="227" class="sub-label">분석 응답을 받지 못함</text>
+    <rect x="430" y="163" width="296" height="88" rx="14" class="focus"/><text x="454" y="198" class="label">규칙 보고서로 채움</text><text x="454" y="227" class="sub-label">실패한 분석 부분만 대체</text>
+    <rect x="850" y="163" width="252" height="88" rx="14" class="node"/><text x="874" y="198" class="label">로그에 표시</text><text x="874" y="227" class="sub-label">규칙 보고서 사용</text>
+    <g class="edge-label" transform="translate(368 83)"><rect x="-38" y="-14" width="76" height="28" rx="8"/><text y="5">전환</text></g><g class="edge-label" transform="translate(788 83)"><rect x="-38" y="-14" width="76" height="28" rx="8"/><text y="5">기록</text></g>
+    <g class="edge-label" transform="translate(368 207)"><rect x="-38" y="-14" width="76" height="28" rx="8"/><text y="5">전환</text></g><g class="edge-label" transform="translate(788 207)"><rect x="-38" y="-14" width="76" height="28" rx="8"/><text y="5">기록</text></g>
+  </svg>
+  <div class="prompt-guide">수강생 자료 → P4-09 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S31" class="slide">
+<section data-slide-id="P4-S43" class="slide">
   <div class="kicker">개발 기초 · DB와 테이블</div>
-  <h2>DB와 테이블은 실행 결과를 다시 꺼내 쓰는 곳입니다</h2>
+  <h2><span class="mono">prism.db</span> 안에는 성격이 다른 세 개의 표가 있습니다</h2>
   <svg class="editorial-diagram" viewBox="0 0 1115 300" role="img" aria-labelledby="p4s31-title p4s31-desc"><title id="p4s31-title">prism.db 안의 세 테이블</title><desc id="p4s31-desc">prism.db에는 분석 판단, 매매 기록, 피드백 교훈을 담는 세 테이블이 있다.</desc><rect x="20" y="36" width="1075" height="228" class="focus"/><text x="50" y="76" class="label mono">prism.db</text><text x="50" y="103" class="sub-label">DB = 관련된 표들을 한곳에 보관하는 파일</text><path class="quiet-line" d="M48 124 H1067"/><rect x="48" y="147" width="303" height="89" class="node"/><text x="72" y="178" class="label mono">analysis_decisions</text><text x="72" y="205" class="sub-label">언제 · 어떤 종목 · 추천 · 점수</text><rect x="406" y="147" width="303" height="89" class="node"/><text x="430" y="178" class="label mono">trade_history</text><text x="430" y="205" class="sub-label">매수/매도 · 가격 · 수량 · 이유</text><rect x="764" y="147" width="303" height="89" class="node"/><text x="788" y="178" class="label mono">feedback_lessons</text><text x="788" y="205" class="sub-label">다음 판단에 남길 교훈</text></svg>
   <p class="note">테이블은 같은 종류의 기록을 행과 열로 모은 표입니다. 오늘은 SQL을 외우지 않고, 코딩 에이전트에게 최근 행을 읽기 전용으로 보여 달라고 합니다.</p>
-  <div class="pagenum">31</div>
+  <div class="prompt-guide">수강생 자료 → P4-10 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S32" class="slide" style="padding:46px 76px 38px; justify-content:flex-start;">
+<section data-slide-id="P4-S44" class="slide" style="padding:46px 76px 38px; justify-content:flex-start;">
   <div class="kicker" style="margin-bottom:6px;">공통 실습 P4-10 · 저장과 화면이 이어지는 길</div>
-  <h2 style="font-size:35px; margin-bottom:13px;">대시보드의 숫자는 앞 단계가 남긴 DB 기록을 읽은 결과입니다</h2>
-  <svg class="editorial-diagram" viewBox="0 0 1120 280" role="img" aria-labelledby="p4s32-title p4s32-desc"><title id="p4s32-title">분석과 매매 결과가 prism.db를 거쳐 dashboard.py에 표시되는 흐름</title><desc id="p4s32-desc">feedback.py가 분석과 매매 결과를 db.py의 prism.db에 기록하고 dashboard.py가 이를 읽어 화면에 표시한다.</desc><defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10" fill="none" stroke="currentColor" stroke-width="1.7"/></marker></defs><path class="line" d="M280 139 H410"/><path class="line" d="M710 139 H840"/><rect x="20" y="82" width="260" height="114" class="node"/><text x="46" y="119" class="label mono">feedback.py</text><text x="46" y="148" class="sub-label">분석 결과 + 매매 결과를 받아</text><text x="46" y="174" class="sub-label">기록할 내용을 정리</text><rect x="410" y="62" width="300" height="154" class="focus"/><text x="560" y="106" text-anchor="middle" class="label mono">db.py → prism.db</text><text x="560" y="140" text-anchor="middle" class="sub-label">테이블 생성 · 저장 · 조회</text><text x="560" y="174" text-anchor="middle" class="sub-label">분석 · 매매 · 교훈 행</text><rect x="840" y="82" width="260" height="114" class="node"/><text x="866" y="119" class="label mono">dashboard.py</text><text x="866" y="148" class="sub-label">최근 기록을 읽어</text><text x="866" y="174" class="sub-label">localhost 화면에 표시</text></svg>
-  <div class="pagenum">32</div>
+  <h2 style="font-size:35px; margin-bottom:13px;">저장한 기록을 대시보드가 다시 읽어 화면에 보여 줍니다</h2>
+  <svg class="editorial-diagram" viewBox="0 0 1120 280" role="img" aria-labelledby="p4s32-title p4s32-desc"><title id="p4s32-title">feedback.py가 남긴 기록을 dashboard.py가 읽는 흐름</title><desc id="p4s32-desc">feedback.py가 db.py를 통해 prism.db에 결과를 저장하고 dashboard.py가 최근 기록을 조회해 화면에 표시한다.</desc><defs><marker id="p4s32-arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10" fill="none" stroke="currentColor" stroke-width="1.7"/></marker></defs>
+    <path class="diagram-edge" marker-end="url(#p4s32-arrow)" d="M300 139 H414"/><path class="diagram-edge" marker-end="url(#p4s32-arrow)" d="M706 139 H820"/>
+    <rect x="20" y="82" width="280" height="114" rx="14" class="node"/><text x="46" y="119" class="label mono">feedback.py</text><text x="46" y="149" class="sub-label">분석과 매매 결과를 받아</text><text x="46" y="176" class="sub-label">남길 내용을 정리</text>
+    <rect x="414" y="62" width="292" height="154" rx="16" class="focus"/><text x="560" y="106" text-anchor="middle" class="label mono">db.py → prism.db</text><text x="560" y="140" text-anchor="middle" class="sub-label">세 표에 새 행을 저장</text><text x="560" y="174" text-anchor="middle" class="sub-label">필요할 때 최근 기록을 조회</text>
+    <rect x="820" y="82" width="280" height="114" rx="14" class="node"/><text x="846" y="119" class="label mono">dashboard.py</text><text x="846" y="149" class="sub-label">최근 기록을 읽어</text><text x="846" y="176" class="sub-label">내 컴퓨터 화면에 표시</text>
+    <g class="edge-label" transform="translate(357 139)"><rect x="-38" y="-14" width="76" height="28" rx="8"/><text y="5">저장</text></g><g class="edge-label" transform="translate(763 139)"><rect x="-38" y="-14" width="76" height="28" rx="8"/><text y="5">조회</text></g>
+  </svg>
+  <div class="prompt-guide">수강생 자료 → P4-10 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S33" class="slide divider">
+<section data-slide-id="P4-S45" class="slide divider">
   <div class="chnum">로컬 운영 실습</div>
   <h1>이제 3분 뒤에 프로그램이<br>스스로 시작되게 만듭니다</h1>
   <p class="sub">mock·simulation 한 번 실행 → 로그와 DB 확인 → 임시 예약 삭제</p>
-  <div class="pagenum">33</div>
+  <div class="prompt-guide">수강생 자료 → P4-11 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S34" class="slide">
+<section data-slide-id="P4-S46" class="slide">
   <div class="kicker">개발 기초 · 배치와 스케줄러</div>
-  <h2>배치는 할 일이고, 스케줄러는 시작 시각을 정합니다</h2>
-  <div class="flow">
-    <div class="step"><div class="n">한 번 실행</div><div class="t">지금 시작</div><div class="d">사람이나 에이전트가 main.py를 실행합니다.</div></div>
-    <div class="step"><div class="n">배치</div><div class="t">정해진 일</div><div class="d">후보→분석→매매→기록을 한 묶음으로 처리합니다.</div></div>
-    <div class="step"><div class="n">스케줄러</div><div class="t">언제 시작</div><div class="d">3분 뒤, 매일 오전·오후처럼 실행 시각을 정합니다.</div></div>
-  </div>
+  <h2>배치는 할 일, 스케줄러는 시작할 때를 정합니다</h2>
+  <svg class="editorial-diagram" viewBox="0 0 1120 292" role="img" aria-labelledby="p4s34-title p4s34-desc"><title id="p4s34-title">배치와 스케줄러의 역할 비교</title><desc id="p4s34-desc">배치는 후보 찾기부터 기록까지 실행할 일을 묶고, 스케줄러는 그 일을 언제 시작할지 정한다.</desc>
+    <path class="diagram-edge-quiet" d="M560 48 V256"/>
+    <circle cx="560" cy="145" r="34" fill="#10141d" stroke="#7f8cff" stroke-width="2"/><text x="560" y="153" text-anchor="middle" style="font-size:23px; font-weight:800; fill:#f5f7fb;">VS</text>
+    <rect x="28" y="34" width="450" height="220" rx="22" fill="rgba(115,217,154,.07)" stroke="rgba(115,217,154,.56)" stroke-width="1.5"/>
+    <circle cx="92" cy="94" r="30" fill="rgba(115,217,154,.16)"/><text x="92" y="102" text-anchor="middle" style="font-size:25px; fill:#73d99a;">{ }</text>
+    <text x="142" y="88" class="label">배치</text><text x="142" y="118" class="sub-label">무엇을 실행할지 묶어 둔 일</text>
+    <path d="M68 159 H438" stroke="rgba(115,217,154,.32)"/><text x="68" y="193" style="font-size:19px; font-weight:750; fill:#f5f7fb;">후보 찾기 → 분석 → 매매 판단 → 기록</text><text x="68" y="224" class="sub-label">이 자료에서는 main.py 한 번 실행</text>
+    <rect x="642" y="34" width="450" height="220" rx="22" fill="rgba(127,140,255,.07)" stroke="rgba(127,140,255,.56)" stroke-width="1.5"/>
+    <circle cx="706" cy="94" r="30" fill="rgba(127,140,255,.16)"/><text x="706" y="103" text-anchor="middle" style="font-size:31px; fill:#9da7ff;">◷</text>
+    <text x="756" y="88" class="label">스케줄러</text><text x="756" y="118" class="sub-label">그 일을 언제 시작할지 정하는 예약</text>
+    <path d="M682 159 H1052" stroke="rgba(127,140,255,.32)"/><text x="682" y="193" style="font-size:19px; font-weight:750; fill:#f5f7fb;">3분 뒤 한 번 · 정해 둔 시각마다</text><text x="682" y="224" class="sub-label">시간이 되면 main.py를 새로 실행</text>
+  </svg>
   <p class="note">main.py가 24시간 떠 있는 것이 아니라, 예약된 시각마다 새로 시작됩니다.</p>
-  <div class="pagenum">34</div>
+  <div class="prompt-guide">수강생 자료 → P4-11 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S35" class="slide">
+<section data-slide-id="P4-S47" class="slide">
   <div class="kicker">개발 기초 · 로컬과 서버</div>
-  <h2>로컬과 서버는 실행 장소가 다릅니다</h2>
+  <h2>로컬은 내 컴퓨터, 서버는 계속 켜 둔 별도 컴퓨터입니다</h2>
   <div class="compare">
     <div class="cbox good"><div class="label">로컬 · 내 컴퓨터</div>바로 고치고 확인하기 쉽습니다.<br>컴퓨터가 꺼지거나 잠들면 예약이 실행되지 않을 수 있습니다.</div>
     <div class="cbox good"><div class="label">서버 · 계속 켜 둔 컴퓨터</div>정해진 시간에 안정적으로 실행하기 좋습니다.<br>비용·보안·배포·모니터링이 추가로 필요합니다.</div>
   </div>
   <p class="note">오늘은 서버에 배포하지 않습니다. 내 컴퓨터에서 예약 실행의 원리를 직접 확인합니다.</p>
-  <div class="pagenum">35</div>
+  <div class="prompt-guide">수강생 자료 → P4-11 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S36" class="slide">
+<section data-slide-id="P4-S48" class="slide dense-ops">
   <div class="kicker">공통 실습 P4-11 · 설계</div>
-  <h2>예약을 만들기 전에 무엇이 바뀌는지 먼저 확인합니다</h2>
+  <h2>예약을 등록하기 전에 실행 시각과 삭제 방법부터 확인합니다</h2>
   <div class="tracks">
     <div class="track"><span class="tag">시간</span><div class="q">현재 시각 + 3분</div></div>
     <div class="track"><span class="tag">실행</span><div class="q">절대 경로의 Python과 main.py</div></div>
-    <div class="track"><span class="tag">안전</span><div class="q">mock·simulation</div></div>
-    <div class="track"><span class="tag">증거</span><div class="q">로그 파일과 DB 새 기록</div></div>
+    <div class="track"><span class="tag">모드</span><div class="q">mock·simulation</div></div>
+    <div class="track"><span class="tag">확인</span><div class="q">로그 파일과 DB 새 기록</div></div>
   </div>
   <div class="prompt" style="margin-top:24px;">“변경 목록과 중지·삭제 방법을 먼저 보여줘. 내가 승인하기 전에는 예약을 등록하지 마.”</div>
-  <div class="pagenum">36</div>
-</section>
-
-<section data-slide-id="P4-S37" class="slide">
-  <div class="kicker">공통 실습 P4-12 · 승인 후 실행</div>
-  <h2>3분 뒤 로그와 DB에서 실제 실행을 확인합니다</h2>
-  <div class="flow">
-    <div class="step"><div class="n">예약 직후</div><div class="t">등록 확인</div><div class="d">실행 시각과 명령, 로그 위치를 확인합니다.</div></div>
-    <div class="step"><div class="n">3분 뒤</div><div class="t">로그 확인</div><div class="d">다섯 단계 완료와 mock·simulation을 찾습니다.</div></div>
-    <div class="step"><div class="n">실행 뒤</div><div class="t">DB 확인</div><div class="d">가장 최근 기록의 시각이 새로 생겼는지 봅니다.</div></div>
+  <div class="action-pair compact">
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">P4-11 결과에서 3분 뒤 시각, 절대 경로, 로그, 삭제 방법을 먼저 읽습니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">자기 컴퓨터에서 P4-11을 실행합니다. 이 단계에서는 아직 예약을 만들지 않습니다.</div></div>
   </div>
-  <p class="note">예약이 안 돌았다면 바로 다시 만들지 않습니다. 컴퓨터 절전, 경로, 권한, 로그부터 확인합니다.</p>
-  <div class="pagenum">37</div>
+  <div class="prompt-guide">수강생 자료 → P4-11 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S38" class="slide">
+<section data-slide-id="P4-S49" class="slide">
+  <div class="kicker">공통 실습 P4-12 · 승인 후 실행</div>
+  <h2>3분 뒤 로그와 DB에 새 기록이 생겼는지 확인합니다</h2>
+  <svg class="editorial-diagram" viewBox="0 0 1120 250" role="img" aria-labelledby="p4s37-title p4s37-desc"><title id="p4s37-title">3분 뒤 한 번 실행되는 예약의 확인 순서</title><desc id="p4s37-desc">예약 등록, 3분 대기, 로그 확인, 데이터베이스 기록 확인의 네 장면을 시간 순서로 보여 준다.</desc>
+    <path d="M126 94 H994" stroke="rgba(208,214,226,.35)" stroke-width="2"/>
+    <g transform="translate(126 94)"><circle r="22" fill="#73d99a"/><text y="7" text-anchor="middle" style="font-size:19px;font-weight:850;fill:#10141d;">1</text><text y="52" text-anchor="middle" class="label">예약 등록</text><text y="82" text-anchor="middle" class="sub-label">현재 시각 + 3분</text></g>
+    <g transform="translate(415 94)"><circle r="22" fill="#7f8cff"/><text y="7" text-anchor="middle" style="font-size:19px;font-weight:850;fill:#fff;">2</text><text y="52" text-anchor="middle" class="label">3분 대기</text><text y="82" text-anchor="middle" class="sub-label">컴퓨터를 켜 둠</text></g>
+    <g transform="translate(704 94)"><circle r="22" fill="#f0b45d"/><text y="7" text-anchor="middle" style="font-size:19px;font-weight:850;fill:#10141d;">3</text><text y="52" text-anchor="middle" class="label">로그 확인</text><text y="82" text-anchor="middle" class="sub-label">다섯 단계 완료</text></g>
+    <g transform="translate(994 94)"><circle r="22" fill="#d0d6e2"/><text y="7" text-anchor="middle" style="font-size:19px;font-weight:850;fill:#10141d;">4</text><text y="52" text-anchor="middle" class="label">DB 확인</text><text y="82" text-anchor="middle" class="sub-label">새 기록 시각</text></g>
+    <g class="edge-label" transform="translate(270 94)"><rect x="-45" y="-14" width="90" height="28" rx="8"/><text y="5">기다리기</text></g><g class="edge-label" transform="translate(559 94)"><rect x="-45" y="-14" width="90" height="28" rx="8"/><text y="5">자동 실행</text></g><g class="edge-label" transform="translate(849 94)"><rect x="-45" y="-14" width="90" height="28" rx="8"/><text y="5">기록 읽기</text></g>
+  </svg>
+  <div class="action-pair compact">
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">강사 컴퓨터에 3분 뒤 한 번 실행되는 예약을 등록하고 로그와 DB 시각을 보여줍니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">P4-12를 실행한 뒤 예약 이름과 시각을 확인하고, 3분 뒤 로그와 DB를 봅니다.</div></div>
+  </div>
+  <div class="prompt-guide">수강생 자료 → P4-12 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
+</section>
+
+<section data-slide-id="P4-S50" class="slide">
   <div class="kicker">공통 실습 P4-13 · 정리</div>
-  <h2>실습 예약은 삭제하고, 원하는 반복 주기는 설계로 남깁니다</h2>
+  <h2>실습 예약은 지우고 반복 주기는 설계로만 남깁니다</h2>
   <div class="compare">
     <div class="cbox good"><div class="label">수업에서 실제로 할 것</div>3분 뒤 1회 예약<br>로그·DB 확인<br>임시 예약 삭제</div>
     <div class="cbox good"><div class="label">수업 뒤에 설계할 것</div>오전·오후 실행 시각<br>휴장일과 시간대<br>중복 실행 방지와 알림</div>
   </div>
-  <p class="note">삭제 뒤 예약 목록을 다시 확인해 임시 작업이 남지 않았다는 증거를 봅니다.</p>
-  <div class="pagenum">38</div>
+  <div class="action-pair compact">
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">임시 예약을 삭제하고 예약 목록에서 사라졌는지 다시 확인합니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">P4-13으로 자기 예약만 삭제합니다. 반복 실행은 실제 등록 없이 설계만 남깁니다.</div></div>
+  </div>
+  <div class="prompt-guide">수강생 자료 → P4-13 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S39" class="slide">
+<section data-slide-id="P4-S51" class="slide">
   <div class="kicker">마무리 · 실전 운영 팁</div>
-  <h2>다음 개발도 같은 다섯 문장으로 시작합니다</h2>
+  <h2>수업이 끝난 뒤에도 다음 작업은 이 다섯 문장으로 정리합니다</h2>
   <div class="flow">
     <div class="step"><div class="n">1</div><div class="t">원한 변화</div><div class="d">무엇을 왜 바꾸려 했는가</div></div>
     <div class="step"><div class="n">2</div><div class="t">작업 범위</div><div class="d">무엇만 바꾸고 무엇은 지켰는가</div></div>
     <div class="step"><div class="n">3</div><div class="t">수정 내용</div><div class="d">어느 파일의 어떤 규칙을 바꿨는가</div></div>
-    <div class="step"><div class="n">4</div><div class="t">확인 증거</div><div class="d">코드·테스트·로그·DB에서 무엇을 봤는가</div></div>
+    <div class="step"><div class="n">4</div><div class="t">확인 결과</div><div class="d">코드·테스트·로그·DB에서 무엇을 봤는가</div></div>
     <div class="step"><div class="n">5</div><div class="t">다음 한 가지</div><div class="d">다음에는 무엇을 더 검증할 것인가</div></div>
   </div>
-  <p class="note">작업이 길어지면 이 내용을 handoff에 남깁니다. API 키·계좌·로그인 정보는 기록하지 않습니다.</p>
-  <div class="pagenum">39</div>
+  <div class="action-pair compact">
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">실제 질문 사례에서 확인한 결과와 아직 구현하지 않은 부분을 나눠 정리합니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">P4-14로 자기 작업을 다섯 문장으로 정리하고 다음 세션용 한 문장을 남깁니다.</div></div>
+  </div>
+  <div class="prompt-guide">수강생 자료 → P4-14 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S40" class="slide cover">
+<section data-slide-id="P4-S52" class="slide cover">
   <div class="kicker">파트 4 · 마무리</div>
-  <h1 style="font-size:56px;">이제 코딩 에이전트와<br>다음 변경을 혼자 이어 갈 수 있습니다</h1>
-  <p class="sub">말하기 → 구조 읽기 → 작게 고치기 → 디버깅하기 → 증거 확인 → 예약 실행</p>
-  <div class="takeaway" style="width:80%; margin-top:30px;">자동매매를 넘어, 내 생각을 실제로 움직이는 개발 습관을 만들었습니다.</div>
-  <div class="pagenum">40</div>
+  <h1 style="font-size:56px;">이제 원하는 변화를 설명하고<br>직접 결과를 확인하며<br>다음 수정을 이어 갑니다</h1>
+  <p class="sub">말하기 → 구조 읽기 → 작게 고치기 → 디버깅하기 → 결과 확인 → 예약 실행</p>
+  <div class="takeaway" style="width:80%; margin-top:30px;">다음 작업도 파일 하나·규칙 하나·확인할 결과 하나에서 시작합니다.</div>
+  <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
 </section>
 
 <script>
@@ -746,7 +1114,7 @@
     if (event.key === 'Escape' && imageViewer.classList.contains('open')) closeImageViewer();
   });
   document.addEventListener('fullscreenchange', () => {
-    if (!document.fullscreenElement && imageViewer.classList.contains('open')) closeImageViewer(false);
+    /* 전체화면 요청이 거절되거나 곧바로 해제되어도 고정 확대 화면은 유지합니다. */
   });
 </script>
 </body>
