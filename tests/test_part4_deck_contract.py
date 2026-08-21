@@ -400,7 +400,7 @@ class Part4DeckContractTests(unittest.TestCase):
             for module in self.manifest["decks"]["part4"]["modules"]
             for item in module["slides"]
         ]
-        self.assertEqual(52, len(rows))
+        self.assertEqual(55, len(rows))
         row = next(item for item in rows if item["id"] == "P4-S21")
         self.assertIn("명세", row["title"])
         self.assertEqual("P4-03", row["promptId"])
@@ -430,7 +430,7 @@ class Part4DeckContractTests(unittest.TestCase):
             for item in module["slides"]
         ]
         self.assertEqual(
-            [f"P4-S{index:02d}" for index in range(1, 53)],
+            [f"P4-S{index:02d}" for index in range(1, 56)],
             [row["id"] for row in rows],
         )
         self.assertFalse(
@@ -483,7 +483,7 @@ class Part4DeckContractTests(unittest.TestCase):
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, quality_flow + self.instructor_script)
 
-        close = self._slide("P4-S52")
+        close = self._slide("P4-S55")
         for phrase in (
             "lecture-prism",
             "prism-insight",
@@ -501,8 +501,23 @@ class Part4DeckContractTests(unittest.TestCase):
             for module in self.manifest["decks"]["part4"]["modules"]
             for item in module["slides"]
         ]
-        closing_row = next(item for item in rows if item["id"] == "P4-S52")
+        closing_row = next(item for item in rows if item["id"] == "P4-S55")
         self.assertIn("여러분만의 전략과 시스템", closing_row["title"])
+
+    def test_after_class_cloud_operations_are_a_three_slide_roadmap_not_a_telegram_feature(self):
+        rows = [
+            item
+            for module in self.manifest["decks"]["part4"]["modules"]
+            for item in module["slides"]
+        ]
+        by_id = {row["id"]: row for row in rows}
+
+        self.assertEqual("P4-15", by_id["P4-S54"]["promptId"])
+        self.assertIsNone(by_id["P4-S52"]["promptId"])
+        self.assertIsNone(by_id["P4-S53"]["promptId"])
+        self.assertIn("after-class-cloud-operations-roadmap.png", self._slide("P4-S52"))
+        self.assertIn("## P4-15", self.prompts)
+        self.assertNotIn("class TelegramNotifier", self.sources)
 
     def test_instructor_uses_one_sequential_prompt_for_all_four_demo_checkpoints(self):
         start = self.instructor_script.index("P4-D1~P4-D4 · 강사 통합 시연")

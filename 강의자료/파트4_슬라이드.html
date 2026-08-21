@@ -1086,7 +1086,62 @@
   <div class="prompt-guide">수강생 자료 → P4-14 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P4-S52" class="slide cover">
+<section data-slide-id="P4-S52" class="slide" style="padding:36px 58px 38px; justify-content:flex-start;">
+  <div class="kicker" style="margin-bottom:5px;">수업 후 확장 · 24시간 클라우드 운영</div>
+  <h2 style="font-size:35px; margin-bottom:8px;">서버를 빌리는 것부터 감시와 복구까지 한 흐름으로 준비합니다</h2>
+  <img src="assets/after-class-cloud-operations-roadmap.png" alt="클라우드 서버, SSH 연결, 보안, Git 설치, 시뮬레이션 검증, 스케줄러, 감시와 알림, 로그·백업·대시보드로 이어지는 24시간 운영 로드맵" data-fullscreenable="true" tabindex="0" style="display:block; width:100%; height:350px; object-fit:cover; object-position:center; border:1px solid #242a38; border-radius:8px; background:#090c12;">
+  <div style="display:grid; grid-template-columns:repeat(8,1fr); gap:6px; margin-top:7px; text-align:center;">
+    <div style="font-size:16px;"><strong style="color:var(--accent);">1</strong> 서버 발급</div>
+    <div style="font-size:16px;"><strong style="color:var(--accent);">2</strong> SSH 연결</div>
+    <div style="font-size:16px;"><strong style="color:var(--accent);">3</strong> OS·방화벽</div>
+    <div style="font-size:16px;"><strong style="color:var(--accent);">4</strong> Git 설치</div>
+    <div style="font-size:16px;"><strong style="color:var(--accent);">5</strong> simulation</div>
+    <div style="font-size:16px;"><strong style="color:var(--accent);">6</strong> 스케줄러</div>
+    <div style="font-size:16px;"><strong style="color:var(--accent);">7</strong> 감시·알림</div>
+    <div style="font-size:16px;"><strong style="color:var(--accent);">8</strong> 로그·복구</div>
+  </div>
+  <p class="note" style="margin:7px 0 0; font-size:14px;">감시 결과는 Telegram·Discord·이메일 같은 채널로 받을 수 있습니다. 코딩 에이전트는 감시 규칙을 만들고, 실제 감시는 서버의 상시 서비스가 수행합니다.</p>
+  <div style="font-size:12px; color:var(--muted); margin-top:4px;">출처 · <a href="https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/changing-security-group.html">AWS EC2 Security Groups</a> · <a href="https://documentation.ubuntu.com/server/how-to/security/firewalls/index.html">Ubuntu Firewall</a> · <a href="https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html">systemd.service</a></div>
+  <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
+</section>
+
+<section data-slide-id="P4-S53" class="slide" style="padding:38px 66px 40px; justify-content:flex-start;">
+  <div class="kicker" style="margin-bottom:6px;">수업 후 확장 · 운영 정책</div>
+  <h2 style="font-size:35px; margin-bottom:12px;">계속 켜 두려면 무엇을 감시하고 언제 정리할지도 정해야 합니다</h2>
+  <table class="plain-table" aria-label="24시간 서버 운영 정책 체크리스트">
+    <thead><tr><th style="width:16%;">영역</th><th style="width:48%;">먼저 정할 정책</th><th>확인할 증거</th></tr></thead>
+    <tbody>
+      <tr><td><strong>상태·알림</strong></td><td>서비스·heartbeat·마지막 작업·디스크를 감시하고, 필요한 결과만 선택 채널로 전송</td><td><code>status</code>와 시험 알림·복구 알림</td></tr>
+      <tr><td><strong>로그</strong></td><td>일별 또는 용량별 회전·압축·보관 기간을 정하고 무제한 적재 금지</td><td><code>logrotate</code> 점검과 디스크 여유</td></tr>
+      <tr><td><strong>보안</strong></td><td>SSH는 내 IP로 제한, 보안 업데이트 적용, 불필요한 포트는 닫음</td><td>클라우드 방화벽·UFW·열린 포트</td></tr>
+      <tr><td><strong>백업·복구</strong></td><td>DB·설정 구조·서버 스냅샷을 보관하고 임시 위치에서 복원 연습</td><td>최근 백업 시각과 복원 결과</td></tr>
+      <tr><td><strong>대시보드</strong></td><td>기본은 localhost+SSH 터널, 꼭 공개할 때만 Nginx·HTTPS·인증·방화벽</td><td>원본 포트 비공개와 HTTPS 접속</td></tr>
+    </tbody>
+  </table>
+  <div class="takeaway" style="margin-top:10px; font-size:18px;">서버가 완전히 꺼지면 내부 감시도 알림을 못 보냅니다. 실제 운영에서는 클라우드 상태 알림이나 외부 가용성 확인도 하나 둡니다.</div>
+  <div style="font-size:12px; color:var(--muted); margin-top:6px;">출처 · <a href="https://documentation.ubuntu.com/security/security-updates/">Ubuntu Security Updates</a> · <a href="https://manpages.ubuntu.com/manpages/jammy/man8/logrotate.8.html">Ubuntu logrotate</a> · <a href="https://nginx.org/en/docs/http/configuring_https_servers.html">NGINX HTTPS</a> · <a href="https://docs.aws.amazon.com/ebs/latest/userguide/ebs-snapshots.html">AWS EBS Snapshots</a></div>
+  <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
+</section>
+
+<section data-slide-id="P4-S54" class="slide" style="padding:45px 62px 48px; justify-content:flex-start;">
+  <div class="kicker">수업 후 붙여넣기 · P4-15</div>
+  <h2 style="font-size:35px; margin-bottom:17px;">한 번에 맡기지 않고 계획과 되돌리는 방법을 본 뒤 단계별로 승인합니다</h2>
+  <div class="flow">
+    <div class="step"><div class="n">1</div><div class="t">현황 조사</div><div class="d">로컬·서버·저장소·비용 확인</div></div>
+    <div class="step"><div class="n">2</div><div class="t">계획 승인</div><div class="d">변경·위험·중지·복구 방법</div></div>
+    <div class="step"><div class="n">3</div><div class="t">설치·검증</div><div class="d">Git·가상환경·doctor·simulation</div></div>
+    <div class="step"><div class="n">4</div><div class="t">상시 운영</div><div class="d">systemd·감시·로그·백업</div></div>
+    <div class="step"><div class="n">5</div><div class="t">장애 연습</div><div class="d">재시작·복원·알림·인수인계</div></div>
+  </div>
+  <div class="compare" style="margin-top:24px;">
+    <div class="cbox good"><div class="label">사람이 직접 할 일</div>유료 서버 발급·결제<br>비밀값 입력<br>각 변경 단계 승인</div>
+    <div class="cbox good"><div class="label">코딩 에이전트에게 맡길 일</div>공식 문서 조사·설정안 작성<br>서버에서 실행·검증<br>상태·중지·복구 표 정리</div>
+  </div>
+  <div class="takeaway" style="margin-top:18px; font-size:19px;">처음부터 실거래로 올리지 않습니다. 서버에서도 <strong>doctor → simulation → paper → live</strong> 순서를 유지합니다.</div>
+  <div class="prompt-guide">수강생 자료 → P4-15 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
+</section>
+
+<section data-slide-id="P4-S55" class="slide cover">
   <div class="kicker">파트 4 · 마무리</div>
   <h1 style="font-size:51px;">두 프로젝트를 참고해<br>여러분만의 전략과 시스템을<br>작은 것부터 키워 가세요</h1>
   <p class="sub"><code>lecture-prism</code>은 연습용 구조, <code>prism-insight</code>는 운영형 시스템을 살펴보는 참고 자료입니다.</p>

@@ -55,4 +55,7 @@
 | P4-S49 | P4-12 | `part4/05-operations.html` | 3분 뒤 로그와 DB에 새 기록이 생겼는지 확인합니다 |
 | P4-S50 | P4-13 | `part4/05-operations.html` | 실습 예약은 지우고 반복 주기는 설계로만 남깁니다 |
 | P4-S51 | P4-14 | `part4/06-sharing.html` | 수업이 끝난 뒤에도 다음 작업은 이 다섯 문장으로 정리합니다 |
-| P4-S52 | — | `part4/99-close.html` | 두 프로젝트를 참고해 여러분만의 전략과 시스템을 작은 것부터 키워 갑니다 |
+| P4-S52 | — | `part4/07-after-class-operations.html` | 서버를 빌리는 것부터 감시와 복구까지 한 흐름으로 준비합니다 |
+| P4-S53 | — | `part4/07-after-class-operations.html` | 계속 켜 두려면 무엇을 감시하고 언제 정리할지도 정해야 합니다 |
+| P4-S54 | P4-15 | `part4/07-after-class-operations.html` | 한 번에 맡기지 않고 계획과 되돌리는 방법을 본 뒤 단계별로 승인합니다 |
+| P4-S55 | — | `part4/99-close.html` | 두 프로젝트를 참고해 여러분만의 전략과 시스템을 작은 것부터 키워 갑니다 |
