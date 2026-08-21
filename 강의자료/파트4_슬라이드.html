@@ -915,7 +915,7 @@
 <span class="comment">3. 가설</span> “입력이 비었나?”처럼 한 가지씩 코드로 확인
 <span class="comment">4. 최소 수정</span> 원인이 확인된 파일의 해당 규칙만 수정
 <span class="comment">5. 회귀 확인</span> 같은 재현 + API 키 없는 mock 전체 실행</pre></div>
-  <div class="takeaway" style="margin-top:20px;">이 경고는 <strong>AI가 보고서를 만들지 못해, 프로그램이 미리 준비한 기본 보고서로 대신 진행했다</strong>는 뜻입니다.<br>뒤에 “파이프라인 완료”가 나오면 실행은 끝난 것이므로 프로그램을 멈춘 오류는 아닙니다.<br>다만 AI 보고서가 꼭 필요했다면 실패 원인은 따로 확인합니다.</div>
+  <div class="takeaway" style="margin-top:20px;">처음 <strong>WARNING/ERROR</strong>를 찾되 바로 수정하지 않습니다. 그 지점과 마지막 실행 결과를 함께 보고 실제로 멈춘 오류인지 판단합니다.</div>
   <div class="prompt-guide">수강생 자료 → P4-09 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
@@ -926,7 +926,7 @@
 <span class="value">00:58:13</span> [INFO] <span class="name">analysis</span> — [005930] 데이터 원천: 모의 데이터(mock)
 <span class="value">00:58:14</span> [WARNING] <span class="name">analysis_agents</span> — 수급 분석가 실패 → 규칙 보고서 폴백
 <span class="value">00:58:14</span> [INFO] <span class="name">main</span> — 파이프라인 완료</pre></div>
-  <div class="takeaway" style="margin-top:20px; font-size:20px;"><strong>읽는 순서:</strong> 시각 → 담당 모듈 → 단계 → 입력 상태 → 마지막 결과. 경고 한 줄만 보지 말고, 그 실행이 끝까지 갔는지 확인합니다.</div>
+  <div class="takeaway" style="margin-top:20px; font-size:20px;"><strong>이 로그의 뜻:</strong> AI 보고서 생성 실패 → 준비된 기본 보고서로 계속 실행 → 파이프라인 완료.<br>즉 프로그램을 멈춘 오류는 아닙니다. AI 보고서가 꼭 필요했다면 실패 원인을 따로 확인합니다.</div>
   <div class="prompt-guide">수강생 자료 → P4-09 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
