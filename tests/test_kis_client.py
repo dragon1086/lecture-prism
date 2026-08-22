@@ -83,6 +83,24 @@ class KISConfigTest(unittest.TestCase):
         self.assertNotIn("top-secret", rendered)
         self.assertNotIn("12345678", rendered)
 
+    def test_market_data_config_needs_no_account_and_keeps_modes_separate(self):
+        env = {
+            "KIS_PAPER_APP_KEY": "paper-key",
+            "KIS_PAPER_APP_SECRET": "paper-secret",
+            "KIS_REAL_APP_KEY": "real-key",
+            "KIS_REAL_APP_SECRET": "real-secret",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            paper = KISConfig.from_env_market_data("paper")
+            real = KISConfig.from_env_market_data("real")
+
+        self.assertEqual((paper.mode, paper.app_key, paper.app_secret),
+                         ("paper", "paper-key", "paper-secret"))
+        self.assertEqual((real.mode, real.app_key, real.app_secret),
+                         ("real", "real-key", "real-secret"))
+        self.assertEqual(paper.account_no, "")
+        self.assertEqual(real.account_no, "")
+
 
 class KISClientRequestContractTest(unittest.TestCase):
     def config(self):
@@ -256,6 +274,105 @@ class KISClientRequestContractTest(unittest.TestCase):
         self.assertEqual(call["params"]["FID_INPUT_DATE_1"], "20260701")
         self.assertEqual(call["params"]["FID_INPUT_DATE_2"], "20260720")
         self.assertEqual(rows[0]["stck_bsop_date"], "20260720")
+
+    def test_daily_investor_flow_uses_official_contract_and_normalizes_rows(self):
+        response = FakeResponse({
+            "rt_cd": "0",
+            "output1": {"stck_prpr": "70100"},
+            "output2": [
+                {
+                    "stck_bsop_date": "20260719",
+                    "orgn_ntby_qty": "-1200",
+                    "frgn_ntby_qty": "3500",
+                    "prsn_ntby_qty": "-2300",
+                },
+                {
+                    "stck_bsop_date": "20260720",
+                    "orgn_ntby_qty": "1500",
+                    "frgn_ntby_qty": "-500",
+                    "prsn_ntby_qty": "-1000",
+                },
+            ],
+        })
+        client, transport = self.authenticated_client(response)
+
+        rows = client.get_investor_flow("005930", "20260720")
+
+        call = transport.calls[1]
+        self.assertEqual(call["method"], "GET")
+        self.assertEqual(
+            call["path"],
+            "/uapi/domestic-stock/v1/quotations/investor-trade-by-stock-daily",
+        )
+        self.assertEqual(call["headers"]["tr_id"], "FHPTJ04160001")
+        self.assertEqual(call["params"], {
+            "FID_COND_MRKT_DIV_CODE": "J",
+            "FID_INPUT_ISCD": "005930",
+            "FID_INPUT_DATE_1": "20260720",
+            "FID_ORG_ADJ_PRC": "0",
+            "FID_ETC_CLS_CODE": "",
+        })
+        self.assertEqual(rows, [
+            {
+                "as_of": "2026-07-20",
+                "institution_net_buy": 1500,
+                "foreign_net_buy": -500,
+                "individual_net_buy": -1000,
+                "source": "kis.investor-trade-by-stock-daily",
+            },
+            {
+                "as_of": "2026-07-19",
+                "institution_net_buy": -1200,
+                "foreign_net_buy": 3500,
+                "individual_net_buy": -2300,
+                "source": "kis.investor-trade-by-stock-daily",
+            },
+        ])
+
+    def test_daily_investor_flow_rejects_invalid_quantity(self):
+        response = FakeResponse({
+            "rt_cd": "0",
+            "output1": {},
+            "output2": [{
+                "stck_bsop_date": "20260720",
+                "orgn_ntby_qty": "not-a-number",
+                "frgn_ntby_qty": "1",
+                "prsn_ntby_qty": "-1",
+            }],
+        })
+        client, _ = self.authenticated_client(response)
+
+        with self.assertRaisesRegex(KISRequestError, "invalid quantity"):
+            client.get_investor_flow("005930", "20260720")
+
+    def test_daily_investor_flow_rejects_invalid_business_date(self):
+        response = FakeResponse({
+            "rt_cd": "0",
+            "output1": {},
+            "output2": [{
+                "stck_bsop_date": "20261340",
+                "orgn_ntby_qty": "1",
+                "frgn_ntby_qty": "1",
+                "prsn_ntby_qty": "-2",
+            }],
+        })
+        client, _ = self.authenticated_client(response)
+
+        with self.assertRaisesRegex(KISRequestError, "invalid date"):
+            client.get_investor_flow("005930", "20260720")
+
+    def test_daily_investor_flow_redacts_provider_failure(self):
+        client, _ = self.authenticated_client(
+            RuntimeError("provider echoed app-key app-secret 12345678")
+        )
+
+        with self.assertRaises(KISRequestError) as raised:
+            client.get_investor_flow("005930", "20260720")
+
+        rendered = str(raised.exception)
+        self.assertNotIn("app-key", rendered)
+        self.assertNotIn("app-secret", rendered)
+        self.assertNotIn("12345678", rendered)
 
     def test_current_quote_uses_official_inquire_price_contract(self):
         observed = datetime(2026, 7, 20, 1, 5, 6, tzinfo=timezone.utc)

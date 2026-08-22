@@ -5,14 +5,18 @@ lecture-prism은 한 저장소 안에서 초급자용 더미 데모부터 상태
 - **기본 학습 경로**: `mock`과 `real_data`가 `screening.py` → `analysis_agents.py`·`analysis.py` → `buy_agent.py` → `trading.py` → `feedback.py`를 사용합니다. API 키 없는 첫 성공과 전략 A/B/C/D 수정의 출발점입니다.
 - **상태 기반 고급 경로**: `classroom`, `backtest`, `paper`, `live`가 `prism_core`의 시장 국면·후보·주문 원장·체결 증거를 사용하거나 그 계약을 검증합니다. `paper/live`는 market provider 오류를 mock 매매로 바꾸지 않고 fail-closed로 막습니다.
 
-수강생이 기본적으로 만지는 파일은 두 개입니다.
+수강생이 기본 실습에서 만지는 설정 파일은 `.env` 하나입니다. 계좌 주문까지 다루는 심화에서만 KIS YAML을 추가합니다.
 
-| 파일 | 역할 |
-|---|---|
-| `.env` | 더미/실데이터/리서치/매매 수준 선택, API 키 입력 |
-| `trading/trading/config/kis_devlp.yaml` | KIS 계좌번호, App Key, App Secret, 모의/실전 계좌 설정 |
+| 파일 | 역할 | 수업 범위 |
+|---|---|---|
+| `.env` | 더미/실데이터/리서치 수준 선택, Discord·KIS 읽기 전용 App Key/Secret 입력 | 기본·선택 실습 |
+| `trading/trading/config/kis_devlp.yaml` | KIS 계좌번호, HTS ID, 주문용 App Key/Secret, 모의/실전 계좌 설정 | 모의·실거래 브로커 심화 |
 
 처음에는 `.env` 없이도 됩니다. 설정을 따로 만들고 싶다면 `.env.example`을 참고해 `.env`를 만들고 `LECTURE_PROFILE=mock`으로 시작하세요. 이 값이면 API 키가 없어도 스크리닝, 분석, 가상 매매, 피드백 저장, Markdown 보고서 생성까지 돌아갑니다.
+
+설정은 코딩 에이전트에게 `.env.example` 복사와 파일 열기까지만 맡깁니다. 에이전트가 macOS 텍스트 편집기나 Windows 메모장처럼 **운영체제의 기본 텍스트 편집기**로 `.env`를 열면, 수강생이 비밀값을 직접 입력·저장합니다. 비밀값은 채팅에 붙여넣지 않습니다. 저장 뒤에는 값 자체를 화면이나 답변에 노출하지 않는 방식으로 `준비됨 / 비어 있음 / 형식 오류`만 확인하게 합니다.
+
+`.gitignore`는 `.env`와 실제 KIS 인증 파일의 Git 업로드를 막지만, 에이전트의 로컬 파일 읽기까지 막지는 않습니다. 그래서 프롬프트에는 비밀값을 읽어 출력하지 말라는 지시와 Git 추적 제외 확인을 함께 넣습니다.
 
 아래 `text` 블록은 직접 실행할 터미널 명령이 아니라 **코딩 에이전트에게 그대로 붙여넣는 프롬프트**입니다.
 
@@ -42,6 +46,7 @@ lecture-prism은 한 저장소 안에서 초급자용 더미 데모부터 상태
 | 값 | 선택지 | 의미 |
 |---|---|---|
 | `LECTURE_DATA_MODE` | `mock`, `auto`, `yfinance` | 분석 데이터 원천 |
+| `LECTURE_SUPPLY_SOURCE` | `proxy`, `kis` | 수급 섹션 원천. 기본 `proxy`; `kis`는 KIS 일별 기관·외국인·개인 순매수만 보강 |
 | `LECTURE_SCREENING_MODE` | `mock`, `fixture`, `real` | 스크리닝 원천 (`fixture` = classroom/backtest, `real` = yfinance) |
 | `LECTURE_LLM_MODE` | `mock`, `auto`, `oauth`, `openai` | `oauth`는 공식 Codex 구독, `openai`는 별도 API 키, `auto`는 API 키가 있을 때만 호출 |
 | `LECTURE_REPORT_MODE` | `lite`, `research` | 보고서 깊이 |
@@ -153,6 +158,21 @@ LECTURE_TRADE_MODE=simulation
 
 얻는 것: yfinance가 가능하면 실데이터를 쓰고, 실패하면 더미 데이터로 돌아갑니다.
 
+### 선택: KIS 실제 수급만 읽기 전용으로 보강
+
+`kis_market_data.py`는 선택한 KIS 환경에서 현재가와 일별 기관·외국인·개인 순매수만 읽습니다. `paper`는 `KIS_PAPER_APP_KEY`·`KIS_PAPER_APP_SECRET`, `real`은 `KIS_REAL_APP_KEY`·`KIS_REAL_APP_SECRET`을 사용하며 이 조회에는 계좌번호가 필요하지 않습니다. `LECTURE_KIS_MODE=demo|real`은 각각 paper/real 자격 증명 묶음을 선택합니다.
+
+이 네 항목은 `.env.example`에 빈칸으로 있습니다. 에이전트에게 선택한 환경의 두 항목만 찾아 운영체제의 기본 텍스트 편집기로 열어 달라고 하고, 사용자가 직접 입력·저장합니다. 계좌번호·HTS ID·`kis_devlp.yaml`은 요구하지 않습니다. `kis_devlp.yaml`은 모의·실거래 브로커 심화에서만 사용합니다.
+
+P3-04는 실제 숫자 한 묶음이 오는지 확인하는 smoke test이므로 실패를 연습 데이터 성공으로 바꾸지 않습니다. Part 4 분석에서는 `LECTURE_SUPPLY_SOURCE=kis`를 이번 실행에만 적용합니다. KIS가 실패하면 다른 다섯 분석 섹션은 유지하고 수급만 거래량 프록시로 돌아가며, 보고서에 그 사실을 명시합니다. 어떤 경우에도 주문·취소·정정·잔고·계좌 API는 호출하지 않고 매매는 simulation입니다.
+
+```text
+lecture-prism에서 삼성전자 005930의 KIS 읽기 전용 데이터 한 묶음을 확인해줘.
+내가 고른 환경은 [paper 또는 real]이야. kis_market_data.py와 테스트를 먼저 읽고 현재가와 일별 기관·외국인·개인 순매수만 호출하는지 확인해줘.
+기준일·가격·세 투자주체 순매수·환경·주문 계열 호출 0회를 보여줘. 주말이면 가장 최근 영업일이라고 적어.
+키·토큰은 출력하지 말고 주문·취소·정정·잔고·계좌 API는 호출하지 마. 실패하면 재시도·환경 전환·mock 위장을 하지 마.
+```
+
 ### 고급자: 원본 PRISM에 가까운 리서치 보고서
 
 ```env
@@ -213,19 +233,24 @@ LECTURE_KIS_MODE=real
 
 Discord는 어떤 계좌에 얼마가 있는지 보여 주는 잔고 알림이 아닙니다. `main.py` 한 번에서 나온 스크리닝 후보, 종목별 6개 분석 근거, BUY/SELL/HOLD/PASS 판단, 마지막 AI 판단 요약을 순서대로 보냅니다. 계좌 잔고·계좌번호·webhook URL은 메시지에 보내지 않습니다.
 
-```env
-LECTURE_NOTIFY_DISCORD=1
-DISCORD_WEBHOOK_URL="내 Discord 채널에서 만든 Incoming Webhook URL"
-```
-
 두 값 중 하나라도 없으면 Discord는 조용히 꺼집니다. webhook 형식이 잘못됐거나 Discord가 응답하지 않아도 스크리닝·분석·매매·피드백 저장은 계속됩니다. mock에서는 모든 메시지의 데이터 원천과 매매 모드가 연습 데이터·simulation이라는 사실을 함께 확인하세요.
 
 ```text
-lecture-prism의 Discord 판단 알림 설정을 도와줘.
-Discord Incoming Webhook URL은 내가 직접 .env에 넣을 테니 화면이나 답변에 출력하지 마.
-LECTURE_NOTIFY_DISCORD=1과 webhook 설정이 모두 있을 때만 알림이 켜지는지 확인하고,
-실제 주문 없이 mock 파이프라인을 실행해 스크리닝 → 종목별 분석 → 매매 판단 → AI 판단 요약 순서를 점검해줘.
-메시지에 계좌 잔고·계좌번호·webhook 값이 들어가지 않는지도 확인해줘.
+lecture-prism의 Discord 판단 알림 설정만 준비해줘. 아직 main.py는 실행하지 마.
+1. .env가 없으면 .env.example을 복사해 만들고, LECTURE_NOTIFY_DISCORD=1과 DISCORD_WEBHOOK_URL=""가 있는지 확인해줘.
+2. .env를 운영체제의 기본 텍스트 편집기로 열어줘.
+3. 나는 Discord Incoming Webhook URL을 빈칸에 직접 입력하고 저장할게. 채팅에는 붙여넣지 않을게.
+4. 내가 저장했다고 알릴 때까지 기다린 뒤, 값 자체를 출력하지 말고 준비됨 / 비어 있음 / 형식 오류 중 하나만 알려줘.
+5. .env가 Git 추적에서 제외되는지도 확인해줘. .gitignore가 에이전트의 로컬 파일 읽기까지 막지는 않는다고 설명해줘.
+```
+
+설정 준비와 파이프라인 실행은 분리합니다. 위 프롬프트에서 `준비됨`을 확인한 뒤에만 아래 프롬프트를 사용합니다.
+
+```text
+lecture-prism의 Discord 판단 알림을 실제 주문 없이 mock·simulation으로 한 번 확인해줘.
+스크리닝 → 종목별 분석 → 매매 판단 → AI 판단 요약 순서로 메시지가 전송되는지 점검하고,
+메시지에 계좌 잔고·계좌번호·webhook 값이 들어가지 않는지 확인해줘.
+webhook 값 자체는 화면, 로그, 답변 어디에도 출력하지 마.
 ```
 
 ## 7. 보고서 산출물

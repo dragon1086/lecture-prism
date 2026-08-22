@@ -269,6 +269,40 @@ class Part3StudentLearningContractTest(unittest.TestCase):
         ):
             self.assertIn(phrase, self.instructor, phrase)
 
+    def test_p3_03_uses_observed_evidence_instead_of_a_prebuilt_error_taxonomy(self):
+        block = _markdown_block(self.prompts, "P3-03")
+
+        for phrase in (
+            "마지막으로 정상 완료된 단계",
+            "기대한 결과",
+            "실제 결과",
+            "오류가 시작된 부분부터 끝까지",
+            "관련 파일만 최소한",
+            "같은 실행을 다시 검증",
+        ):
+            self.assertIn(phrase, block)
+        for preclassified_cause in ("Yahoo 429", "DNS", "선택 패키지"):
+            self.assertNotIn(preclassified_cause, block)
+
+    def test_p3_04_proves_one_read_only_kis_snapshot_without_mock_disguise(self):
+        block = _markdown_block(self.prompts, "P3-04")
+
+        for phrase in (
+            "KIS",
+            "paper",
+            "real",
+            "005930",
+            "가격",
+            "기관",
+            "외국인",
+            "개인",
+            "기준일",
+            "자동으로 다시 시도하지 마",
+            "연습 데이터 성공으로 바꾸지 마",
+            "주문·취소·정정·잔고·계좌",
+        ):
+            self.assertIn(phrase, block)
+
     def test_dashboard_prompt_instructor_and_slide_share_the_same_safe_fallback(self):
         dashboard_prompt = _markdown_block(self.prompts, "P3-05")
         dashboard_slide = _slide(self.slides, "P3-S42")
@@ -332,8 +366,12 @@ class Part3StudentLearningContractTest(unittest.TestCase):
             "Discord 선택 준비 프롬프트",
             'DISCORD_WEBHOOK_URL=""',
             "내가 `.env` 파일을 직접 열어 URL만 넣고 저장할 수 있게",
+            "운영체제의 기본 텍스트 편집기",
             "웹후크 주소를 이 채팅에 붙여넣으라고 요구하지 마",
             "웹후크 주소는 코딩 에이전트 채팅에 붙여넣지 마세요",
+            "준비됨 / 비어 있음 / 형식 오류",
+            ".gitignore",
+            "로컬 파일 읽기까지 막지는",
             "실제 주문·브로커·계좌·main.py 실행은 하지 마",
         ):
             self.assertIn(phrase, first_run, phrase)
@@ -410,8 +448,8 @@ class Part3StudentLearningContractTest(unittest.TestCase):
             self.assertIn(phrase, self.instructor, phrase)
 
         slide_text = re.sub(r"<[^>]+>", "", data_slide)
-        self.assertIn("더 좋은 LLM이 아니라 알맞은 데이터", slide_text)
-        self.assertIn("달라진 판단 확인", slide_text)
+        self.assertIn("데이터 보강은 빈칸 하나부터", slide_text)
+        self.assertIn("수급 섹션만", slide_text)
 
     def test_module_two_prefers_one_real_data_report_but_keeps_a_fallback(self):
         module_one = _markdown_block(self.prompts, "P3-M1")

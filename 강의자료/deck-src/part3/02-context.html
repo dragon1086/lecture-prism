@@ -6,7 +6,7 @@
   </div>
   <div class="img">
     <img class="reference-shot" src="../docs/assets/prism-insight/market-pulse-batch-control-overview.png" alt="PRISM Insight의 오닐식 시장 방향 판단과 오전·오후 배치 제어">
-    <p class="caption">Market Pulse는 막연한 변동성이 아니라 CAN SLIM의 M입니다. 대표지수의 종가·거래량으로 3상태를 계산하며, 기본 <code>shadow</code> 모드에서는 기록만 하고 배치를 막지 않습니다.</p>
+    <p class="caption">Market Pulse는 막연한 변동성 지표가 아니라 CAN SLIM의 M을 구현한 기준입니다. 대표지수의 종가·거래량으로 3상태를 계산합니다. 기본 <code>shadow</code> 모드에서는 결과만 기록하고 분석 배치는 계속 진행합니다.</p>
   </div>
   <div class="pagenum">8</div>
 </section>
@@ -32,7 +32,7 @@
   </div>
   <div class="img">
     <img class="reference-shot" src="../docs/assets/prism-insight/trading-regime-entry-overview.png" alt="오닐식 시장 매수 환경과 스크리닝용 시장 체제의 차이">
-    <p class="caption">PRISM에는 서로 목적이 다른 시장 분류가 있습니다. 오닐식 3상태는 분석 배치를, 스크리닝용 5상태는 후보 점수 비중과 주도 업종 자리를 정합니다.</p>
+    <p class="caption">PRISM에는 서로 목적이 다른 시장 분류가 있습니다. 오닐식 3상태는 분석 배치 여부를 정하고, 스크리닝용 5상태는 후보 점수의 비중과 주도 업종 반영 방식을 정합니다.</p>
   </div>
   <div class="pagenum">10</div>
 </section>
@@ -45,7 +45,7 @@
   </div>
   <div class="img">
     <img class="reference-shot" src="../docs/assets/prism-insight/screening-six-triggers-overview.png" alt="오전 세 신호와 오후 세 신호">
-    <p class="caption">오전 3개와 오후 3개 조건은 이름만 다른 점수표가 아니라 거래량 급증·갭·자금 집중·상승률·장마감 강세·횡보처럼 서로 다른 움직임을 찾습니다.</p>
+    <p class="caption">오전 3개와 오후 3개 조건은 이름만 다른 점수표가 아닙니다. 거래량 급증·갭·자금 집중·상승률·장마감 강세·횡보처럼 서로 다른 움직임을 찾습니다.</p>
   </div>
   <div class="pagenum">11</div>
 </section>
@@ -67,20 +67,20 @@
 <section class="slide comparison-slide">
   <div class="txt">
     <div class="kicker">원본과 강의용 축소판 비교</div>
-    <h2>운영망을 한 파일의 필터 흐름으로 줄였습니다</h2>
+  <h2>강의용 코드는 핵심 필터를<br>한 파일에서 확인할 수 있습니다</h2>
   </div>
   <div class="img">
     <img class="reference-shot comparison-shot" src="assets/lecture-compare-screening.png" alt="PRISM Insight 스크리닝 운영 구조와 lecture-prism의 data_source.py, screening.py 함수 흐름 비교">
-    <p class="caption">큰 역할명부터 읽고, 아래 파일·함수명이 lecture-prism에서 실제로 실행되는 위치인지 확인합니다.</p>
+    <p class="caption">먼저 각 단계가 맡은 일을 읽고, 아래에 적힌 파일과 함수가 <code>lecture-prism</code>에서 실제로 실행되는 위치인지 확인합니다.</p>
   </div>
   <div class="pagenum">13</div>
 </section>
 
 <!-- P3-S14 · 프롬프트 파일에서 P3-M1 전체를 복사합니다 -->
 <section class="slide prompt-screen">
-  <div class="kicker">모듈 1 · 이제 직접 확인할 차례</div>
+  <div class="kicker">모듈 1 · 직접 확인하기</div>
   <h2>프롬프트 파일에서 <code>P3-M1 블록 전체</code>를 복사합니다</h2>
-  <div class="prompt-lead">슬라이드의 요약 문장을 옮겨 적지 않습니다. 수강생용 프롬프트 파일에 있는 원문을 사용합니다.</div>
+  <div class="prompt-lead">슬라이드 문장을 다시 입력하지 말고, 수강생용 프롬프트 파일에 있는 완성된 블록을 사용합니다.</div>
   <div class="prompt-columns">
     <div class="prompt-panel">
       <p><span class="num">1.</span> <strong>수강생 붙여넣기 프롬프트 · 파트 3</strong> 파일을 엽니다.</p>

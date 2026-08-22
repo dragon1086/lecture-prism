@@ -583,9 +583,8 @@
           <strong>FastCampus 목표:</strong> 한국투자증권 API와 ChatGPT 연동으로 기초 환경을 잡고,
           분석·매매·요약·전략 등 에이전트 협업 구조가 어떻게 맞물리는지 라이브 데모로 이해 (본인 이론 구현은 파트4).<br><br>
           <strong>첫 5분 임팩트:</strong> 강의용 어댑터에 ChatGPT Plus 구독($20/월) 계정을 로그인해 <strong>최신 GPT-5.5</strong>를 파이썬에 라이브로 연동하는 시연 (실무 운영은 정식 API 키 권장).
-          → KIS API로 실시간 가격 조회 → AI 에이전트 투자 판단 → 시뮬레이션 매매 전 사이클을 Claude Code와 함께 데모 실행.<br><br>
-          <strong>KIS API 실습 범위:</strong> 강사는 실계좌로 전 사이클 시연. 수강생은 <code>dry_run=True</code> 시뮬레이션 모드로 실습
-          (Part 1/2에서 KIS API 설정 완료 또는 다른 증권사 API 경험 가정). 계좌 없는 수강생은 모의투자 토큰으로 조회까지 실습.
+          → KIS API로 가격·일별 투자자 수급 조회 → AI 에이전트 투자 판단 → 시뮬레이션 매매 전 사이클을 Claude Code와 함께 데모 실행.<br><br>
+          <strong>KIS API 실습 범위:</strong> 강사는 real 자격 증명으로 실제 가격과 기관·외국인·개인 순매수를 읽고, 수강생은 준비한 paper 또는 real 환경에서 같은 읽기 전용 조회를 실습. 주말·휴장일에는 가장 최근 영업일 값을 사용한다. 매매는 모두 <code>simulation</code>이며 주문·취소·정정·잔고·계좌 API는 호출하지 않는다.
         </div>
         <div class="part-meta">
           <div class="part-meta-item">📍 역삼 스튜디오</div>
@@ -630,7 +629,7 @@
             <div class="chapter-bullets">
               <!-- OAuth 오프닝 임팩트 (첫 5분) -->
               <div class="cc-cmd"><span class="cc-bubble">Claude Code</span><div><span class="cc-text">"공식 Codex CLI의 ChatGPT 로그인 상태를 확인하고 토큰은 읽지 마. lecture-prism에 LECTURE_LLM_MODE=oauth를 적용한 뒤 삼성전자 보고서 에이전트를 실행해줘."</span><div class="cc-result">→ 전문 에이전트 6개 개별 호출 → 편집 에이전트 조립 → 실패한 섹션만 규칙 보고서로 폴백</div></div></div>
-              <div class="cc-cmd"><span class="cc-bubble">Claude Code</span><div><span class="cc-text">"KIS API로 삼성전자 현재가를 조회하고 공식 Codex 분석을 붙여줘. 실주문은 보내지 말고 LLM이 점수·목표가·손절가를 바꾸지 못하는지도 확인해줘."</span><div class="cc-result">→ 가격조회 + 정성 분석 + 정량 gate + 매수 시뮬레이션 경계 확인</div></div></div>
+              <div class="cc-cmd"><span class="cc-bubble">Claude Code</span><div><span class="cc-text">"KIS [paper 또는 real]에서 삼성전자 가격과 기관·외국인·개인 순매수를 한 번 읽어줘. 기준일을 표시하고 주문·계좌 API는 호출하지 마."</span><div class="cc-result">→ 실제 기준일·가격·투자자별 순매수 확인 → 주문 계열 호출 0회</div></div></div>
               <!-- AI-Native 프레임 -->
               <div class="bullet">알고리즘의 딜레마: 공개 → 파훼 → 공유 문화 없음. LLM은 확률론적 판단 → 복제 불가 → 오픈소스로 공유 가능</div>
               <div class="bullet">Anthropic 6패턴 중 PRISM이 실제 쓰는 3개: Prompt Chaining(본 시스템 분석 6에이전트 순차) · Orchestrator-Workers · Evaluator-Optimizer <span style="color:#94A3B8;">(lecture-prism은 이 중 Prompt Chaining을 3에이전트로 경량 구현)</span></div>
@@ -861,7 +860,9 @@
               </div>
             </div>
             <div class="chapter-bullets" style="margin-top:12px;">
-              <div class="bullet">심화(선택): 데이터 소스 추가(공시·센티먼트) 또는 <code>blank_pipeline.py</code>로 처음부터 4함수 직접 구현</div>
+              <div class="cc-cmd"><span class="cc-bubble">Claude Code</span><div><span class="cc-text">"KIS real의 삼성전자 실제 수급을 이번 분석에만 연결해줘. yfinance 거래량 프록시와 전후를 비교하고 매매는 simulation으로 유지해."</span><div class="cc-result">→ 수급 섹션만 기관·외국인·개인 순매수로 교체 → 다른 다섯 섹션 유지 → 주문 호출 0회</div></div></div>
+              <div class="bullet">공통 데이터 보강: Open API·웹 크롤링·파일/DB·MCP 연결 옵션을 소개하고, KIS 실제 수급 한 가지를 예시로 적용</div>
+              <div class="bullet">심화(선택): 공시·센티먼트 데이터 소스 추가 또는 <code>blank_pipeline.py</code>로 처음부터 4함수 직접 구현</div>
             </div>
           </div>
         </div>

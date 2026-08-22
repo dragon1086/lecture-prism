@@ -11,16 +11,16 @@
           "slides": [
             {"id": "P3-S01", "title": "파트 3 · 실전 자동매매 시스템의 · 구현 패턴", "promptId": null},
             {"id": "P3-S02", "title": "코드는 공개하고, 판단은 기록으로 남깁니다", "promptId": null},
-            {"id": "P3-S03", "title": "첫 5분, 왜 이걸 배울까", "promptId": null},
-            {"id": "P3-S04", "title": "오늘 수업이 끝나면, 이 네 가지를 할 수 있습니다", "promptId": null},
-            {"id": "P3-S05", "title": "자동매매는 이렇게 · 한 바퀴 돕니다", "promptId": null}
+            {"id": "P3-S03", "title": "이 수업을 듣는 이유부터 확인합니다", "promptId": null},
+            {"id": "P3-S04", "title": "오늘 배운 내용을 혼자서도 다시 써먹을 수 있습니다", "promptId": null},
+            {"id": "P3-S05", "title": "한 번 실행하면 이 순서로 진행됩니다", "promptId": null}
           ]
         },
         {
           "file": "part3/01-first-success.html",
           "slides": [
-            {"id": "P3-S06", "title": "한 번 실행하면, 이 파일들이 함께 움직입니다", "promptId": null},
-            {"id": "P3-S07", "title": "원본 PRISM은 시장부터 기억까지 한 줄로 잇습니다", "promptId": null}
+            {"id": "P3-S06", "title": "한 번 실행하면 이 파일들이 차례로 작동합니다", "promptId": null},
+            {"id": "P3-S07", "title": "원본 PRISM은 시장 판단부터 거래 기록까지 한 흐름으로 운영됩니다", "promptId": null}
           ]
         },
         {
@@ -31,7 +31,7 @@
             {"id": "P3-S10", "title": "시장 판단 두 가지는 서로 다른 일을 합니다", "promptId": null},
             {"id": "P3-S11", "title": "오전과 오후는 서로 다른 움직임을 찾습니다", "promptId": null},
             {"id": "P3-S12", "title": "후보를 다시 점수 매겨 최대 세 종목만 넘깁니다", "promptId": null},
-            {"id": "P3-S13", "title": "운영망을 한 파일의 필터 흐름으로 줄였습니다", "promptId": null},
+            {"id": "P3-S13", "title": "강의용 코드는 핵심 필터를 한 파일에서 확인할 수 있습니다", "promptId": null},
             {"id": "P3-S14", "title": "프롬프트 파일에서 P3-M1 전체를 복사합니다", "promptId": "P3-M1"}
           ]
         },
@@ -40,24 +40,24 @@
           "slides": [
             {"id": "P3-S15", "title": "이 종목을 사기 전에, 어떤 정보까지 확인하고 싶으세요?", "promptId": null},
             {"id": "P3-S16", "title": "여섯 에이전트는 질문과 출력이 다릅니다", "promptId": null},
-            {"id": "P3-S17", "title": "숫자를 읽는 프롬프트는 계산과 근거를 강제합니다", "promptId": null},
+            {"id": "P3-S17", "title": "숫자를 읽는 프롬프트는 계산과 근거를 빠뜨리지 않게 합니다", "promptId": null},
             {"id": "P3-S18", "title": "맥락을 읽는 프롬프트는 출처와 범위를 제한합니다", "promptId": null},
-            {"id": "P3-S19", "title": "여섯 보고서는 조건부 투자 전략과 요약으로 합쳐집니다", "promptId": null},
+            {"id": "P3-S19", "title": "여섯 보고서를 모아 조건부 투자 전략을 만듭니다", "promptId": null},
             {"id": "P3-S20", "title": "강의용도 여섯 전문 에이전트와 편집 에이전트를 조립합니다", "promptId": null},
             {"id": "P3-S21", "title": "프롬프트 파일에서 P3-M2 블록 전체를 복사합니다", "promptId": "P3-M2"},
-            {"id": "P3-S22", "title": "보고서의 빈칸은 더 좋은 LLM이 아니라 알맞은 데이터로 채웁니다", "promptId": null}
+            {"id": "P3-S22", "title": "데이터 보강은 빈칸 하나부터 시작합니다", "promptId": null}
           ]
         },
         {
           "file": "part3/04-guided-practice.html",
           "slides": [
             {"id": "P3-S23", "title": "AI가 매수를 추천했습니다. 이 의견만 믿고 주문해도 될까요?", "promptId": null},
-            {"id": "P3-S24", "title": "기업 성장과 수급을 함께 봅니다", "promptId": null},
-            {"id": "P3-S25", "title": "뒤의 세 글자는 리더십과 시장을 봅니다", "promptId": null},
+            {"id": "P3-S24", "title": "기업 성장과 수급을 함께 확인합니다", "promptId": null},
+            {"id": "P3-S25", "title": "뒤의 세 글자는 리더십과 시장을 확인합니다", "promptId": null},
             {"id": "P3-S26", "title": "에이전트가 Enter라고 해도 코드 게이트를 통과해야 합니다", "promptId": null},
             {"id": "P3-S27", "title": "수익 중인 강한 종목만 추가 진입을 검토합니다", "promptId": null},
             {"id": "P3-S28", "title": "매도는 손실 제한부터 확인합니다", "promptId": null},
-            {"id": "P3-S29", "title": "보조 감시 루프가 포지션을 따로 지킵니다", "promptId": null},
+            {"id": "P3-S29", "title": "보조 감시 작업은 메인 실행과 별도로 움직입니다", "promptId": null},
             {"id": "P3-S30", "title": "AI가 매수를 제안해도 코드가 주문 조건을 다시 확인합니다", "promptId": null},
             {"id": "P3-S31", "title": "브로커가 주문을 받았다고 매매가 끝난 것은 아닙니다", "promptId": null},
             {"id": "P3-S32", "title": "프롬프트 파일에서 P3-M3 블록 전체를 복사합니다", "promptId": "P3-M3"}
@@ -69,8 +69,8 @@
             {"id": "P3-S33", "title": "어제 손절한 종목이 오늘 다시 떴습니다. 다시 사도 될까요?", "promptId": null},
             {"id": "P3-S34", "title": "기억은 저장만 해서는 다음 판단에 영향을 주지 못합니다", "promptId": null},
             {"id": "P3-S35", "title": "실제 운영에서는 매주 기록을 압축합니다", "promptId": null},
-            {"id": "P3-S36", "title": "기억은 많이 쌓는 것보다 쓸 만하게 유지하는 게 중요합니다", "promptId": null},
-            {"id": "P3-S37", "title": "AI 회고와 기억 시스템을 기록·압축·예약 작업의 작은 루프로 줄였습니다", "promptId": null},
+            {"id": "P3-S36", "title": "기억은 많이 쌓는 것보다 다음 판단에 쓸 수 있게 관리하는 게 중요합니다", "promptId": null},
+            {"id": "P3-S37", "title": "강의용 코드는 거래 기록과 기억 정리의 연결만 남겼습니다", "promptId": null},
             {"id": "P3-S38", "title": "프롬프트 파일에서 P3-M4 블록 전체를 복사합니다", "promptId": "P3-M4"},
             {"id": "P3-S39", "title": "자동매매는 메인 로직과 보조 운영이 함께 있어야 돌아갑니다", "promptId": null},
             {"id": "P3-S40", "title": "매일 돌리려면 다섯 가지를 따로 챙겨야 합니다", "promptId": null},
@@ -81,7 +81,7 @@
         {
           "file": "part3/99-close.html",
           "slides": [
-            {"id": "P3-S43", "title": "오늘 배운 것 중 내 전략에 먼저 적용할 한 가지는 무엇입니까?", "promptId": null}
+            {"id": "P3-S43", "title": "파트 4에서 고치고 싶은 것을 한 문장으로 정해 옵니다", "promptId": null}
           ]
         }
       ]
@@ -94,246 +94,102 @@
         {
           "file": "part4/00-foundation.html",
           "slides": [
-            {
-              "id": "P4-S01",
-              "title": "파트 4 · 본인만의 로직을 담은 · 자동매매 시스템으로 발전하기",
-              "promptId": null
-            },
-            {
-              "id": "P4-S02",
-              "title": "오늘의 목표는 전략 전체가 아닙니다",
-              "promptId": null
-            },
-            {
-              "id": "P4-S03",
-              "title": "코드를 고치기 전에 · 시스템 지도를 먼저 읽습니다",
-              "promptId": "P4-00"
-            },
-            {
-              "id": "P4-S04",
-              "title": "수정 템플릿",
-              "promptId": null
-            },
-            {
-              "id": "P4-S05",
-              "title": "내 3줄은 네 개의 트랙이 됩니다",
-              "promptId": "P4-01"
-            },
-            {
-              "id": "P4-S06",
-              "title": "지금 값들에는 이유가 있습니다",
-              "promptId": null
-            }
+            {"id": "P4-S01", "title": "내 전략을 코드로 옮기고 혼자서 다음 수정까지 이어 갑니다", "promptId": null},
+            {"id": "P4-S02", "title": "수업이 끝나면 원하는 변화를 직접 맡기고 확인할 수 있습니다", "promptId": null},
+            {"id": "P4-S03", "title": "MY_STRATEGY.md에서 오늘 바꿀 한 가지를 고릅니다", "promptId": "P4-00"},
+            {"id": "P4-S04", "title": "KIS 실제 수급을 분석에 한 번 연결합니다", "promptId": "P4-KIS"},
+            {"id": "P4-S05", "title": "한 번 실행하면 다섯 단계가 차례로 움직입니다", "promptId": "P4-01"}
           ]
         },
         {
           "file": "part4/01-service-core.html",
           "slides": [
-            {
-              "id": "P4-S07",
-              "title": "후보 선별·재점수는 시장·섹터·신호를 여러 층으로 분리한다",
-              "promptId": null
-            },
-            {
-              "id": "P4-S08",
-              "title": "서비스 청산은 코드 우선순위·AI 보조 판단·감사 기록을 분리한다",
-              "promptId": null
-            },
-            {
-              "id": "P4-S09",
-              "title": "AI 제안은 코드 안전장치의 검증을 통과한 범위에서만 실행된다",
-              "promptId": null
-            }
+            {"id": "P4-S06", "title": "프로젝트 폴더에는 역할별 파일이 모여 있습니다", "promptId": "P4-01"},
+            {"id": "P4-S07", "title": "main.py의 run_pipeline이 다른 파일의 함수를 순서대로 부릅니다", "promptId": "P4-01"},
+            {"id": "P4-S08", "title": "함수는 값을 받아 일을 하고 결과를 돌려줍니다", "promptId": "P4-01"},
+            {"id": "P4-S09", "title": "main.py는 다른 파일의 함수를 가져와 실행하고 결과를 넘깁니다", "promptId": "P4-01"},
+            {"id": "P4-S10", "title": "코드는 그대로 두고 실행할 환경만 설정에서 고릅니다", "promptId": null}
           ]
         },
         {
           "file": "part4/02-prompt-basics.html",
           "slides": [
-            {
-              "id": "P4-S10",
-              "title": "실전 프롬프트 공식",
-              "promptId": null
-            },
-            {
-              "id": "P4-S11",
-              "title": "프롬프트 공식 — AI에게 코드를 고치게 하는 법",
-              "promptId": null
-            },
-            {
-              "id": "P4-S12",
-              "title": "Bad vs Good",
-              "promptId": null
-            },
-            {
-              "id": "P4-S13",
-              "title": "AI와 일하는 세 순간",
-              "promptId": null
-            },
-            {
-              "id": "P4-S14",
-              "title": "몰라도 시킬 수 있습니다",
-              "promptId": null
-            }
+            {"id": "P4-S11", "title": "에이전트는 맡은 역할과 입력·출력이 정해진 AI 작업자입니다", "promptId": "P4-02"},
+            {"id": "P4-S12", "title": "도구 호출은 필요한 입력을 보내고 돌아온 결과를 받는 과정입니다", "promptId": "P4-02"},
+            {"id": "P4-S13", "title": "앞 에이전트의 결과가 다음 에이전트의 입력이 됩니다", "promptId": "P4-02"},
+            {"id": "P4-S14", "title": "여러 에이전트를 연결하는 여섯 디자인 패턴", "promptId": "P4-02"},
+            {"id": "P4-S15", "title": "하네스는 인터뷰·구현·검증을 나눠 엉뚱한 수정을 막습니다", "promptId": "P4-02"}
           ]
         },
         {
           "file": "part4/03-boundary-evidence.html",
           "slides": [
-            {
-              "id": "P4-S15",
-              "title": "동결을 선언하면 AI가 함부로 못 고칩니다",
-              "promptId": null
-            },
-            {
-              "id": "P4-S16",
-              "title": "AI의 보고를 그대로 믿지 않습니다",
-              "promptId": null
-            },
-            {
-              "id": "P4-S17",
-              "title": "강사가 실제로 겪은 AI 사고 3건",
-              "promptId": null
-            },
-            {
-              "id": "P4-S18",
-              "title": "AI가 과거를 기억하게 만드는 구조",
-              "promptId": null
-            },
-            {
-              "id": "P4-S19",
-              "title": "같은 실수 두 번이면, 규칙으로 만드세요",
-              "promptId": null
-            }
+            {"id": "P4-S16", "title": "좋은 프롬프트는 부탁문이 아니라 확인할 수 있는 작업 지시서입니다", "promptId": "P4-03"},
+            {"id": "P4-S17", "title": "알아서 고쳐 달라고 하면 무엇을 바꿀지 다시 물을 수밖에 없습니다", "promptId": "P4-03"},
+            {"id": "P4-S18", "title": "파일을 모르면 수정 전에 판단할 자료부터 찾아 달라고 합니다", "promptId": "P4-03"},
+            {"id": "P4-S19", "title": "바꿀 곳과 함께 그대로 둬야 할 약속도 적습니다", "promptId": "P4-03"},
+            {"id": "P4-S20", "title": "완료됐다는 답을 받으면 코드·테스트·로그를 직접 확인합니다", "promptId": "P4-03"},
+            {"id": "P4-S21", "title": "명세·계획·설계·구현·검증·피드백을 증거가 나올 때까지 반복합니다", "promptId": "P4-03"}
           ]
         },
         {
           "file": "part4/04-strategy-choice.html",
           "slides": [
-            {
-              "id": "P4-S20",
-              "title": "내 전략은 셋 중 어디에 해당하나요?",
-              "promptId": "P4-02"
-            },
-            {
-              "id": "P4-S21",
-              "title": "실습 — 트랙별 전략 교체",
-              "promptId": "P4-02"
-            },
-            {
-              "id": "P4-S22",
-              "title": "AI에게 범위가 있는 작업을 맡기는 프롬프트",
-              "promptId": "P4-02 → P4-03~P4-06"
-            },
-            {
-              "id": "P4-S23",
-              "title": "정량 규칙과 AI 판단을 나눕니다",
-              "promptId": null
-            },
-            {
-              "id": "P4-S24",
-              "title": "막혔을 때 이 세 마디",
-              "promptId": null
-            },
-            {
-              "id": "P4-S25",
-              "title": "성공 기준은 전후 비교입니다",
-              "promptId": "P4-07"
-            }
+            {"id": "P4-S22", "title": "내 아이디어는 진입·분석·청산·리스크 중 한곳에서 시작합니다", "promptId": "P4-04"},
+            {"id": "P4-S23", "title": "하네스가 MY_STRATEGY.md에서 현재 트랙과 다음 순서를 고릅니다", "promptId": "P4-04"},
+            {"id": "P4-S24", "title": "전략을 다시 입력하지 않고 현재 트랙을 이어서 실행합니다", "promptId": "P4-05~P4-08"},
+            {"id": "P4-S25", "title": "먼저 결과를 예상하고 한 파일만 바꿔 확인합니다", "promptId": "P4-05~P4-08"},
+            {"id": "P4-S26", "title": "잘 고쳤는지는 코드 양이 아니라 달라진 결과로 판단합니다", "promptId": "P4-05~P4-08"},
+            {"id": "P4-S27", "title": "실제 구독자 질문을 오늘의 강사 시연으로 사용합니다", "promptId": null},
+            {"id": "P4-S28", "title": "한 통합 프롬프트 안에서도 네 작업은 순서대로 검증합니다", "promptId": "P4-04"},
+            {"id": "P4-S29", "title": "진입은 screening.py, 청산은 trading.py가 맡습니다", "promptId": "P4-D1~P4-D4", "guideAudience": "instructor"},
+            {"id": "P4-S30", "title": "터틀 구현 프롬프트에는 입력과 확인 방법을 함께 적습니다", "promptId": "P4-D1~P4-D4", "guideAudience": "instructor"},
+            {"id": "P4-S31", "title": "터틀 구현은 후보와 청산 사유로 확인합니다", "promptId": "P4-D1~P4-D4", "guideAudience": "instructor"},
+            {"id": "P4-S32", "title": "ATR은 변동성을 손절 폭과 수량으로 바꿉니다", "promptId": "P4-D1~P4-D4", "guideAudience": "instructor"},
+            {"id": "P4-S33", "title": "ATR 계산은 데이터와 함수 약속을 먼저 확인합니다", "promptId": "P4-D1~P4-D4", "guideAudience": "instructor"},
+            {"id": "P4-S34", "title": "KOSPI가 약하면 새로 들어가는 기준을 더 까다롭게 잡습니다", "promptId": "P4-D1~P4-D4", "guideAudience": "instructor"},
+            {"id": "P4-S35", "title": "숫자는 코드가 계산하고, 해석은 AI가 돕습니다", "promptId": "P4-D1~P4-D4", "guideAudience": "instructor"},
+            {"id": "P4-S36", "title": "가져온 자료를 그대로 넘기지 않고 분석 질문에 맞는 근거만 남깁니다", "promptId": "P4-D1~P4-D4", "guideAudience": "instructor"},
+            {"id": "P4-S37", "title": "수집 건수보다 무엇을 왜 제외했는지가 더 중요합니다", "promptId": "P4-D1~P4-D4", "guideAudience": "instructor"},
+            {"id": "P4-S38", "title": "강사 시연과 개인 실습은 같은 확인 순서로 끝납니다", "promptId": "P4-05~P4-08"}
           ]
         },
         {
           "file": "part4/05-operations.html",
           "slides": [
-            {
-              "id": "P4-S26",
-              "title": "오전 1회·오후 1회는 · ‘시스템을 켜 두는 법’과 다릅니다",
-              "promptId": "P4-08"
-            },
-            {
-              "id": "P4-S27",
-              "title": "기억을 한 파일에 몰아넣지 않습니다",
-              "promptId": "P4-09"
-            },
-            {
-              "id": "P4-S28",
-              "title": "AI의 설명을 바꿔도 · 정량 안전 규칙은 바꾸지 않습니다",
-              "promptId": "P4-10"
-            },
-            {
-              "id": "P4-S29",
-              "title": "오전은 관찰, 오후는 확인 · 불완전하면 HOLD 또는 다음 실행",
-              "promptId": "P4-11"
-            }
+            {"id": "P4-S39", "title": "디버깅은 처음 문제가 생긴 곳을 찾는 일입니다", "promptId": "P4-09"},
+            {"id": "P4-S40", "title": "로그를 보면 어느 단계까지 실행됐는지 알 수 있습니다", "promptId": "P4-09"},
+            {"id": "P4-S41", "title": "오류를 그대로 보내고 같은 조건에서 다시 확인해 달라고 합니다", "promptId": "P4-09"},
+            {"id": "P4-S42", "title": "외부 연결이 막히면 연습용 경로로 바꾸고 로그에 남깁니다", "promptId": "P4-09"},
+            {"id": "P4-S43", "title": "prism.db 안에는 성격이 다른 세 개의 표가 있습니다", "promptId": "P4-10"},
+            {"id": "P4-S44", "title": "저장한 기록을 대시보드가 다시 읽어 화면에 보여 줍니다", "promptId": "P4-10"},
+            {"id": "P4-S45", "title": "이제 3분 뒤에 프로그램이 스스로 시작되게 만듭니다", "promptId": "P4-11"},
+            {"id": "P4-S46", "title": "배치는 할 일, 스케줄러는 시작할 때를 정합니다", "promptId": "P4-11"},
+            {"id": "P4-S47", "title": "로컬은 내 컴퓨터, 서버는 계속 켜 둔 별도 컴퓨터입니다", "promptId": "P4-11"},
+            {"id": "P4-S48", "title": "예약을 등록하기 전에 실행 시각과 삭제 방법부터 확인합니다", "promptId": "P4-11"},
+            {"id": "P4-S49", "title": "3분 뒤 로그와 DB에 새 기록이 생겼는지 확인합니다", "promptId": "P4-12"},
+            {"id": "P4-S50", "title": "실습 예약은 지우고 반복 주기는 설계로만 남깁니다", "promptId": "P4-13"}
           ]
         },
         {
           "file": "part4/06-sharing.html",
           "slides": [
-            {
-              "id": "P4-S30",
-              "title": "결과 공유 & 다음 단계",
-              "promptId": null
-            },
-            {
-              "id": "P4-S31",
-              "title": "결과 공유 & 제출(선택)",
-              "promptId": "P4-07"
-            },
-            {
-              "id": "P4-S32",
-              "title": "학습 단계 사다리",
-              "promptId": null
-            }
+            {"id": "P4-S51", "title": "수업이 끝난 뒤에도 다음 작업은 이 다섯 문장으로 정리합니다", "promptId": "P4-14"}
           ]
         },
         {
-          "file": "part4/90-appendix.html",
+          "file": "part4/07-after-class-operations.html",
           "slides": [
-            {
-              "id": "P4-S33",
-              "title": "PRISM Insight 심화 구조",
-              "promptId": null
-            },
-            {
-              "id": "P4-S34",
-              "title": "시장 상태와 3개의 진입 게이트를 거쳐 진입·보류·미진입을 나눈다",
-              "promptId": null
-            },
-            {
-              "id": "P4-S35",
-              "title": "상태 기반 배치 제어와 보유 포지션 보호 루프는 분리되어 있다",
-              "promptId": null
-            },
-            {
-              "id": "P4-S36",
-              "title": "신규 진입은 AI 시나리오와 결정 규칙의 여러 게이트를 함께 통과해야 한다",
-              "promptId": null
-            },
-            {
-              "id": "P4-S37",
-              "title": "피라미딩은 수익 포지션·시장 강도·업종 한도를 함께 확인하는 심화 기능이다",
-              "promptId": null
-            },
-            {
-              "id": "P4-S38",
-              "title": "매매 기록·교훈·원칙은 다음 후보 판단에 제한적으로 다시 제공된다",
-              "promptId": null
-            },
-            {
-              "id": "P4-S39",
-              "title": "매도 알림은 서비스가 남긴 한 시점의 거래 기록이다",
-              "promptId": null
-            }
+            {"id": "P4-S52", "title": "서버를 빌리는 것부터 감시와 복구까지 한 흐름으로 준비합니다", "promptId": null},
+            {"id": "P4-S53", "title": "계속 켜 두려면 무엇을 감시하고 언제 정리할지도 정해야 합니다", "promptId": null},
+            {"id": "P4-S54", "title": "한 번에 맡기지 않고 계획과 되돌리는 방법을 본 뒤 단계별로 승인합니다", "promptId": "P4-15"}
           ]
         },
+        {"file": "part4/90-appendix.html", "slides": []},
         {
           "file": "part4/99-close.html",
           "slides": [
-            {
-              "id": "P4-S40",
-              "title": "오늘 여러분은 · 씨앗을 심었습니다",
-              "promptId": null
-            }
+            {"id": "P4-S55", "title": "두 프로젝트를 참고해 여러분만의 전략과 시스템을 작은 것부터 키워 갑니다", "promptId": null}
           ]
         }
       ]

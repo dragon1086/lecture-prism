@@ -1,4 +1,15 @@
 <script>
+  const updateScreenScale = () => {
+    if (window.matchMedia('print').matches) return;
+    const scale = Math.min(
+      (window.innerWidth - 16) / 1280,
+      (window.innerHeight - 16) / 720
+    );
+    document.documentElement.style.setProperty('--screen-scale', String(Math.max(0.25, scale)));
+  };
+  updateScreenScale();
+  window.addEventListener('resize', updateScreenScale, { passive: true });
+
   const sellImage = [...document.querySelectorAll('img')]
     .find(img => img.src.includes('sell_message.png'));
   if (sellImage) sellImage.closest('section.slide').classList.add('archive-example');
@@ -7,6 +18,60 @@
     if (slide.querySelector('.reference-shot')) slide.classList.add('image-focus');
     const page = slide.querySelector('.pagenum');
     if (page) page.textContent = String(index + 1) + ' / ' + String(slides.length);
+  });
+
+  const imageViewer = document.createElement('div');
+  imageViewer.className = 'image-viewer';
+  imageViewer.setAttribute('aria-hidden', 'true');
+  imageViewer.setAttribute('role', 'dialog');
+  imageViewer.setAttribute('aria-label', '확대된 슬라이드 이미지');
+  const imageViewerContent = document.createElement('img');
+  imageViewer.appendChild(imageViewerContent);
+  document.body.appendChild(imageViewer);
+
+  const closeImageViewer = async (exitFullscreen = true) => {
+    imageViewer.classList.remove('open');
+    imageViewer.setAttribute('aria-hidden', 'true');
+    imageViewerContent.removeAttribute('src');
+    imageViewerContent.alt = '';
+    document.body.classList.remove('viewer-open');
+    if (exitFullscreen && document.fullscreenElement === imageViewer) {
+      try { await document.exitFullscreen(); } catch (_) { /* fixed overlay fallback remains closed */ }
+    }
+  };
+
+  const openImageViewer = async (sourceImage) => {
+    imageViewerContent.src = sourceImage.currentSrc || sourceImage.src;
+    imageViewerContent.alt = sourceImage.alt || '';
+    imageViewer.classList.add('open');
+    imageViewer.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('viewer-open');
+    if (imageViewer.requestFullscreen && !document.fullscreenElement) {
+      try { await imageViewer.requestFullscreen(); } catch (_) { /* fixed overlay is the safe fallback */ }
+    }
+  };
+
+  document.querySelectorAll('section.slide img').forEach((image) => {
+    image.dataset.fullscreenable = 'true';
+    image.tabIndex = 0;
+    image.setAttribute('role', 'button');
+    image.setAttribute('aria-label', `${image.alt || '슬라이드 이미지'} 크게 보기`);
+    image.addEventListener('click', () => openImageViewer(image));
+    image.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      openImageViewer(image);
+    });
+  });
+
+  imageViewer.addEventListener('click', (event) => {
+    if (event.target === imageViewer || event.target === imageViewerContent) closeImageViewer();
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && imageViewer.classList.contains('open')) closeImageViewer();
+  });
+  document.addEventListener('fullscreenchange', () => {
+    /* 전체화면 요청이 거절되거나 곧바로 해제되어도 고정 확대 화면은 유지합니다. */
   });
 </script>
 </body>

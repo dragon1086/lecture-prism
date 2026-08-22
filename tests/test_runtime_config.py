@@ -8,6 +8,7 @@ import runtime_config
 _ENV_KEYS = {
     "LECTURE_PROFILE",
     "LECTURE_DATA_MODE",
+    "LECTURE_SUPPLY_SOURCE",
     "LECTURE_SCREENING_MODE",
     "LECTURE_LLM_MODE",
     "LECTURE_REPORT_MODE",
@@ -51,6 +52,7 @@ class RuntimeConfigTest(unittest.TestCase):
 
         self.assertEqual(cfg.profile, "mock")
         self.assertEqual(cfg.data_mode, "mock")
+        self.assertEqual(cfg.supply_source, "proxy")
         self.assertEqual(cfg.screening_mode, "mock")
         self.assertEqual(cfg.llm_mode, "mock")
         self.assertEqual(cfg.report_mode, "lite")
@@ -94,6 +96,15 @@ class RuntimeConfigTest(unittest.TestCase):
         self.assertEqual(cfg.data_mode, "mock")
         self.assertEqual(cfg.report_mode, "lite")
         self.assertEqual(cfg.research_tools, ("perplexity",))
+
+    def test_kis_supply_source_is_explicit_and_visible_in_summary(self):
+        os.environ["LECTURE_PROFILE"] = "real_data"
+        os.environ["LECTURE_SUPPLY_SOURCE"] = "kis"
+
+        cfg = runtime_config.load_runtime_config()
+
+        self.assertEqual(cfg.supply_source, "kis")
+        self.assertIn("supply=kis", cfg.summary())
 
     def test_openai_base_url_alone_does_not_enable_private_oauth_proxy(self):
         os.environ["LECTURE_PROFILE"] = "research"

@@ -118,6 +118,17 @@ def _section_supply(data: dict) -> str:
     if not _has_structured_evidence(data):
         return "거래량 기반 수급 지표를 확보하지 못했습니다."
     s = data.get("supply", {})
+    if s.get("source") == "kis":
+        def signed(value: object) -> str:
+            return f"{int(value):+,}주"
+
+        return (
+            f"KIS 일별 투자자 수급({s.get('as_of', '기준일 미상')}): "
+            f"기관 {signed(s.get('institution_net_buy', 0))}, "
+            f"외국인 {signed(s.get('foreign_net_buy', 0))}, "
+            f"개인 {signed(s.get('individual_net_buy', 0))}. "
+            "(실제 주체별 순매수 수량)"
+        )
     ratio, obv = s.get("up_down_vol_ratio"), s.get("obv", "중립")
     vol_ratio = data.get("vol_ratio")
     parts = []
@@ -279,6 +290,15 @@ def _build_report(ticker: str, data: dict, sections: dict) -> dict:
             "news": "yfinance 뉴스 헤드라인",
             "market": "yfinance KOSPI/KOSDAQ 지수",
         }
+        supply = data.get("supply", {})
+        if supply.get("source") == "kis":
+            section_provenance["supply"] = (
+                f"KIS 투자자별 일별 순매수 ({supply.get('as_of', '기준일 미상')})"
+            )
+            data_notice = (
+                "가격·재무·뉴스는 yfinance, 수급은 KIS 기준입니다. "
+                "각 항목의 기준일을 따로 확인하세요."
+            )
 
     return {
         "ticker": ticker,

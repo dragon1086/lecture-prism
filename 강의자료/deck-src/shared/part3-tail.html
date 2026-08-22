@@ -77,7 +77,7 @@
     if (event.key === 'Escape' && imageViewer.classList.contains('open')) closeImageViewer();
   });
   document.addEventListener('fullscreenchange', () => {
-    if (!document.fullscreenElement && imageViewer.classList.contains('open')) closeImageViewer(false);
+    /* 전체화면 요청이 거절되거나 곧바로 해제되어도 고정 확대 화면은 유지합니다. */
   });
 </script>
 </body>

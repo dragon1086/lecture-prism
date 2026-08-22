@@ -1,62 +1,143 @@
-<!-- P4-S10 · 실전 프롬프트 공식 -->
-<section class="slide divider">
-  <div class="chnum">CH 02</div>
-  <h1>실전 프롬프트 공식</h1>
-  <p class="sub">AI에게 코드를 고치게 하는 법 — 강사 라이브 시범<br>지금부터 나오는 프롬프트는 전부 강사가 실제로 쓴 기록입니다</p>
-  <div class="pagenum">7</div>
-</section>
-
-<!-- P4-S11 · 프롬프트 공식 — AI에게 코드를 고치게 하는 법 -->
-<section class="slide">
-  <div class="kicker">기본기</div>
-  <h2>프롬프트 공식 — AI에게 코드를 고치게 하는 법</h2>
-  <div class="prompt" style="font-size:30px; text-align:center; padding:34px;">
-    <strong>현재 상태</strong> + <strong>원하는 결과</strong> + <strong>유지할 제약</strong>
-  </div>
-  <ul>
-    <li>"지금은 이런데(현재), 이렇게 바꿔줘(결과), 단 이건 건드리지 마(제약)"</li>
-    <li>이 구조만 지켜도 결과가 완전히 달라짐</li>
-  </ul>
-  <div class="pagenum">8</div>
-</section>
-
-<!-- P4-S12 · Bad vs Good -->
-<section class="slide">
-  <div class="kicker">비교</div>
-  <h2>Bad vs Good</h2>
-  <div class="compare">
-    <div class="cbox bad"><div class="label">❌ Bad</div>"손절 좀 잘해줘"</div>
-    <div class="cbox good"><div class="label">✅ Good</div>"지금 손절은 -7%인데(현재), -5%로 바꿔줘(결과). 트레일링 스탑 로직은 그대로 두고, 바꾼 뒤 데모로 검증해줘(제약)"</div>
-  </div>
-  <p class="note">차이: AI가 추측할 일이 없어짐</p>
-  <div class="pagenum">9</div>
-</section>
-
-<!-- P4-S13 · AI와 일하는 세 순간 -->
-<section class="slide">
-  <div class="kicker">큰 그림</div>
-  <h2>AI와 일하는 세 순간</h2>
-  <div class="flow">
-    <div class="step"><div class="n">순간 1</div><div class="t">일을 시킬 때</div><div class="d">문제를 말한다<br>역할을 준다<br>기준을 댄다</div></div>
-    <div class="step"><div class="n">순간 2</div><div class="t">지킬 것을 정할 때</div><div class="d">동결을 선언한다<br>지어내기를 금지한다<br>내 의도를 설명한다</div></div>
-    <div class="step"><div class="n">순간 3</div><div class="t">결과를 받았을 때</div><div class="d">고치기 전에 확인시킨다<br>근거를 들어 반박한다<br>큰 일은 나눠 시킨다</div></div>
-  </div>
-  <ul style="margin-top:20px;"><li>공식(현재+결과+제약)이 실전에서 이 아홉 가지로 진화함</li></ul>
-  <p class="note">"프롬프트 엔지니어링보다 컨텍스트 엔지니어링" — Karpathy(2025) · AI에게 무엇을 보여줄지 설계하는 기술</p>
-  <div class="pagenum">10</div>
-</section>
-
-<!-- P4-S14 · 몰라도 시킬 수 있습니다 -->
-<section class="slide">
-  <div class="kicker">순간 1 — 일을 시킬 때</div>
-  <h2>몰라도 시킬 수 있습니다</h2>
-  <ul>
-    <li><strong>해결책 말고 문제를 말함</strong> → <em>"손절을 잘하고 싶어. 지금 코드 보고 방법 추천해줘"</em></li>
-    <li><strong>역할을 줌</strong> → <em>"너는 보수적인 리스크 관리자야"</em></li>
-    <li><strong>결과물 기준을 댐</strong> → <em>"끝나면 전후 비교표로 보여줘"</em></li>
-  </ul>
-  <div class="prompt" style="font-size:20px;">"궁금한 것은 너가 파일 찾아서 조사해봐. 나도 어떤 방향이 가장 효과적일지 예측을 못하겠어. 결국은 매매를 더 잘하게끔 하고 싶은데"
-  <span class="cap">— 2026년 3월, 강사 실제 프롬프트. 모른다고 인정해도 목적만 말하면 AI가 탐색함</span></div>
-  <div class="src">근거: Anthropic 공식 가이드 — "바로 코딩시키지 말고 먼저 조사·계획부터 시켜라" · "역할 지정은 한 문장으로도 차이를 만든다" · "완성 판정 기준(검증 수단)을 함께 줘라"</div>
+<!-- P4-S11 · 에이전트는 맡은 일과 결과 형식을 미리 정해 둔 AI 작업자입니다 -->
+<section class="slide" style="padding:44px 72px 39px; justify-content:flex-start;">
+  <div class="kicker" style="margin-bottom:6px;">에이전트 기초 · 역할</div>
+  <h2 style="font-size:35px; margin-bottom:10px;">에이전트는 맡은 일과 결과 형식을 미리 정해 둔 AI 작업자입니다</h2>
+  <svg class="editorial-diagram" viewBox="0 0 1120 324" role="img" aria-labelledby="p4s11-title p4s11-desc">
+    <title id="p4s11-title">수급 분석가 에이전트의 입력, 역할, 출력</title>
+    <desc id="p4s11-desc">AgentSpec으로 정의한 수급 분석가는 evidence를 받아 수급만 설명하고 supply_summary 키가 있는 JSON 결과를 돌려준다.</desc>
+    <defs><marker id="p4s11-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="oklch(0.68 0.03 264)"/></marker></defs>
+    <path class="diagram-edge" marker-end="url(#p4s11-arrow)" d="M286 158 H410"/>
+    <path class="diagram-edge" marker-end="url(#p4s11-arrow)" d="M710 158 H834"/>
+    <g class="edge-label"><rect x="322" y="112" width="52" height="20" rx="3"/><text x="348" y="127" text-anchor="middle">근거 묶음</text></g>
+    <g class="edge-label"><rect x="746" y="112" width="52" height="20" rx="3"/><text x="772" y="127" text-anchor="middle">JSON</text></g>
+    <rect x="20" y="100" width="266" height="116" class="node"/><text x="46" y="137" class="diagram-step">입력</text><text x="46" y="171" class="label mono">evidence</text><text x="46" y="199" class="sub-label">가격·거래량·수급 자료</text>
+    <rect x="410" y="76" width="300" height="164" class="focus"/><text x="560" y="115" text-anchor="middle" class="diagram-step mono">AgentSpec</text><text x="560" y="151" text-anchor="middle" class="label">수급 분석가</text><text x="560" y="183" text-anchor="middle" class="sub-label">수급만 설명하고 매수 판단은 하지 않음</text><text x="560" y="215" text-anchor="middle" class="flow-label mono">output_key = supply_summary</text>
+    <rect x="834" y="100" width="266" height="116" class="node"/><text x="860" y="137" class="diagram-step">출력</text><text x="860" y="171" class="label mono">{"summary": "..."}</text><text x="860" y="199" class="sub-label">약속한 키가 있는 JSON</text>
+    <text x="20" y="286" class="sub-label">여기서 보는 에이전트는 코드 안에서 분석 한 가지를 맡습니다. 코딩 에이전트처럼 파일 전체를 마음대로 고치는 역할이 아닙니다.</text>
+  </svg>
   <div class="pagenum">11</div>
+</section>
+
+<!-- P4-S12 · 에이전트가 바깥 정보를 읽으려면 도구가 필요합니다 -->
+<section class="slide" style="padding:43px 66px 38px; justify-content:flex-start;">
+  <div class="kicker" style="margin-bottom:6px;">에이전트 기초 · 도구 호출</div>
+  <h2 style="font-size:35px; margin-bottom:9px;">에이전트가 바깥 정보를 읽으려면 도구가 필요합니다</h2>
+  <p style="font-size:19px; color:var(--muted); margin:0 0 5px;">이 프로젝트에서는 LLM 호출도 입력을 보내고 결과를 받는 하나의 도구 사용입니다.</p>
+  <svg class="editorial-diagram" viewBox="0 0 1150 312" role="img" aria-labelledby="p4s12-title p4s12-desc">
+    <title id="p4s12-title">근거 준비부터 LLM 도구 호출과 JSON 확인까지</title>
+    <desc id="p4s12-desc">analysis.py가 evidence를 만들고 AgentSpec이 프롬프트를 정한 뒤 llm_complete를 호출한다. extract_json이 summary JSON을 확인해 sections에 저장하며 실패하면 규칙 보고서 폴백을 사용한다.</desc>
+    <defs><marker id="p4s12-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="oklch(0.68 0.03 264)"/></marker></defs>
+    <path class="diagram-edge" marker-end="url(#p4s12-arrow)" d="M196 156 H244"/>
+    <path class="diagram-edge" marker-end="url(#p4s12-arrow)" d="M416 156 H464"/>
+    <path class="diagram-edge" marker-end="url(#p4s12-arrow)" d="M636 156 H684"/>
+    <path class="diagram-edge" marker-end="url(#p4s12-arrow)" d="M856 156 H904"/>
+    <rect x="12" y="108" width="184" height="96" class="node"/><text x="32" y="141" class="diagram-step">1 · 준비</text><text x="32" y="172" class="label mono">evidence</text><text x="32" y="193" class="sub-label">근거 dict</text>
+    <rect x="244" y="108" width="172" height="96" class="node"/><text x="264" y="141" class="diagram-step">2 · 역할</text><text x="264" y="172" class="label mono">AgentSpec</text><text x="264" y="193" class="sub-label">프롬프트 구성</text>
+    <rect x="464" y="96" width="172" height="120" class="focus"/><text x="484" y="133" class="diagram-step">3 · 도구 호출</text><text x="484" y="166" class="label mono">llm_complete</text><text x="484" y="193" class="sub-label">입력 전송 · 응답 수신</text>
+    <rect x="684" y="108" width="172" height="96" class="node"/><text x="704" y="141" class="diagram-step">4 · 확인</text><text x="704" y="172" class="label mono">extract_json</text><text x="704" y="193" class="sub-label mono">{"summary": "..."}</text>
+    <rect x="904" y="108" width="232" height="96" class="node"/><text x="924" y="141" class="diagram-step">5 · 저장</text><text x="924" y="172" class="label mono">sections</text><text x="924" y="193" class="sub-label">보고서 한 부분이 됨</text>
+    <path class="diagram-edge-quiet" d="M550 216 V260 H770"/><text x="790" y="265" class="sub-label">호출이나 JSON 확인이 실패하면 해당 부분만 규칙 보고서로 대체</text>
+  </svg>
+  <div class="takeaway" style="margin-top:5px; font-size:18px;">도구 호출은 거창한 기능이 아닙니다. <strong>필요한 입력을 보내고, 돌아온 결과가 약속한 모양인지 확인하는 과정</strong>입니다.</div>
+  <div class="pagenum">12</div>
+</section>
+
+<!-- P4-S13 · 에이전트끼리 직접 대화하지 않고 결과를 다음 입력으로 넘깁니다 -->
+<section class="slide" style="padding:44px 72px 38px; justify-content:flex-start;">
+  <div class="kicker" style="margin-bottom:6px;">에이전트 기초 · 결과 전달</div>
+  <h2 style="font-size:35px; margin-bottom:10px;">에이전트끼리 직접 대화하지 않고 결과를 다음 입력으로 넘깁니다</h2>
+  <svg class="editorial-diagram" viewBox="0 0 1120 318" role="img" aria-labelledby="p4s13-title p4s13-desc">
+    <title id="p4s13-title">전문 분석가의 결과가 편집 에이전트와 매수 에이전트로 넘어가는 흐름</title>
+    <desc id="p4s13-desc">전문 분석가가 technical_summary와 supply_summary 등을 만들고 편집 에이전트가 executive_summary를 만든 뒤 run_buy_agent가 완성 보고서를 읽는다.</desc>
+    <defs><marker id="p4s13-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="oklch(0.68 0.03 264)"/></marker></defs>
+    <path class="diagram-edge" marker-end="url(#p4s13-arrow)" d="M334 156 H438"/>
+    <path class="diagram-edge" marker-end="url(#p4s13-arrow)" d="M718 156 H822"/>
+    <g class="edge-label"><rect x="360" y="110" width="78" height="20" rx="3"/><text x="399" y="125" text-anchor="middle">sections dict</text></g>
+    <g class="edge-label"><rect x="742" y="110" width="82" height="20" rx="3"/><text x="783" y="125" text-anchor="middle">완성 보고서</text></g>
+    <rect x="14" y="72" width="320" height="168" class="node"/><text x="40" y="108" class="diagram-step">여섯 전문 분석가</text><text x="40" y="140" class="sub-label mono">technical_summary · supply_summary</text><text x="40" y="166" class="sub-label mono">financial_summary · industry_summary</text><text x="40" y="192" class="sub-label mono">news_summary · market_condition</text><text x="40" y="222" class="sub-label">각자 맡은 관점만 정리</text>
+    <rect x="438" y="60" width="280" height="192" class="focus"/><text x="578" y="101" text-anchor="middle" class="diagram-step">편집 에이전트</text><text x="578" y="139" text-anchor="middle" class="label">겹치는 내용과 충돌을 정리</text><text x="578" y="178" text-anchor="middle" class="flow-label mono">executive_summary</text><text x="578" y="214" text-anchor="middle" class="sub-label">새 매수 판단은 보태지 않음</text>
+    <rect x="822" y="72" width="284" height="168" class="node"/><text x="848" y="108" class="diagram-step mono">run_buy_agent</text><text x="848" y="142" class="label">보고서를 읽고</text><text x="848" y="173" class="sub-label">진입 시나리오를 만듦</text><text x="848" y="207" class="sub-label">그다음 trading.py가 다시 확인</text>
+    <text x="14" y="290" class="sub-label">통신의 핵심은 대화가 아니라 <strong>키 이름과 JSON 구조를 맞춰 결과를 넘기는 것</strong>입니다.</text>
+  </svg>
+  <div class="pagenum">13</div>
+</section>
+
+<!-- P4-S14 · 여러 에이전트를 연결하는 여섯 패턴 -->
+<section class="slide" style="padding:29px 64px 62px; justify-content:flex-start;">
+  <div class="kicker" style="margin-bottom:3px; font-size:16px;">에이전트 기초 · 오케스트레이션 패턴</div>
+  <h2 style="font-size:31px; margin-bottom:7px;">여러 에이전트는 일을 연결하는 방식에 따라 패턴이 달라집니다</h2>
+  <table class="plain-table" aria-label="AI 에이전트 디자인 패턴과 lecture-prism의 적용" style="table-layout:fixed;">
+    <thead>
+      <tr>
+        <th style="width:19%; padding:5px 9px; font-size:13px;">그림 · 클릭해 확대</th>
+        <th style="width:23%; padding:5px 9px; font-size:13px;">패턴</th>
+        <th style="width:24%; padding:5px 9px; font-size:13px;">연결 방식</th>
+        <th style="padding:5px 9px; font-size:13px;">lecture-prism에서는</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="background:oklch(0.17 0.035 145);">
+        <td style="padding:4px 8px;"><img class="pattern-diagram" src="assets/agent-pattern-sequential.png" alt="다섯 단계가 왼쪽에서 오른쪽으로 이어지는 순차 파이프라인" data-fullscreenable="true" tabindex="0" style="display:block; width:100%; height:48px; object-fit:contain; background:oklch(0.105 0.012 264); border-radius:6px;"></td>
+        <td style="padding:7px 9px; font-size:14px; line-height:1.2;"><strong>Sequential / Pipeline</strong> <span style="color:var(--muted);">[A][M][O]</span></td>
+        <td style="padding:7px 9px; font-size:14px; line-height:1.25;">앞 결과를 다음 단계의 입력으로 전달</td>
+        <td style="padding:7px 9px; font-size:14px; line-height:1.25;"><strong>주 패턴</strong> · <code>screening → analysis → buy → trading → feedback</code></td>
+      </tr>
+      <tr>
+        <td style="padding:4px 8px;"><img class="pattern-diagram" src="assets/agent-pattern-concurrent.png" alt="하나의 입력이 네 작업으로 나뉘었다가 하나의 결과로 합쳐지는 병렬 패턴" data-fullscreenable="true" tabindex="0" style="display:block; width:100%; height:48px; object-fit:contain; background:oklch(0.105 0.012 264); border-radius:6px;"></td>
+        <td style="padding:7px 9px; font-size:14px; line-height:1.2;"><strong>Concurrent / Fan-out·Fan-in</strong> <span style="color:var(--muted);">[A][M][O]</span></td>
+        <td style="padding:7px 9px; font-size:14px; line-height:1.25;">독립 작업을 동시에 실행한 뒤 결과를 합침</td>
+        <td style="padding:7px 9px; font-size:14px; line-height:1.25;"><strong>분석 내부</strong> · 병렬 전문가 6명 → 편집, <code>asyncio.gather</code></td>
+      </tr>
+      <tr>
+        <td style="padding:4px 8px;"><img class="pattern-diagram" src="assets/agent-pattern-handoff.png" alt="라우터가 요청에 맞는 전문가 한 명에게 일을 넘기는 패턴" data-fullscreenable="true" tabindex="0" style="display:block; width:100%; height:48px; object-fit:contain; background:oklch(0.105 0.012 264); border-radius:6px;"></td>
+        <td style="padding:7px 9px; font-size:14px; line-height:1.2;"><strong>Routing / Handoff</strong> <span style="color:var(--muted);">[A][M][O]</span></td>
+        <td style="padding:7px 9px; font-size:14px; line-height:1.25;">입력·맥락에 맞는 전문가를 고르거나 통제권을 넘김</td>
+        <td style="padding:7px 9px; font-size:14px; line-height:1.25;">기본 실행에는 없음 · 트랙 선택은 <strong>사람의 선택</strong></td>
+      </tr>
+      <tr>
+        <td style="padding:4px 8px;"><img class="pattern-diagram" src="assets/agent-pattern-orchestrator-workers.png" alt="관리자가 작업을 여러 작업자에게 나누고 결과를 다시 모으는 패턴" data-fullscreenable="true" tabindex="0" style="display:block; width:100%; height:48px; object-fit:contain; background:oklch(0.105 0.012 264); border-radius:6px;"></td>
+        <td style="padding:7px 9px; font-size:14px; line-height:1.2;"><strong>Orchestrator–Workers</strong> <span style="color:var(--muted);">[A][O]</span></td>
+        <td style="padding:7px 9px; font-size:14px; line-height:1.25;">관리자가 문제를 동적으로 쪼개고 작업자 결과를 종합</td>
+        <td style="padding:7px 9px; font-size:14px; line-height:1.25;">코딩 에이전트 작업에는 활용 가능 · 기본 파이프라인은 고정</td>
+      </tr>
+      <tr>
+        <td style="padding:4px 8px;"><img class="pattern-diagram" src="assets/agent-pattern-maker-checker.png" alt="만드는 역할과 검사하는 역할이 피드백을 주고받다가 결과를 내는 패턴" data-fullscreenable="true" tabindex="0" style="display:block; width:100%; height:48px; object-fit:contain; background:oklch(0.105 0.012 264); border-radius:6px;"></td>
+        <td style="padding:7px 9px; font-size:14px; line-height:1.2;"><strong>Maker–Checker</strong> <span style="color:var(--muted);">[A][M][O]</span></td>
+        <td style="padding:7px 9px; font-size:14px; line-height:1.25;">만들기 → 평가 → 피드백 반영을 통과할 때까지 반복</td>
+        <td style="padding:7px 9px; font-size:14px; line-height:1.25;">Strategy Harness Lite의 <strong>구현자 → 검증자</strong>에 가까움</td>
+      </tr>
+      <tr>
+        <td style="padding:4px 8px;"><img class="pattern-diagram" src="assets/agent-pattern-magentic.png" alt="관리자가 작업 목록과 경로를 실행 도중 계속 고치는 적응형 계획 패턴" data-fullscreenable="true" tabindex="0" style="display:block; width:100%; height:48px; object-fit:contain; background:oklch(0.105 0.012 264); border-radius:6px;"></td>
+        <td style="padding:7px 9px; font-size:14px; line-height:1.2;"><strong>Magentic / Adaptive planning</strong> <span style="color:var(--muted);">[M]</span></td>
+        <td style="padding:7px 9px; font-size:14px; line-height:1.25;">실행 중 작업 장부와 다음 계획을 계속 갱신</td>
+        <td style="padding:7px 9px; font-size:14px; line-height:1.25;">기본 실행에는 없음 · 복잡하고 열린 문제에 쓰는 상위 패턴</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="takeaway" style="margin-top:7px; font-size:16px; line-height:1.3;">lecture-prism의 중심은 <strong>예측 가능한 순차 파이프라인</strong>이며, 분석 단계 안에 <strong>병렬 전문가</strong> 패턴을 중첩합니다.</div>
+  <div style="position:absolute; left:64px; right:64px; bottom:47px; font-size:10.5px; line-height:1.25; color:oklch(0.58 0.012 264); white-space:nowrap;">[A] Anthropic, <a href="https://www.anthropic.com/engineering/building-effective-agents" style="color:inherit;"><em>Building effective agents</em></a> (2024-12-19) · [M] Microsoft Azure Architecture Center, <a href="https://learn.microsoft.com/en-us/azure/architecture/ai-ml/guide/ai-agent-design-patterns" style="color:inherit;"><em>AI agent orchestration patterns</em></a> (2026-02-12 갱신) · [O] OpenAI Agents SDK, <a href="https://openai.github.io/openai-agents-python/multi_agent/" style="color:inherit;"><em>Agent orchestration</em></a> (2026-08-16 확인)</div>
+  <div class="pagenum">14</div>
+</section>
+
+<!-- P4-S15 · 하네스는 전략 정리, 구현, 검증을 차례로 맡깁니다 -->
+<section class="slide" style="padding:43px 66px 38px; justify-content:flex-start;">
+  <div class="kicker" style="margin-bottom:6px;">Strategy Harness Lite · 역할을 나눈 이유</div>
+  <h2 style="font-size:35px; margin-bottom:10px;">하네스는 전략 정리, 구현, 검증을 차례로 맡깁니다</h2>
+  <svg class="editorial-diagram" viewBox="0 0 1152 316" role="img" aria-labelledby="p4s15-title p4s15-desc">
+    <title id="p4s15-title">Strategy Harness Lite의 세 역할</title>
+    <desc id="p4s15-desc">MY_STRATEGY.md에서 출발해 lecture-strategy-interviewer가 요구를 정리하고 lecture-strategy-implementer가 한 파일을 수정한 뒤 lecture-strategy-verifier가 mock 결과를 확인한다.</desc>
+    <defs><marker id="p4s15-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="oklch(0.68 0.03 264)"/></marker></defs>
+    <path class="diagram-edge" marker-end="url(#p4s15-arrow)" d="M238 158 H292"/>
+    <path class="diagram-edge" marker-end="url(#p4s15-arrow)" d="M544 158 H598"/>
+    <path class="diagram-edge" marker-end="url(#p4s15-arrow)" d="M850 158 H904"/>
+    <g class="edge-label"><rect x="242" y="112" width="48" height="20" rx="3"/><text x="266" y="127" text-anchor="middle">요구</text></g>
+    <g class="edge-label"><rect x="548" y="112" width="48" height="20" rx="3"/><text x="572" y="127" text-anchor="middle">작업</text></g>
+    <g class="edge-label"><rect x="854" y="112" width="48" height="20" rx="3"/><text x="878" y="127" text-anchor="middle">결과</text></g>
+    <rect x="12" y="102" width="226" height="112" class="node"/><text x="36" y="138" class="diagram-step">전략 원문</text><text x="36" y="172" class="label mono">MY_STRATEGY.md</text><text x="36" y="198" class="sub-label">수강생이 적어 온 규칙</text>
+    <rect x="292" y="82" width="252" height="152" class="focus"/><text x="418" y="120" text-anchor="middle" class="diagram-step">전략 정리</text><text x="418" y="153" text-anchor="middle" class="sub-label mono">lecture-strategy-interviewer</text><text x="418" y="184" text-anchor="middle" class="label">트랙과 규칙 하나로 좁힘</text><text x="418" y="211" text-anchor="middle" class="sub-label">모르면 질문 한 번</text>
+    <rect x="598" y="82" width="252" height="152" class="node"/><text x="724" y="120" text-anchor="middle" class="diagram-step">구현</text><text x="724" y="153" text-anchor="middle" class="sub-label mono">lecture-strategy-implementer</text><text x="724" y="184" text-anchor="middle" class="label">한 파일만 수정</text><text x="724" y="211" text-anchor="middle" class="sub-label">API 키 없이 데모 실행</text>
+    <rect x="904" y="82" width="236" height="152" class="node"/><text x="1022" y="120" text-anchor="middle" class="diagram-step">검증</text><text x="1022" y="153" text-anchor="middle" class="sub-label mono">lecture-strategy-verifier</text><text x="1022" y="184" text-anchor="middle" class="label">전후 결과 확인</text><text x="1022" y="211" text-anchor="middle" class="sub-label">의도와 mock 결과 비교</text>
+    <text x="12" y="282" class="sub-label">잘 끝났다면 <strong>왜 이 파일을 바꿨고 결과가 어떻게 달라졌는지</strong> 설명할 수 있습니다.</text>
+  </svg>
+  <div class="pagenum">15</div>
 </section>

@@ -25,6 +25,12 @@ lecture-prism은 **API 키 없이도 기본 데모가 바로 실행**되도록 �
 | 증권사 모의투자 주문 경로 | `LECTURE_PROFILE=paper` | 실데이터 연결과 KIS 모의투자 키(선택 broker별 요구 사항은 다름) |
 | 실전투자 | `LECTURE_PROFILE=live` | 브로커 real 키, 이중 안전 플래그 |
 
+### 비밀값은 채팅이 아니라 설정 파일에 직접 입력합니다
+
+코딩 에이전트에게는 `.env.example`을 `.env`로 복사하고, macOS 텍스트 편집기나 Windows 메모장 같은 운영체제의 기본 텍스트 편집기로 열어 달라고 합니다. API 키·웹후크·계좌정보는 채팅에 붙여넣지 않고 사용자가 파일에 직접 입력·저장합니다. 저장 뒤에는 값 자체를 출력하지 않는 방식으로 `준비됨 / 비어 있음 / 형식 오류`만 확인하게 하세요.
+
+`.gitignore`는 `.env`와 실제 인증 파일이 Git에 올라가는 것을 막습니다. 하지만 에이전트의 로컬 파일 읽기까지 막는 보안 장치는 아닙니다. 프롬프트에는 항상 “비밀값을 읽어 답변·화면·도구 출력에 노출하지 말고 Git 추적 제외만 확인해 달라”고 함께 적습니다.
+
 ## 3. 실제 LLM 응답을 보고 싶을 때
 
 둘 중 하나만 있으면 됩니다. `.env`에서 `LECTURE_LLM_MODE=auto`, `oauth`, `openai` 중 하나를 골라야 실제 호출을 시도합니다.
@@ -52,6 +58,7 @@ lecture-prism은 **API 키 없이도 기본 데모가 바로 실행**되도록 �
 | 범위 | 필요한 것 | 기본 실습 필요 여부 |
 |---|---|---|
 | yfinance 가격·거래량 (분석·`screening.py --real` 공통) | `yfinance` 패키지와 인터넷 연결 | 선택 |
+| KIS 가격·일별 투자자 수급 | paper 또는 real App Key와 App Secret. 계좌번호는 불필요 | Part 3 말미·Part 4 선택 실습 |
 | Perplexity 리서치 | `PERPLEXITY_API_KEY` | 심화 |
 | Firecrawl 웹 수집 | `FIRECRAWL_API_KEY` | 심화 |
 
@@ -59,8 +66,20 @@ Perplexity와 Firecrawl은 `LECTURE_REPORT_MODE=research`이고 해당 키가 �
 
 ## 5. 증권사 브로커 심화
 
+KIS에는 서로 다른 두 범위가 있습니다. 강의에서 먼저 쓰는 것은 **읽기 전용 시장 데이터**입니다. `kis_market_data.py`가 현재가와 일별 기관·외국인·개인 순매수만 조회하며, 계좌번호 없이 선택한 환경의 아래 두 값만 사용합니다.
+
+| 환경 | 로컬 `.env` 값 |
+|---|---|
+| 모의투자 `paper` | `KIS_PAPER_APP_KEY`, `KIS_PAPER_APP_SECRET` |
+| 실전 `real` | `KIS_REAL_APP_KEY`, `KIS_REAL_APP_SECRET` |
+
+강사 시연은 `real` 환경의 실제 데이터를 사용하되 주문·취소·정정·잔고·계좌 API를 호출하지 않고 매매를 simulation으로 유지합니다. 수강생은 준비한 `paper` 또는 `real` 중 하나를 명시적으로 고릅니다. 실패하면 다른 환경으로 자동 전환하거나 mock 값을 KIS 성공으로 꾸미지 않습니다.
+
+선택한 자격 증명 묶음은 `.env`의 `LECTURE_KIS_MODE`로 고릅니다. `paper`는 `demo`, `real`은 `real`입니다. 이 값은 비밀값이 아니지만 App Key/Secret과 같은 환경을 가리켜야 합니다.
+
 | 범위 | 필요한 것 | 기본 실습 필요 여부 |
 |---|---|---|
+| KIS 가격·일별 투자자 수급 조회 | 선택한 환경의 App Key, App Secret | 선택 공통 실습 |
 | KIS 모의투자 조회·주문 구조 | 한국투자증권 모의투자 App Key, App Secret, HTS ID, 계좌번호 앞 8자리, 상품코드 2자리 | 심화 |
 | Kiwoom 모의투자/REST 구조 | 키움증권 REST API App Key, Secret Key 또는 Access Token | 심화 |
 | Toss Securities | `tossctl 0.24.1`과 사용자가 직접 승인한 WTS 로그인 세션. API 키는 lecture-prism이 보관하지 않음 | 선택 |

@@ -1,51 +1,173 @@
-<!-- P4-S26 · 오전 1회·오후 1회는 · ‘시스템을 켜 두는 법’과 다릅니다 -->
+<!-- P4-S39 · 디버깅은 처음 문제가 생긴 곳을 찾는 일입니다 -->
 <section class="slide">
-  <div class="kicker">P4-08 · 강사 시연 또는 수업 후 선택 설계</div>
-  <h2>오전 1회·오후 1회는<br>‘시스템을 켜 두는 법’과 다릅니다</h2>
-  <div class="flow">
-    <div class="step"><div class="n">컴퓨터·서버</div><div class="t">계속 켜짐</div><div class="d">실행할 장소가 준비됨</div></div>
-    <div class="step"><div class="n">운영체제 예약</div><div class="t">정해진 시각</div><div class="d">오전·오후에 main.py를 새로 시작</div></div>
-    <div class="step"><div class="n">연습 데이터·예행 실행</div><div class="t">안전 실행</div><div class="d">실제 주문 없이 로그·DB·보고서를 남김</div></div>
-    <div class="step"><div class="n">사람</div><div class="t">확인·중지</div><div class="d">실패 로그와 중지 방법을 먼저 앎</div></div>
-  </div>
-  <p class="note">P4-08 1단계는 설계만 합니다. 예약 등록은 수업 밖에서 초안·되돌림 방법을 확인한 뒤에만 합니다.</p>
-  <div class="pagenum">운영 설계</div>
+  <div class="kicker">개발 기초 · 디버깅</div>
+  <h2>디버깅은 처음 문제가 생긴 곳을 찾는 일입니다</h2>
+  <div class="code-window"><pre><span class="comment">1. 재현</span> 같은 입력·같은 프로필에서 한 번 다시 실행
+<span class="comment">2. 관찰</span> 로그의 <span class="name">처음 WARNING/ERROR</span>와 바로 앞 단계 찾기
+<span class="comment">3. 가설</span> “입력이 비었나?”처럼 한 가지씩 코드로 확인
+<span class="comment">4. 최소 수정</span> 원인이 확인된 파일의 해당 규칙만 수정
+<span class="comment">5. 회귀 확인</span> 같은 재현 + API 키 없는 mock 전체 실행</pre></div>
+  <div class="takeaway" style="margin-top:20px;">처음 <strong>WARNING/ERROR</strong>를 찾되 바로 수정하지 않습니다. 그 지점과 마지막 실행 결과를 함께 보고 실제로 멈춘 오류인지 판단합니다.</div>
+  <div class="pagenum">39</div>
 </section>
 
-<!-- P4-S27 · 기억을 한 파일에 몰아넣지 않습니다 -->
+<!-- P4-S40 · 로그를 보면 어느 단계까지 실행됐는지 알 수 있습니다 -->
 <section class="slide">
-  <div class="kicker">P4-09 · 다음 세션 연결</div>
-  <h2>기억을 한 파일에 몰아넣지 않습니다</h2>
+  <div class="kicker">개발 기초 · 로그</div>
+  <h2>로그를 보면 어느 단계까지 실행됐는지 알 수 있습니다</h2>
+  <div class="code-window"><pre><span class="value">00:58:13</span> [INFO] <span class="name">main</span> — [2/5] 분석 보고서 작성
+<span class="value">00:58:13</span> [INFO] <span class="name">analysis</span> — [005930] 데이터 원천: 모의 데이터(mock)
+<span class="value">00:58:14</span> [WARNING] <span class="name">analysis_agents</span> — 수급 분석가 실패 → 규칙 보고서 폴백
+<span class="value">00:58:14</span> [INFO] <span class="name">main</span> — 파이프라인 완료</pre></div>
+  <div class="takeaway" style="margin-top:20px; font-size:20px;"><strong>이 로그의 뜻:</strong> AI 보고서 생성 실패 → 준비된 기본 보고서로 계속 실행 → 파이프라인 완료.<br>즉 프로그램을 멈춘 오류는 아닙니다. AI 보고서가 꼭 필요했다면 실패 원인을 따로 확인합니다.</div>
+  <div class="pagenum">40</div>
+</section>
+
+<!-- P4-S41 · 에러 한 줄보다 재현과 최소 수정을 함께 요청합니다 -->
+<section class="slide">
+  <div class="kicker">공통 실습 P4-09</div>
+  <h2>오류를 그대로 보내고 같은 조건에서 다시 확인해 달라고 합니다</h2>
+  <div class="prompt" style="font-size:22px;">“이 오류를 같은 조건에서 한 번 재현해줘. 로그에서 처음 실패한 위치와 입력을 찾고, 원인 가설을 하나씩 확인해. 원인이 확인되면 관련 파일만 최소 수정하고, 같은 재현과 기본 mock 전체 실행으로 다시 검증해줘.”</div>
+  <div class="compare" style="margin-top:24px;">
+    <div class="cbox bad"><div class="label">피할 요청</div>“에러 나니까 전부 다시 설치해줘.”</div>
+    <div class="cbox good"><div class="label">좋은 요청</div>“범위를 넓히지 말고 처음 깨진 원인을 찾아줘.”</div>
+  </div>
+  <div class="action-pair compact">
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">터틀·ATR 시연 로그에서 경고 한 줄을 골라 정상적인 대체 경로(폴백)인지 실제 오류인지 구분합니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">오류가 있으면 P4-09를 사용하고, 없으면 경고 하나의 원인과 최종 완료 여부를 확인합니다.</div></div>
+  </div>
+  <div class="pagenum">41</div>
+</section>
+
+<!-- P4-S42 · 외부 연결이 막히면 연습용 경로로 바꾸고 로그에 남깁니다 -->
+<section class="slide" style="padding:46px 76px 38px; justify-content:flex-start;">
+  <div class="kicker" style="margin-bottom:6px;">오류와 대체 경로 · 실제로 쓴 데이터는 로그로 확인합니다</div>
+  <h2 style="font-size:35px; margin-bottom:13px;">외부 연결이 막히면 연습용 경로로 바꾸고 로그에 남깁니다</h2>
+  <svg class="editorial-diagram" viewBox="0 0 1120 292" role="img" aria-labelledby="p4s30-title p4s30-desc"><title id="p4s30-title">외부 연결이 실패했을 때 쓰는 두 가지 대체 경로</title><desc id="p4s30-desc">실데이터 조회가 실패하면 모의 데이터로, LLM 분석이 실패하면 규칙 보고서로 전환하고 각 전환 사실을 로그에 남긴다.</desc><defs><marker id="p4s30-arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10" fill="none" stroke="currentColor" stroke-width="1.7"/></marker></defs>
+    <path class="diagram-edge" marker-end="url(#p4s30-arrow)" d="M306 83 H430"/><path class="diagram-edge" marker-end="url(#p4s30-arrow)" d="M306 207 H430"/><path class="diagram-edge" marker-end="url(#p4s30-arrow)" d="M726 83 H850"/><path class="diagram-edge" marker-end="url(#p4s30-arrow)" d="M726 207 H850"/>
+    <rect x="18" y="39" width="288" height="88" rx="14" class="node"/><text x="42" y="74" class="label">실데이터 조회 실패</text><text x="42" y="103" class="sub-label">가격·뉴스를 받지 못함</text>
+    <rect x="430" y="39" width="296" height="88" rx="14" class="focus"/><text x="454" y="74" class="label">모의 데이터로 실행</text><text x="454" y="103" class="sub-label">파이프라인 흐름을 계속 연습</text>
+    <rect x="850" y="39" width="252" height="88" rx="14" class="node"/><text x="874" y="74" class="label">로그에 표시</text><text x="874" y="103" class="sub-label">데이터 원천: mock</text>
+    <rect x="18" y="163" width="288" height="88" rx="14" class="node"/><text x="42" y="198" class="label">LLM 분석 실패</text><text x="42" y="227" class="sub-label">분석 응답을 받지 못함</text>
+    <rect x="430" y="163" width="296" height="88" rx="14" class="focus"/><text x="454" y="198" class="label">규칙 보고서로 채움</text><text x="454" y="227" class="sub-label">실패한 분석 부분만 대체</text>
+    <rect x="850" y="163" width="252" height="88" rx="14" class="node"/><text x="874" y="198" class="label">로그에 표시</text><text x="874" y="227" class="sub-label">규칙 보고서 사용</text>
+    <g class="edge-label" transform="translate(368 83)"><rect x="-38" y="-14" width="76" height="28" rx="8"/><text y="5">전환</text></g><g class="edge-label" transform="translate(788 83)"><rect x="-38" y="-14" width="76" height="28" rx="8"/><text y="5">기록</text></g>
+    <g class="edge-label" transform="translate(368 207)"><rect x="-38" y="-14" width="76" height="28" rx="8"/><text y="5">전환</text></g><g class="edge-label" transform="translate(788 207)"><rect x="-38" y="-14" width="76" height="28" rx="8"/><text y="5">기록</text></g>
+  </svg>
+  <div class="pagenum">42</div>
+</section>
+
+<!-- P4-S43 · prism.db 안에는 성격이 다른 세 개의 표가 있습니다 -->
+<section class="slide">
+  <div class="kicker">개발 기초 · DB와 테이블</div>
+  <h2><span class="mono">prism.db</span> 안에는 성격이 다른 세 개의 표가 있습니다</h2>
+  <svg class="editorial-diagram" viewBox="0 0 1115 300" role="img" aria-labelledby="p4s31-title p4s31-desc"><title id="p4s31-title">prism.db 안의 세 테이블</title><desc id="p4s31-desc">prism.db에는 분석 판단, 매매 기록, 피드백 교훈을 담는 세 테이블이 있다.</desc><rect x="20" y="36" width="1075" height="228" class="focus"/><text x="50" y="76" class="label mono">prism.db</text><text x="50" y="103" class="sub-label">DB = 관련된 표들을 한곳에 보관하는 파일</text><path class="quiet-line" d="M48 124 H1067"/><rect x="48" y="147" width="303" height="89" class="node"/><text x="72" y="178" class="label mono">analysis_decisions</text><text x="72" y="205" class="sub-label">언제 · 어떤 종목 · 추천 · 점수</text><rect x="406" y="147" width="303" height="89" class="node"/><text x="430" y="178" class="label mono">trade_history</text><text x="430" y="205" class="sub-label">매수/매도 · 가격 · 수량 · 이유</text><rect x="764" y="147" width="303" height="89" class="node"/><text x="788" y="178" class="label mono">feedback_lessons</text><text x="788" y="205" class="sub-label">다음 판단에 남길 교훈</text></svg>
+  <p class="note">테이블은 같은 종류의 기록을 행과 열로 모은 표입니다. 오늘은 SQL을 외우지 않고, 코딩 에이전트에게 최근 행을 읽기 전용으로 보여 달라고 합니다.</p>
+  <div class="pagenum">43</div>
+</section>
+
+<!-- P4-S44 · 저장한 기록을 대시보드가 다시 읽어 화면에 보여 줍니다 -->
+<section class="slide" style="padding:46px 76px 38px; justify-content:flex-start;">
+  <div class="kicker" style="margin-bottom:6px;">공통 실습 P4-10 · 저장과 화면이 이어지는 길</div>
+  <h2 style="font-size:35px; margin-bottom:13px;">저장한 기록을 대시보드가 다시 읽어 화면에 보여 줍니다</h2>
+  <svg class="editorial-diagram" viewBox="0 0 1120 280" role="img" aria-labelledby="p4s32-title p4s32-desc"><title id="p4s32-title">feedback.py가 남긴 기록을 dashboard.py가 읽는 흐름</title><desc id="p4s32-desc">feedback.py가 db.py를 통해 prism.db에 결과를 저장하고 dashboard.py가 최근 기록을 조회해 화면에 표시한다.</desc><defs><marker id="p4s32-arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10" fill="none" stroke="currentColor" stroke-width="1.7"/></marker></defs>
+    <path class="diagram-edge" marker-end="url(#p4s32-arrow)" d="M300 139 H414"/><path class="diagram-edge" marker-end="url(#p4s32-arrow)" d="M706 139 H820"/>
+    <rect x="20" y="82" width="280" height="114" rx="14" class="node"/><text x="46" y="119" class="label mono">feedback.py</text><text x="46" y="149" class="sub-label">분석과 매매 결과를 받아</text><text x="46" y="176" class="sub-label">남길 내용을 정리</text>
+    <rect x="414" y="62" width="292" height="154" rx="16" class="focus"/><text x="560" y="106" text-anchor="middle" class="label mono">db.py → prism.db</text><text x="560" y="140" text-anchor="middle" class="sub-label">세 표에 새 행을 저장</text><text x="560" y="174" text-anchor="middle" class="sub-label">필요할 때 최근 기록을 조회</text>
+    <rect x="820" y="82" width="280" height="114" rx="14" class="node"/><text x="846" y="119" class="label mono">dashboard.py</text><text x="846" y="149" class="sub-label">최근 기록을 읽어</text><text x="846" y="176" class="sub-label">내 컴퓨터 화면에 표시</text>
+    <g class="edge-label" transform="translate(357 139)"><rect x="-38" y="-14" width="76" height="28" rx="8"/><text y="5">저장</text></g><g class="edge-label" transform="translate(763 139)"><rect x="-38" y="-14" width="76" height="28" rx="8"/><text y="5">조회</text></g>
+  </svg>
+  <div class="pagenum">44</div>
+</section>
+
+<!-- P4-S45 · 이제 3분 뒤에 프로그램이 스스로 시작되게 만듭니다 -->
+<section class="slide divider">
+  <div class="chnum">로컬 운영 실습</div>
+  <h1>이제 3분 뒤에 프로그램이<br>스스로 시작되게 만듭니다</h1>
+  <p class="sub">mock·simulation 한 번 실행 → 로그와 DB 확인 → 임시 예약 삭제</p>
+  <div class="pagenum">45</div>
+</section>
+
+<!-- P4-S46 · 배치는 할 일, 스케줄러는 시작할 때를 정합니다 -->
+<section class="slide">
+  <div class="kicker">개발 기초 · 배치와 스케줄러</div>
+  <h2>배치는 할 일, 스케줄러는 시작할 때를 정합니다</h2>
+  <svg class="editorial-diagram" viewBox="0 0 1120 292" role="img" aria-labelledby="p4s34-title p4s34-desc"><title id="p4s34-title">배치와 스케줄러의 역할 비교</title><desc id="p4s34-desc">배치는 후보 찾기부터 기록까지 실행할 일을 묶고, 스케줄러는 그 일을 언제 시작할지 정한다.</desc>
+    <path class="diagram-edge-quiet" d="M560 48 V256"/>
+    <circle cx="560" cy="145" r="34" fill="#10141d" stroke="#7f8cff" stroke-width="2"/><text x="560" y="153" text-anchor="middle" style="font-size:23px; font-weight:800; fill:#f5f7fb;">VS</text>
+    <rect x="28" y="34" width="450" height="220" rx="22" fill="rgba(115,217,154,.07)" stroke="rgba(115,217,154,.56)" stroke-width="1.5"/>
+    <circle cx="92" cy="94" r="30" fill="rgba(115,217,154,.16)"/><text x="92" y="102" text-anchor="middle" style="font-size:25px; fill:#73d99a;">{ }</text>
+    <text x="142" y="88" class="label">배치</text><text x="142" y="118" class="sub-label">무엇을 실행할지 묶어 둔 일</text>
+    <path d="M68 159 H438" stroke="rgba(115,217,154,.32)"/><text x="68" y="193" style="font-size:19px; font-weight:750; fill:#f5f7fb;">후보 찾기 → 분석 → 매매 판단 → 기록</text><text x="68" y="224" class="sub-label">이 자료에서는 main.py 한 번 실행</text>
+    <rect x="642" y="34" width="450" height="220" rx="22" fill="rgba(127,140,255,.07)" stroke="rgba(127,140,255,.56)" stroke-width="1.5"/>
+    <circle cx="706" cy="94" r="30" fill="rgba(127,140,255,.16)"/><text x="706" y="103" text-anchor="middle" style="font-size:31px; fill:#9da7ff;">◷</text>
+    <text x="756" y="88" class="label">스케줄러</text><text x="756" y="118" class="sub-label">그 일을 언제 시작할지 정하는 예약</text>
+    <path d="M682 159 H1052" stroke="rgba(127,140,255,.32)"/><text x="682" y="193" style="font-size:19px; font-weight:750; fill:#f5f7fb;">3분 뒤 한 번 · 정해 둔 시각마다</text><text x="682" y="224" class="sub-label">시간이 되면 main.py를 새로 실행</text>
+  </svg>
+  <p class="note">main.py가 24시간 떠 있는 것이 아니라, 예약된 시각마다 새로 시작됩니다.</p>
+  <div class="pagenum">46</div>
+</section>
+
+<!-- P4-S47 · 로컬은 내 컴퓨터, 서버는 계속 켜 둔 별도 컴퓨터입니다 -->
+<section class="slide">
+  <div class="kicker">개발 기초 · 로컬과 서버</div>
+  <h2>로컬은 내 컴퓨터, 서버는 계속 켜 둔 별도 컴퓨터입니다</h2>
+  <div class="compare">
+    <div class="cbox good"><div class="label">로컬 · 내 컴퓨터</div>바로 고치고 확인하기 쉽습니다.<br>컴퓨터가 꺼지거나 잠들면 예약이 실행되지 않을 수 있습니다.</div>
+    <div class="cbox good"><div class="label">서버 · 계속 켜 둔 컴퓨터</div>정해진 시간에 안정적으로 실행하기 좋습니다.<br>비용·보안·배포·모니터링이 추가로 필요합니다.</div>
+  </div>
+  <p class="note">오늘은 서버에 배포하지 않습니다. 내 컴퓨터에서 예약 실행의 원리를 직접 확인합니다.</p>
+  <div class="pagenum">47</div>
+</section>
+
+<!-- P4-S48 · 예약을 만들기 전에 무엇이 바뀌는지 먼저 확인합니다 -->
+<section class="slide dense-ops">
+  <div class="kicker">공통 실습 P4-11 · 설계</div>
+  <h2>예약을 등록하기 전에 실행 시각과 삭제 방법부터 확인합니다</h2>
   <div class="tracks">
-    <div class="track"><span class="tag">내 전략</span><div class="q">MY_STRATEGY.md</div><div class="f">진입·청산·리스크의 내 말</div></div>
-    <div class="track"><span class="tag">공통 규칙</span><div class="q">AGENTS.md·도구별 지침</div><div class="f">프로젝트의 안전 경계와 작업 방식</div></div>
-    <div class="track"><span class="tag">자동 기억</span><div class="q">local memory</div><div class="f">도구·컴퓨터별일 수 있으며 비밀 보관함이 아님</div></div>
-    <div class="track"><span class="tag">인수인계</span><div class="q">tasks/handoff.md</div><div class="f">한 일·결정·증거·남은 일·다음 3단계</div></div>
+    <div class="track"><span class="tag">시간</span><div class="q">현재 시각 + 3분</div></div>
+    <div class="track"><span class="tag">실행</span><div class="q">절대 경로의 Python과 main.py</div></div>
+    <div class="track"><span class="tag">모드</span><div class="q">mock·simulation</div></div>
+    <div class="track"><span class="tag">확인</span><div class="q">로그 파일과 DB 새 기록</div></div>
   </div>
-  <p class="note">API 키·토큰·계좌번호·로그인 세션·개인정보는 어느 기억 파일에도 적지 않습니다.</p>
-  <div class="pagenum">기억과 handoff</div>
+  <div class="prompt" style="margin-top:24px;">“변경 목록과 중지·삭제 방법을 먼저 보여줘. 내가 승인하기 전에는 예약을 등록하지 마.”</div>
+  <div class="action-pair compact">
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">P4-11 결과에서 3분 뒤 시각, 절대 경로, 로그, 삭제 방법을 먼저 읽습니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">자기 컴퓨터에서 P4-11을 실행합니다. 이 단계에서는 아직 예약을 만들지 않습니다.</div></div>
+  </div>
+  <div class="pagenum">48</div>
 </section>
 
-<!-- P4-S28 · AI의 설명을 바꿔도 · 정량 안전 규칙은 바꾸지 않습니다 -->
+<!-- P4-S49 · 3분 뒤 로그와 DB에 새 기록이 생겼는지 확인합니다 -->
 <section class="slide">
-  <div class="kicker">P4-10 · 프레이밍 진단</div>
-  <h2>AI의 설명을 바꿔도<br>정량 안전 규칙은 바꾸지 않습니다</h2>
-  <div class="compare">
-    <div class="cbox bad"><div class="label">한쪽만 강조</div>“손실을 피하라.”<br><br>위험을 크게 읽어 HOLD가 많아질 수 있음</div>
-    <div class="cbox good"><div class="label">두 목표를 함께 설명</div>“손실 위험과 기회를 놓치는 비용을 함께 설명하되, 같은 점수·손절·한도를 지켜라.”</div>
+  <div class="kicker">공통 실습 P4-12 · 승인 후 실행</div>
+  <h2>3분 뒤 로그와 DB에 새 기록이 생겼는지 확인합니다</h2>
+  <svg class="editorial-diagram" viewBox="0 0 1120 250" role="img" aria-labelledby="p4s37-title p4s37-desc"><title id="p4s37-title">3분 뒤 한 번 실행되는 예약의 확인 순서</title><desc id="p4s37-desc">예약 등록, 3분 대기, 로그 확인, 데이터베이스 기록 확인의 네 장면을 시간 순서로 보여 준다.</desc>
+    <path d="M126 94 H994" stroke="rgba(208,214,226,.35)" stroke-width="2"/>
+    <g transform="translate(126 94)"><circle r="22" fill="#73d99a"/><text y="7" text-anchor="middle" style="font-size:19px;font-weight:850;fill:#10141d;">1</text><text y="52" text-anchor="middle" class="label">예약 등록</text><text y="82" text-anchor="middle" class="sub-label">현재 시각 + 3분</text></g>
+    <g transform="translate(415 94)"><circle r="22" fill="#7f8cff"/><text y="7" text-anchor="middle" style="font-size:19px;font-weight:850;fill:#fff;">2</text><text y="52" text-anchor="middle" class="label">3분 대기</text><text y="82" text-anchor="middle" class="sub-label">컴퓨터를 켜 둠</text></g>
+    <g transform="translate(704 94)"><circle r="22" fill="#f0b45d"/><text y="7" text-anchor="middle" style="font-size:19px;font-weight:850;fill:#10141d;">3</text><text y="52" text-anchor="middle" class="label">로그 확인</text><text y="82" text-anchor="middle" class="sub-label">다섯 단계 완료</text></g>
+    <g transform="translate(994 94)"><circle r="22" fill="#d0d6e2"/><text y="7" text-anchor="middle" style="font-size:19px;font-weight:850;fill:#10141d;">4</text><text y="52" text-anchor="middle" class="label">DB 확인</text><text y="82" text-anchor="middle" class="sub-label">새 기록 시각</text></g>
+    <g class="edge-label" transform="translate(270 94)"><rect x="-45" y="-14" width="90" height="28" rx="8"/><text y="5">기다리기</text></g><g class="edge-label" transform="translate(559 94)"><rect x="-45" y="-14" width="90" height="28" rx="8"/><text y="5">자동 실행</text></g><g class="edge-label" transform="translate(849 94)"><rect x="-45" y="-14" width="90" height="28" rx="8"/><text y="5">기록 읽기</text></g>
+  </svg>
+  <div class="action-pair compact">
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">강사 컴퓨터에 3분 뒤 한 번 실행되는 예약을 등록하고 로그와 DB 시각을 보여줍니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">P4-12를 실행한 뒤 예약 이름과 시각을 확인하고, 3분 뒤 로그와 DB를 봅니다.</div></div>
   </div>
-  <p class="note">이 차이는 정성 설명과 HOLD 의견의 차이를 관찰하는 것뿐입니다. BUY 점수·목표가·손절가·실거래 경로는 그대로 둡니다.</p>
-  <div class="pagenum">프레이밍</div>
+  <div class="pagenum">49</div>
 </section>
 
-<!-- P4-S29 · 오전은 관찰, 오후는 확인 · 불완전하면 HOLD 또는 다음 실행 -->
+<!-- P4-S50 · 실습 예약은 삭제하고 원하는 반복 주기는 설계로 남깁니다 -->
 <section class="slide">
-  <div class="kicker">P4-11 · 강사 확장 예시 · 수업 중 구현하지 않음</div>
-  <h2>오전은 관찰, 오후는 확인<br>불완전하면 HOLD 또는 다음 실행</h2>
+  <div class="kicker">공통 실습 P4-13 · 정리</div>
+  <h2>실습 예약은 지우고 반복 주기는 설계로만 남깁니다</h2>
   <div class="compare">
-    <div class="cbox bad"><div class="label">오전</div>오늘 거래량·일봉이 아직 만들어지는 중<br><br><strong>종가 확정값처럼 BUY를 강화하지 않음</strong></div>
-    <div class="cbox good"><div class="label">오후</div>원천·기준 시각·일봉 완성 여부를 확인<br><br>확정할 수 없으면 HOLD 또는 다음 실행으로 미룸</div>
+    <div class="cbox good"><div class="label">수업에서 실제로 할 것</div>3분 뒤 1회 예약<br>로그·DB 확인<br>임시 예약 삭제</div>
+    <div class="cbox good"><div class="label">수업 뒤에 설계할 것</div>오전·오후 실행 시각<br>휴장일과 시간대<br>중복 실행 방지와 알림</div>
   </div>
-  <p class="note">시간대는 시스템 시계가 아니라 테스트 가능한 입력으로 설계합니다. 오전·오후 검증용 예시에서 ‘미완성 데이터를 종가로 오해하지 않는지’를 먼저 확인합니다.</p>
-  <div class="pagenum">시간대 설계</div>
+  <div class="action-pair compact">
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">임시 예약을 삭제하고 예약 목록에서 사라졌는지 다시 확인합니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">P4-13으로 자기 예약만 삭제합니다. 반복 실행은 실제 등록 없이 설계만 남깁니다.</div></div>
+  </div>
+  <div class="pagenum">50</div>
 </section>
