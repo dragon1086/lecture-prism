@@ -3,38 +3,38 @@
   <div class="kicker">개인 실습 · 트랙 고르기</div>
   <h2>내 아이디어는 진입·분석·청산·리스크 중 한곳에서 시작합니다</h2>
   <div style="display:grid; grid-template-columns:130px 1fr 1fr; border-top:1px solid oklch(0.36 0.02 264);">
-    <div style="padding:13px 10px; border-bottom:1px solid oklch(0.27 0.02 264); color:var(--accent); font-weight:800;">트랙</div><div style="padding:13px 10px; border-bottom:1px solid oklch(0.27 0.02 264); color:var(--muted);">내가 바꾸고 싶은 질문</div><div style="padding:13px 10px; border-bottom:1px solid oklch(0.27 0.02 264); color:var(--muted);">실제로 먼저 읽을 파일과 확인할 결과</div>
+    <div style="padding:13px 10px; border-bottom:1px solid oklch(0.27 0.02 264); color:var(--accent); font-weight:800;">트랙</div><div style="padding:13px 10px; border-bottom:1px solid oklch(0.27 0.02 264); color:var(--muted);">바꾸고 싶은 질문</div><div style="padding:13px 10px; border-bottom:1px solid oklch(0.27 0.02 264); color:var(--muted);">읽을 파일과 확인할 결과</div>
     <div style="padding:16px 10px; border-bottom:1px solid oklch(0.27 0.02 264); font-size:23px; font-weight:800;">A · 진입</div><div style="padding:16px 10px; border-bottom:1px solid oklch(0.27 0.02 264); font-size:20px;">어떤 종목을 후보로 볼까?</div><div style="padding:16px 10px; border-bottom:1px solid oklch(0.27 0.02 264); font-size:20px;"><code>screening.py</code> · 수정 전후 후보 목록</div>
     <div style="padding:16px 10px; border-bottom:1px solid oklch(0.27 0.02 264); font-size:23px; font-weight:800;">B · 분석</div><div style="padding:16px 10px; border-bottom:1px solid oklch(0.27 0.02 264); font-size:20px;">AI가 어떤 관점으로 설명할까?</div><div style="padding:16px 10px; border-bottom:1px solid oklch(0.27 0.02 264); font-size:20px;"><code>analysis_agents.py</code> · 프롬프트 차이</div>
     <div style="padding:16px 10px; border-bottom:1px solid oklch(0.27 0.02 264); font-size:23px; font-weight:800;">C · 청산</div><div style="padding:16px 10px; border-bottom:1px solid oklch(0.27 0.02 264); font-size:20px;">언제 손실을 끊고 수익을 지킬까?</div><div style="padding:16px 10px; border-bottom:1px solid oklch(0.27 0.02 264); font-size:20px;"><code>trading.py · _decide_exit</code> · 세 청산 사례</div>
     <div style="padding:16px 10px; border-bottom:1px solid oklch(0.27 0.02 264); font-size:23px; font-weight:800;">D · 리스크</div><div style="padding:16px 10px; border-bottom:1px solid oklch(0.27 0.02 264); font-size:20px;">몇 종목에 얼마씩 나눌까?</div><div style="padding:16px 10px; border-bottom:1px solid oklch(0.27 0.02 264); font-size:20px;"><code>trading.py</code> 상수 · 수량과 통과 기준</div>
   </div>
-  <p class="note"><code>MY_STRATEGY.md</code>를 하네스가 읽고 필요한 트랙을 고릅니다. 여러 트랙이어도 <strong>현재는 한 트랙만</strong> 실행합니다.</p>
+  <p class="note"><code>MY_STRATEGY.md</code>를 하네스가 읽고 필요한 트랙을 고릅니다. 여러 트랙이어도 <strong>한 번에 한 트랙만</strong> 실행합니다.</p>
   <div class="pagenum">22</div>
 </section>
 <!-- P4-S23 · 전략 전체가 아니라 오늘 확인할 규칙 하나를 고릅니다 -->
 <section class="slide">
   <div class="kicker">공통 실습 P4-04</div>
-  <h2>하네스는 내 전략에서 현재 트랙과 다음 순서를 고릅니다</h2>
+  <h2>하네스가 지금 할 트랙과 다음 순서를 정합니다</h2>
   <div class="code-window"><pre><span class="comment">원문</span>      <span class="name">MY_STRATEGY.md</span>
 <span class="comment">하네스 판단</span> A · 진입 → D · 리스크
 <span class="comment">현재 사이클</span> <span class="name">screening.py</span>의 규칙 하나
 <span class="comment">다음 사이클</span> 현재 검증이 끝난 뒤에만 <span class="value">trading.py</span>
 <span class="comment">계획표</span>    같은 대화에 현재·다음 트랙을 유지</pre></div>
   <div class="action-pair compact">
-    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">구독자 질문을 터틀·ATR·KOSPI·외부 근거의 네 작업으로 나눕니다.</div></div>
-    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">P4-04로 MY_STRATEGY.md를 하네스에 맡겨 현재 트랙과 뒤 순서를 정합니다.</div></div>
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">구독자 질문을 터틀·ATR·KOSPI·외부 근거 네 작업으로 나눕니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">P4-04로 MY_STRATEGY.md를 읽히고 지금 할 트랙과 다음 순서를 정합니다.</div></div>
   </div>
   <div class="pagenum">23</div>
 </section>
 <!-- P4-S24 · 에이전트에게 범위가 있는 변경을 맡깁니다 -->
 <section class="slide">
   <div class="kicker">선택 실습 P4-05~P4-08</div>
-  <h2>전략을 다시 입력하지 않고 현재 트랙을 이어서 실행합니다</h2>
+  <h2>전략을 다시 입력하지 않고 현재 트랙을 실행합니다</h2>
   <div class="prompt" style="font-size:22px;"><strong>MY_STRATEGY.md</strong>와 <strong>P4-04 계획표</strong>를 읽어줘.<br>현재 트랙의 파일 하나·규칙 하나만 수정해줘.<br><strong>회귀 사례 → 구현 → mock 검증 → 전후 비교</strong>를 끝내줘.<br>다음 트랙이 있으면 시작하지 말고 번호만 알려줘.</div>
   <div class="action-pair compact">
     <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">D1~D4 통합 프롬프트를 한 번 실행하고 체크포인트별 증거를 읽습니다.</div></div>
-    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">P4-04가 알려 준 번호를 실행하고, 검증 뒤 다음 번호가 있으면 이어갑니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">P4-04가 알려 준 번호를 실행하고 검증이 끝난 뒤 다음 번호로 넘어갑니다.</div></div>
   </div>
   <div class="pagenum">24</div>
 </section>
@@ -42,10 +42,10 @@
 <!-- P4-S25 · 개인 실습은 예측 수정 실행 확인의 순서로 진행합니다 -->
 <section class="slide divider">
   <div class="chnum">25분 개인 실습</div>
-  <h1>먼저 결과를 예상하고<br>한 파일만 바꿔 확인합니다</h1>
-  <p class="sub">한 트랙씩 수정·검증하고, 필요한 사람만 다음 트랙으로 이어갑니다</p>
+  <h1>결과를 예상한 뒤<br>파일 하나만 바꿔 확인합니다</h1>
+  <p class="sub">한 트랙씩 수정·검증하고, 끝난 사람만 다음 트랙으로 넘어갑니다.</p>
   <div class="action-pair compact" style="width:960px; text-align:left; margin-top:26px;">
-    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">통합 프롬프트를 한 번 붙여넣고 D1→D4가 남기는 결과 표를 차례로 보여줍니다.</div></div>
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">통합 프롬프트를 한 번 붙여넣고 D1→D4 결과 표를 차례로 보여 줍니다.</div></div>
     <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">같은 시간에 현재 트랙을 구현하고, 끝난 사람만 계획표의 다음 트랙으로 갑니다.</div></div>
   </div>
   <div class="pagenum">25</div>
@@ -70,14 +70,14 @@
   <div class="prompt" style="font-size:24px; line-height:1.7;">
     20일 신고가 돌파로 들어가고 10일 저가 이탈로 나옵니다. ATR로 손절가와 수량을 정하고, KOSPI 시황이 약하면 포지션을 줄입니다. 외국인 리포트 캡처와 공시도 판단 근거로 참고하고 싶습니다.
   </div>
-  <p class="note">프롬프트는 한 번만 붙여넣되, 서로 다른 책임은 네 체크포인트로 나눠 하나씩 검증합니다.</p>
+  <p class="note">프롬프트는 한 번 붙여넣고, 서로 다른 책임은 네 체크포인트에서 따로 검증합니다.</p>
   <div class="pagenum">27</div>
 </section>
 
 <!-- P4-S28 · 큰 요청은 확인 가능한 네 단계로 나눕니다 -->
 <section class="slide" style="padding:48px 74px 54px; justify-content:flex-start;">
   <div class="kicker">요구사항을 개발 순서로 바꾸기</div>
-  <h2 style="font-size:36px; margin-bottom:16px;">한 통합 프롬프트 안에서도 네 작업은 순서대로 검증합니다</h2>
+  <h2 style="font-size:36px; margin-bottom:16px;">통합 프롬프트 안에서도 네 작업을 순서대로 검증합니다</h2>
   <div class="flow">
     <div class="step"><div class="n">1 · P4-D1</div><div class="t">터틀</div><div class="d">20일 신고가 진입<br>10일 저가 청산</div></div>
     <div class="step"><div class="n">2 · P4-D2</div><div class="t">ATR</div><div class="d">변동성 손절<br>허용손실 기준 수량</div></div>
@@ -85,8 +85,8 @@
     <div class="step"><div class="n">4 · P4-D4</div><div class="t">외부 근거</div><div class="d">확인된 리포트·공시<br>분석 입력에 추가</div></div>
   </div>
   <div class="action-pair">
-    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">각 체크포인트의 채팅 요약에서 상태와 실제로 확인한 증거를 읽습니다.</div></div>
-    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">하네스가 고른 현재 트랙만 끝내고, 다음 트랙은 계획표에 대기시킵니다.</div></div>
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy">각 체크포인트의 요약에서 상태와 확인한 증거를 읽습니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">하네스가 고른 현재 트랙만 끝내고 다음 트랙은 계획표에 남깁니다.</div></div>
   </div>
   <div class="pagenum">28</div>
 </section>
@@ -94,15 +94,15 @@
 <!-- P4-S29 · 진입은 screening.py, 청산은 trading.py가 맡습니다 -->
 <section class="slide" style="padding:46px 76px 54px; justify-content:flex-start;">
   <div class="kicker">1단계 · 터틀 추세추종</div>
-  <h2 style="font-size:36px; margin-bottom:15px;">진입은 <code>screening.py</code>, 청산은 <code>trading.py</code>가 맡습니다</h2>
+  <h2 style="font-size:36px; margin-bottom:15px;">진입은 <code>screening.py</code>, 청산은 <code>trading.py</code>에서 처리합니다</h2>
   <table class="plain-table" aria-label="터틀 전략의 진입과 청산 책임 구분">
     <thead><tr><th style="width:16%;">구분</th><th style="width:24%;">담당 파일</th><th>입력과 판단</th><th style="width:22%;">확인할 결과</th></tr></thead>
     <tbody>
       <tr><td><strong>진입</strong></td><td><code>screening.py</code></td><td>오늘 가격이 이전 20일 최고가를 넘었는지 확인</td><td>후보 목록에 포함</td></tr>
-      <tr><td><strong>청산</strong></td><td><code>trading.py</code></td><td>보유 뒤 현재가가 최근 10일 최저가를 밑돌았는지 확인</td><td>청산 사유 반환</td></tr>
+      <tr><td><strong>청산</strong></td><td><code>trading.py</code></td><td>보유 뒤 현재가가 최근 10일 최저가를 밑돌았는지 확인</td><td>청산 사유를 반환</td></tr>
     </tbody>
   </table>
-  <div class="takeaway" style="margin-top:14px; font-size:18px;">‘터틀 전략’이라는 이름으로 한곳에 몰아넣지 않습니다. <strong>후보를 고르는 일과 보유 종목을 파는 일은 실행 시점이 다릅니다.</strong></div>
+  <div class="takeaway" style="margin-top:14px; font-size:18px;">‘터틀 전략’의 규칙을 한곳에 몰아넣지 않습니다. <strong>후보를 고르는 일과 보유 종목을 파는 일은 실행 시점이 다릅니다.</strong></div>
   <div class="action-pair">
     <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy"><code>P4-D1.md</code>의 설계 표에서 진입·청산 담당 파일과 반환값을 짚습니다.</div></div>
     <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">자기 규칙이 “어떤 종목을 볼지”인지 “언제 나올지”인지 구분하고 담당 파일을 적습니다.</div></div>
@@ -113,14 +113,14 @@
 <!-- P4-S30 · 터틀 구현 프롬프트에는 입력과 확인 방법을 함께 적습니다 -->
 <section class="slide" style="padding:45px 76px 54px; justify-content:flex-start;">
   <div class="kicker">강사 시연 P4-D1</div>
-  <h2 style="font-size:36px; margin-bottom:14px;">“터틀 전략을 넣어줘”보다 계산 기준과 확인 방법을 함께 적습니다</h2>
+  <h2 style="font-size:36px; margin-bottom:14px;">“터틀 전략을 넣어줘” 대신 계산 기준과 확인 방법을 적습니다</h2>
   <div class="code-window"><pre><span class="comment">원하는 결과</span>  20일 신고가 돌파 → 후보 / 10일 저가 이탈 → 청산
 <span class="comment">바꿀 곳</span>      screening.py 진입, trading.py 청산
 <span class="comment">지킬 약속</span>    함수 입력·반환, mock·simulation, 실거래 차단
 <span class="comment">확인할 방법</span>  고정 가격 예시, 관련 테스트, 전체 실행 로그</pre></div>
   <div class="action-pair">
-    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy"><code>P4-D1.md</code>의 PRD·입력값·검증 계획을 먼저 펼쳐 결과 표의 기준을 확인합니다.</div></div>
-    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">P4-05 또는 P4-07이 MY_STRATEGY.md의 진입·청산 원칙을 제대로 읽었는지 확인합니다.</div></div>
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy"><code>P4-D1.md</code>의 PRD·입력값·검증 계획을 펼쳐 결과 표의 기준을 확인합니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">P4-05 또는 P4-07이 MY_STRATEGY.md의 진입·청산 원칙을 읽었는지 확인합니다.</div></div>
   </div>
   <div class="pagenum">30</div>
 </section>
@@ -128,7 +128,7 @@
 <!-- P4-S31 · 터틀 구현은 후보와 청산 사유로 확인합니다 -->
 <section class="slide" style="padding:46px 76px 54px; justify-content:flex-start;">
   <div class="kicker">1단계의 완료 기준</div>
-  <h2 style="font-size:36px; margin-bottom:14px;">같은 가격을 넣었을 때 어떤 판단이 나오는지 확인합니다</h2>
+  <h2 style="font-size:36px; margin-bottom:14px;">같은 가격을 넣고 판단이 예상대로 나오는지 봅니다</h2>
   <table style="width:100%; border-collapse:collapse; font-size:20px; line-height:1.45;">
     <thead><tr style="color:var(--accent); border-bottom:2px solid var(--accent);"><th style="text-align:left; padding:10px;">확인 장면</th><th style="text-align:left; padding:10px;">입력</th><th style="text-align:left; padding:10px;">기대 결과</th><th style="text-align:left; padding:10px;">어디서 확인할까</th></tr></thead>
     <tbody>
@@ -138,8 +138,8 @@
     </tbody>
   </table>
   <div class="action-pair">
-    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy"><code>P4-D1.md</code>의 수정 전후 결과 표에서 돌파 후보와 10일 저가 청산 fixture를 보여줍니다.</div></div>
-    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">자기 규칙도 통과 예시 하나와 보류 예시 하나를 만들고 결과가 예상과 같은지 확인합니다.</div></div>
+    <div class="instructor-action"><div class="action-label">강사 시연</div><div class="action-copy"><code>P4-D1.md</code>의 수정 전후 결과 표에서 돌파 후보와 10일 저가 청산 fixture를 보여 줍니다.</div></div>
+    <div class="student-action"><div class="action-label">수강생 실습</div><div class="action-copy">자기 규칙도 통과 예시와 보류 예시를 하나씩 만들고 결과를 비교합니다.</div></div>
   </div>
   <div class="pagenum">31</div>
 </section>

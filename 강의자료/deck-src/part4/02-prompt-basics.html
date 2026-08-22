@@ -1,7 +1,7 @@
 <!-- P4-S11 · 에이전트는 맡은 일과 결과 형식을 미리 정해 둔 AI 작업자입니다 -->
 <section class="slide" style="padding:44px 72px 39px; justify-content:flex-start;">
-  <div class="kicker" style="margin-bottom:6px;">에이전트 기초 · 역할</div>
-  <h2 style="font-size:35px; margin-bottom:10px;">에이전트는 맡은 일과 결과 형식을 미리 정해 둔 AI 작업자입니다</h2>
+  <div class="kicker" style="margin-bottom:6px;">에이전트 기초 · 맡은 역할</div>
+  <h2 style="font-size:35px; margin-bottom:10px;">에이전트는 맡은 일과 결과 형식을 정해 둔 AI 작업자입니다</h2>
   <svg class="editorial-diagram" viewBox="0 0 1120 324" role="img" aria-labelledby="p4s11-title p4s11-desc">
     <title id="p4s11-title">수급 분석가 에이전트의 입력, 역할, 출력</title>
     <desc id="p4s11-desc">AgentSpec으로 정의한 수급 분석가는 evidence를 받아 수급만 설명하고 supply_summary 키가 있는 JSON 결과를 돌려준다.</desc>
@@ -13,16 +13,16 @@
     <rect x="20" y="100" width="266" height="116" class="node"/><text x="46" y="137" class="diagram-step">입력</text><text x="46" y="171" class="label mono">evidence</text><text x="46" y="199" class="sub-label">가격·거래량·수급 자료</text>
     <rect x="410" y="76" width="300" height="164" class="focus"/><text x="560" y="115" text-anchor="middle" class="diagram-step mono">AgentSpec</text><text x="560" y="151" text-anchor="middle" class="label">수급 분석가</text><text x="560" y="183" text-anchor="middle" class="sub-label">수급만 설명하고 매수 판단은 하지 않음</text><text x="560" y="215" text-anchor="middle" class="flow-label mono">output_key = supply_summary</text>
     <rect x="834" y="100" width="266" height="116" class="node"/><text x="860" y="137" class="diagram-step">출력</text><text x="860" y="171" class="label mono">{"summary": "..."}</text><text x="860" y="199" class="sub-label">약속한 키가 있는 JSON</text>
-    <text x="20" y="286" class="sub-label">여기서 보는 에이전트는 코드 안에서 분석 한 가지를 맡습니다. 코딩 에이전트처럼 파일 전체를 마음대로 고치는 역할이 아닙니다.</text>
+    <text x="20" y="286" class="sub-label">여기서 에이전트는 분석 한 가지를 맡습니다. 코딩 에이전트처럼 파일 전체를 고치지는 않습니다.</text>
   </svg>
   <div class="pagenum">11</div>
 </section>
 
 <!-- P4-S12 · 에이전트가 바깥 정보를 읽으려면 도구가 필요합니다 -->
 <section class="slide" style="padding:43px 66px 38px; justify-content:flex-start;">
-  <div class="kicker" style="margin-bottom:6px;">에이전트 기초 · 도구 호출</div>
+  <div class="kicker" style="margin-bottom:6px;">에이전트 기초 · 도구 사용</div>
   <h2 style="font-size:35px; margin-bottom:9px;">에이전트가 바깥 정보를 읽으려면 도구가 필요합니다</h2>
-  <p style="font-size:19px; color:var(--muted); margin:0 0 5px;">이 프로젝트에서는 LLM 호출도 입력을 보내고 결과를 받는 하나의 도구 사용입니다.</p>
+  <p style="font-size:19px; color:var(--muted); margin:0 0 5px;">이 프로젝트에서는 LLM 호출도 입력을 보내고 결과를 받는 도구 사용입니다.</p>
   <svg class="editorial-diagram" viewBox="0 0 1150 312" role="img" aria-labelledby="p4s12-title p4s12-desc">
     <title id="p4s12-title">근거 준비부터 LLM 도구 호출과 JSON 확인까지</title>
     <desc id="p4s12-desc">analysis.py가 evidence를 만들고 AgentSpec이 프롬프트를 정한 뒤 llm_complete를 호출한다. extract_json이 summary JSON을 확인해 sections에 저장하며 실패하면 규칙 보고서 폴백을 사용한다.</desc>
@@ -38,14 +38,14 @@
     <rect x="904" y="108" width="232" height="96" class="node"/><text x="924" y="141" class="diagram-step">5 · 저장</text><text x="924" y="172" class="label mono">sections</text><text x="924" y="193" class="sub-label">보고서 한 부분이 됨</text>
     <path class="diagram-edge-quiet" d="M550 216 V260 H770"/><text x="790" y="265" class="sub-label">호출이나 JSON 확인이 실패하면 해당 부분만 규칙 보고서로 대체</text>
   </svg>
-  <div class="takeaway" style="margin-top:5px; font-size:18px;">도구 호출은 거창한 기능이 아닙니다. <strong>필요한 입력을 보내고, 돌아온 결과가 약속한 모양인지 확인하는 과정</strong>입니다.</div>
+  <div class="takeaway" style="margin-top:5px; font-size:18px;"><strong>필요한 입력을 보내고, 돌아온 결과가 약속한 모양인지 확인하는 일</strong>이 도구 호출입니다.</div>
   <div class="pagenum">12</div>
 </section>
 
 <!-- P4-S13 · 에이전트끼리 직접 대화하지 않고 결과를 다음 입력으로 넘깁니다 -->
 <section class="slide" style="padding:44px 72px 38px; justify-content:flex-start;">
-  <div class="kicker" style="margin-bottom:6px;">에이전트 기초 · 결과 전달</div>
-  <h2 style="font-size:35px; margin-bottom:10px;">에이전트끼리 직접 대화하지 않고 결과를 다음 입력으로 넘깁니다</h2>
+  <div class="kicker" style="margin-bottom:6px;">에이전트 기초 · 결과 넘기기</div>
+  <h2 style="font-size:35px; margin-bottom:10px;">에이전트는 결과를 다음 입력으로 넘깁니다</h2>
   <svg class="editorial-diagram" viewBox="0 0 1120 318" role="img" aria-labelledby="p4s13-title p4s13-desc">
     <title id="p4s13-title">전문 분석가의 결과가 편집 에이전트와 매수 에이전트로 넘어가는 흐름</title>
     <desc id="p4s13-desc">전문 분석가가 technical_summary와 supply_summary 등을 만들고 편집 에이전트가 executive_summary를 만든 뒤 run_buy_agent가 완성 보고서를 읽는다.</desc>
@@ -57,7 +57,7 @@
     <rect x="14" y="72" width="320" height="168" class="node"/><text x="40" y="108" class="diagram-step">여섯 전문 분석가</text><text x="40" y="140" class="sub-label mono">technical_summary · supply_summary</text><text x="40" y="166" class="sub-label mono">financial_summary · industry_summary</text><text x="40" y="192" class="sub-label mono">news_summary · market_condition</text><text x="40" y="222" class="sub-label">각자 맡은 관점만 정리</text>
     <rect x="438" y="60" width="280" height="192" class="focus"/><text x="578" y="101" text-anchor="middle" class="diagram-step">편집 에이전트</text><text x="578" y="139" text-anchor="middle" class="label">겹치는 내용과 충돌을 정리</text><text x="578" y="178" text-anchor="middle" class="flow-label mono">executive_summary</text><text x="578" y="214" text-anchor="middle" class="sub-label">새 매수 판단은 보태지 않음</text>
     <rect x="822" y="72" width="284" height="168" class="node"/><text x="848" y="108" class="diagram-step mono">run_buy_agent</text><text x="848" y="142" class="label">보고서를 읽고</text><text x="848" y="173" class="sub-label">진입 시나리오를 만듦</text><text x="848" y="207" class="sub-label">그다음 trading.py가 다시 확인</text>
-    <text x="14" y="290" class="sub-label">통신의 핵심은 대화가 아니라 <strong>키 이름과 JSON 구조를 맞춰 결과를 넘기는 것</strong>입니다.</text>
+    <text x="14" y="290" class="sub-label">핵심은 대화가 아니라 <strong>키 이름과 JSON 구조를 맞춰 결과를 넘기는 것</strong>입니다.</text>
   </svg>
   <div class="pagenum">13</div>
 </section>
@@ -65,7 +65,7 @@
 <!-- P4-S14 · 여러 에이전트를 연결하는 여섯 패턴 -->
 <section class="slide" style="padding:29px 64px 62px; justify-content:flex-start;">
   <div class="kicker" style="margin-bottom:3px; font-size:16px;">에이전트 기초 · 오케스트레이션 패턴</div>
-  <h2 style="font-size:31px; margin-bottom:7px;">여러 에이전트는 일을 연결하는 방식에 따라 패턴이 달라집니다</h2>
+  <h2 style="font-size:31px; margin-bottom:7px;">여러 에이전트를 연결하는 방식은 여섯 가지로 나눠 볼 수 있습니다</h2>
   <table class="plain-table" aria-label="AI 에이전트 디자인 패턴과 lecture-prism의 적용" style="table-layout:fixed;">
     <thead>
       <tr>
@@ -114,15 +114,15 @@
       </tr>
     </tbody>
   </table>
-  <div class="takeaway" style="margin-top:7px; font-size:16px; line-height:1.3;">lecture-prism의 중심은 <strong>예측 가능한 순차 파이프라인</strong>이며, 분석 단계 안에 <strong>병렬 전문가</strong> 패턴을 중첩합니다.</div>
+  <div class="takeaway" style="margin-top:7px; font-size:16px; line-height:1.3;">lecture-prism은 <strong>예측 가능한 순차 파이프라인</strong>을 중심으로 움직이고, 분석 단계 안에서는 <strong>병렬 전문가</strong>를 사용합니다.</div>
   <div style="position:absolute; left:64px; right:64px; bottom:47px; font-size:10.5px; line-height:1.25; color:oklch(0.58 0.012 264); white-space:nowrap;">[A] Anthropic, <a href="https://www.anthropic.com/engineering/building-effective-agents" style="color:inherit;"><em>Building effective agents</em></a> (2024-12-19) · [M] Microsoft Azure Architecture Center, <a href="https://learn.microsoft.com/en-us/azure/architecture/ai-ml/guide/ai-agent-design-patterns" style="color:inherit;"><em>AI agent orchestration patterns</em></a> (2026-02-12 갱신) · [O] OpenAI Agents SDK, <a href="https://openai.github.io/openai-agents-python/multi_agent/" style="color:inherit;"><em>Agent orchestration</em></a> (2026-08-16 확인)</div>
   <div class="pagenum">14</div>
 </section>
 
 <!-- P4-S15 · 하네스는 전략 정리, 구현, 검증을 차례로 맡깁니다 -->
 <section class="slide" style="padding:43px 66px 38px; justify-content:flex-start;">
-  <div class="kicker" style="margin-bottom:6px;">Strategy Harness Lite · 역할을 나눈 이유</div>
-  <h2 style="font-size:35px; margin-bottom:10px;">하네스는 전략 정리, 구현, 검증을 차례로 맡깁니다</h2>
+  <div class="kicker" style="margin-bottom:6px;">Strategy Harness Lite · 역할을 나눈 까닭</div>
+  <h2 style="font-size:35px; margin-bottom:10px;">하네스는 전략 정리, 구현, 검증을 나눠 맡깁니다</h2>
   <svg class="editorial-diagram" viewBox="0 0 1152 316" role="img" aria-labelledby="p4s15-title p4s15-desc">
     <title id="p4s15-title">Strategy Harness Lite의 세 역할</title>
     <desc id="p4s15-desc">MY_STRATEGY.md에서 출발해 lecture-strategy-interviewer가 요구를 정리하고 lecture-strategy-implementer가 한 파일을 수정한 뒤 lecture-strategy-verifier가 mock 결과를 확인한다.</desc>

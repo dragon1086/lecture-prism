@@ -1,12 +1,12 @@
 <!-- P3-S15 · 이 종목을 사기 전에, 어떤 정보까지 확인하고 싶으세요 -->
 <section class="slide split large-diagram">
   <div class="txt">
-    <div class="kicker">모듈 2 · 먼저 풀 문제</div>
+    <div class="kicker">모듈 2 · 시작 질문</div>
     <h2>이 종목을 사기 전에, 어떤 정보까지 확인하고 싶으세요?</h2>
   </div>
   <div class="img">
     <img class="reference-shot" src="../docs/assets/prism-insight/screening-analysis-deep-dive.png" alt="선별된 종목을 여섯 분석 에이전트가 조사하는 흐름">
-    <p class="caption">최종 후보마다 주가·거래량, 투자 주체, 실적·재무, 사업·경쟁력, 뉴스·주도주, 시장·업종을 따로 조사합니다. 여섯 방향의 보고서는 투자 전략과 요약 보고서로 합칩니다.</p>
+    <p class="caption">최종 후보마다 주가·거래량, 투자 주체, 실적·재무, 사업·경쟁력, 뉴스·주도주, 시장·업종을 따로 봅니다. 여섯 방향의 보고서를 투자 전략과 요약 보고서로 묶습니다.</p>
   </div>
   <div class="pagenum">15</div>
 </section>
@@ -19,7 +19,7 @@
   </div>
   <div class="img">
     <img class="reference-shot" src="assets/prism-analysis-agent-map.png" alt="주가 거래량, 투자자 수급, 기업 현황, 기업 개요, 뉴스 주도주, 시장 지수 분석 에이전트">
-    <p class="caption">원본 코드의 에이전트 이름과 보고서 섹션을 바탕으로 만든 강의용 구조도입니다.</p>
+    <p class="caption">원본 코드의 에이전트 이름과 보고서 섹션을 한눈에 보도록 정리한 구조도입니다.</p>
   </div>
   <div class="pagenum">16</div>
 </section>
@@ -32,7 +32,7 @@
   </div>
   <div class="img">
     <img class="reference-shot" src="assets/prism-analysis-prompt-quant.png" alt="주가 거래량, 투자자 수급, 시장 지수 분석가의 핵심 프롬프트">
-    <p class="caption">원본 프롬프트의 핵심 제약을 옮긴 개념도입니다. 그림 속 차트와 수치는 실제 종목 데이터가 아닙니다.</p>
+    <p class="caption">원본 프롬프트의 핵심 제약만 옮긴 그림입니다. 차트와 수치는 설명용입니다.</p>
   </div>
   <div class="pagenum">17</div>
 </section>
@@ -45,34 +45,34 @@
   </div>
   <div class="img">
     <img class="reference-shot" src="assets/prism-analysis-prompt-context.png" alt="기업 현황, 기업 개요, 뉴스 주도주 분석가의 핵심 프롬프트">
-    <p class="caption">원본 프롬프트를 줄여 표현한 개념도입니다. 화면의 회사·뉴스·재무 수치는 설명용이며 실제 데이터가 아닙니다.</p>
+    <p class="caption">원본 프롬프트를 줄여 표현한 그림입니다. 화면의 회사·뉴스·재무 수치는 설명용입니다.</p>
   </div>
   <div class="pagenum">18</div>
 </section>
 
 <!-- P3-S19 · 여섯 보고서는 조건부 투자 전략과 요약으로 합쳐집니다 -->
 <section class="slide">
-  <div class="kicker">원본 PRISM의 보고서 조립</div>
-  <h2>여섯 보고서를 모아<br>조건부 투자 전략을 만듭니다</h2>
+  <div class="kicker">원본 PRISM · 보고서 조립</div>
+  <h2>여섯 보고서를 모아<br>조건부 전략을 만듭니다</h2>
   <div class="flow">
-    <div class="step"><div class="n">독립 조사</div><div class="t">6개 섹션</div><div class="d">주가·수급·기업·뉴스·시장 근거를 따로 만듭니다.</div></div>
-    <div class="step"><div class="n">기본은 순차</div><div class="t">호출 제어</div><div class="d">API 제한을 지키고, 한 섹션의 실패가 전체 보고서를 막지 않게 합니다.</div></div>
-    <div class="step"><div class="n">근거 통합</div><div class="t">투자 전략</div><div class="d">기간별 관점, 조건부 가격대, 위험을 정리합니다.</div></div>
-    <div class="step"><div class="n">읽기용 출력</div><div class="t">요약·PDF</div><div class="d">근거와 기준일을 한 보고서에 묶습니다.</div></div>
+    <div class="step"><div class="n">독립 조사</div><div class="t">6개 섹션</div><div class="d">주가·수급·기업·뉴스·시장 근거를 나눠 만듭니다.</div></div>
+    <div class="step"><div class="n">기본은 순차</div><div class="t">호출 제어</div><div class="d">API 제한을 지키고, 한 섹션의 실패가 전체 보고서를 멈추지 않게 합니다.</div></div>
+    <div class="step"><div class="n">근거 통합</div><div class="t">투자 전략</div><div class="d">기간별 관점·조건부 가격대·위험을 묶습니다.</div></div>
+    <div class="step"><div class="n">읽기용 출력</div><div class="t">요약·PDF</div><div class="d">근거와 기준일을 한 보고서에 남깁니다.</div></div>
   </div>
-  <div class="takeaway">보고서의 매수 고려 가격은 주문이 아닙니다. 실제 Enter / No Entry는 모듈 3이 다시 결정합니다.</div>
+  <div class="takeaway">보고서에 적힌 매수 고려 가격은 주문이 아닙니다. 실제 Enter / No Entry는 모듈 3에서 다시 결정합니다.</div>
   <div class="pagenum">19</div>
 </section>
 
 <!-- P3-S20 · lecture-prism도 일곱 보고서 에이전트를 조립합니다 -->
 <section class="slide comparison-slide" id="p3-s19">
   <div class="txt">
-    <div class="kicker">원본과 강의용 축소판 비교</div>
+    <div class="kicker">두 구조 비교</div>
     <h2>강의용도 여섯 전문 에이전트와 편집 에이전트를 조립합니다</h2>
   </div>
   <div class="img">
     <img class="reference-shot comparison-shot" src="assets/lecture-compare-analysis.png" alt="PRISM Insight와 lecture-prism의 독립 분석 보고서 에이전트 및 편집 에이전트 비교">
-    <p class="caption"><code>analysis_agents.py</code>에는 역할과 프롬프트를 나누어 두었습니다. <code>analysis.py</code>는 전문 에이전트 6개와 편집 에이전트의 결과를 모아 보고서를 만듭니다.</p>
+    <p class="caption"><code>analysis_agents.py</code>는 역할과 프롬프트를 나눠 둡니다. <code>analysis.py</code>는 전문 에이전트 6개와 편집 에이전트의 결과를 모아 보고서를 만듭니다.</p>
   </div>
   <div class="pagenum">20</div>
 </section>
@@ -81,12 +81,12 @@
 <section class="slide prompt-screen">
   <div class="kicker">모듈 2 · 구조 질문과 단독 실행</div>
   <h2>프롬프트 파일에서 P3-M2 블록 전체를 복사합니다</h2>
-  <div class="prompt-lead">슬라이드의 요약문을 다시 입력하지 말고, 수강생용 프롬프트 파일을 열어 완성된 블록을 씁니다.</div>
+  <div class="prompt-lead">슬라이드 요약문을 다시 입력하지 않습니다. 수강생용 프롬프트 파일의 완성된 블록을 사용합니다.</div>
   <div class="prompt-columns">
     <div class="prompt-panel">
       <p><span class="num">1.</span> <strong>수강생 붙여넣기 프롬프트 · 파트 3</strong> 파일을 엽니다.</p>
       <p><span class="num">2.</span> <strong>P3-M2</strong>를 찾습니다.</p>
-      <p><span class="num">3.</span> ‘코딩 에이전트에 붙여넣기’ 코드 블록 <strong>전체</strong>를 복사해 한 번만 붙여넣습니다.</p>
+      <p><span class="num">3.</span> ‘코딩 에이전트에 붙여넣기’ 블록 <strong>전체</strong>를 복사해 한 번 붙여넣습니다.</p>
     </div>
     <div class="prompt-panel">
       <p><span class="num">내 전략에 대입 1</span> 내 전략에서 숫자로 확인할 근거와 맥락으로 읽을 근거는 각각 무엇일까?</p>
@@ -94,7 +94,7 @@
       <p><span class="num">내 전략에 대입 3</span> 어떤 근거가 빠지면 매수 판단을 다음 단계로 넘기지 않을까?</p>
     </div>
   </div>
-  <div class="prompt-branch">005930 실데이터를 한 번 읽고, 연결되지 않으면 연습 데이터로 자동 전환됩니다. LLM 없이도 읽을 만한 보고서가 <code>reports/</code>에 남습니다.</div>
+  <div class="prompt-branch">005930 실데이터를 한 번 읽고, 연결되지 않으면 연습 데이터로 전환합니다. LLM 없이도 읽을 만한 보고서가 <code>reports/</code>에 남습니다.</div>
   <div class="pagenum">21</div>
 </section>
 
