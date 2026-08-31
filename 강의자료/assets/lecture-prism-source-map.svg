@@ -1,141 +1,97 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1672" height="941" viewBox="0 0 1672 941" role="img" aria-labelledby="title desc">
-  <title id="title">lecture-prism 기본 실행 파일 관계도</title>
-  <desc id="desc">main.py에서 screening, analysis, trading, feedback으로 이어지고 DB와 dashboard에서 결과를 확인하며 Discord 알림은 선택적으로 연결되는 구조</desc>
-  <defs>
-    <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
-      <path d="M24 0H0V24" fill="none" stroke="#18243a" stroke-width="1"/>
-    </pattern>
-    <linearGradient id="primary" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#18255d"/>
-      <stop offset="1" stop-color="#271d57"/>
-    </linearGradient>
-    <linearGradient id="data" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#062d30"/>
-      <stop offset="1" stop-color="#102947"/>
-    </linearGradient>
-    <linearGradient id="optional" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#2b2410"/>
-      <stop offset="1" stop-color="#171b28"/>
-    </linearGradient>
-    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
-      <path d="M0 0L12 6L0 12Z" fill="#f4f2eb"/>
-    </marker>
-    <marker id="arrowGreen" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
-      <path d="M0 0L12 6L0 12Z" fill="#72e0b0"/>
-    </marker>
-    <marker id="arrowGold" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
-      <path d="M0 0L12 6L0 12Z" fill="#ffc21c"/>
-    </marker>
-    <style>
-      .file{font-family:Menlo,Consolas,monospace;font-size:28px;fill:#fff;text-anchor:middle}
-      .role{font-family:"Apple SD Gothic Neo","Noto Sans KR",sans-serif;font-size:25px;fill:#f5f3ee;text-anchor:middle}
-      .small{font-family:"Apple SD Gothic Neo","Noto Sans KR",sans-serif;font-size:21px;fill:#dce5f2;text-anchor:middle}
-      .box{stroke-width:3;rx:14}
-      .flow{fill:none;stroke:#f4f2eb;stroke-width:4;marker-end:url(#arrow)}
-      .dataflow{fill:none;stroke:#72e0b0;stroke-width:3;marker-end:url(#arrowGreen)}
-      .optional{fill:none;stroke:#ffc21c;stroke-width:4;stroke-dasharray:12 8;marker-end:url(#arrowGold)}
-    </style>
-  </defs>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="lecture-prism-source-map-title lecture-prism-source-map-desc">
+    <title id="lecture-prism-source-map-title">lecture-prism 첫 실행 흐름</title>
+    <desc id="lecture-prism-source-map-desc">main.py가 후보 선별, 분석, 가상 매매 판단, 결과 기록을 차례로 실행합니다. 아래에는 실행 환경, 데이터와 보고서, 저장과 화면, 선택 기능과 참고 자료를 묶어 보여 줍니다.</desc>
+    <defs>
+      <marker id="source-map-arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+        <path d="M0 0L12 6L0 12Z" fill="#aeb8cb"/>
+      </marker>
+      <marker id="source-map-arrow-accent" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+        <path d="M0 0L12 6L0 12Z" fill="#73d99a"/>
+      </marker>
+      <style>
+        .eyebrow { font-family: "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", sans-serif; font-size: 24px; font-weight: 700; fill: #73d99a; letter-spacing: 1px; }
+        .rule { stroke: #2d3953; stroke-width: 2; }
+        .flow { fill: none; stroke: #aeb8cb; stroke-width: 4; marker-end: url(#source-map-arrow); }
+        .flow-accent { fill: none; stroke: #73d99a; stroke-width: 4; marker-end: url(#source-map-arrow-accent); }
+        .node { fill: #101827; stroke: #3c4a67; stroke-width: 2; }
+        .focal { fill: #102a27; stroke: #73d99a; stroke-width: 3; }
+        .support { fill: #0d1523; stroke: #34415c; stroke-width: 2; }
+        .num { font-family: "SFMono-Regular", "Cascadia Code", monospace; font-size: 16px; font-weight: 700; fill: #8f9bb3; text-anchor: middle; }
+        .num-focal { font-family: "SFMono-Regular", "Cascadia Code", monospace; font-size: 16px; font-weight: 700; fill: #73d99a; text-anchor: middle; }
+        .file { font-family: "SFMono-Regular", "Cascadia Code", monospace; font-size: 22px; font-weight: 700; fill: #f4f7ff; text-anchor: middle; }
+        .file-small { font-family: "SFMono-Regular", "Cascadia Code", monospace; font-size: 18px; font-weight: 700; fill: #f4f7ff; text-anchor: middle; }
+        .file-support { font-family: "SFMono-Regular", "Cascadia Code", monospace; font-size: 16px; font-weight: 700; fill: #d9e0ee; text-anchor: middle; }
+        .role { font-family: "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", sans-serif; font-size: 20px; fill: #c5ccdc; text-anchor: middle; }
+        .support-title { font-family: "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", sans-serif; font-size: 20px; font-weight: 700; fill: #f4f7ff; text-anchor: middle; }
+        .support-note { font-family: "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", sans-serif; font-size: 16px; fill: #aeb8cb; text-anchor: middle; }
+        .note { font-family: "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", sans-serif; font-size: 22px; fill: #aeb8cb; }
+      </style>
+    </defs>
 
-  <rect width="1672" height="941" fill="#050d1b"/>
-  <rect width="1672" height="941" fill="url(#grid)" opacity=".82"/>
+    <rect width="1600" height="900" fill="#050d1b"/>
+    <text class="eyebrow" x="64" y="104">처음 실행에서 보는 핵심 흐름</text>
+    <line class="rule" x1="64" y1="144" x2="1536" y2="144"/>
 
-  <!-- runtime choices -->
-  <rect class="box" x="340" y="46" width="410" height="118" fill="url(#primary)" stroke="#9b72ff"/>
-  <text class="file" x="545" y="91">runtime_config.py</text>
-  <text class="role" x="545" y="132">실행 모드 · 안전 경계</text>
+    <!-- Arrows are drawn before nodes so every path stays readable. -->
+    <path class="flow" d="M296 356H356"/>
+    <path class="flow" d="M600 356H660"/>
+    <path class="flow" d="M904 356H964"/>
+    <path class="flow" d="M1208 356H1268"/>
+    <path class="flow-accent" d="M1396 424V580"/>
 
-  <rect class="box" x="1050" y="46" width="330" height="118" fill="url(#optional)" stroke="#ffc21c" stroke-dasharray="12 8"/>
-  <text class="file" x="1215" y="91">llm_provider.py</text>
-  <text class="role" x="1215" y="132">선택 AI 설명 · 실패하면 mock</text>
+    <rect class="node" x="64" y="288" width="232" height="136" rx="8"/>
+    <text class="num" x="180" y="324">01</text>
+    <text class="file" x="180" y="364">main.py</text>
+    <text class="role" x="180" y="400">시작과 순서</text>
 
-  <!-- main four-stage path -->
-  <rect class="box" x="40" y="292" width="235" height="132" fill="url(#primary)" stroke="#8f75ff"/>
-  <text class="file" x="157" y="344">main.py</text>
-  <text class="role" x="157" y="389">실행을 조율</text>
+    <rect class="node" x="368" y="288" width="232" height="136" rx="8"/>
+    <text class="num" x="484" y="324">02</text>
+    <text class="file" x="484" y="364">screening.py</text>
+    <text class="role" x="484" y="400">후보 고르기</text>
 
-  <rect class="box" x="355" y="292" width="250" height="132" fill="url(#primary)" stroke="#8f75ff"/>
-  <text class="file" x="480" y="344">screening.py</text>
-  <text class="role" x="480" y="389">후보 선별</text>
+    <rect class="node" x="672" y="288" width="232" height="136" rx="8"/>
+    <text class="num" x="788" y="324">03</text>
+    <text class="file" x="788" y="364">analysis.py</text>
+    <text class="role" x="788" y="400">분석 보고서</text>
 
-  <rect class="box" x="690" y="292" width="250" height="132" fill="url(#primary)" stroke="#8f75ff"/>
-  <text class="file" x="815" y="344">analysis.py</text>
-  <text class="role" x="815" y="389">6개 근거 · 점수와 가격</text>
+    <rect class="node" x="976" y="288" width="232" height="136" rx="8"/>
+    <text class="num" x="1092" y="324">04</text>
+    <text class="file" x="1092" y="364">trading.py</text>
+    <text class="role" x="1092" y="400">가상 매매 판단</text>
 
-  <rect class="box" x="1020" y="292" width="285" height="132" fill="url(#primary)" stroke="#8f75ff"/>
-  <text class="file" x="1162" y="344">trading.py</text>
-  <text class="role" x="1162" y="383">청산 먼저 · 신규 진입 판단</text>
-  <text class="small" x="1162" y="410">가격 배열 · 손익비 · 수량</text>
+    <rect class="node" x="1280" y="288" width="232" height="136" rx="8"/>
+    <text class="num" x="1396" y="324">05</text>
+    <text class="file" x="1396" y="364">feedback.py</text>
+    <text class="role" x="1396" y="400">결과 기록</text>
 
-  <rect class="box" x="1390" y="292" width="242" height="132" fill="url(#primary)" stroke="#8f75ff"/>
-  <text class="file" x="1511" y="344">feedback.py</text>
-  <text class="role" x="1511" y="383">분석값과 체결 결과로</text>
-  <text class="small" x="1511" y="410">교훈 기록</text>
+    <text class="eyebrow" x="64" y="528">흐름을 돕는 보조 요소</text>
 
-  <path class="flow" d="M275 358H345"/>
-  <path class="flow" d="M605 358H680"/>
-  <path class="flow" d="M940 358H1010"/>
-  <path class="flow" d="M1305 358H1380"/>
+    <rect class="support" x="64" y="568" width="288" height="160" rx="8"/>
+    <text class="support-title" x="208" y="612">실행 환경</text>
+    <text class="file-support" x="208" y="652">runtime_config.py</text>
+    <text class="file-support" x="208" y="680">llm_provider.py</text>
+    <text class="support-note" x="208" y="712">실행 모드와 AI 연결</text>
 
-  <!-- configuration fans out -->
-  <path class="flow" d="M545 164V220H157V282"/>
-  <path class="flow" d="M545 220H480V282"/>
-  <path class="flow" d="M545 220H815V282"/>
-  <path class="optional" d="M1215 164V236H815V282"/>
+    <rect class="support" x="400" y="568" width="288" height="160" rx="8"/>
+    <text class="support-title" x="544" y="612">데이터·보고서</text>
+    <text class="file-support" x="544" y="652">data_source.py</text>
+    <text class="file-support" x="544" y="680">report_writer.py</text>
+    <text class="support-note" x="544" y="712">데이터를 읽고 설명을 정리</text>
 
-  <!-- data/report/storage/dashboard -->
-  <rect class="box" x="95" y="555" width="315" height="118" fill="url(#data)" stroke="#72e0b0"/>
-  <text class="file" x="252" y="602">data_source.py</text>
-  <text class="role" x="252" y="645">연습 데이터 / yfinance</text>
+    <rect class="support" x="736" y="568" width="360" height="160" rx="8"/>
+    <text class="support-title" x="916" y="612">선택 기능·참고</text>
+    <text class="file-support" x="916" y="652">notifications.py · Discord</text>
+    <text class="file-support" x="916" y="680">brokers/ · cores/</text>
+    <text class="support-note" x="916" y="712">알림, 증권사 연동, 원본 비교</text>
 
-  <rect class="box" x="655" y="555" width="315" height="118" fill="url(#data)" stroke="#72e0b0"/>
-  <text class="file" x="812" y="602">report_writer.py</text>
-  <text class="role" x="812" y="638">분석값을 사람이 읽는</text>
-  <text class="small" x="812" y="663">매매 시나리오로 정리</text>
+    <rect class="focal" x="1280" y="568" width="232" height="160" rx="8"/>
+    <text class="num-focal" x="1396" y="604">저장·화면</text>
+    <text class="file-small" x="1396" y="636">prism.db</text>
+    <text class="file-small" x="1396" y="660">dashboard.py</text>
+    <text class="role" x="1396" y="696">결과를 저장하고</text>
+    <text class="role" x="1396" y="720">보여 줌</text>
 
-  <rect class="box" x="1120" y="555" width="245" height="118" fill="url(#data)" stroke="#72e0b0"/>
-  <text class="file" x="1242" y="602">db.py</text>
-  <text class="role" x="1242" y="645">prism.db · 기록 저장</text>
-
-  <rect class="box" x="1425" y="555" width="220" height="118" fill="url(#data)" stroke="#72e0b0"/>
-  <text class="file" x="1535" y="602">dashboard.py</text>
-  <text class="role" x="1535" y="638">분석 · 매매 · 피드백</text>
-  <text class="small" x="1535" y="663">한 화면에서 확인</text>
-
-  <path class="dataflow" d="M252 555V500H480V434"/>
-  <path class="dataflow" d="M252 500H815V434"/>
-  <path class="dataflow" d="M815 434V545"/>
-  <path class="dataflow" d="M1511 424V500H1242V545"/>
-  <path class="dataflow" d="M1365 614H1415"/>
-
-  <!-- optional outputs and reference -->
-  <rect class="box" x="55" y="744" width="335" height="102" fill="#242525" stroke="#969696"/>
-  <text class="file" x="222" y="788">cores/</text>
-  <text class="role" x="222" y="824">원본 PRISM 비교용 참고 자료</text>
-
-  <rect class="box" x="625" y="724" width="330" height="122" fill="url(#data)" stroke="#72e0b0"/>
-  <text class="file" x="790" y="770">notifications.py</text>
-  <text class="role" x="790" y="807">후보 · 분석 · 매매 판단</text>
-  <text class="small" x="790" y="834">계좌정보는 보내지 않음</text>
-
-  <rect class="box" x="1030" y="744" width="265" height="102" fill="url(#optional)" stroke="#ffc21c" stroke-dasharray="12 8"/>
-  <text class="file" x="1162" y="788">Discord</text>
-  <text class="role" x="1162" y="824">선택 판단 알림</text>
-
-  <rect class="box" x="1390" y="744" width="245" height="102" fill="url(#optional)" stroke="#ffc21c" stroke-dasharray="12 8"/>
-  <text class="file" x="1512" y="788">brokers/</text>
-  <text class="role" x="1512" y="824">실주문 이중 안전장치</text>
-
-  <path class="dataflow" d="M157 424V700H790V714"/>
-  <path class="optional" d="M955 785H1020"/>
-  <path class="optional" d="M1512 734V470H1162V434"/>
-
-  <!-- legend -->
-  <rect x="170" y="874" width="1332" height="48" rx="12" fill="#071326" stroke="#7d8798" stroke-width="2"/>
-  <line x1="235" y1="898" x2="325" y2="898" stroke="#f4f2eb" stroke-width="4"/>
-  <text class="small" x="465" y="906">실선 = 기본 실행</text>
-  <line x1="650" y1="898" x2="740" y2="898" stroke="#ffc21c" stroke-width="4" stroke-dasharray="12 8"/>
-  <text class="small" x="875" y="906">점선 = 선택 연결</text>
-  <line x1="1070" y1="898" x2="1160" y2="898" stroke="#969696" stroke-width="4"/>
-  <text class="small" x="1305" y="906">회색 = 참고 자료</text>
-</svg>
+    <line class="rule" x1="64" y1="784" x2="1536" y2="784"/>
+    <text class="note" x="64" y="832">처음에는 연습 데이터와 가상 매매로 이 흐름을 끝까지 확인합니다.</text>
+  </svg>

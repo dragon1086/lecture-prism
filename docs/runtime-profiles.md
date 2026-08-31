@@ -166,6 +166,8 @@ LECTURE_TRADE_MODE=simulation
 
 P3-04는 실제 숫자 한 묶음이 오는지 확인하는 smoke test이므로 실패를 연습 데이터 성공으로 바꾸지 않습니다. Part 4 분석에서는 `LECTURE_SUPPLY_SOURCE=kis`를 이번 실행에만 적용합니다. KIS가 실패하면 다른 다섯 분석 섹션은 유지하고 수급만 거래량 프록시로 돌아가며, 보고서에 그 사실을 명시합니다. 어떤 경우에도 주문·취소·정정·잔고·계좌 API는 호출하지 않고 매매는 simulation입니다.
 
+P3-04와 Part 4 KIS 비교는 실행 전에 [`docs/runtime-execution-preflight.md`](runtime-execution-preflight.md)를 읽습니다. 프로젝트 `.venv`의 Python과 패키지를 먼저 확인하고, KIS·Yahoo DNS가 샌드박스에서만 실패하는지 승인된 외부 실행에서 구분합니다. DNS·연결 시간 초과·429·5xx 같은 읽기 요청만 최대 2회 재시도하며, 키 누락과 주문 계열 요청은 재시도하지 않습니다.
+
 ```text
 lecture-prism에서 삼성전자 005930의 KIS 읽기 전용 데이터 한 묶음을 확인해줘.
 내가 고른 환경은 [paper 또는 real]이야. kis_market_data.py와 테스트를 먼저 읽고 현재가와 일별 기관·외국인·개인 순매수만 호출하는지 확인해줘.

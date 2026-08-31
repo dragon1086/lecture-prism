@@ -221,6 +221,17 @@
   .prism-proof .img { flex: 1.05; }
   .prism-proof li { font-size: 22px; line-height: 1.43; padding: 7px 0 7px 35px; }
   .prism-proof .dashboard-shot { height: 320px; }
+  .survival-slide { padding: 46px 80px 48px; justify-content: flex-start; }
+  .survival-slide .kicker { margin-bottom: 8px; }
+  .survival-slide h2 { font-size: 44px; line-height: 1.18; margin-bottom: 12px; }
+  .survival-lead { max-width: 970px; color: var(--muted); font-size: 20px; line-height: 1.5; }
+  .survival-principles { display: grid; grid-template-columns: repeat(3, 1fr); margin: 28px 0 20px; }
+  .survival-principle { min-width: 0; padding: 0 26px; border-left: 1px solid oklch(0.34 0.03 264); }
+  .survival-principle:first-child { padding-left: 0; border-left: 0; }
+  .survival-principle .n { color: var(--accent); font-size: 14px; font-weight: 800; letter-spacing: 0.7px; }
+  .survival-principle h3 { margin: 8px 0 9px; font-size: 23px; line-height: 1.32; }
+  .survival-principle p { color: var(--muted); font-size: 17px; line-height: 1.55; word-break: keep-all; }
+  .survival-slide .takeaway { margin-top: auto; font-size: 21px; }
 
   @media screen {
     .slide { zoom: var(--screen-scale); margin: 6px auto; }
@@ -243,7 +254,7 @@
   <div class="kicker" style="position:relative; z-index:1;">패스트캠퍼스 · AI 네이티브 자동매매 시스템 구축</div>
   <h1 style="position:relative; z-index:1;">파트 3<br>실전 자동매매 시스템의<br>구현 패턴</h1>
   <p class="sub" style="position:relative; z-index:1;">강사 문상록 · PRISM Insight 개발·운영자</p>
-  <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
+  <div class="pagenum"></div>
 </section>
 
 <section data-slide-id="P3-S02" class="slide learning-outcomes">
@@ -270,26 +281,26 @@
     </div>
   </div>
   <p class="source">후원은 투자 판단이나 성과를 보증하지 않습니다.</p>
-  <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
+  <div class="pagenum"></div>
 </section>
 
 <section data-slide-id="P3-S03" class="slide divider">
   <div class="chnum">CH 01</div>
   <h1>이 수업을 듣는 이유부터 확인합니다</h1>
   <p class="sub">지금까지 나는 어떤 방식으로 투자했는가?<br>투자하면서 가장 아쉬웠던 일은 무엇인가?<br>이번 수업에서 해결하고 싶은 문제는 무엇인가?</p>
-  <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
+  <div class="pagenum"></div>
 </section>
 
 <section data-slide-id="P3-S04" class="slide">
   <div class="kicker">수업이 끝나면</div>
-  <h2>이 흐름을 혼자서<br>다시 따라갈 수 있습니다</h2>
+  <h2>오늘 수업에서<br>직접 확인하는 네 가지</h2>
   <div class="flow">
-    <div class="step"><div class="n">01</div><div class="t">전체 흐름을 말할 수 있습니다</div><div class="d">후보 찾기·분석·매매·기록이 각각 맡은 일을 구분합니다.</div></div>
-    <div class="step"><div class="n">02</div><div class="t">필요한 파일을 찾아 실행합니다</div><div class="d"><code>lecture-prism</code>에서 각 단계의 파일을 찾아 실행하고 결과를 읽습니다.</div></div>
-    <div class="step"><div class="n">03</div><div class="t">AI 의견과 주문 과정을 나눠 봅니다</div><div class="d">AI 의견, 진입 판단, 주문 접수와 체결 확인은 각각 다른 단계입니다.</div></div>
-    <div class="step"><div class="n">04</div><div class="t">수업 뒤에 쓸 자료를 챙깁니다</div><div class="d">구조도, 단계별 붙여넣기 프롬프트, 감시·대사·기억 압축 점검표를 남깁니다. 연습 데이터와 가상 체결 환경도 이어서 사용할 수 있습니다.</div></div>
+    <div class="step"><div class="n">01</div><div class="t">전체 흐름을 봅니다</div><div class="d">후보 찾기 → 분석<br>→ 매매 판단 → 기록</div></div>
+    <div class="step"><div class="n">02</div><div class="t">AI와 코드의 역할</div><div class="d">AI는 의견을 줍니다.<br>코드는 주문 전 조건을 확인합니다.</div></div>
+    <div class="step"><div class="n">03</div><div class="t">안전장치를 확인합니다</div><div class="d">손절·수량·주문 접수와<br>체결을 따로 확인합니다.</div></div>
+    <div class="step"><div class="n">04</div><div class="t">내 컴퓨터에서 실행합니다</div><div class="d">API 키 없이 연습 데이터로<br>가상 매매까지 실행합니다.</div></div>
   </div>
-  <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
+  <div class="pagenum"></div>
 </section>
 
 <section data-slide-id="P3-S05" class="slide compact-flow" style="display:grid; grid-template-columns:minmax(0, 1.02fr) minmax(0, .98fr); column-gap:42px; align-items:center; justify-content:initial; padding:42px 56px 34px;">
@@ -330,7 +341,7 @@
       <text x="220" y="318" text-anchor="middle" font-size="13.5" font-weight="700" fill="#f0b45a">‘코딩 에이전트에 붙여넣기’ 블록 전체를 복사합니다.</text>
     </svg>
   </div>
-  <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
+  <div class="pagenum"></div>
 </section>
 
 <section data-slide-id="P3-S06" class="slide source-map-slide" id="p3-source-map">
@@ -338,7 +349,7 @@
   <h2>한 번 실행하면<br>이 파일들이 차례로 작동합니다</h2>
   <img class="reference-shot" src="assets/lecture-prism-source-map.svg" alt="lecture-prism의 main.py, 스크리닝, 분석, 청산 우선 매매, 피드백, Discord 선택 알림, 대시보드 관계도">
   <p class="caption">첫 실행에서는 구독 사용량을 아끼려고 보고서를 짧게 만듭니다. 보고서 내용보다 <code>main.py</code>에서 기록 저장까지 이어지는 파일과 순서를 봅니다.</p>
-  <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
+  <div class="pagenum"></div>
 </section>
 
 <section data-slide-id="P3-S07" class="slide split large-diagram" id="p3-s06">
@@ -355,7 +366,7 @@
     <img class="reference-shot" src="../docs/assets/prism-insight/full-pipeline-overview.png" alt="PRISM Insight의 시장, 종목 선별, 분석, 매매, 기록, 기억 전체 파이프라인">
     <p class="caption">시장과 후보 선별부터 여섯 분석, 매매, 기록·기억까지 한 흐름으로 이어집니다. 텔레그램·실계좌 주문·보호 도구는 설정에 따라 켜거나 끕니다.</p>
   </div>
-  <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
+  <div class="pagenum"></div>
 </section>
 
 <section data-slide-id="P3-S08" class="slide split large-diagram">
@@ -367,7 +378,7 @@
     <img class="reference-shot" src="../docs/assets/prism-insight/market-pulse-batch-control-overview.png" alt="PRISM Insight의 오닐식 시장 방향 판단과 오전·오후 배치 제어">
     <p class="caption">Market Pulse는 CAN SLIM의 M을 구현한 기준입니다. 대표지수의 종가와 거래량으로 세 상태를 계산합니다. 기본 <code>shadow</code> 모드에서는 결과만 기록하고 분석 배치는 계속 진행합니다.</p>
   </div>
-  <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
+  <div class="pagenum"></div>
 </section>
 
 <section data-slide-id="P3-S09" class="slide split large-diagram">
@@ -379,7 +390,7 @@
     <img class="reference-shot" src="../docs/assets/prism-insight/distribution-day-state-transitions.png" alt="분산일 누적과 시장 상태 전이">
     <p class="caption">대표지수가 전일보다 0.2% 이상 내리고 거래량이 늘면 분산일로 셉니다. 최근 25거래일의 분산일을 0–3개, 4–5개, 6개 이상으로 나눠 상승 흐름·매도 압력 증가·시장 조정을 구분합니다.</p>
   </div>
-  <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
+  <div class="pagenum"></div>
 </section>
 
 <section data-slide-id="P3-S10" class="slide split large-diagram">
@@ -391,7 +402,7 @@
     <img class="reference-shot" src="../docs/assets/prism-insight/trading-regime-entry-overview.png" alt="오닐식 시장 매수 환경과 스크리닝용 시장 체제의 차이">
     <p class="caption">PRISM은 서로 목적이 다른 시장 분류를 두 가지로 운영합니다. 오닐식 3상태는 분석 배치 여부를 정하고, 스크리닝용 5상태는 후보 점수의 비중과 주도 업종 반영 방식을 정합니다.</p>
   </div>
-  <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
+  <div class="pagenum"></div>
 </section>
 
 <section data-slide-id="P3-S11" class="slide split large-diagram">
@@ -403,7 +414,7 @@
     <img class="reference-shot" src="../docs/assets/prism-insight/screening-six-triggers-overview.png" alt="오전 세 신호와 오후 세 신호">
     <p class="caption">오전 세 조건과 오후 세 조건은 서로 다른 움직임을 찾습니다. 거래량 급증·갭·자금 집중·상승률·장마감 강세·횡보를 나눠 봅니다.</p>
   </div>
-  <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
+  <div class="pagenum"></div>
 </section>
 
 <section data-slide-id="P3-S12" class="slide split large-diagram">
@@ -415,7 +426,7 @@
     <img class="reference-shot" src="../docs/assets/prism-insight/candidate-screening-reranking-overview.png" alt="여섯 발견 조건에서 모은 후보를 시장 체제에 맞춰 재정렬하는 흐름">
     <p class="caption">발견 조건·예상 손익비·후보군 상대강도·20일선 과열도를 네 점수로 계산하고, 네 점수를 시장 체제별 비중에 따라 합칩니다. 최종 후보는 보통 3종목이며 post-FTD 직후에는 1종목으로 줄일 수 있습니다.</p>
   </div>
-  <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
+  <div class="pagenum"></div>
 </section>
 
 <section data-slide-id="P3-S13" class="slide comparison-slide">
@@ -427,7 +438,7 @@
     <img class="reference-shot comparison-shot" src="assets/lecture-compare-screening.png" alt="PRISM Insight 스크리닝 운영 구조와 lecture-prism의 data_source.py, screening.py 함수 흐름 비교">
     <p class="caption">각 단계가 맡은 일을 읽은 뒤, 아래 파일과 함수가 <code>lecture-prism</code>에서 실제로 실행되는 위치인지 확인합니다.</p>
   </div>
-  <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
+  <div class="pagenum"></div>
 </section>
 
 <section data-slide-id="P3-S14" class="slide prompt-screen">
@@ -459,7 +470,7 @@
     <img class="reference-shot" src="../docs/assets/prism-insight/screening-analysis-deep-dive.png" alt="선별된 종목을 여섯 분석 에이전트가 조사하는 흐름">
     <p class="caption">최종 후보마다 주가·거래량, 투자 주체, 실적·재무, 사업·경쟁력, 뉴스·주도주, 시장·업종을 따로 봅니다. 여섯 방향의 보고서를 투자 전략과 요약 보고서로 묶습니다.</p>
   </div>
-  <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
+  <div class="pagenum"></div>
 </section>
 
 <section data-slide-id="P3-S16" class="slide split large-diagram">
@@ -471,7 +482,7 @@
     <img class="reference-shot" src="assets/prism-analysis-agent-map.png" alt="주가 거래량, 투자자 수급, 기업 현황, 기업 개요, 뉴스 주도주, 시장 지수 분석 에이전트">
     <p class="caption">원본 코드의 에이전트 이름과 보고서 섹션을 한눈에 보도록 정리한 구조도입니다.</p>
   </div>
-  <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
+  <div class="pagenum"></div>
 </section>
 
 <section data-slide-id="P3-S17" class="slide split large-diagram">
@@ -483,7 +494,7 @@
     <img class="reference-shot" src="assets/prism-analysis-prompt-quant.png" alt="주가 거래량, 투자자 수급, 시장 지수 분석가의 핵심 프롬프트">
     <p class="caption">원본 프롬프트의 핵심 제약만 옮긴 그림입니다. 차트와 수치는 설명용입니다.</p>
   </div>
-  <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
+  <div class="pagenum"></div>
 </section>
 
 <section data-slide-id="P3-S18" class="slide split large-diagram">
@@ -495,7 +506,7 @@
     <img class="reference-shot" src="assets/prism-analysis-prompt-context.png" alt="기업 현황, 기업 개요, 뉴스 주도주 분석가의 핵심 프롬프트">
     <p class="caption">원본 프롬프트를 줄여 표현한 그림입니다. 화면의 회사·뉴스·재무 수치는 설명용입니다.</p>
   </div>
-  <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
+  <div class="pagenum"></div>
 </section>
 
 <section data-slide-id="P3-S19" class="slide">
@@ -508,7 +519,7 @@
     <div class="step"><div class="n">읽기용 출력</div><div class="t">요약·PDF</div><div class="d">근거와 기준일을 한 보고서에 남깁니다.</div></div>
   </div>
   <div class="takeaway">보고서에 적힌 매수 고려 가격은 주문이 아닙니다. 실제 Enter / No Entry는 모듈 3에서 다시 결정합니다.</div>
-  <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
+  <div class="pagenum"></div>
 </section>
 
 <section data-slide-id="P3-S20" class="slide comparison-slide" id="p3-s19">
@@ -520,7 +531,7 @@
     <img class="reference-shot comparison-shot" src="assets/lecture-compare-analysis.png" alt="PRISM Insight와 lecture-prism의 독립 분석 보고서 에이전트 및 편집 에이전트 비교">
     <p class="caption"><code>analysis_agents.py</code>는 역할과 프롬프트를 나눠 둡니다. <code>analysis.py</code>는 전문 에이전트 6개와 편집 에이전트의 결과를 모아 보고서를 만듭니다.</p>
   </div>
-  <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
+  <div class="pagenum"></div>
 </section>
 
 <section data-slide-id="P3-S21" class="slide prompt-screen">
@@ -547,12 +558,13 @@
   <div class="txt">
     <div class="kicker">모듈 2 · 데이터 설계</div>
     <h2>데이터 보강은 빈칸 하나부터 시작합니다</h2>
+    <p class="caption" style="margin:0 0 6px; font-size:17px; line-height:1.45;">보고서를 보다가 “실제 수급도 함께 보면 더 좋겠다”는 생각이 들면, 다음 주에는 필요한 숫자 한 묶음만 연결해 봅니다.</p>
   </div>
   <div class="img">
     <img class="reference-shot" src="assets/prism-data-enrichment-lab.png" alt="Open API, 웹 크롤링, 파일과 데이터베이스, MCP 연결을 거쳐 KIS 가격과 기관 외국인 개인 수급을 분석에 보강하는 실험실 흐름">
-    <p class="caption" style="padding-right:96px;"><strong>Open API</strong>는 정형 필드, <strong>웹 크롤링</strong>은 공개 문서, <strong>파일·DB</strong>는 내부 기록을 가져옵니다. <strong>MCP</strong>는 연결 통로입니다. Part 4에서는 <strong>KIS</strong> 기관·외국인·개인 순매수로 <strong>수급 섹션만</strong> 보강합니다. <strong>simulation · 주문 0회</strong></p>
+    <p class="caption" style="padding-right:96px; font-size:16px; line-height:1.42;">이번 주 마지막 장에서는 가능한 분만 <strong>KIS App Key와 App Secret</strong>을 준비해 옵니다.<br>다음 주 <strong>Part 4 초반</strong>에 기본 보고서의 수급 설명과 KIS <strong>기관·외국인·개인 순매수</strong>를 나란히 확인합니다.<br>읽기 전용 <strong>simulation · 주문 0회</strong>이며, 주문은 하지 않습니다.</p>
   </div>
-  <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
+  <div class="pagenum"></div>
 </section>
 
 <section data-slide-id="P3-S23" class="slide" style="padding-top:52px; padding-bottom:52px;">
@@ -603,7 +615,7 @@
     </div>
   </div>
   <div class="takeaway">수업을 위해 만든 가상 사례입니다. 주문과 보류 중 하나를 고르고 근거를 말해 보세요. 실제 실행 결과는 뒤에서 봅니다.</div>
-  <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
+  <div class="pagenum"></div>
 </section>
 
 <section data-slide-id="P3-S24" class="slide split large-diagram">
@@ -612,7 +624,7 @@
     <img class="reference-shot" src="../docs/assets/prism-insight/can-slim-company-supply-checks.png" alt="CAN SLIM C A N S 점검">
     <p class="caption">C·A·N·S는 최근 분기 실적, 여러 해의 성장, 새로운 성장 계기, 수급을 봅니다. 프롬프트에는 모두 들어 있지만 고전적인 EPS 증가율까지 코드의 필수 조건으로 구현한 것은 아닙니다.</p>
   </div>
-  <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
+  <div class="pagenum"></div>
 </section>
 
 <section data-slide-id="P3-S25" class="slide split large-diagram">
@@ -621,7 +633,7 @@
     <img class="reference-shot" src="../docs/assets/prism-insight/can-slim-leadership-market-checks.png" alt="CAN SLIM L I M 점검">
     <p class="caption">L·I·M은 주도주 여부, 기관의 관심, 시장 방향을 봅니다. 상대강도와 시장 상태는 코드로 계산하지만 기관 자료와 고전적 RS 등급은 기능 설정에 따라 범위가 달라집니다.</p>
   </div>
-  <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
+  <div class="pagenum"></div>
 </section>
 
 <section data-slide-id="P3-S26" class="slide split large-diagram">
@@ -630,7 +642,7 @@
     <img class="reference-shot" src="../docs/assets/prism-insight/entry-gates-overview.png" alt="AI 신규 진입 판단 뒤 코드가 다시 확인하는 안전 게이트">
     <p class="caption">AI 시나리오의 최종 결과는 Enter 또는 No Entry입니다. 그 뒤 코드가 최소 점수, 하락 추세, 재진입, 중복 보유, 업종, 포트폴리오, 진행 중인 주문을 다시 봅니다. 재진입 대기 기간은 기본적으로 기록만 남기는 관찰 모드입니다.</p>
   </div>
-  <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
+  <div class="pagenum"></div>
 </section>
 
 <section data-slide-id="P3-S27" class="slide split large-diagram">
@@ -639,7 +651,7 @@
     <img class="reference-shot" src="../docs/assets/prism-insight/pyramiding-portfolio-overview.png" alt="수익 중인 종목의 피라미딩 조건과 포트폴리오 자리 제한">
     <p class="caption">피라미딩은 손실 종목의 물타기가 아니라, 수익 중인 강한 종목에 비중을 더하는 방식입니다. 시장이 강하고 보유 종목의 수익률이 5% 이상일 때만 추가 진입을 검토합니다. 최초 진입 뒤 최대 두 번까지 가능하며 점수·업종·포트폴리오 한도도 봅니다.</p>
   </div>
-  <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
+  <div class="pagenum"></div>
 </section>
 
 <section data-slide-id="P3-S28" class="slide split large-diagram">
@@ -648,7 +660,7 @@
     <img class="reference-shot" src="../docs/assets/prism-insight/trading-exit-overview.png" alt="즉시 손절과 추세·실적·뉴스·시장 판단을 합친 매도 흐름">
     <p class="caption">중대 사건과 즉시 손절 조건을 우선 봅니다. 그 밖의 경우에는 추세·실적·뉴스·시장 변화를 함께 살핍니다. 손절·추세 이탈·추적 손절은 목적이 다른 여러 도구가 나누어 처리합니다.</p>
   </div>
-  <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
+  <div class="pagenum"></div>
 </section>
 
 <section data-slide-id="P3-S29" class="slide split large-diagram">
@@ -657,7 +669,7 @@
     <img class="reference-shot" src="../docs/assets/prism-insight/position-protection-loops.png" alt="포지션을 보호하는 독립 감시 루프">
     <p class="caption">긴급 손절·추세 이탈·미체결 관리는 독립 실행할 수 있지만 저장소의 <code>docker/crontab</code>에는 등록되어 있지 않습니다. 실제 운영 여부는 서버 cron과 환경 변수를 함께 확인해야 합니다.</p>
   </div>
-  <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
+  <div class="pagenum"></div>
 </section>
 
 <section data-slide-id="P3-S30" class="slide comparison-slide" id="p3-s28">
@@ -669,7 +681,7 @@
     <img class="reference-shot comparison-shot" src="assets/lecture-compare-trading.png" alt="PRISM Insight 매매·보호 도구와 lecture-prism buy_agent.py 및 trading.py 비교">
     <p class="caption"><code>buy_agent.py</code>가 보고서에서 Enter / No Entry 시나리오를 만들고, <code>trading.py</code>는 청산을 먼저 확인한 뒤 점수·가격·포트폴리오 조건을 다시 검사합니다.</p>
   </div>
-  <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
+  <div class="pagenum"></div>
 </section>
 
 <section data-slide-id="P3-S31" class="slide">
@@ -682,7 +694,7 @@
     <div class="step"><div class="n">4</div><div class="t">완료·재조회</div><div class="d">미결 주문은 새 주문 없이 상태만 다시 확인합니다.</div></div>
   </div>
   <div class="takeaway"><code>operations.py reconcile</code>은 KIS·Toss 미결 주문을 조회만 합니다. Kiwoom 강의 어댑터에는 아직 같은 복구 루프가 없습니다.</div>
-  <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
+  <div class="pagenum"></div>
 </section>
 
 <section data-slide-id="P3-S32" class="slide prompt-screen">
@@ -711,7 +723,7 @@
     <img class="reference-shot" src="../docs/assets/prism-insight/feedback-reentry-overview.png" alt="매매일지와 반복 교훈이 다음 판단과 재진입 제한으로 돌아가는 흐름">
     <p class="caption">이 루프는 자율 강화학습이 아니라, 완료된 거래의 계획과 결과를 비교해 교훈을 남기는 구조입니다. 다음 판단은 이 기록을 참고하지만, 프롬프트나 주문 규칙은 사람이 검토한 뒤 다시 배포해야 합니다.</p>
   </div>
-  <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
+  <div class="pagenum"></div>
 </section>
 
 <section data-slide-id="P3-S34" class="slide">
@@ -724,7 +736,7 @@
     <div class="step"><div class="n">재사용</div><div class="t">다음 진입</div><div class="d">같은 종목·섹터·트리거 이력과 장기 원칙을 다음 프롬프트에 넣습니다.</div></div>
   </div>
   <div class="takeaway">원본은 과거 기록을 참고했는지와 이후 성과를 따로 비교합니다. 기억도 검증 대상입니다.</div>
-  <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
+  <div class="pagenum"></div>
 </section>
 
 <section data-slide-id="P3-S35" class="slide split large-diagram">
@@ -733,7 +745,7 @@
     <img class="reference-shot" src="assets/prism-memory-compression-operations.png" alt="단기, 중기, 장기 메모리 압축과 정리 게이트">
     <p class="caption">실제 서버의 일요일 03:00 배치와 2026-07-26 로그를 바탕으로 만든 그림입니다. 압축이 성과를 보장하지는 않습니다.</p>
   </div>
-  <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
+  <div class="pagenum"></div>
 </section>
 
 <section data-slide-id="P3-S36" class="slide">
@@ -745,7 +757,7 @@
     <div class="step"><div class="n">오래됐거나 도움이 안 되는 교훈</div><div class="t">우선순위를 낮추거나 비활성화</div><div class="d">오래된 기록은 중기 요약으로 옮깁니다. 근거가 약한 장기 원칙은 다음 판단에서 뺍니다.</div></div>
   </div>
   <div class="takeaway">메모리 압축의 목적은 삭제가 아닙니다. 다음 판단에 필요한 교훈을 앞에 두는 일입니다.</div>
-  <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
+  <div class="pagenum"></div>
 </section>
 
 <section data-slide-id="P3-S37" class="slide comparison-slide">
@@ -757,7 +769,7 @@
     <img class="reference-shot comparison-shot" src="assets/lecture-compare-feedback.png" alt="PRISM Insight 매매일지·압축·재진입 구조와 lecture-prism feedback.py, memory.py, db.py, operations.py 함수 비교">
     <p class="caption">청산 결과는 교훈으로 저장됩니다. 이 기록이 기억 압축과 보조 작업을 거쳐 다음 판단에 쓰이는 위치를 봅니다.</p>
   </div>
-  <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
+  <div class="pagenum"></div>
 </section>
 
 <section data-slide-id="P3-S38" class="slide prompt-screen">
@@ -791,7 +803,7 @@
     </div>
     <p class="caption">가운데 네 모듈은 한 번의 판단을 끝냅니다. 매일 운영하려면 다음 실행 시작, 보유 종목과 주문 결과 확인, 기록 정리를 따로 맡겨야 합니다.</p>
   </div>
-  <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
+  <div class="pagenum"></div>
 </section>
 
 <section data-slide-id="P3-S40" class="slide">
@@ -817,7 +829,7 @@
     </div>
   </div>
   <div class="takeaway" style="margin-top:14px; padding-top:10px; padding-bottom:10px;">다음 화면에서 P3-M5를 붙여넣으면 코딩 에이전트가 읽기 전용으로 점검합니다.</div>
-  <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
+  <div class="pagenum"></div>
 </section>
 
 <section data-slide-id="P3-S41" class="slide prompt-screen">
@@ -867,13 +879,62 @@
   <div class="prompt-guide">수강생 자료 → P3-05 · 해당 번호의 text 블록 전체를 붙여넣으세요</div><div class="pagenum"></div>
 </section>
 
-<section data-slide-id="P3-S43" class="slide cover">
+<section data-slide-id="P3-S43" class="slide survival-slide">
+  <div class="kicker">파트 3 마무리 · 시스템 철학</div>
+  <h2 aria-label="자동매매는 수익보다 먼저 망하지 않는 시스템이어야 합니다">자동매매는 수익보다 먼저<br>망하지 않는 시스템이어야 합니다</h2>
+  <p class="survival-lead">처음부터 돈을 잘 벌지 못해도 괜찮습니다. 계좌와 판단 근거가 남아 있으면 다음 실행에서 고칠 수 있습니다.</p>
+  <div class="survival-principles">
+    <div class="survival-principle">
+      <div class="n">01 · 안전</div>
+      <h3>파멸 가능성을<br>먼저 없앱니다</h3>
+      <p>한 번의 오류나 판단으로 계좌를 무너뜨릴 수 있는 구조는 전략보다 먼저 막아야 합니다.</p>
+    </div>
+    <div class="survival-principle">
+      <div class="n">02 · 기록</div>
+      <h3 aria-label="판단 전후를 빠짐없이 기록합니다">판단 전후를<br>빠짐없이 기록합니다</h3>
+      <p>후보, 진입 이유, 시장 상태, 청산 기준, 매도 후 흐름까지 남깁니다.</p>
+    </div>
+    <div class="survival-principle">
+      <div class="n">03 · 개선</div>
+      <h3 aria-label="기록으로 다음 결정을 고칩니다">기록으로<br>다음 결정을 고칩니다</h3>
+      <p>쌓인 로그를 다시 읽고 AI와 함께 검증하면 개선할 근거가 생깁니다.</p>
+    </div>
+  </div>
+  <div class="takeaway">망하지 않으면, 더 나아질 기회가 남습니다. 기록을 쌓고 다시 검증하는 과정에서 시스템을 고쳐 갑니다.</div>
+  <div class="pagenum"></div>
+</section>
+
+<section data-slide-id="P3-S44" class="slide split large-diagram">
+  <div class="txt">
+    <div class="kicker">PRISM Insight · 관측 데이터 카탈로그</div>
+    <h2 aria-label="후보부터 실제 성과까지 남기면 하나의 판단을 다시 볼 수 있습니다">후보부터 실제 성과까지 남기면<br>하나의 판단을 다시 볼 수 있습니다</h2>
+  </div>
+  <div class="img">
+    <img class="reference-shot" src="assets/prism-observable-data-catalog.png" alt="후보·판단·시장 국면·포트폴리오·체결·지연 성과·배포 품질을 한 판단의 연결선으로 보여 주는 PRISM 관측 데이터 카탈로그" data-fullscreenable="true" tabindex="0">
+    <p class="caption">각 판단에 후보·시장·포지션·체결·지연 성과·배포 품질을 함께 남기고 <code>decision_id</code>, <code>position_id</code>, <code>trace_id</code>로 연결합니다. 민감 키는 기록하지 않습니다.</p>
+  </div>
+  <div class="pagenum"></div>
+</section>
+
+<section data-slide-id="P3-S45" class="slide split large-diagram">
+  <div class="txt">
+    <div class="kicker">PRISM Insight · 로깅 인텔리전스 아키텍처</div>
+    <h2 aria-label="시간이 지난 기록을 검증해 다음 정책을 고칩니다">시간이 지난 기록을 검증해<br>다음 정책을 고칩니다</h2>
+  </div>
+  <div class="img">
+    <img class="reference-shot" src="assets/prism-logging-intelligence-architecture.png" alt="PRISM이 판단 데이터를 수집·보관하고 시간축 성과를 증거로 축적해 AI와 배포 게이트로 돌려보내는 로깅 아키텍처" data-fullscreenable="true" tabindex="0">
+    <p class="caption">수집 경로가 막혀도 기록은 로컬 스풀에 남습니다. 시간이 지난 성과·품질 지표를 비교해 다음 정책을 고칠 검증 가능한 증거를 만듭니다. AI는 증거를 읽되 배포는 결정론적 게이트로 제한합니다.</p>
+  </div>
+  <div class="pagenum"></div>
+</section>
+
+<section data-slide-id="P3-S46" class="slide cover">
   <div class="kicker">파트 4 준비</div>
   <h1 aria-label="파트 4에서 고치고 싶은 것을 한 문장으로 정해 옵니다" style="font-size:52px;">파트 4에서 고치고 싶은 것을<br>한 문장으로 정해 옵니다</h1>
-  <p class="sub">30초 버전이면 충분합니다. MY_STRATEGY.md에 진입·청산·위험 관리 중 하나만 적어도 됩니다.</p>
+  <p class="sub">30초 버전이면 충분합니다. MY_STRATEGY.md에 진입·청산·위험 관리 중 하나만 적어도 됩니다.<br>가능한 분은 한국투자증권(KIS) 모의투자 또는 실전투자용 App Key와 App Secret을 준비해 오세요.</p>
   <div class="takeaway" style="width:86%; margin-top:30px; text-align:left;">내 전략에서 ___을 ___하게 바꾸고 싶다.</div>
-  <p class="source" style="margin-top:18px;">MY_STRATEGY.md에 저장해 다음 수업에 가져오세요. 파트 4의 첫 프롬프트가 이 파일을 읽습니다.</p>
-  <div class="prompt-guide">지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다</div><div class="pagenum"></div>
+  <p class="source" style="margin-top:18px;">MY_STRATEGY.md에 저장해 다음 수업에 가져오세요. KIS 키는 채팅에 붙이지 말고 로컬 <code>.env</code>에 직접 입력합니다. 계좌번호·HTS ID는 필요하지 않습니다.</p>
+  <div class="pagenum"></div>
 </section>
 
 <script>

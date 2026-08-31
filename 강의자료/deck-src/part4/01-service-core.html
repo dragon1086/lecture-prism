@@ -1,4 +1,4 @@
-<!-- P4-S06 · 프로젝트 폴더에는 역할별 파일이 모여 있습니다 -->
+<!-- P4-S07 · 프로젝트 폴더에는 역할별 파일이 모여 있습니다 -->
 <section class="slide" style="padding:43px 72px 40px; justify-content:flex-start;">
   <div class="kicker" style="margin-bottom:6px;">개발 기초 · 실제 디렉터리</div>
   <h2 style="font-size:35px; margin-bottom:12px;">프로젝트 폴더에는 역할별 파일이 있습니다</h2>
@@ -25,10 +25,10 @@
     </table>
   </div>
   <div class="takeaway" style="margin-top:12px; font-size:18px;"><strong>IDE를 설치하거나 전체 코드를 외울 필요는 없습니다.</strong> P4-01에서 내 전략과 가까운 파일·함수만 찾으면 됩니다.</div>
-  <div class="pagenum">6</div>
+  <div class="pagenum">7</div>
 </section>
 
-<!-- P4-S07 · main.py의 run_pipeline이 다른 파일의 함수를 순서대로 부릅니다 -->
+<!-- P4-S08 · main.py의 run_pipeline이 다른 파일의 함수를 순서대로 부릅니다 -->
 <section class="slide" style="padding:43px 64px 39px; justify-content:flex-start;">
   <div class="kicker" style="margin-bottom:6px;">개발 기초 · main.py가 하는 일</div>
   <h2 style="font-size:35px; margin-bottom:7px;"><code>main.py</code>의 <code>run_pipeline()</code>이 다른 파일의 함수를 차례로 부릅니다</h2>
@@ -54,10 +54,10 @@
     <g><rect x="908" y="204" width="232" height="126" class="node"/><text x="928" y="235" class="diagram-step">5 · 기록 남기기</text><text x="928" y="265" class="sub-label mono">feedback.py</text><text x="928" y="291" class="flow-label mono">run_feedback()</text><text x="928" y="315" class="flow-label">db.py에 DB 기록</text></g>
   </svg>
   <div class="takeaway" style="margin-top:1px; font-size:18px;"><strong><code>main.py</code>는 순서를 맡고, 각 파일의 함수는 자기 일만 처리합니다.</strong></div>
-  <div class="pagenum">7</div>
+  <div class="pagenum">8</div>
 </section>
 
-<!-- P4-S08 · 함수는 값을 받아 일을 하고 결과를 돌려줍니다 -->
+<!-- P4-S09 · 함수는 값을 받아 일을 하고 결과를 돌려줍니다 -->
 <section class="slide" style="padding:42px 72px 39px; justify-content:flex-start;">
   <div class="kicker" style="margin-bottom:6px;">개발 기초 · 함수와 자료구조</div>
   <h2 style="font-size:35px; margin-bottom:11px;">함수는 값을 받아 일을 하고 결과를 돌려줍니다</h2>
@@ -88,10 +88,10 @@
     </div>
   </div>
   <div class="takeaway" style="margin-top:13px; font-size:18px;"><strong>함수 시그니처</strong>는 함수 이름, 입력, 반환값을 적은 약속입니다. 이 약속을 바꾸면 다음 단계도 함께 고쳐야 합니다.</div>
-  <div class="pagenum">8</div>
+  <div class="pagenum">9</div>
 </section>
 
-<!-- P4-S09 · main.py는 다른 파일의 함수를 가져와 실행하고 결과를 넘깁니다 -->
+<!-- P4-S10 · main.py는 다른 파일의 함수를 가져와 실행하고 결과를 넘깁니다 -->
 <section class="slide" style="padding:42px 72px 39px; justify-content:flex-start;">
   <div class="kicker" style="margin-bottom:6px;">개발 기초 · import, 호출, return</div>
   <h2 style="font-size:35px; margin-bottom:10px;"><code>main.py</code>는 다른 파일의 함수를 불러 결과를 넘깁니다</h2>
@@ -113,10 +113,10 @@
     <rect x="420" y="58" width="280" height="108" class="focus"/><text x="560" y="94" text-anchor="middle" class="label mono">main.py</text><text x="560" y="122" text-anchor="middle" class="sub-label">호출 결과에 candidates라는 이름을 붙임</text><text x="560" y="147" text-anchor="middle" class="flow-label">return한 후보 목록</text>
     <rect x="834" y="70" width="266" height="84" class="node"/><text x="967" y="103" text-anchor="middle" class="label mono">analysis.py</text><text x="967" y="130" text-anchor="middle" class="sub-label mono">다음 단계 · run_analysis_report(ticker)</text>
   </svg>
-  <div class="pagenum">9</div>
+  <div class="pagenum">10</div>
 </section>
 
-<!-- P4-S10 · 설정값은 기본 편집기로 직접 넣고 에이전트는 상태만 확인합니다 -->
+<!-- P4-S11 · 설정값은 기본 편집기로 직접 넣고 에이전트는 상태만 확인합니다 -->
 <section class="slide" style="padding:45px 76px 40px; justify-content:flex-start;">
   <div class="kicker" style="margin-bottom:6px;">개발 기초 · 코드와 설정</div>
   <h2 style="font-size:35px; margin-bottom:13px;">설정값은 기본 편집기로 직접 넣고, 에이전트는 상태만 확인합니다</h2>
@@ -128,5 +128,50 @@
   </div>
   <div class="takeaway" style="margin-top:18px; font-size:18px;"><strong>반드시 지킬 원칙:</strong> API 키·토큰·계좌번호를 채팅이나 출력에 넣지 않습니다. <code>.gitignore</code>는 Git 업로드를 막지만 에이전트의 로컬 파일 읽기까지 막지는 않습니다.</div>
   <p style="font-size:17px; color:var(--muted); margin:12px 0 0;">기본 실습은 <code>mock</code>·<code>simulation</code>으로 끝까지 실행되고, 실제 주문은 기본으로 차단됩니다.</p>
-  <div class="pagenum">10</div>
+  <div class="pagenum">11</div>
+</section>
+
+<!-- P4-S11A · 전략 코드는 그대로 두고 증권사 부품만 바꿔 끼웁니다 -->
+<section class="slide" style="padding:40px 66px 36px; justify-content:flex-start;">
+  <div class="kicker" style="margin-bottom:6px;">개발 기초 · 인터페이스와 구현체</div>
+  <h2 style="font-size:35px; margin-bottom:7px;"><code>trading.py</code>는 인터페이스만 알고, 실제 부품은 바꿔 끼웁니다</h2>
+  <p style="font-size:18px; color:var(--muted); margin:0 0 2px;">전략을 판단하는 코드는 그대로 두고, 증권사마다 같은 약속을 지키는 구현체를 선택합니다. Toss 계좌와 키가 없어도 구조와 연습 결과는 볼 수 있습니다.</p>
+  <svg class="editorial-diagram" viewBox="0 0 1140 300" role="img" aria-labelledby="p4s11a-title p4s11a-desc" style="margin-top:5px;">
+    <title id="p4s11a-title">trading.py가 공통 인터페이스를 통해 KIS와 Toss 구현체를 선택하는 구조</title>
+    <desc id="p4s11a-desc">trading.py는 BrokerOrder와 BrokerQuote라는 공통 자료 약속을 사용하고, BrokerAdapter 인터페이스 뒤의 KIS 또는 Toss 구현체를 바꿔 끼울 수 있다.</desc>
+    <defs><marker id="p4s11a-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="oklch(0.68 0.03 264)"/></marker></defs>
+    <path class="diagram-edge" marker-end="url(#p4s11a-arrow)" d="M286 150 H396"/>
+    <path class="diagram-edge" marker-end="url(#p4s11a-arrow)" d="M714 112 H824"/>
+    <path class="diagram-edge" marker-end="url(#p4s11a-arrow)" d="M714 204 H824"/>
+    <g class="edge-label"><rect x="306" y="105" width="70" height="20" rx="3"/><text x="341" y="120" text-anchor="middle">공통 약속</text></g>
+    <g class="edge-label"><rect x="744" y="68" width="58" height="20" rx="3"/><text x="773" y="83" text-anchor="middle">선택</text></g>
+    <g class="edge-label"><rect x="744" y="225" width="58" height="20" rx="3"/><text x="773" y="240" text-anchor="middle">교체</text></g>
+    <rect x="20" y="78" width="266" height="144" class="node"/>
+    <text x="44" y="112" class="diagram-step">비즈니스 로직</text>
+    <text x="44" y="146" class="label mono">trading.py</text>
+    <text x="44" y="176" class="sub-label">매수·청산·수량을 판단</text>
+    <text x="44" y="202" class="flow-label mono">BrokerOrder · BrokerQuote</text>
+    <rect x="396" y="58" width="318" height="184" class="focus"/>
+    <text x="555" y="98" text-anchor="middle" class="diagram-step mono">BrokerAdapter</text>
+    <text x="555" y="132" text-anchor="middle" class="label">인터페이스</text>
+    <text x="555" y="165" text-anchor="middle" class="sub-label mono">place_order()</text>
+    <text x="555" y="193" text-anchor="middle" class="sub-label mono">get_quote()</text>
+    <text x="555" y="222" text-anchor="middle" class="flow-label">함수 이름·입력·반환값의 약속</text>
+    <rect x="824" y="44" width="296" height="94" class="node"/>
+    <text x="848" y="78" class="diagram-step">구현체 1 · KIS</text>
+    <text x="848" y="108" class="label mono">brokers/kis.py</text>
+    <text x="848" y="128" class="sub-label">KIS API 형식으로 변환</text>
+    <rect x="824" y="166" width="296" height="110" class="node"/>
+    <text x="848" y="200" class="diagram-step">구현체 2 · Toss 시세</text>
+    <text x="848" y="226" class="label mono">brokers/toss.py</text>
+    <text x="848" y="246" class="sub-label mono">TossctlQuoteAdapter</text>
+    <text x="848" y="264" class="sub-label">공식 Open API JSON을 공통 형식으로 변환</text>
+  </svg>
+  <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:2px; font-size:17px; line-height:1.4;">
+    <div><strong style="color:var(--green);">1 · 준비</strong><br><span style="color:var(--muted);">계좌·키 없음이면 연습 결과 확인</span></div>
+    <div><strong style="color:var(--green);">2 · 조회</strong><br><span style="color:var(--muted);">준비된 사람만 <code>005930</code> 현재가 읽기</span></div>
+    <div><strong style="color:var(--green);">3 · 확인</strong><br><span style="color:var(--muted);"><code>BrokerQuote</code> · 주문 0회</span></div>
+  </div>
+  <div class="takeaway" style="margin-top:11px; font-size:18px;"><strong>약속을 먼저 정하면 구현체를 바꿔도 비즈니스 로직은 흔들리지 않습니다.</strong> Toss 실제 조회는 선택이고, 계좌와 키가 없는 수강생은 구조와 연습 결과 확인까지만 합니다.</div>
+  <div class="pagenum">12</div>
 </section>

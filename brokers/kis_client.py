@@ -8,12 +8,15 @@ public client method is called.
 from __future__ import annotations
 
 import json as json_module
+import hashlib
 import os
 import socket
+import tempfile
 import time
 from datetime import datetime
 from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
+from pathlib import Path
 from typing import Any, Mapping
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
@@ -31,6 +34,11 @@ UTC = ZoneInfo("UTC")
 
 class KISRequestError(RuntimeError):
     """Raised when KIS returns an invalid or explicitly failed response."""
+
+    def __init__(self, message: str, *, retryable: bool = False, status: int | None = None):
+        super().__init__(message)
+        self.retryable = bool(retryable)
+        self.status = status
 
 
 def _canonical_mode(value: str) -> str:
@@ -130,11 +138,20 @@ class _URLTransport:
         except (socket.timeout, TimeoutError) as exc:
             raise TimeoutError(str(exc)) from exc
         except HTTPError as exc:
-            raise KISRequestError(f"KIS HTTP request failed: {exc}") from exc
+            status = int(exc.code) if isinstance(exc.code, int) else None
+            retryable = status in {408, 425, 429, 500, 502, 503, 504}
+            raise KISRequestError(
+                f"KIS HTTP request failed: {exc}",
+                retryable=retryable,
+                status=status,
+            ) from exc
         except URLError as exc:
             if isinstance(exc.reason, (socket.timeout, TimeoutError)):
                 raise TimeoutError(str(exc.reason)) from exc
-            raise KISRequestError(f"KIS HTTP request failed: {exc}") from exc
+            retryable = isinstance(exc.reason, (socket.gaierror, ConnectionError, OSError))
+            raise KISRequestError(
+                f"KIS HTTP request failed: {exc}", retryable=retryable
+            ) from exc
         except ValueError as exc:
             raise KISRequestError(f"KIS HTTP request failed: {exc}") from exc
 
@@ -142,13 +159,24 @@ class _URLTransport:
 class KISClient:
     """Clean-room domestic-stock client with explicit request contracts."""
 
-    def __init__(self, config: KISConfig, transport=None, clock=None, *, timeout: float = 10.0) -> None:
+    def __init__(
+        self,
+        config: KISConfig,
+        transport=None,
+        clock=None,
+        *,
+        timeout: float = 10.0,
+        token_cache_path: str | Path | None = None,
+    ) -> None:
         self.config = config
         self.transport = transport or _URLTransport(config.base_url)
         self.clock = clock
         self.timeout = float(timeout)
         self._access_token: str | None = None
         self._token_expires_at: float = 0.0
+        self._token_cache_path = (
+            Path(token_cache_path).expanduser() if token_cache_path else None
+        )
 
     def __repr__(self) -> str:
         return f"KISClient(mode={self.config.mode!r}, authenticated={self._access_token is not None})"
@@ -174,6 +202,119 @@ class KISClient:
             return value.astimezone(UTC)
         return datetime.fromtimestamp(self._now(), UTC)
 
+    def _cache_identity(self) -> str:
+        return hashlib.sha256(self.config.app_key.encode("utf-8")).hexdigest()
+
+    def _cache_fernet(self, *, create: bool):
+        if self._token_cache_path is None:
+            return None
+        try:
+            from cryptography.fernet import Fernet
+        except ImportError:
+            return None
+
+        key_path = self._token_cache_path.with_name(".token_key")
+        try:
+            key_path.parent.mkdir(parents=True, exist_ok=True)
+            if os.name != "nt":
+                os.chmod(key_path.parent, 0o700)
+            if key_path.exists():
+                key = key_path.read_bytes()
+            elif create:
+                key = Fernet.generate_key()
+                self._secure_atomic_write(key_path, key)
+            else:
+                return None
+            return Fernet(key)
+        except (OSError, ValueError):
+            return None
+
+    @staticmethod
+    def _secure_atomic_write(path: Path, data: bytes) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temp_path: str | None = None
+        try:
+            fd, temp_path = tempfile.mkstemp(prefix=f".{path.name}.", dir=str(path.parent))
+            if os.name != "nt":
+                os.chmod(temp_path, 0o600)
+            with os.fdopen(fd, "wb") as stream:
+                stream.write(data)
+                stream.flush()
+                os.fsync(stream.fileno())
+            os.replace(temp_path, path)
+            temp_path = None
+            if os.name != "nt":
+                os.chmod(path, 0o600)
+        finally:
+            if temp_path:
+                try:
+                    os.unlink(temp_path)
+                except FileNotFoundError:
+                    pass
+
+    def _load_cached_token(self) -> str | None:
+        if self._token_cache_path is None or not self._token_cache_path.exists():
+            return None
+        fernet = self._cache_fernet(create=False)
+        if fernet is None:
+            return None
+        try:
+            payload = json_module.loads(
+                fernet.decrypt(self._token_cache_path.read_bytes()).decode("utf-8")
+            )
+            if (
+                payload.get("mode") != self.config.mode
+                or payload.get("app_key_hash") != self._cache_identity()
+            ):
+                return None
+            token = payload.get("access_token")
+            expires_at = float(payload.get("expires_at"))
+            if not isinstance(token, str) or not token or self._now() >= expires_at:
+                return None
+        except Exception:  # noqa: BLE001 - a corrupt cache must fail open to a fresh token request
+            return None
+        self._access_token = token
+        self._token_expires_at = expires_at
+        return token
+
+    def _save_cached_token(self, token: str, expires_at: float) -> None:
+        if self._token_cache_path is None:
+            return
+        fernet = self._cache_fernet(create=True)
+        if fernet is None:
+            return
+        payload = {
+            "mode": self.config.mode,
+            "app_key_hash": self._cache_identity(),
+            "access_token": token,
+            "expires_at": expires_at,
+        }
+        try:
+            encrypted = fernet.encrypt(
+                json_module.dumps(payload, separators=(",", ":")).encode("utf-8")
+            )
+            self._secure_atomic_write(self._token_cache_path, encrypted)
+        except (OSError, TypeError, ValueError):
+            return
+
+    def _token_lifetime(self, body: Mapping[str, Any]) -> float:
+        absolute_expiry = body.get("access_token_token_expired")
+        if isinstance(absolute_expiry, str):
+            try:
+                expiry = datetime.strptime(
+                    absolute_expiry, "%Y-%m-%d %H:%M:%S"
+                ).replace(tzinfo=KST)
+                lifetime = expiry.timestamp() - self._now()
+                if lifetime > 0:
+                    return lifetime
+            except ValueError:
+                pass
+        try:
+            lifetime = float(body.get("expires_in"))
+        except (TypeError, ValueError):
+            lifetime = 6 * 60 * 60
+        return lifetime
+
     @staticmethod
     def _body(response: object) -> dict[str, Any]:
         body = getattr(response, "body", None)
@@ -184,6 +325,9 @@ class KISClient:
     def authenticate(self) -> str:
         if self._access_token and self._now() < self._token_expires_at:
             return self._access_token
+        cached_token = self._load_cached_token()
+        if cached_token:
+            return cached_token
         self._access_token = None
         try:
             response = self.transport.request(
@@ -197,6 +341,10 @@ class KISClient:
                 },
                 timeout=self.timeout,
             )
+        except KISRequestError:
+            raise
+        except TimeoutError as exc:
+            raise KISRequestError(self._redact(exc), retryable=True) from exc
         except Exception as exc:
             raise KISRequestError(self._redact(exc)) from exc
         body = self._body(response)
@@ -204,15 +352,12 @@ class KISClient:
         if not isinstance(token, str) or not token:
             raise KISRequestError("KIS token response did not contain access_token")
         self._access_token = token
-        expires_in = body.get("expires_in")
-        try:
-            lifetime = float(expires_in)
-        except (TypeError, ValueError):
-            lifetime = 6 * 60 * 60
+        lifetime = self._token_lifetime(body)
         if lifetime <= 0:
             raise KISRequestError("KIS token response has invalid expiry")
         safety_margin = min(60.0, lifetime * 0.1)
         self._token_expires_at = self._now() + max(0.1, lifetime - safety_margin)
+        self._save_cached_token(token, self._token_expires_at)
         return token
 
     def _headers(self, tr_id: str, *, tr_cont: str = "") -> dict[str, str]:
@@ -248,6 +393,8 @@ class KISClient:
                 timeout=self.timeout,
             )
         except TimeoutError:
+            raise
+        except KISRequestError:
             raise
         except Exception as exc:
             raise KISRequestError(self._redact(exc)) from exc

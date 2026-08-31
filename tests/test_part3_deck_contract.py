@@ -61,6 +61,26 @@ class Part3DeckContractTests(unittest.TestCase):
         self.assertIn("fullscreenchange", self.tail)
         self.assertIn("image-viewer", self.head)
 
+    def test_prompt_guides_appear_only_on_part_three_practice_slides(self):
+        expected_prompt_ids = {
+            slide["id"]: slide["promptId"]
+            for module in self.manifest["decks"]["part3"]["modules"]
+            for slide in module["slides"]
+        }
+        slides = re.findall(
+            r'<section data-slide-id="([^"]+)"[^>]*class="slide[^>]*>(.*?)</section>',
+            self.assembled,
+            flags=re.S,
+        )
+
+        self.assertNotIn("지금은 개념을 확인합니다", self.assembled)
+        for slide_id, slide in slides:
+            with self.subTest(slide=slide_id):
+                if expected_prompt_ids[slide_id]:
+                    self.assertIn('class="prompt-guide"', slide)
+                else:
+                    self.assertNotIn('class="prompt-guide"', slide)
+
     def test_four_module_comparison_assets_are_referenced_without_card_grid(self):
         for name in ("screening", "analysis", "trading", "feedback"):
             filename = f"lecture-compare-{name}.png"
@@ -76,6 +96,42 @@ class Part3DeckContractTests(unittest.TestCase):
         )
         self.assertEqual(4, len(comparison_sections))
         self.assertTrue(all("pattern-grid" not in section for section in comparison_sections))
+
+    def test_first_run_source_map_is_a_simple_linear_pipeline(self):
+        source_map = (DECK_ROOT / "assets" / "lecture-prism-source-map.svg").read_text(
+            encoding="utf-8"
+        )
+        for phrase in (
+            'id="lecture-prism-source-map-title"',
+            'id="lecture-prism-source-map-desc"',
+            "main.py",
+            "screening.py",
+            "analysis.py",
+            "trading.py",
+            "feedback.py",
+            "prism.db",
+            "시작과 순서",
+            "후보 고르기",
+            "분석 보고서",
+            "가상 매매 판단",
+            "결과를 저장하고",
+            "보여 줌",
+            "실행 환경",
+            "runtime_config.py",
+            "llm_provider.py",
+            "데이터·보고서",
+            "data_source.py",
+            "report_writer.py",
+            "저장·화면",
+            "prism.db",
+            "dashboard.py",
+            "선택 기능·참고",
+            "notifications.py · Discord",
+            "brokers/ · cores/",
+        ):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, source_map)
+        self.assertNotIn('id="grid"', source_map)
 
     def test_all_architecture_captions_match_source_document_scope(self):
         seen = set()
@@ -119,11 +175,20 @@ class Part3DeckContractTests(unittest.TestCase):
         slide = self._slide("P3-S04")
 
         for phrase in (
-            "후보 찾기·분석·매매·기록",
-            "각 단계의 파일",
-            "AI 의견, 진입 판단, 주문 접수와 체결 확인",
-            "감시·대사·기억 압축",
-            "연습 데이터와 가상 체결",
+            "오늘 수업에서",
+            "직접 확인하는 네 가지",
+            "전체 흐름을 봅니다",
+            "AI와 코드의 역할",
+            "안전장치를 확인합니다",
+            "내 컴퓨터에서 실행합니다",
+            "후보 찾기 → 분석",
+            "매매 판단 → 기록",
+            "AI는 의견을 줍니다.",
+            "코드는 주문 전 조건을 확인합니다.",
+            "손절·수량·주문 접수와",
+            "체결을 따로 확인합니다.",
+            "API 키 없이 연습 데이터로",
+            "가상 매매까지 실행합니다.",
         ):
             self.assertIn(phrase, slide)
 
@@ -170,7 +235,7 @@ class Part3DeckContractTests(unittest.TestCase):
         self.assertIn("P3-M3 블록 전체", self._slide("P3-S32"))
 
         slide_ids = re.findall(r"<!-- (P3-S\d{2})\b", self.sources)
-        self.assertEqual([f"P3-S{number:02d}" for number in range(1, 44)], slide_ids)
+        self.assertEqual([f"P3-S{number:02d}" for number in range(1, 47)], slide_ids)
 
     def test_module_two_shows_multiple_collection_paths_and_one_kis_example(self):
         slide = self._slide("P3-S22")
@@ -180,14 +245,19 @@ class Part3DeckContractTests(unittest.TestCase):
             "데이터 보강은 빈칸 하나부터",
             "Open API",
             "웹 크롤링",
-            "파일·DB",
-            "MCP",
-            "연결 통로",
+            "파일과 데이터베이스",
+            "MCP 연결",
             "KIS",
             "기관·외국인·개인",
-            "수급 섹션만",
-            "simulation",
-            "주문 0회",
+            "실제 수급도 함께 보면 더 좋겠다",
+            "이번 주 마지막 장",
+            "가능한 분만",
+            "KIS App Key와 App Secret",
+            "다음 주",
+            "Part 4 초반",
+            "기본 보고서의 수급 설명",
+            "기관·외국인·개인 순매수",
+            "주문은 하지 않습니다",
         ):
             self.assertIn(phrase, slide)
         self.assertIn("assets/prism-data-enrichment-lab.png", slide)
@@ -260,13 +330,16 @@ class Part3DeckContractTests(unittest.TestCase):
             for slide in module["slides"]
         ]
         manifest_ids = [slide["id"] for slide in manifest_rows]
-        self.assertEqual([f"P3-S{number:02d}" for number in range(1, 44)], manifest_ids)
+        self.assertEqual([f"P3-S{number:02d}" for number in range(1, 47)], manifest_ids)
 
         expected_titles = {
             "P3-S40": "매일 돌리려면 다섯 가지를 따로 챙겨야 합니다",
             "P3-S41": "내 컴퓨터에서는 이 순서로 준비 상태를 확인합니다",
             "P3-S42": "대시보드에서는 실행 결과 세 곳만 확인합니다",
-            "P3-S43": "파트 4에서 고치고 싶은 것을 한 문장으로 정해 옵니다",
+            "P3-S43": "자동매매는 수익보다 먼저 망하지 않는 시스템이어야 합니다",
+            "P3-S44": "후보부터 실제 성과까지 남기면 하나의 판단을 다시 볼 수 있습니다",
+            "P3-S45": "시간이 지난 기록을 검증해 다음 정책을 고칩니다",
+            "P3-S46": "파트 4에서 고치고 싶은 것을 한 문장으로 정해 옵니다",
         }
         for slide_id, title in expected_titles.items():
             with self.subTest(slide_id=slide_id):
@@ -322,13 +395,53 @@ class Part3DeckContractTests(unittest.TestCase):
         self.assertIn("assets/lecture-prism-dashboard-mock.png", slide)
 
     def test_final_slide_ends_with_one_immediate_application(self):
-        slide = self._slide("P3-S43")
+        slide = self._slide("P3-S46")
 
         self.assertIn("파트 4 준비", slide)
         self.assertIn("고치고 싶은 것", slide)
         self.assertIn("내 전략에서 ___을 ___하게 바꾸고 싶다", slide)
         self.assertIn("다음 수업에 가져오세요", slide)
+        self.assertIn("한국투자증권(KIS)", slide)
+        self.assertIn("한국투자증권(KIS) 모의투자 또는 실전투자용 App Key와 App Secret", slide)
+        self.assertIn("계좌번호·HTS ID는 필요하지 않습니다", slide)
         self.assertNotIn("<h1>Q&amp;A</h1>", slide)
+
+    def test_logging_architecture_images_remain_full_size_and_expandable(self):
+        expected_slides = {
+            "P3-S44": (
+                "prism-observable-data-catalog.png",
+                "후보부터 실제 성과까지",
+            ),
+            "P3-S45": (
+                "prism-logging-intelligence-architecture.png",
+                "검증 가능한 증거",
+            ),
+        }
+
+        for slide_id, (filename, phrase) in expected_slides.items():
+            with self.subTest(slide_id=slide_id):
+                asset = DECK_ROOT / "assets" / filename
+                slide = self._slide(slide_id)
+                self.assertTrue(asset.exists(), filename)
+                self.assertEqual((1672, 941), self._png_size(asset))
+                self.assertIn(filename, slide)
+                self.assertIn(phrase, slide)
+                self.assertIn('data-fullscreenable="true"', slide)
+                self.assertIn('tabindex="0"', slide)
+
+    def test_logging_slide_puts_survival_before_strategy_and_improvement(self):
+        slide = self._slide("P3-S43")
+
+        for phrase in (
+            "수익보다 먼저",
+            "망하지 않는 시스템",
+            "파멸 가능성",
+            "판단 전후를 빠짐없이 기록",
+            "후보, 진입 이유, 시장 상태, 청산 기준, 매도 후 흐름",
+            "기록으로 다음 결정을 고칩니다",
+            "망하지 않으면, 더 나아질 기회가 남습니다",
+        ):
+            self.assertIn(phrase, slide)
 
     @classmethod
     def _slide(cls, slide_id: str) -> str:

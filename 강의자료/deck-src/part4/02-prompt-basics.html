@@ -1,4 +1,4 @@
-<!-- P4-S11 · 에이전트는 맡은 일과 결과 형식을 미리 정해 둔 AI 작업자입니다 -->
+<!-- P4-S12 · 에이전트는 맡은 일과 결과 형식을 미리 정해 둔 AI 작업자입니다 -->
 <section class="slide" style="padding:44px 72px 39px; justify-content:flex-start;">
   <div class="kicker" style="margin-bottom:6px;">에이전트 기초 · 맡은 역할</div>
   <h2 style="font-size:35px; margin-bottom:10px;">에이전트는 맡은 일과 결과 형식을 정해 둔 AI 작업자입니다</h2>
@@ -15,10 +15,10 @@
     <rect x="834" y="100" width="266" height="116" class="node"/><text x="860" y="137" class="diagram-step">출력</text><text x="860" y="171" class="label mono">{"summary": "..."}</text><text x="860" y="199" class="sub-label">약속한 키가 있는 JSON</text>
     <text x="20" y="286" class="sub-label">여기서 에이전트는 분석 한 가지를 맡습니다. 코딩 에이전트처럼 파일 전체를 고치지는 않습니다.</text>
   </svg>
-  <div class="pagenum">11</div>
+  <div class="pagenum">12</div>
 </section>
 
-<!-- P4-S12 · 에이전트가 바깥 정보를 읽으려면 도구가 필요합니다 -->
+<!-- P4-S13 · 에이전트가 바깥 정보를 읽으려면 도구가 필요합니다 -->
 <section class="slide" style="padding:43px 66px 38px; justify-content:flex-start;">
   <div class="kicker" style="margin-bottom:6px;">에이전트 기초 · 도구 사용</div>
   <h2 style="font-size:35px; margin-bottom:9px;">에이전트가 바깥 정보를 읽으려면 도구가 필요합니다</h2>
@@ -39,10 +39,10 @@
     <path class="diagram-edge-quiet" d="M550 216 V260 H770"/><text x="790" y="265" class="sub-label">호출이나 JSON 확인이 실패하면 해당 부분만 규칙 보고서로 대체</text>
   </svg>
   <div class="takeaway" style="margin-top:5px; font-size:18px;"><strong>필요한 입력을 보내고, 돌아온 결과가 약속한 모양인지 확인하는 일</strong>이 도구 호출입니다.</div>
-  <div class="pagenum">12</div>
+  <div class="pagenum">13</div>
 </section>
 
-<!-- P4-S13 · 에이전트끼리 직접 대화하지 않고 결과를 다음 입력으로 넘깁니다 -->
+<!-- P4-S14 · 에이전트끼리 직접 대화하지 않고 결과를 다음 입력으로 넘깁니다 -->
 <section class="slide" style="padding:44px 72px 38px; justify-content:flex-start;">
   <div class="kicker" style="margin-bottom:6px;">에이전트 기초 · 결과 넘기기</div>
   <h2 style="font-size:35px; margin-bottom:10px;">에이전트는 결과를 다음 입력으로 넘깁니다</h2>
@@ -59,10 +59,10 @@
     <rect x="822" y="72" width="284" height="168" class="node"/><text x="848" y="108" class="diagram-step mono">run_buy_agent</text><text x="848" y="142" class="label">보고서를 읽고</text><text x="848" y="173" class="sub-label">진입 시나리오를 만듦</text><text x="848" y="207" class="sub-label">그다음 trading.py가 다시 확인</text>
     <text x="14" y="290" class="sub-label">핵심은 대화가 아니라 <strong>키 이름과 JSON 구조를 맞춰 결과를 넘기는 것</strong>입니다.</text>
   </svg>
-  <div class="pagenum">13</div>
+  <div class="pagenum">14</div>
 </section>
 
-<!-- P4-S14 · 여러 에이전트를 연결하는 여섯 패턴 -->
+<!-- P4-S15 · 여러 에이전트를 연결하는 여섯 패턴 -->
 <section class="slide" style="padding:29px 64px 62px; justify-content:flex-start;">
   <div class="kicker" style="margin-bottom:3px; font-size:16px;">에이전트 기초 · 오케스트레이션 패턴</div>
   <h2 style="font-size:31px; margin-bottom:7px;">여러 에이전트를 연결하는 방식은 여섯 가지로 나눠 볼 수 있습니다</h2>
@@ -116,10 +116,10 @@
   </table>
   <div class="takeaway" style="margin-top:7px; font-size:16px; line-height:1.3;">lecture-prism은 <strong>예측 가능한 순차 파이프라인</strong>을 중심으로 움직이고, 분석 단계 안에서는 <strong>병렬 전문가</strong>를 사용합니다.</div>
   <div style="position:absolute; left:64px; right:64px; bottom:47px; font-size:10.5px; line-height:1.25; color:oklch(0.58 0.012 264); white-space:nowrap;">[A] Anthropic, <a href="https://www.anthropic.com/engineering/building-effective-agents" style="color:inherit;"><em>Building effective agents</em></a> (2024-12-19) · [M] Microsoft Azure Architecture Center, <a href="https://learn.microsoft.com/en-us/azure/architecture/ai-ml/guide/ai-agent-design-patterns" style="color:inherit;"><em>AI agent orchestration patterns</em></a> (2026-02-12 갱신) · [O] OpenAI Agents SDK, <a href="https://openai.github.io/openai-agents-python/multi_agent/" style="color:inherit;"><em>Agent orchestration</em></a> (2026-08-16 확인)</div>
-  <div class="pagenum">14</div>
+  <div class="pagenum">15</div>
 </section>
 
-<!-- P4-S15 · 하네스는 전략 정리, 구현, 검증을 차례로 맡깁니다 -->
+<!-- P4-S16 · 하네스는 전략 정리, 구현, 검증을 차례로 맡깁니다 -->
 <section class="slide" style="padding:43px 66px 38px; justify-content:flex-start;">
   <div class="kicker" style="margin-bottom:6px;">Strategy Harness Lite · 역할을 나눈 까닭</div>
   <h2 style="font-size:35px; margin-bottom:10px;">하네스는 전략 정리, 구현, 검증을 나눠 맡깁니다</h2>
@@ -139,5 +139,5 @@
     <rect x="904" y="82" width="236" height="152" class="node"/><text x="1022" y="120" text-anchor="middle" class="diagram-step">검증</text><text x="1022" y="153" text-anchor="middle" class="sub-label mono">lecture-strategy-verifier</text><text x="1022" y="184" text-anchor="middle" class="label">전후 결과 확인</text><text x="1022" y="211" text-anchor="middle" class="sub-label">의도와 mock 결과 비교</text>
     <text x="12" y="282" class="sub-label">잘 끝났다면 <strong>왜 이 파일을 바꿨고 결과가 어떻게 달라졌는지</strong> 설명할 수 있습니다.</text>
   </svg>
-  <div class="pagenum">15</div>
+  <div class="pagenum">16</div>
 </section>

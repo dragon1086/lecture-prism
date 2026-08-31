@@ -23,20 +23,28 @@ VOLUME_SURGE_RATIO = 5.0        # 거래량이 최근 평균(실데이터: 20일
 MIN_MARKET_CAP_KRW = 500_000_000_000  # 시가총액 5000억 이상
 MOMENTUM_DAYS = [5, 20]         # N일 이동평균 돌파 기준
 MAX_CANDIDATES = 3              # 최종 선정 종목 수
+TURTLE_ENTRY_DAYS = 20          # 직전 N일 최고가를 넘으면 진입 후보
 
 # ── 데모용 내장 종목 유니버스 (실데이터 없이도 '필터가 실제로 작동'하도록) ──
 # --real 모드에서는 이 유니버스의 종목들을 yfinance 실데이터로 다시 필터링합니다.
 # 강의에서 VOLUME_SURGE_RATIO를 바꾸면 통과 종목이 실제로 달라지는 걸 보여주기 위함.
-# (ticker, 거래량배수, 시가총액(KRW), 등락률%)
+# (ticker, 거래량배수, 시가총액(KRW), 등락률%, 20일 신고가 돌파)
 _SAMPLE_UNIVERSE = [
-    ("005930", 5.2, 400_000_000_000_000, 2.1),  # 삼성전자
-    ("000660", 5.8,  90_000_000_000_000, 1.8),  # SK하이닉스
-    ("035420", 6.1,  30_000_000_000_000, 1.5),  # NAVER
-    ("005380", 3.6,  40_000_000_000_000, 4.2),  # 현대차 — 3배에선 통과(고등락률→상위 진입)
-    ("068270", 4.1,  25_000_000_000_000, 3.5),  # 셀트리온 — 3배에선 통과
-    ("207940", 2.0,  60_000_000_000_000, 0.5),  # 삼성바이오 — 거래량 미달
-    ("323410", 1.2,     300_000_000_000, 0.1),  # 카카오뱅크 — 거래량·시총 미달
+    ("005930", 5.2, 400_000_000_000_000, 2.1, True),   # 삼성전자
+    ("000660", 5.8,  90_000_000_000_000, 1.8, True),   # SK하이닉스
+    ("035420", 6.1,  30_000_000_000_000, 1.5, True),   # NAVER
+    ("005380", 3.6,  40_000_000_000_000, 4.2, False),  # 현대차 — 신고가 미돌파
+    ("068270", 4.1,  25_000_000_000_000, 3.5, False),  # 셀트리온 — 신고가 미돌파
+    ("207940", 2.0,  60_000_000_000_000, 0.5, True),   # 삼성바이오 — 거래량 미달
+    ("323410", 1.2,     300_000_000_000, 0.1, True),   # 카카오뱅크 — 거래량·시총 미달
 ]
+
+
+def _is_turtle_breakout(closes: list[float], lookback: int = TURTLE_ENTRY_DAYS) -> bool:
+    """마지막 종가가 직전 lookback일 최고가를 넘었는지 확인합니다."""
+    if lookback <= 0 or len(closes) < lookback + 1:
+        return False
+    return float(closes[-1]) > max(float(value) for value in closes[-lookback - 1:-1])
 
 
 async def run_screening(target_ticker: Optional[str] = None, use_real: bool = False) -> list[str]:
@@ -115,11 +123,12 @@ async def _filter_candidates(use_real: bool = False) -> list[str]:
 
     # 데모 유니버스에 실제 필터 적용 (조건을 바꾸면 결과가 진짜로 달라짐)
     passed = [
-        (ticker, vol, cap, chg)
-        for ticker, vol, cap, chg in _SAMPLE_UNIVERSE
+        (ticker, vol, cap, chg, breakout)
+        for ticker, vol, cap, chg, breakout in _SAMPLE_UNIVERSE
         if vol >= VOLUME_SURGE_RATIO          # 거래량 급등 조건
         and cap >= MIN_MARKET_CAP_KRW         # 시가총액 조건
         and chg > 0                           # 상승 종목만
+        and breakout                          # 직전 20일 최고가 돌파
     ]
     # 등락률 높은 순으로 정렬 후 상위 N개 선정
     passed.sort(key=lambda x: x[3], reverse=True)
@@ -158,6 +167,7 @@ async def _filter_with_real_data() -> list[str]:
             market_cap = data.get("market_cap")
             ret_1d = data.get("ret_1d") or 0.0
             ma5, ma20 = data.get("ma5"), data.get("ma20")
+            closes = data.get("closes") or []
 
             # 값이 없는 지표는 탈락 사유로 삼지 않음 (데이터 결측 ≠ 조건 미달)
             if vol_ratio is not None and vol_ratio < VOLUME_SURGE_RATIO:
@@ -167,6 +177,8 @@ async def _filter_with_real_data() -> list[str]:
             if any(ma is not None and price < ma for ma in (ma5, ma20)):
                 continue
             if ret_1d <= 0:
+                continue
+            if closes and not _is_turtle_breakout(closes):
                 continue
             scored.append((ticker, ret_1d))
 

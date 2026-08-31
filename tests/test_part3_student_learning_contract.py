@@ -297,7 +297,7 @@ class Part3StudentLearningContractTest(unittest.TestCase):
             "외국인",
             "개인",
             "기준일",
-            "자동으로 다시 시도하지 마",
+            "최대 2회 재시도",
             "연습 데이터 성공으로 바꾸지 마",
             "주문·취소·정정·잔고·계좌",
         ):

@@ -5,7 +5,9 @@ import socket
 import unittest
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from urllib.error import URLError
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from urllib.error import HTTPError, URLError
 from unittest.mock import patch
 
 from brokers.kis_client import KISClient, KISConfig, KISRequestError, _URLTransport
@@ -125,6 +127,53 @@ class KISClientRequestContractTest(unittest.TestCase):
             "appsecret": "app-secret",
         })
         self.assertNotIn("paper-token", repr(client))
+
+    def test_authenticate_reuses_encrypted_market_data_token_cache(self):
+        with TemporaryDirectory() as temp_dir:
+            cache_path = Path(temp_dir) / "KIS_paper_market_data.token"
+            first_transport = FakeTransport(
+                FakeResponse({
+                    "access_token": "paper-token",
+                    "token_type": "Bearer",
+                    "expires_in": 3600,
+                })
+            )
+            first = KISClient(
+                self.config(),
+                transport=first_transport,
+                token_cache_path=cache_path,
+            )
+            self.assertEqual(first.authenticate(), "paper-token")
+
+            second_transport = FakeTransport()
+            second = KISClient(
+                self.config(),
+                transport=second_transport,
+                token_cache_path=cache_path,
+            )
+            self.assertEqual(second.authenticate(), "paper-token")
+            self.assertEqual(second_transport.calls, [])
+
+    def test_authenticate_uses_official_absolute_token_expiry_when_present(self):
+        observed = datetime(2026, 8, 26, 0, 0, tzinfo=timezone.utc)
+        transport = FakeTransport(
+            FakeResponse({
+                "access_token": "paper-token",
+                "access_token_token_expired": "2026-08-27 12:00:00",
+            })
+        )
+        client = KISClient(
+            self.config(),
+            transport=transport,
+            clock=lambda: observed,
+        )
+
+        client.authenticate()
+
+        self.assertGreater(
+            client._token_expires_at - observed.timestamp(),
+            10 * 60 * 60,
+        )
 
     def test_expired_token_is_refreshed_before_order_post(self):
         now = [1000.0]
@@ -470,6 +519,18 @@ class KISClientRequestContractTest(unittest.TestCase):
         with patch("brokers.kis_client.urlopen", side_effect=URLError(socket.timeout("late"))):
             with self.assertRaises(TimeoutError):
                 transport.request("POST", "/order", json={"value": "1"}, timeout=1)
+
+    def test_url_transport_marks_only_transient_http_statuses_retryable(self):
+        transport = _URLTransport("https://example.invalid")
+        for status, retryable in ((503, True), (429, True), (403, False)):
+            error = HTTPError("https://example.invalid", status, "failed", {}, None)
+            with self.subTest(status=status), patch(
+                "brokers.kis_client.urlopen", side_effect=error
+            ):
+                with self.assertRaises(KISRequestError) as raised:
+                    transport.request("GET", "/readonly", timeout=1)
+                self.assertEqual(raised.exception.status, status)
+                self.assertEqual(raised.exception.retryable, retryable)
 
     def test_invalid_side_quantity_price_and_malformed_response_fail_closed(self):
         client, transport = self.authenticated_client(ok())

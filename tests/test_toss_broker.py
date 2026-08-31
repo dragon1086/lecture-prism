@@ -14,6 +14,7 @@ import db
 from brokers.base import BrokerOrder, BrokerQuote
 from brokers.toss import (
     TossBrokerAdapter,
+    TossctlQuoteAdapter,
     TossOfficialOpenAPIAdapter,
     TossOfficialRateLimitError,
     TossOfficialSchemaError,
@@ -21,6 +22,7 @@ from brokers.toss import (
 from brokers.tossctl import (
     TossctlClient,
     TossctlConfigurationError,
+    TossctlReadClient,
     TossctlUnknownMutationError,
 )
 from trading import (
@@ -203,6 +205,87 @@ class TossctlClientTest(unittest.TestCase):
                 TossctlClient(executable=str(executable), timeout=float("nan"))
 
 
+class TossctlReadClientTest(unittest.TestCase):
+    def test_read_client_accepts_pinned_release_and_uses_openapi_backend(self):
+        calls = []
+
+        def runner(args, **kwargs):
+            calls.append((args, kwargs))
+            payload = (
+                {"version": "0.43.1"}
+                if args[-1] == "version"
+                else {
+                    "result": [
+                        {
+                            "symbol": "005930",
+                            "lastPrice": "70100",
+                            "currency": "KRW",
+                            "timestamp": "2026-08-28T09:05:00+09:00",
+                        }
+                    ]
+                }
+            )
+            return subprocess.CompletedProcess(
+                args=args,
+                returncode=0,
+                stdout=json.dumps(payload),
+                stderr="",
+            )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            executable = Path(tmp) / "tossctl"
+            executable.write_text("", encoding="utf-8")
+            client = TossctlReadClient(executable=str(executable), runner=runner)
+
+            result = client.run_json(["quote", "get", "005930"])
+
+        self.assertEqual(result["result"][0]["lastPrice"], "70100")
+        self.assertEqual(
+            calls[1][0],
+            [
+                client.executable,
+                "--backend",
+                "openapi",
+                "--output",
+                "json",
+                "quote",
+                "get",
+                "005930",
+            ],
+        )
+
+
+class TossctlQuoteAdapterTest(unittest.TestCase):
+    def test_read_only_quote_adapter_normalizes_latest_cli_payload(self):
+        client = FakeTossctl(
+            [
+                {
+                    "result": [
+                        {
+                            "symbol": "005930",
+                            "lastPrice": "70100",
+                            "currency": "KRW",
+                            "timestamp": "2026-08-28T09:05:00+09:00",
+                        }
+                    ]
+                }
+            ]
+        )
+        adapter = TossctlQuoteAdapter(
+            client=client,
+            clock=lambda: datetime(2026, 8, 28, 0, 5, 30, tzinfo=timezone.utc),
+        )
+
+        quote = asyncio.run(adapter.get_quote("005930"))
+
+        self.assertEqual(quote.ticker, "005930")
+        self.assertEqual(quote.price, 70100)
+        self.assertEqual(quote.currency, "KRW")
+        self.assertEqual(quote.market, "KRX")
+        self.assertEqual(quote.source, "tossctl.openapi")
+        self.assertEqual(client.calls, [(["quote", "get", "005930"], False)])
+
+
 class TossBrokerAdapterTest(unittest.TestCase):
     def setUp(self):
         self._env = patch.dict(
@@ -359,6 +442,34 @@ class TossBrokerAdapterTest(unittest.TestCase):
 
         self.assertEqual(buy_qty, 2)
         self.assertEqual(sell_qty, 3)
+
+    def test_wts_quote_is_normalized_to_shared_broker_quote_contract(self):
+        client = FakeTossctl(
+            [
+                ACTIVE_AUTH,
+                {
+                    "symbol": "005930",
+                    "price": 70100,
+                    "currency": "KRW",
+                    "market": "KRX",
+                    "timestamp": "2026-07-20T00:05:00Z",
+                },
+            ]
+        )
+        adapter = TossBrokerAdapter(
+            mode="real",
+            client=client,
+            clock=lambda: datetime(2026, 7, 20, 0, 5, 30, tzinfo=timezone.utc),
+        )
+
+        quote = asyncio.run(adapter.get_quote("005930"))
+
+        self.assertIsInstance(quote, BrokerQuote)
+        self.assertEqual(quote.ticker, "005930")
+        self.assertEqual(quote.price, 70100)
+        self.assertEqual(quote.currency, "KRW")
+        self.assertEqual(quote.market, "KRX")
+        self.assertEqual(client.calls[1][0], ["quote", "get", "005930"])
 
     def test_partial_order_status_is_normalized_by_quantities(self):
         client = FakeTossctl(

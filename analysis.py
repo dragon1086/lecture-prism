@@ -16,6 +16,9 @@ import data_source
 
 log = logging.getLogger(__name__)
 
+MARKET_STRONG_RETURN_20D = 2.0
+MARKET_WEAK_RETURN_20D = -2.0
+
 def _has_structured_evidence(data: dict) -> bool:
     """Whether fixture and yfinance data may share metric-based analysis rules."""
     return data.get("source") == "yfinance" or data.get("evidence_kind") == "fixture"
@@ -109,7 +112,12 @@ async def run_analysis_report(ticker: str) -> dict:
         extract_json=_extract_json,
         llm_enabled=_llm_enabled(),
     )
-    return _build_report(ticker, data, sections)
+    return _build_report(
+        ticker,
+        data,
+        sections,
+        market_regime=_classify_market_regime(market),
+    )
 
 
 # ── 섹션 빌더: 규칙(실데이터 템플릿 / mock) ─────────────────────────────
@@ -196,6 +204,19 @@ def _section_market(market: dict | None) -> str:
     return result
 
 
+def _classify_market_regime(market: dict | None) -> str:
+    """KOSPI 20일 수익률을 강세·횡보·약세의 구조화 값으로 바꿉니다."""
+    try:
+        return_20d = float((market or {})["KOSPI"]["ret_20d"])
+    except (KeyError, TypeError, ValueError):
+        return "sideways"
+    if return_20d >= MARKET_STRONG_RETURN_20D:
+        return "strong"
+    if return_20d <= MARKET_WEAK_RETURN_20D:
+        return "weak"
+    return "sideways"
+
+
 # ── 에이전트: 기술 (LLM 또는 데이터 템플릿) ──────────────────────────────
 def _technical_data_text(data: dict) -> str:
     """fixture와 실데이터 기술 지표를 같은 문장 템플릿으로 표현."""
@@ -262,7 +283,13 @@ def _rule_based_score(data: dict) -> dict:
     return score(copied)
 
 
-def _build_report(ticker: str, data: dict, sections: dict) -> dict:
+def _build_report(
+    ticker: str,
+    data: dict,
+    sections: dict,
+    *,
+    market_regime: str = "sideways",
+) -> dict:
     """전문 에이전트 결과를 매수 판단이 없는 분석 보고서로 조립한다."""
     from runtime_config import load_runtime_config
 
@@ -316,6 +343,7 @@ def _build_report(ticker: str, data: dict, sections: dict) -> dict:
         "research_tools": list(cfg.research_tools),
         "research_tool_ready": dict(cfg.tool_ready),
         "runtime_summary": cfg.summary(),
+        "market_regime": market_regime,
         **sections,
         "_decision_evidence": {
             "structured_evidence": _has_structured_evidence(data),
@@ -324,6 +352,10 @@ def _build_report(ticker: str, data: dict, sections: dict) -> dict:
             "ma20": data.get("ma20"),
             "rsi": data.get("rsi"),
             "vol_ratio": data.get("vol_ratio"),
+            "highs": list(data.get("highs") or []),
+            "lows": list(data.get("lows") or []),
+            "closes": list(data.get("closes") or []),
+            "atr14": data.get("atr14"),
             "finance": dict(data.get("finance", {})),
             "supply": dict(data.get("supply", {})),
         },

@@ -22,6 +22,12 @@ tasks/
 .omc/
 docs/superpowers/
 강의자료/
+!강의자료/
+강의자료/*
+!강의자료/assets/
+강의자료/assets/*
+!강의자료/assets/prism-observable-data-catalog.png
+!강의자료/assets/prism-logging-intelligence-architecture.png
 lecture/archive/
 student_inputs/
 # 실제 계좌·대시보드 원본. 공개 가능한 슬라이드 HTML은 제외하지 않음.

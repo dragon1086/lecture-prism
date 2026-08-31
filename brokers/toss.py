@@ -7,14 +7,22 @@ from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 import os
 import re
-from typing import Any
+from typing import Any, Mapping
 
-from .base import BrokerOrder, BrokerQuote, real_mode_mutation_block
+from .base import (
+    DEFAULT_QUOTE_MAX_AGE,
+    BrokerOrder,
+    BrokerQuote,
+    BrokerQuoteError,
+    real_mode_mutation_block,
+    validate_broker_quote,
+)
 from .config import normalize_mode
 from .tossctl import (
     TossctlClient,
     TossctlConfigurationError,
     TossctlError,
+    TossctlReadClient,
     TossctlUnknownMutationError,
 )
 
@@ -65,6 +73,115 @@ def _auth_block(message: str, *, mode: str) -> dict[str, Any]:
         "order_no": None,
         "message": message,
     }
+
+
+def _quote_from_payload(
+    payload: Any,
+    ticker: str,
+    *,
+    clock,
+    source: str,
+) -> BrokerQuote:
+    """Normalize WTS or official tossctl JSON into the shared quote contract."""
+    if not isinstance(payload, Mapping):
+        raise BrokerQuoteError("Toss quote JSON 형식이 올바르지 않습니다.")
+    candidate: Any = payload.get("result", payload)
+    if isinstance(candidate, list):
+        candidate = next(
+            (
+                item
+                for item in candidate
+                if isinstance(item, Mapping)
+                and str(item.get("symbol") or item.get("ticker") or "") == ticker
+            ),
+            None,
+        )
+    if not isinstance(candidate, Mapping):
+        raise BrokerQuoteError("Toss quote result 형식이 올바르지 않습니다.")
+
+    symbol = str(candidate.get("symbol") or candidate.get("ticker") or "")
+    if symbol != ticker:
+        raise BrokerQuoteError("Toss quote ticker mismatch")
+    price = _number(
+        candidate.get("price", candidate.get("last_price", candidate.get("lastPrice")))
+    )
+    if price <= 0 or price != price.to_integral_value():
+        raise BrokerQuoteError("Toss KR quote price must be a positive integer")
+
+    currency = str(candidate.get("currency") or "").upper()
+    if currency != "KRW":
+        raise BrokerQuoteError("Toss quote currency must be KRW")
+    market = str(
+        candidate.get("market")
+        or candidate.get("market_type")
+        or candidate.get("marketCountry")
+        or "KRX"
+    ).upper()
+    if market in {"KOSPI", "KOSDAQ", "KR", ""}:
+        market = "KRX"
+
+    observed_raw = (
+        candidate.get("observedAt")
+        or candidate.get("observed_at")
+        or candidate.get("timestamp")
+    )
+    if observed_raw in (None, ""):
+        observed_at = clock()
+    else:
+        try:
+            observed_at = datetime.fromisoformat(
+                str(observed_raw).replace("Z", "+00:00")
+            )
+        except (TypeError, ValueError) as exc:
+            raise BrokerQuoteError("Toss quote timestamp is malformed") from exc
+    if observed_at.tzinfo is None:
+        observed_at = observed_at.replace(tzinfo=timezone.utc)
+
+    quote = BrokerQuote(
+        ticker=symbol,
+        price=int(price),
+        currency=currency,
+        market=market,
+        observed_at=observed_at,
+        source=source,
+    )
+    return validate_broker_quote(
+        quote,
+        expected_ticker=ticker,
+        now=clock(),
+        max_age=DEFAULT_QUOTE_MAX_AGE,
+    )
+
+
+class TossctlQuoteAdapter:
+    """Optional current tossctl quote adapter for the Part 4 read-only lab."""
+
+    name = "tossctl_quote"
+
+    def __init__(self, *, client: TossctlReadClient | Any | None = None, clock=None) -> None:
+        self._client = client
+        self._clock = clock or (lambda: datetime.now(timezone.utc))
+
+    @property
+    def client(self):
+        if self._client is None:
+            self._client = TossctlReadClient()
+        return self._client
+
+    async def get_quote(self, ticker: str) -> BrokerQuote:
+        selected = str(ticker).strip()
+        if not selected:
+            raise ValueError("ticker is required")
+        payload = await asyncio.to_thread(
+            self.client.run_json,
+            ["quote", "get", selected],
+        )
+        return _quote_from_payload(
+            payload,
+            selected,
+            clock=self._clock,
+            source="tossctl.openapi",
+        )
 
 
 class TossBrokerAdapter:
@@ -185,6 +302,20 @@ class TossBrokerAdapter:
                     raise TossctlError("Toss KR position quantity must be an integer")
                 held += int(quantity)
         return min(broker_limit, held)
+
+    async def get_quote(self, ticker: str) -> BrokerQuote:
+        """Return a fresh domestic quote through the tossctl read-only command."""
+        selected = str(ticker).strip()
+        if not selected:
+            raise ValueError("ticker is required")
+        await self._require_auth()
+        payload = await self._run(["quote", "get", selected])
+        return _quote_from_payload(
+            payload,
+            selected,
+            clock=self._clock,
+            source="toss.wts.tossctl",
+        )
 
     def _place_intent_args(self, order: BrokerOrder) -> list[str]:
         side = order.side

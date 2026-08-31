@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" version="2.0">
+  <channel>
+    <title>DART : (유가)삼성전자의 공시</title>
+    <link>https://dart.fss.or.kr</link>
+    <description>DART : (유가)삼성전자의 공시 정보를 확인할 수 있습니다.</description>
+    <language>ko</language>
+    <copyright>DART</copyright>
+    <pubDate>Thu, 27 Aug 2026 15:41:07 GMT</pubDate>
+    <dc:creator>DART</dc:creator>
+    <dc:date>2026-08-27T15:41:07Z</dc:date>
+    <dc:language>ko</dc:language>
+    <dc:rights>DART</dc:rights>
+    <item>
+      <title>(유가)삼성전자 - 임원ㆍ주요주주특정증권등소유상황보고서</title>
+      <link>https://dart.fss.or.kr/api/link.jsp?rcpNo=20260826000445</link>
+      <pubDate>Wed, 26 Aug 2026 06:02:00 GMT</pubDate>
+      <guid>https://dart.fss.or.kr/api/link.jsp?rcpNo=20260826000445</guid>
+      <dc:creator>김경륜</dc:creator>
+      <dc:date>2026-08-26T06:02:00Z</dc:date>
+    </item>
+    <item>
+      <title>(유가)삼성전자 - [기재정정]임원ㆍ주요주주특정증권등소유상황보고서</title>
+      <link>https://dart.fss.or.kr/api/link.jsp?rcpNo=20260826000434</link>
+      <pubDate>Wed, 26 Aug 2026 05:55:00 GMT</pubDate>
+      <guid>https://dart.fss.or.kr/api/link.jsp?rcpNo=20260826000434</guid>
+      <dc:creator>조미선</dc:creator>
+      <dc:date>2026-08-26T05:55:00Z</dc:date>
+    </item>
+    <item>
+      <title>(유가)삼성전자 - 임원ㆍ주요주주특정증권등소유상황보고서</title>
+      <link>https://dart.fss.or.kr/api/link.jsp?rcpNo=20260824000222</link>
+      <pubDate>Mon, 24 Aug 2026 07:04:00 GMT</pubDate>
+      <guid>https://dart.fss.or.kr/api/link.jsp?rcpNo=20260824000222</guid>
+      <dc:creator>안성준</dc:creator>
+      <dc:date>2026-08-24T07:04:00Z</dc:date>
+    </item>
+  </channel>
+</rss>

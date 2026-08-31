@@ -12,6 +12,7 @@ from typing import Any, Callable, Mapping, Sequence
 
 
 SUPPORTED_TOSSCTL_VERSION = "0.24.1"
+MINIMUM_TOSSCTL_READ_VERSION = (0, 43, 1)
 DEFAULT_TIMEOUT_SECONDS = 15.0
 
 
@@ -79,6 +80,7 @@ class TossctlClient:
         timeout: float | None = None,
         runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
         environ: Mapping[str, str] | None = None,
+        backend: str = "wts",
     ) -> None:
         source_env = dict(os.environ if environ is None else environ)
         configured = executable or source_env.get("TOSSCTL_PATH")
@@ -87,7 +89,7 @@ class TossctlClient:
             resolved = shutil.which("tossctl.exe", path=source_env.get("PATH"))
         if not resolved:
             raise TossctlConfigurationError(
-                "tossctl 0.24.1을 찾을 수 없습니다. TOSSCTL_PATH를 설정하세요."
+                "tossctl 실행 파일을 찾을 수 없습니다. TOSSCTL_PATH를 설정하세요."
             )
         path = Path(resolved).expanduser()
         if configured and not path.is_file():
@@ -104,6 +106,9 @@ class TossctlClient:
             raise TossctlConfigurationError("tossctl timeout must be positive")
         self._runner = runner
         self._env = _minimal_environment(source_env)
+        if backend not in {"auto", "openapi", "wts"}:
+            raise TossctlConfigurationError(f"unsupported tossctl backend: {backend}")
+        self.backend = backend
         self._version_checked = False
 
     def run_json(
@@ -118,18 +123,24 @@ class TossctlClient:
     def _check_version(self) -> None:
         payload = self._invoke(["version"], mutation=False)
         version = str(payload.get("version", "")) if isinstance(payload, dict) else ""
-        if version != SUPPORTED_TOSSCTL_VERSION:
+        if not self._accepts_version(version):
             raise TossctlConfigurationError(
                 "지원하지 않는 tossctl 버전입니다: "
-                f"expected={SUPPORTED_TOSSCTL_VERSION} actual={version or 'unknown'}"
+                f"expected={self._version_requirement()} actual={version or 'unknown'}"
             )
         self._version_checked = True
+
+    def _accepts_version(self, version: str) -> bool:
+        return version == SUPPORTED_TOSSCTL_VERSION
+
+    def _version_requirement(self) -> str:
+        return SUPPORTED_TOSSCTL_VERSION
 
     def _invoke(self, args: Sequence[str], *, mutation: bool) -> Any:
         command = [
             self.executable,
             "--backend",
-            "wts",
+            self.backend,
             "--output",
             "json",
             *args,
@@ -171,3 +182,24 @@ class TossctlClient:
                 TossctlUnknownMutationError if mutation else TossctlCommandError
             )
             raise error_type("tossctl returned invalid JSON") from exc
+
+
+class TossctlReadClient(TossctlClient):
+    """Read-only client for the current tossctl official/OpenAPI route."""
+
+    def __init__(self, **kwargs) -> None:
+        super().__init__(backend="openapi", **kwargs)
+
+    def _accepts_version(self, version: str) -> bool:
+        parsed = self._parse_version(version)
+        return parsed is not None and parsed >= MINIMUM_TOSSCTL_READ_VERSION
+
+    def _version_requirement(self) -> str:
+        return ".".join(str(part) for part in MINIMUM_TOSSCTL_READ_VERSION) + "+"
+
+    @staticmethod
+    def _parse_version(value: str) -> tuple[int, int, int] | None:
+        parts = value.strip().removeprefix("v").split(".")
+        if len(parts) != 3 or any(not part.isdigit() for part in parts):
+            return None
+        return int(parts[0]), int(parts[1]), int(parts[2])

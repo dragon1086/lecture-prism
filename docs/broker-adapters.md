@@ -102,19 +102,13 @@ lecture-prism에서 KIS 대신 키움증권 어댑터를 쓰게 설정해줘.
 
 현재 기본 operations doctor에는 Toss 공식 REST를 실제로 읽는 client가 연결되어 있지 않습니다. 따라서 `TOSS_OPENAPI_CLIENT_ID`, `TOSS_OPENAPI_CLIENT_SECRET`, `TOSS_OPENAPI_ACCOUNT_SEQ`가 있어도 이는 설정 존재만 뜻하며, 기본 진단은 `toss_official_read_client_integration`을 `BLOCKED`로 보고합니다. 공식 read-only 점검은 승인된 client를 코드의 `toss_official_adapter_factory` seam으로 명시 주입한 경우에만 실행합니다. endpoint를 추측해 직접 HTTP 호출을 추가하거나, 자격 증명만으로 준비 상태가 통과했다고 보면 안 됩니다.
 
-수강생은 코딩 에이전트에게 아래처럼 점검을 맡깁니다.
+### 5-1a. Part 4의 Toss 실제 시세 선택 실습
 
-```text
-lecture-prism의 Toss 공식 Open API 준비 상태를 읽기 전용으로 점검해줘.
+P4-TOSS는 주문 어댑터나 operations doctor를 여는 실습이 아닙니다. 최신 `tossctl 0.43.1` 이상의 `quote get` 결과를 `TossctlQuoteAdapter`가 공통 `BrokerQuote`로 바꾸는 읽기 전용 실습입니다. 토스 계좌와 공식 Open API 키가 없는 수강생은 설치·로그인 성공을 요구받지 않고, 미리 준비한 연습 응답으로 구조만 확인합니다.
 
-조건:
-1. client_id, client_secret, 계좌 식별 값이 있는지만 확인하고 값은 출력하지 마.
-2. 기본 doctor에서 `toss_official_read_client_integration`이 BLOCKED이면 공식 client가 아직 연결되지 않았다고 보고해줘. 자격 증명 존재만으로 조회 점검을 통과시키지 마.
-3. 계좌·보유·시세·미체결 주문·주문 상태 조회는 승인된 factory seam의 fixture 또는 fake transport 테스트에서만 실행해줘.
-4. 429/rate-limit, malformed payload, UNKNOWN 상태는 전부 BLOCKED로 닫히는지 확인해줘.
-5. Toss paper/demo는 없으므로 열지 말고 BLOCKED로 보고해줘.
-6. 실제 주문과 취소는 절대 호출하지 말고, 공식 live는 주문 E2E 승인 전까지 CONDITIONAL 이하로만 보고해줘.
-```
+준비된 수강생은 토스증권 WTS에서 직접 Open API 키를 만들고 허용 IP를 등록합니다. tossctl 로그인은 키와 비밀값을 명령에 직접 넣는 방식이므로, 에이전트 채팅에는 전달하지 않고 본인 터미널에서 직접 처리합니다. 키와 계좌 정보는 tossctl의 사용자 로컬 설정에만 두며, lecture-prism의 `.env`, 로그, DB에는 저장하지 않습니다. 이후 `openapi status`와 삼성전자 005930 현재가 한 건만 확인합니다. 주문·취소·정정·잔고·계좌 API는 호출하지 않습니다.
+
+수강생은 별도 진단 프롬프트를 만들지 않습니다. 강의 자료의 `P4-TOSS-SETUP`을 먼저, 준비됨일 때만 `P4-TOSS-RUN`을 그대로 붙여넣습니다. 계좌와 키가 없다면 `TossctlQuoteAdapter` 테스트로 연습 결과를 확인하고 끝냅니다.
 
 ### 5-2. WTS / tossctl 경계
 

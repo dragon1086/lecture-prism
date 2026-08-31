@@ -169,6 +169,40 @@ def _rsi(closes: list[float], period: int = 14) -> float | None:
     return round(100 - (100 / (1 + rs)), 1)
 
 
+def calculate_atr(
+    highs: list[float],
+    lows: list[float],
+    closes: list[float],
+    period: int = 14,
+) -> float | None:
+    """고가·저가·직전 종가로 단순 평균 ATR을 계산합니다."""
+    if period <= 0 or not (len(highs) == len(lows) == len(closes)):
+        return None
+    if len(closes) < period + 1:
+        return None
+    true_ranges = []
+    for index in range(1, len(closes)):
+        high = float(highs[index])
+        low = float(lows[index])
+        previous_close = float(closes[index - 1])
+        if high < low:
+            return None
+        true_ranges.append(
+            max(high - low, abs(high - previous_close), abs(low - previous_close))
+        )
+    return round(sum(true_ranges[-period:]) / period, 2)
+
+
+def _mock_ohlc_history(price: float, length: int = 30) -> tuple[list[float], list[float], list[float]]:
+    """가격 배열을 요구하는 실습에서 쓰는 결정론적 OHLC fixture입니다."""
+    start = float(price) * 0.9
+    step = (float(price) - start) / max(length - 1, 1)
+    closes = [round(start + step * index, 2) for index in range(length)]
+    highs = [round(value * 1.01, 2) for value in closes]
+    lows = [round(value * 0.99, 2) for value in closes]
+    return highs, lows, closes
+
+
 def _obv_direction(closes: list[float], volumes: list[float], lookback: int = 10) -> str:
     """최근 OBV 방향으로 매집/분산 판단."""
     if len(closes) < lookback + 1:
@@ -250,6 +284,8 @@ def _fetch_symbol(yf, ticker: str, symbol: str) -> dict | None:
         return None
 
     closes = [float(x) for x in hist["Close"].tolist()]
+    highs = [float(x) for x in hist["High"].tolist()]
+    lows = [float(x) for x in hist["Low"].tolist()]
     volumes = [float(x) for x in hist["Volume"].tolist()]
 
     # 현재가: fast_info 우선(당일 미체결 행 회피), 없으면 마지막 종가
@@ -290,6 +326,10 @@ def _fetch_symbol(yf, ticker: str, symbol: str) -> dict | None:
         "ma5": ma5, "ma20": ma20, "rsi": rsi,
         "vol_ratio": vol_ratio, "ret_1d": ret_1d,
         "price_vs_ma20": round((price / ma20 - 1) * 100, 1) if ma20 else None,
+        "highs": highs,
+        "lows": lows,
+        "closes": closes,
+        "atr14": calculate_atr(highs, lows, closes, 14),
         # 수급 프록시
         "supply": supply,
         # 재무
@@ -424,6 +464,7 @@ def _fetch_mock(ticker: str) -> dict:
     prof = mock_profile(ticker)
     ma20 = prof.get("ma20")
     price = prof["price"]
+    highs, lows, closes = _mock_ohlc_history(price)
     return {
         "source": "mock",
         "evidence_kind": "fixture",
@@ -440,6 +481,10 @@ def _fetch_mock(ticker: str) -> dict:
         "ma5": prof["ma5"], "ma20": ma20, "rsi": prof["rsi"],
         "vol_ratio": prof["vol_ratio"], "ret_1d": prof["ret_1d"],
         "price_vs_ma20": round((price / ma20 - 1) * 100, 1) if ma20 else None,
+        "highs": highs,
+        "lows": lows,
+        "closes": closes,
+        "atr14": calculate_atr(highs, lows, closes, 14),
         "supply": copy.deepcopy(prof["supply"]),
         "finance": copy.deepcopy(prof["finance"]),
         "news": list(prof["news"]),

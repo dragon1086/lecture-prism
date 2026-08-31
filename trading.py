@@ -26,6 +26,14 @@ MAX_SLOTS = 10              # 최대 보유 종목 수
 CASH_RESERVE_RATIO = 0.7    # 현금 비중 (70% 유지)
 BUY_SCORE_THRESHOLD = 6     # 매수 최소 점수 (10점 만점, buy_agent.MIN_BUY_SCORE와 동일 기준)
 MIN_RISK_REWARD_RATIO = 1.5 # 신규 진입에 필요한 최소 손익비
+RISK_PER_TRADE = 0.01       # 한 거래에서 계좌자산의 1%까지만 위험에 노출
+ATR_STOP_MULTIPLE = 2.0     # ATR 두 배를 초기 손절 폭으로 사용
+
+_REGIME_ENTRY_LIMITS = {
+    "strong": {"min_score": BUY_SCORE_THRESHOLD, "min_rr": MIN_RISK_REWARD_RATIO, "max_slots": MAX_SLOTS},
+    "sideways": {"min_score": BUY_SCORE_THRESHOLD, "min_rr": MIN_RISK_REWARD_RATIO, "max_slots": 8},
+    "weak": {"min_score": 8, "min_rr": 2.0, "max_slots": 5},
+}
 
 # ── 손절 기준 ─────────────────────────────────────────────────────
 STOP_LOSS = {
@@ -38,6 +46,7 @@ STOP_LOSS = {
 # 추세추종 관점: 목표가는 마일스톤, 트레일링 스탑으로 수익을 보호.
 TAKE_PROFIT = 0.15      # 목표가 +15% 도달 시 청산 신호
 TRAILING_STOP = 0.08    # 고점 대비 -8% 되돌림 시 트레일링 스탑
+TURTLE_EXIT_DAYS = 10   # 최근 N일 저가 이탈 시 추세 종료
 EXIT_QUOTE_MAX_AGE = timedelta(minutes=5)
 
 
@@ -288,9 +297,12 @@ def _decide_position(analysis: dict, portfolio: dict) -> Optional[dict]:
     if analysis.get("recommendation") != "BUY":
         return None
 
+    regime = str(analysis.get("market_regime") or "strong").strip().lower()
+    limits = _REGIME_ENTRY_LIMITS.get(regime, _REGIME_ENTRY_LIMITS["strong"])
+
     # 매수 점수 필터 (0~10점, analysis가 산출한 buy_score)
     buy_score = analysis.get("buy_score", analysis.get("score", 0))
-    if buy_score < BUY_SCORE_THRESHOLD:
+    if buy_score < limits["min_score"]:
         return None
 
     # 신규 진입의 가격 배열과 손익비는 주문을 결정하는 이 파일이 직접 검증한다.
@@ -302,15 +314,31 @@ def _decide_position(analysis: dict, portfolio: dict) -> Optional[dict]:
     except (KeyError, TypeError, ValueError):
         log.info("  [%s] 가격·손익비 정보 부족 — 패스", analysis.get("ticker", "?"))
         return None
+    atr = None
+    if "atr" in analysis:
+        try:
+            atr = float(analysis["atr"])
+        except (TypeError, ValueError):
+            atr = 0.0
+        if atr <= 0:
+            log.info("  [%s] ATR 부족·비정상 — 패스", analysis.get("ticker", "?"))
+            return None
+        stop_loss = current_price - atr * ATR_STOP_MULTIPLE
+        if stop_loss <= 0:
+            log.info("  [%s] ATR 손절가 비정상 — 패스", analysis.get("ticker", "?"))
+            return None
+        risk_reward_ratio = (target_price - current_price) / (current_price - stop_loss)
+
     if not (
         target_price > current_price > stop_loss
-        and risk_reward_ratio >= MIN_RISK_REWARD_RATIO
+        and risk_reward_ratio >= limits["min_rr"]
     ):
         log.info("  [%s] 가격 배열·손익비 기준 미충족 — 패스", analysis.get("ticker", "?"))
         return None
 
     # 슬랏 여유 확인
-    if portfolio["slots_used"] >= MAX_SLOTS:
+    max_slots = limits["max_slots"]
+    if portfolio["slots_used"] >= max_slots:
         log.warning("슬랏이 모두 차있습니다.")
         return None
 
@@ -320,11 +348,17 @@ def _decide_position(analysis: dict, portfolio: dict) -> Optional[dict]:
         return None
 
     # 포지션 사이징: 가용 현금을 남은 슬랏으로 균등 배분
-    remaining_slots = MAX_SLOTS - portfolio["slots_used"]
+    remaining_slots = max_slots - portfolio["slots_used"]
     per_slot_amount = available_cash / max(remaining_slots, 1)
 
     # 현재가: analysis가 제공(종목별 mock 또는 LLM). 실데이터 연동 시 analysis.get_current_price만 교체.
     quantity = int(per_slot_amount / current_price)
+    if atr is not None:
+        account_assets = float(portfolio.get("equity") or portfolio["cash"])
+        allowed_loss = account_assets * RISK_PER_TRADE
+        one_share_risk = current_price - stop_loss
+        risk_quantity = int(allowed_loss / one_share_risk)
+        quantity = min(quantity, risk_quantity)
 
     if quantity <= 0:
         return None
@@ -336,7 +370,7 @@ def _decide_position(analysis: dict, portfolio: dict) -> Optional[dict]:
         "price": current_price,
         "reason": analysis.get("rationale") or analysis.get("reason", ""),
         "target_price": analysis.get("target_price"),
-        "stop_loss": analysis.get("stop_loss", STOP_LOSS["default"]),
+        "stop_loss": stop_loss,
         "memory_lessons": list(analysis.get("memory_lessons") or [])[:5],
     }
 
@@ -357,12 +391,19 @@ def _decide_exit(holding: dict, current_price: float) -> Optional[dict]:
     if pnl <= stop:
         return _exit(holding, current_price, f"손절 ({pnl:+.1%})")
 
-    # 2) 트레일링 스탑: 수익 구간에서 고점 대비 되돌림
+    # 2) 터틀 청산: fixture나 데이터 공급자가 넘긴 직전 10일 저가 이탈
+    recent_lows = holding.get("recent_lows") or []
+    if len(recent_lows) >= TURTLE_EXIT_DAYS:
+        ten_day_low = min(float(value) for value in recent_lows[-TURTLE_EXIT_DAYS:])
+        if current_price < ten_day_low:
+            return _exit(holding, current_price, f"10일 저가 이탈 ({ten_day_low:,.0f})")
+
+    # 3) 트레일링 스탑: 수익 구간에서 고점 대비 되돌림
     drawdown = (current_price - high) / high
     if pnl > 0 and drawdown <= -TRAILING_STOP:
         return _exit(holding, current_price, f"트레일링 스탑 (고점比 {drawdown:+.1%})")
 
-    # 3) 목표가 마일스톤 도달
+    # 4) 목표가 마일스톤 도달
     if pnl >= TAKE_PROFIT:
         return _exit(holding, current_price, f"목표가 도달 ({pnl:+.1%})")
 

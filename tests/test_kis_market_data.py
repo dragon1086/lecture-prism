@@ -2,18 +2,24 @@ from __future__ import annotations
 
 from datetime import date
 import unittest
+from unittest import mock
 
 
 class FakeReadOnlyClient:
-    def __init__(self, prices, flows, *, failure=None):
+    def __init__(self, prices, flows, *, failure=None, failures=None):
         self.prices = prices
         self.flows = flows
         self.failure = failure
+        self.failures = list(failures or [])
         self.calls = []
         self.order_calls = []
 
     def get_daily_prices(self, ticker, start_date, end_date):
         self.calls.append(("daily_prices", ticker, start_date, end_date))
+        if self.failures:
+            failure = self.failures.pop(0)
+            if failure is not None:
+                raise failure
         if self.failure:
             raise self.failure
         return self.prices
@@ -99,6 +105,56 @@ class KISMarketDataSnapshotTest(unittest.TestCase):
                 "005930", "real", client=client, today=date(2026, 8, 11)
             )
 
+        self.assertEqual(client.order_calls, [])
+
+    def test_snapshot_retries_transient_read_only_failure_on_same_client(self):
+        from brokers.kis_client import KISRequestError
+        from kis_market_data import fetch_kis_snapshot
+
+        client = FakeReadOnlyClient(
+            prices=[{"stck_bsop_date": "20260808", "stck_clpr": "71500"}],
+            flows=[{
+                "as_of": "2026-08-08",
+                "institution_net_buy": 1500,
+                "foreign_net_buy": 3500,
+                "individual_net_buy": -5000,
+            }],
+            failures=[KISRequestError("temporary network failure", retryable=True)],
+        )
+
+        with mock.patch("kis_market_data.time.sleep") as sleep:
+            snapshot = fetch_kis_snapshot(
+                "005930", "paper", client=client, today=date(2026, 8, 11),
+                max_attempts=2,
+            )
+
+        self.assertEqual(snapshot["as_of"], "2026-08-08")
+        self.assertEqual(
+            [call[0] for call in client.calls],
+            ["daily_prices", "daily_prices", "investor_flow"],
+        )
+        sleep.assert_called_once_with(1.0)
+        self.assertEqual(client.order_calls, [])
+
+    def test_snapshot_does_not_retry_non_retryable_kis_failure(self):
+        from brokers.kis_client import KISRequestError
+        from kis_market_data import KISMarketDataError, fetch_kis_snapshot
+
+        client = FakeReadOnlyClient(
+            prices=[],
+            flows=[],
+            failure=KISRequestError("forbidden", retryable=False, status=403),
+        )
+
+        with mock.patch("kis_market_data.time.sleep") as sleep:
+            with self.assertRaisesRegex(KISMarketDataError, "HTTP 403"):
+                fetch_kis_snapshot(
+                    "005930", "paper", client=client, today=date(2026, 8, 11),
+                    max_attempts=3,
+                )
+
+        self.assertEqual(len(client.calls), 1)
+        sleep.assert_not_called()
         self.assertEqual(client.order_calls, [])
 
     def test_snapshot_failure_does_not_echo_provider_secret(self):

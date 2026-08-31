@@ -12,14 +12,14 @@ const addSlideMeta = (section, slide) => {
     ? `강사 자료 → ${slide.promptId} · 강사용 진행 스크립트의 해당 블록을 사용합니다`
     : slide.promptId
     ? `수강생 자료 → ${slide.promptId} · 해당 번호의 text 블록 전체를 붙여넣으세요`
-    : "지금은 개념을 확인합니다 · 다음 붙여넣기는 강사 안내를 따릅니다";
+    : null;
   const withId = section.replace(
     /^<section\s+class=/,
     `<section data-slide-id="${slide.id}" class=`
   );
   return withId.replace(
     /<div class="pagenum">[\s\S]*?<\/div>\s*<\/section>$/,
-    `<div class="prompt-guide">${guide}</div><div class="pagenum"></div>\n</section>`
+    `${guide ? `<div class="prompt-guide">${guide}</div>` : ""}<div class="pagenum"></div>\n</section>`
   );
 };
 

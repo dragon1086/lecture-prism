@@ -4,12 +4,54 @@ from __future__ import annotations
 
 import argparse
 from datetime import date, timedelta
+import os
+from pathlib import Path
 import sys
+import time
 from typing import Any, Mapping
 
 
 class KISMarketDataError(RuntimeError):
     """A sanitized failure at the read-only teaching boundary."""
+
+
+READ_ONLY_MAX_ATTEMPTS = 3
+READ_ONLY_RETRY_DELAYS = (1.0, 2.0)
+
+
+def _is_retryable_read_only_error(error: BaseException) -> bool:
+    from brokers.kis_client import KISRequestError
+
+    seen: set[int] = set()
+    current: BaseException | None = error
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        if isinstance(current, KISRequestError):
+            return current.retryable
+        if isinstance(current, (TimeoutError, ConnectionError, OSError)):
+            return True
+        current = current.__cause__
+    return False
+
+
+def _read_only_error_message(error: BaseException) -> str:
+    from brokers.kis_client import KISRequestError
+
+    seen: set[int] = set()
+    current: BaseException | None = error
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        if isinstance(current, KISRequestError) and current.status is not None:
+            return f"KIS read-only market-data request failed (HTTP {current.status})"
+        current = current.__cause__
+    return "KIS read-only market-data request failed"
+
+
+def _market_data_token_cache_path(environment: str) -> Path:
+    configured = os.getenv("KIS_MARKET_DATA_TOKEN_FILE", "").strip()
+    if configured:
+        return Path(configured).expanduser()
+    return Path(__file__).resolve().parent / ".cache" / f"KIS_{environment}_market_data.token"
 
 
 def _mode(value: str) -> str:
@@ -53,6 +95,7 @@ def fetch_kis_snapshot(
     *,
     client=None,
     today: date | None = None,
+    max_attempts: int = READ_ONLY_MAX_ATTEMPTS,
 ) -> dict[str, Any]:
     """Return one dated price/flow snapshot without touching account operations."""
 
@@ -61,22 +104,32 @@ def fetch_kis_snapshot(
         raise ValueError("ticker must be a six-digit domestic stock code")
     environment = _mode(mode)
     selected_day = today or date.today()
+    if int(max_attempts) < 1:
+        raise ValueError("max_attempts must be positive")
     if client is None:
         from brokers.kis_client import KISClient, KISConfig
 
-        client = KISClient(KISConfig.from_env_market_data(environment))
+        client = KISClient(
+            KISConfig.from_env_market_data(environment),
+            token_cache_path=_market_data_token_cache_path(environment),
+        )
 
     start = (selected_day - timedelta(days=14)).strftime("%Y%m%d")
     end = selected_day.strftime("%Y%m%d")
-    try:
-        prices = _price_rows(
-            client.get_daily_prices(selected_ticker, start, end)
-        )
-        flow_rows = client.get_investor_flow(selected_ticker, end)
-    except KISMarketDataError:
-        raise
-    except Exception as exc:
-        raise KISMarketDataError("KIS read-only market-data request failed") from exc
+    attempts = int(max_attempts)
+    for attempt in range(attempts):
+        try:
+            prices = _price_rows(
+                client.get_daily_prices(selected_ticker, start, end)
+            )
+            flow_rows = client.get_investor_flow(selected_ticker, end)
+            break
+        except KISMarketDataError:
+            raise
+        except Exception as exc:
+            if attempt + 1 >= attempts or not _is_retryable_read_only_error(exc):
+                raise KISMarketDataError(_read_only_error_message(exc)) from exc
+            time.sleep(READ_ONLY_RETRY_DELAYS[min(attempt, len(READ_ONLY_RETRY_DELAYS) - 1)])
 
     if not isinstance(flow_rows, list) or not flow_rows:
         raise KISMarketDataError("KIS investor-flow response has no rows")

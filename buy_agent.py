@@ -44,6 +44,7 @@ async def run_buy_agent(report: dict) -> dict:
     evidence = report.get("_decision_evidence", {})
     strategy = _rule_based_score(evidence)
     strategy["current_price"] = report["current_price"]
+    strategy["atr"] = evidence.get("atr14")
     strategy["rationale"] = report.get("executive_summary", "")
     strategy["risk"] = "시장 급락 시 동반 조정 및 수급 이탈 가능성."
 
@@ -144,6 +145,7 @@ def _build_scenario(report: dict, strategy: dict) -> dict:
         "risk_reward_ratio": round(upside / downside, 1) if downside else 0.0,
         "expected_return_pct": round(upside, 1),
         "expected_loss_pct": round(downside, 1),
+        "atr": strategy.get("atr"),
         "investment_period": strategy.get("investment_period", "중기"),
         "rationale": strategy.get("rationale", ""),
         "risk": strategy.get("risk", ""),

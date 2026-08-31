@@ -376,6 +376,7 @@ class MarketDataProviderTest(unittest.TestCase):
 
     def test_yfinance_is_lazy_and_import_failure_never_returns_fixture(self):
         calls = []
+        was_loaded = "yfinance" in sys.modules
 
         def fail_import(name):
             calls.append(name)
@@ -387,7 +388,7 @@ class MarketDataProviderTest(unittest.TestCase):
         with self.assertRaisesRegex(MarketDataUnavailable, "yfinance"):
             provider.index_bundle(Market.US, as_of=FIXTURE_AS_OF)
         self.assertEqual(calls, ["yfinance"])
-        self.assertNotIn("yfinance", sys.modules)
+        self.assertEqual("yfinance" in sys.modules, was_loaded)
 
     def test_yfinance_us_index_bundle_converts_all_indices_without_fixture_fallback(self):
         fake = _FakeYFinance(
