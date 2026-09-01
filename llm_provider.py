@@ -78,7 +78,7 @@ _PROXY_URL_ENV_KEYS = {
     "all_proxy",
 }
 
-_CODEX_RESPONSE_SCHEMA = {
+_LEGACY_RESPONSE_SCHEMA = {
     "type": "object",
     "properties": {
         "technical_summary": {"type": "string"},
@@ -96,6 +96,47 @@ _CODEX_RESPONSE_SCHEMA = {
     ],
     "additionalProperties": False,
 }
+
+_SPECIALIST_RESPONSE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "summary": {"type": "string"},
+    },
+    "required": ["summary"],
+    "additionalProperties": False,
+}
+
+_EDITOR_RESPONSE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "executive_summary": {"type": "string"},
+    },
+    "required": ["executive_summary"],
+    "additionalProperties": False,
+}
+
+_BUY_REVIEW_RESPONSE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "decision": {"type": "string", "enum": ["Enter", "No Entry"]},
+        "rationale": {"type": "string"},
+        "risk": {"type": "string"},
+        "rejection_reason": {"type": "string"},
+    },
+    "required": ["decision", "rationale", "risk", "rejection_reason"],
+    "additionalProperties": False,
+}
+
+
+def _response_schema_for(system_prompt: str) -> dict:
+    """Match Codex structured output to the caller's documented JSON contract."""
+    if "보고서 편집장" in system_prompt:
+        return _EDITOR_RESPONSE_SCHEMA
+    if "매수 시나리오 에이전트" in system_prompt:
+        return _BUY_REVIEW_RESPONSE_SCHEMA
+    if '응답은 {"summary": "..."}' in system_prompt:
+        return _SPECIALIST_RESPONSE_SCHEMA
+    return _LEGACY_RESPONSE_SCHEMA
 
 
 def _codex_environment() -> dict[str, str]:
@@ -142,7 +183,7 @@ class CodexSubscriptionProvider:
             output_path = Path(temp_dir) / "response.txt"
             schema_path = Path(temp_dir) / "response-schema.json"
             schema_path.write_text(
-                json.dumps(_CODEX_RESPONSE_SCHEMA), encoding="utf-8"
+                json.dumps(_response_schema_for(system_prompt)), encoding="utf-8"
             )
             argv = [
                 self.executable,

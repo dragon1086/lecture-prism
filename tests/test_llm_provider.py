@@ -1,9 +1,12 @@
 import asyncio
+import json
 import os
 from pathlib import Path
 import unittest
 from unittest import mock
 
+import analysis_agents
+import buy_agent
 import llm_provider
 
 
@@ -33,10 +36,13 @@ class _FakeProcess:
 class CodexSubscriptionProviderTest(unittest.TestCase):
     def test_complete_uses_one_ephemeral_read_only_process_without_shell(self):
         calls = []
+        schemas = []
 
         async def fake_exec(*argv, **kwargs):
             calls.append((argv, kwargs))
             output_path = Path(argv[argv.index("-o") + 1])
+            schema_path = Path(argv[argv.index("--output-schema") + 1])
+            schemas.append(json.loads(schema_path.read_text(encoding="utf-8")))
             output_path.write_text('{"recommendation":"HOLD"}', encoding="utf-8")
             process = _FakeProcess()
             calls.append(process)
@@ -74,6 +80,24 @@ class CodexSubscriptionProviderTest(unittest.TestCase):
         self.assertNotIn("SYSTEM_PRIVATE_MARKER", joined)
         self.assertNotIn("USER_PRIVATE_MARKER", joined)
         self.assertIn(b"SYSTEM ROLE", process.input)
+        self.assertEqual(schemas, [llm_provider._LEGACY_RESPONSE_SCHEMA])
+
+    def test_response_schema_matches_each_pipeline_role_contract(self):
+        specialist = llm_provider._response_schema_for(
+            analysis_agents.AGENT_SPECS["technical"].prompt
+        )
+        editor = llm_provider._response_schema_for(analysis_agents.EDITOR_PROMPT)
+        buy_review = llm_provider._response_schema_for(buy_agent.BUY_AGENT_PROMPT)
+
+        self.assertEqual(specialist["required"], ["summary"])
+        self.assertEqual(editor["required"], ["executive_summary"])
+        self.assertEqual(
+            buy_review["required"],
+            ["decision", "rationale", "risk", "rejection_reason"],
+        )
+        self.assertNotIn("buy_score", buy_review["properties"])
+        self.assertNotIn("target_price", buy_review["properties"])
+        self.assertNotIn("stop_loss", buy_review["properties"])
 
     def test_environment_rejects_proxy_urls_with_userinfo(self):
         with mock.patch.dict(
