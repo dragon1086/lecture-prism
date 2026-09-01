@@ -556,17 +556,15 @@ class Part3StudentLearningContractTest(unittest.TestCase):
             self.assertIn("codex exec", source)
             self.assertIn("전역 샌드박스를 끄거나 권한을 통째로 우회하지 마", source)
 
-    def test_llm_bridge_splits_by_login_readiness_and_rejoins_module_three(self):
+    def test_llm_bridge_keeps_oauth_optional_without_a_saved_research_path(self):
         bridge = _markdown_block(self.prompts, "P3-M2L")
 
         for phrase in (
-            "A 경로 · 공식 Codex 로그인이 이미 준비된 사람",
-            "B 경로 · 공식 Codex 로그인이 준비되지 않은 사람",
+            "공식 Codex 로그인이 이미 준비된 사람",
             "OAuth 전체 호출은 한 번만",
-            "이번 실행의 OAuth 호출은 0회",
-            "실제 LLM 성공이라고 명시된 경우에만",
-            "LLM 결과를 꾸며내지 마",
-            "P3-M3으로 합류",
+            "공식 Codex 로그인이 준비되지 않았다면",
+            "P3-M2에서 만든 기본 보고서",
+            "P3-M3으로 넘어가",
             "LECTURE_PROFILE=research",
             "LECTURE_LLM_MODE=oauth",
             "Perplexity·Firecrawl·Discord·브로커",
@@ -575,7 +573,25 @@ class Part3StudentLearningContractTest(unittest.TestCase):
             "점수·목표가·손절가는 규칙",
         ):
             self.assertIn(phrase, bridge, phrase)
+
+        for phrase in (
+            "B 경로",
+            "저장된 research 보고서",
+            "강사용 연구 증거 메모",
+            "수업 전 리허설의 실제 LLM 결과",
+            "이번 실행의 OAuth 호출은 0회",
+        ):
+            self.assertNotIn(phrase, bridge, phrase)
+
+        for phrase in (
+            "수강생 미준비: P3-M2 기본 보고서 확인 → P3-M3 합류",
+            "research 비교 생략",
+            "P3-M3 합류",
+        ):
             self.assertIn(phrase, self.instructor, phrase)
+
+        for phrase in ("강사 B 경로", "P3-M2L B 경로"):
+            self.assertNotIn(phrase, self.instructor, phrase)
 
         self.assertNotIn("## P3-05 · 선택: 공식 Codex OAuth research", self.prompts)
 
