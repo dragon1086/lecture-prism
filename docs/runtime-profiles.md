@@ -243,7 +243,7 @@ LECTURE_KIS_MODE=real
 
 ```text
 lecture-prism의 보고 채널 설정만 준비해 줘. 아직 main.py는 실행하지 마.
-1. .env가 없으면 .env.example을 복사해 만들고, LECTURE_REPORT_CHANNEL=discord와 DISCORD_WEBHOOK_URL="", TELEGRAM_BOT_TOKEN="", TELEGRAM_CHANNEL_ID=""가 있는지 확인해 줘.
+1. `.env`가 없으면 `.env.example`을 복사한 뒤 파일 이름을 `.env`로 바꾸고, `LECTURE_REPORT_CHANNEL=discord`와 `DISCORD_WEBHOOK_URL=""`, `TELEGRAM_BOT_TOKEN=""`, `TELEGRAM_CHANNEL_ID=""`가 있는지 확인해 줘. 기존 `.env`는 덮어쓰지 마.
 2. 내가 사용할 채널이 [discord / telegram / both / off] 중 무엇인지 확인하고 LECTURE_REPORT_CHANNEL에 반영해 줘.
 3. .env를 운영체제의 기본 텍스트 편집기로 열어 줘. Discord를 골랐다면 웹후크 URL을, Telegram을 골랐다면 봇 토큰과 채널 ID를 내가 직접 입력하고 저장할게.
 4. 웹후크·봇 토큰·채널 ID를 채팅에 붙여넣으라고 요구하지 마. 내가 저장했다고 알릴 때까지 기다려 줘.

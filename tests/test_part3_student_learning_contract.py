@@ -366,6 +366,7 @@ class Part3StudentLearningContractTest(unittest.TestCase):
         first_run = _markdown_block(self.prompts, "P3-01")
         for phrase in (
             "보고 채널 선택 준비 프롬프트",
+            "`.env.example`을 복사한 뒤 파일 이름을 `.env`로 바꿔",
             "discord / telegram / both / off",
             'DISCORD_WEBHOOK_URL=""',
             'TELEGRAM_BOT_TOKEN=""',
@@ -380,6 +381,7 @@ class Part3StudentLearningContractTest(unittest.TestCase):
             "실제 주문·브로커·계좌·main.py 실행은 하지 마",
         ):
             self.assertIn(phrase, first_run, phrase)
+        self.assertNotIn("로컬 `.env`가 없으면 만들고", first_run)
 
     def test_student_copy_uses_practice_data_before_the_mock_technical_name(self):
         first_run = _markdown_block(self.prompts, "P3-01")
