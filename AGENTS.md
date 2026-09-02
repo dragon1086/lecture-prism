@@ -47,11 +47,11 @@
 | `trading.py` | 분석 → 포지션 사이징 → 청산 판단 | **의사결정** | 리스크 상수, `STOP_LOSS`/`TAKE_PROFIT`/`TRAILING_STOP`, `_decide_exit` |
 | `feedback.py` | 매매 결과 → 교훈 추출 → 메모리 저장 | **자기개선** | `_extract_lesson` |
 | `db.py` | 공용 SQLite(`prism.db`) 스키마·읽기·쓰기 | 저장소 | 보통 수정 안 함 (스키마 단일 소스) |
-| `notifications.py` | 단계별 판단 → 선택 Discord 메시지 | 알림 | 보통 수정 안 함 (계좌정보 제외·fail-open) |
+| `notifications.py` | 단계별 판단 → 선택한 Discord·Telegram 메시지 | 알림 | 보통 수정 안 함 (계좌정보 제외·fail-open) |
 | `dashboard.py` | localhost:8080 로컬 웹 대시보드 (FastAPI, 빌드 없는 단일 HTML) | 확인 화면 | 표·카드 추가 |
 | `blank_pipeline.py` | 4함수 빈 뼈대 (심화: 처음부터 구현) | 실습 | 4함수 중 1개 |
 
-**데이터 흐름**: `analysis.py` → `run_analysis()`가 원본 PRISM scenario 형태 dict 반환(`recommendation`/`decision`/`buy_score`/`target_price`/`stop_loss`/`risk_reward_ratio` + 6섹션 요약 `technical/supply/financial/industry/news_summary`·`market_condition`) → `trading.py`가 최신 교육용 BUY 기록과 매수 이후 최고가를 읽어 청산을 먼저 판단하고, 이미 보유한 종목은 중복 매수하지 않으며, 나머지 후보의 가격 배열·손익비·포지션 한도를 직접 검사해 신규 매수/수량 결정 → `feedback.py`가 분석값과 체결 결과로 교훈을 만들어 `db.py`의 `prism.db`에 기록 → `dashboard.py`가 분석·매매·피드백을 읽어 표시. `report_writer.py`는 분석값으로 진입 전 확인·판단을 다시 볼 조건·청산 원칙을 설명합니다. `notifications.py`는 각 단계가 끝날 때 후보·분석 근거·매매 판단·AI 판단 요약만 선택적으로 Discord에 보내며, 계좌 정보는 보내지 않고 실패해도 파이프라인을 막지 않음.
+**데이터 흐름**: `analysis.py` → `run_analysis()`가 원본 PRISM scenario 형태 dict 반환(`recommendation`/`decision`/`buy_score`/`target_price`/`stop_loss`/`risk_reward_ratio` + 6섹션 요약 `technical/supply/financial/industry/news_summary`·`market_condition`) → `trading.py`가 최신 교육용 BUY 기록과 매수 이후 최고가를 읽어 청산을 먼저 판단하고, 이미 보유한 종목은 중복 매수하지 않으며, 나머지 후보의 가격 배열·손익비·포지션 한도를 직접 검사해 신규 매수/수량 결정 → `feedback.py`가 분석값과 체결 결과로 교훈을 만들어 `db.py`의 `prism.db`에 기록 → `dashboard.py`가 분석·매매·피드백을 읽어 표시. `report_writer.py`는 분석값으로 진입 전 확인·판단을 다시 볼 조건·청산 원칙을 설명합니다. `notifications.py`는 각 단계가 끝날 때 후보·분석 근거·매매 판단·AI 판단 요약만 선택한 Discord·Telegram 채널로 보내며, 계좌 정보는 보내지 않고 실패해도 파이프라인을 막지 않음.
 
 **6섹션 분석 보고서**: `analysis_agents.py`는 기술·수급·재무·산업·뉴스·시장 전문 에이전트 6개와 편집 에이전트를 정의합니다. `analysis.py`는 공통 근거를 준비하고 에이전트를 조립하며 매수 판단은 하지 않습니다. LLM 연결 시 역할별 개별 호출, 미연결·섹션 실패 시 규칙 보고서 폴백입니다. `buy_agent.py`가 보고서를 읽어 진입 시나리오를 만들고 `trading.py`가 다시 안전 조건을 검사합니다.
 

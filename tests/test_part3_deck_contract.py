@@ -126,7 +126,7 @@ class Part3DeckContractTests(unittest.TestCase):
             "prism.db",
             "dashboard.py",
             "선택 기능·참고",
-            "notifications.py · Discord",
+            "notifications.py · Discord·Telegram",
             "brokers/ · cores/",
         ):
             with self.subTest(phrase=phrase):
@@ -170,6 +170,14 @@ class Part3DeckContractTests(unittest.TestCase):
         self.assertTrue(cover_asset.exists())
         self.assertIn("P3-01 · API 키 없는 첫 성공", slide_4)
         self.assertIn("‘코딩 에이전트에 붙여넣기’ 블록 전체", slide_4)
+
+    def test_slide_five_allows_discord_or_telegram_report_setup(self):
+        slide = self._slide("P3-S05")
+
+        self.assertIn("Discord 또는 Telegram", slide)
+        self.assertIn("보고 채널", slide)
+        self.assertIn(".env", slide)
+        self.assertIn("채팅에 붙여넣지", slide)
 
     def test_learning_outcomes_are_visible_before_the_first_execution(self):
         slide = self._slide("P3-S04")

@@ -569,6 +569,7 @@ _SENSITIVE_FIELD_PARTS = (
     "cash",
     "url",
     "webhook",
+    "channel_id",
     "authorization",
 )
 _URL_RE = re.compile(r"https?://\S+", re.IGNORECASE)
@@ -578,6 +579,7 @@ _LABELED_SECRET_RE = re.compile(
     r"(?:key|secret|token)"
     r"|authorization"
     r"|discord_webhook_url"
+    r"|(?:telegram_)?channel_id"
     r"|webhook_url"
     r"|account_number"
     r"|account"

@@ -76,7 +76,7 @@ class ReadmeOutcomeContractTest(unittest.TestCase):
             "매매 로직",
             "모니터링",
             "대시보드",
-            "Discord 판단 알림",
+            "Discord·Telegram 판단 알림",
         ):
             self.assertIn(phrase, self.readme)
 

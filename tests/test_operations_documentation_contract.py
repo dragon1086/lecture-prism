@@ -86,6 +86,8 @@ class OperationsDocumentationContractTest(unittest.TestCase):
             r"OPENAI_API_KEY\s*=\s*[^\"\n]+",
             r"KIS_.*SECRET\s*=\s*[^\"\n]+",
             r"DISCORD_WEBHOOK_URL\s*=\s*[^\"\n]+",
+            r"TELEGRAM_BOT_TOKEN\s*=\s*[^\"\n]+",
+            r"TELEGRAM_CHANNEL_ID\s*=\s*[^\"\n]+",
         )
         for name, text in self._templates().items():
             with self.subTest(template=name):
@@ -168,28 +170,34 @@ class OperationsDocumentationContractTest(unittest.TestCase):
         ):
             self.assertIn(phrase, runtime)
 
-    def test_discord_setup_uses_redacted_default_editor_flow_before_execution(self):
+    def test_report_channel_setup_uses_redacted_editor_flow_before_execution(self):
         runtime = self._docs()["runtime"]
-        discord_section = runtime.split("## 6. Discord로 AI 판단 받기", 1)[1].split(
+        channel_section = runtime.split(
+            "## 6. Discord 또는 Telegram으로 AI 판단 받기", 1
+        )[1].split(
             "## 7. 보고서 산출물", 1
         )[0]
 
         for phrase in (
             ".env.example",
+            "LECTURE_REPORT_CHANNEL=discord",
             'DISCORD_WEBHOOK_URL=""',
+            'TELEGRAM_BOT_TOKEN=""',
+            'TELEGRAM_CHANNEL_ID=""',
+            "discord / telegram / both / off",
             "운영체제의 기본 텍스트 편집기",
             "직접 입력",
             "준비됨 / 비어 있음 / 형식 오류",
             "아직 main.py는 실행하지 마",
             "값 자체를 출력하지",
         ):
-            self.assertIn(phrase, discord_section)
+            self.assertIn(phrase, channel_section)
 
         self.assertNotIn(
             'DISCORD_WEBHOOK_URL="내 Discord 채널에서 만든 Incoming Webhook URL"',
-            discord_section,
+            channel_section,
         )
-        self.assertGreaterEqual(discord_section.count("```text"), 2)
+        self.assertGreaterEqual(channel_section.count("```text"), 2)
 
 
 if __name__ == "__main__":

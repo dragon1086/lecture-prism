@@ -1,16 +1,18 @@
-"""Optional Discord decision notifications for lecture-prism.
+"""Optional decision notifications for lecture-prism.
 
 Messages contain screening and AI decision evidence only. Account balances,
-account identifiers, broker credentials, and webhook values never enter the
-message formatters.
+account identifiers, broker credentials, webhook values, bot tokens, and
+channel IDs never enter the message formatters.
 """
 
 from __future__ import annotations
 
 import asyncio
+import html
 import json
 import logging
 import os
+import re
 import time
 from typing import Callable
 from urllib.error import HTTPError, URLError
@@ -25,6 +27,8 @@ MAX_CONTENT_CHARS = 2_000
 DEFAULT_TIMEOUT_SECONDS = 5.0
 MAX_RETRY_AFTER_SECONDS = 5.0
 _DISCORD_HOSTS = frozenset({"discord.com", "discordapp.com"})
+_TELEGRAM_TOKEN_RE = re.compile(r"^[1-9]\d{4,}:[A-Za-z0-9_-]{20,}$")
+_TELEGRAM_CHANNEL_RE = re.compile(r"^(?:-?\d+|@[A-Za-z0-9_]{5,})$")
 _SECTION_ROWS = (
     ("기술", "technical_summary"),
     ("수급", "supply_summary"),
@@ -75,6 +79,18 @@ def is_valid_discord_webhook_url(value: str) -> bool:
         and bool(parts[2])
         and bool(parts[3])
     )
+
+
+def is_valid_telegram_bot_token(value: str) -> bool:
+    """Accept the documented Telegram bot-token shape without logging it."""
+
+    return bool(_TELEGRAM_TOKEN_RE.fullmatch(str(value or "").strip()))
+
+
+def is_valid_telegram_channel_id(value: str) -> bool:
+    """Accept numeric chat IDs or public @channel usernames."""
+
+    return bool(_TELEGRAM_CHANNEL_RE.fullmatch(str(value or "").strip()))
 
 
 def _confirmation_url(webhook_url: str) -> str:
@@ -289,8 +305,45 @@ def format_operational_message(event: str, context: dict | None = None) -> str:
     return _content("\n".join(lines))
 
 
+class _DecisionNotifierMixin:
+    async def send(self, content: str) -> bool:
+        raise NotImplementedError
+
+    async def screening(
+        self,
+        candidates: list[str],
+        *,
+        data_mode: str,
+        use_real_data: bool,
+    ) -> bool:
+        return await self.send(
+            format_screening_message(
+                candidates,
+                data_mode=data_mode,
+                use_real_data=use_real_data,
+            )
+        )
+
+    async def analysis(self, result: dict) -> bool:
+        return await self.send(format_analysis_message(result))
+
+    async def trading(self, analyses: list[dict], trades: list[dict]) -> bool:
+        messages = format_trading_messages(analyses, trades)
+        outcomes = [await self.send(message) for message in messages]
+        return all(outcomes) if outcomes else True
+
+    async def summary(self, analyses: list[dict], trades: list[dict]) -> bool:
+        return await self.send(format_decision_summary(analyses, trades))
+
+    async def feedback(self, analyses: list[dict], trades: list[dict]) -> bool:
+        return await self.send(format_feedback_message(analyses, trades))
+
+    async def operational(self, event: str, context: dict | None = None) -> bool:
+        return await self.send(format_operational_message(event, context))
+
+
 class NullNotifier:
-    """Drop-in notifier used when Discord is not explicitly configured."""
+    """Drop-in notifier used when no report provider is configured."""
 
     enabled = False
 
@@ -323,7 +376,7 @@ class NullNotifier:
         return False
 
 
-class DiscordNotifier:
+class DiscordNotifier(_DecisionNotifierMixin):
     enabled = True
 
     def __init__(
@@ -402,47 +455,170 @@ class DiscordNotifier:
             delay = 0.0
         return min(max(delay, 0.0), MAX_RETRY_AFTER_SECONDS)
 
-    async def screening(
+
+class TelegramNotifier(_DecisionNotifierMixin):
+    enabled = True
+
+    def __init__(
         self,
-        candidates: list[str],
+        bot_token: str,
+        channel_id: str,
         *,
-        data_mode: str,
-        use_real_data: bool,
-    ) -> bool:
-        return await self.send(
-            format_screening_message(
-                candidates,
-                data_mode=data_mode,
-                use_real_data=use_real_data,
-            )
+        opener: Callable = urlopen,
+        sleep: Callable[[float], None] = time.sleep,
+        timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS,
+    ) -> None:
+        if not is_valid_telegram_bot_token(bot_token):
+            raise ValueError("invalid Telegram bot token")
+        if not is_valid_telegram_channel_id(channel_id):
+            raise ValueError("invalid Telegram channel ID")
+        self._api_url = (
+            f"https://api.telegram.org/bot{bot_token.strip()}/sendMessage"
         )
+        self._channel_id = channel_id.strip()
+        self._opener = opener
+        self._sleep = sleep
+        self._timeout_seconds = timeout_seconds
 
-    async def analysis(self, result: dict) -> bool:
-        return await self.send(format_analysis_message(result))
+    async def send(self, content: str) -> bool:
+        try:
+            return await asyncio.to_thread(self._send_sync, _content(content))
+        except Exception as exc:  # noqa: BLE001 - 알림 실패는 파이프라인과 분리
+            log.warning("Telegram 알림 실패: %s", type(exc).__name__)
+            return False
 
-    async def trading(self, analyses: list[dict], trades: list[dict]) -> bool:
-        messages = format_trading_messages(analyses, trades)
-        outcomes = [await self.send(message) for message in messages]
-        return all(outcomes) if outcomes else True
+    def _send_sync(self, content: str) -> bool:
+        payload = json.dumps(
+            {
+                "chat_id": self._channel_id,
+                "text": self._as_safe_html(content),
+                "parse_mode": "HTML",
+                "disable_web_page_preview": True,
+            },
+            ensure_ascii=False,
+        ).encode("utf-8")
 
-    async def summary(self, analyses: list[dict], trades: list[dict]) -> bool:
-        return await self.send(format_decision_summary(analyses, trades))
+        for attempt in range(2):
+            request = Request(
+                self._api_url,
+                data=payload,
+                headers={
+                    "Content-Type": "application/json; charset=utf-8",
+                    "User-Agent": "lecture-prism/telegram-notifier",
+                },
+                method="POST",
+            )
+            try:
+                with self._opener(request, timeout=self._timeout_seconds) as response:
+                    status = int(getattr(response, "status", 200))
+                    raw = response.read()
+                if not 200 <= status < 300:
+                    log.warning("Telegram 알림 실패: HTTP %s", status)
+                    return False
+                try:
+                    body = json.loads(raw.decode("utf-8"))
+                except (UnicodeDecodeError, json.JSONDecodeError):
+                    log.warning("Telegram 알림 실패: invalid response")
+                    return False
+                if body.get("ok") is True:
+                    return True
+                log.warning("Telegram 알림 실패: API rejected request")
+                return False
+            except HTTPError as exc:
+                if exc.code == 429 and attempt == 0:
+                    self._sleep(self._retry_delay(exc))
+                    continue
+                log.warning("Telegram 알림 실패: HTTP %s", exc.code)
+                return False
+            except (URLError, TimeoutError, OSError) as exc:
+                log.warning("Telegram 알림 실패: %s", type(exc).__name__)
+                return False
+        return False
 
-    async def feedback(self, analyses: list[dict], trades: list[dict]) -> bool:
-        return await self.send(format_feedback_message(analyses, trades))
+    @staticmethod
+    def _as_safe_html(content: str) -> str:
+        escaped = html.escape(content, quote=False)
+        return re.sub(r"\*\*([^*\n]+)\*\*", r"<b>\1</b>", escaped)
 
-    async def operational(self, event: str, context: dict | None = None) -> bool:
-        return await self.send(format_operational_message(event, context))
+    @staticmethod
+    def _retry_delay(error: HTTPError) -> float:
+        raw = error.headers.get("Retry-After") if error.headers else None
+        if raw in (None, ""):
+            try:
+                body = json.loads(error.read().decode("utf-8"))
+                raw = body.get("parameters", {}).get("retry_after", 0)
+            except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+                raw = 0
+        try:
+            delay = float(raw)
+        except (TypeError, ValueError):
+            delay = 0.0
+        return min(max(delay, 0.0), MAX_RETRY_AFTER_SECONDS)
+
+
+class CompositeNotifier(_DecisionNotifierMixin):
+    """Send one formatted message to every configured report provider."""
+
+    enabled = True
+
+    def __init__(self, notifiers) -> None:
+        self.notifiers = tuple(notifiers)
+        if not self.notifiers:
+            raise ValueError("at least one notifier is required")
+
+    async def send(self, content: str) -> bool:
+        outcomes = await asyncio.gather(
+            *(notifier.send(content) for notifier in self.notifiers),
+            return_exceptions=True,
+        )
+        successful = False
+        for outcome in outcomes:
+            if isinstance(outcome, BaseException):
+                log.warning("보고 채널 알림 실패: %s", type(outcome).__name__)
+            elif outcome is True:
+                successful = True
+        return successful
 
 
 def build_notifier():
     """Build a fail-open notifier from ignored local environment settings."""
 
     load_dotenv_once()
-    if not truthy(os.getenv("LECTURE_NOTIFY_DISCORD")):
+    selected = os.getenv("LECTURE_REPORT_CHANNEL")
+    if selected is None:
+        legacy = os.getenv("LECTURE_NOTIFY_DISCORD")
+        selected = "discord" if legacy is None or truthy(legacy) else "off"
+    selected = selected.strip().lower()
+    if selected not in {"discord", "telegram", "both", "off"}:
+        log.warning("보고 채널 비활성: 지원하지 않는 선택값입니다.")
         return NullNotifier()
-    webhook_url = os.getenv("DISCORD_WEBHOOK_URL", "").strip()
-    if not is_valid_discord_webhook_url(webhook_url):
-        log.warning("Discord 알림 비활성: 유효한 HTTPS webhook 설정이 필요합니다.")
+    if selected == "off":
         return NullNotifier()
-    return DiscordNotifier(webhook_url)
+
+    notifiers = []
+    if selected in {"discord", "both"}:
+        webhook_url = os.getenv("DISCORD_WEBHOOK_URL", "").strip()
+        if is_valid_discord_webhook_url(webhook_url):
+            notifiers.append(DiscordNotifier(webhook_url))
+        elif webhook_url:
+            log.warning(
+                "Discord 알림 비활성: 유효한 HTTPS webhook 설정이 필요합니다."
+            )
+
+    if selected in {"telegram", "both"}:
+        bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+        channel_id = os.getenv("TELEGRAM_CHANNEL_ID", "").strip()
+        if is_valid_telegram_bot_token(
+            bot_token
+        ) and is_valid_telegram_channel_id(channel_id):
+            notifiers.append(TelegramNotifier(bot_token, channel_id))
+        elif bot_token or channel_id:
+            log.warning(
+                "Telegram 알림 비활성: 유효한 봇 토큰과 채널 ID가 필요합니다."
+            )
+
+    if not notifiers:
+        return NullNotifier()
+    if len(notifiers) == 1:
+        return notifiers[0]
+    return CompositeNotifier(notifiers)

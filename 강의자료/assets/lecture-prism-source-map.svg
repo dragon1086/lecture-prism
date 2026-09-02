@@ -81,7 +81,7 @@
 
     <rect class="support" x="736" y="568" width="360" height="160" rx="8"/>
     <text class="support-title" x="916" y="612">선택 기능·참고</text>
-    <text class="file-support" x="916" y="652">notifications.py · Discord</text>
+    <text class="file-support" x="916" y="652">notifications.py · Discord·Telegram</text>
     <text class="file-support" x="916" y="680">brokers/ · cores/</text>
     <text class="support-note" x="916" y="712">알림, 증권사 연동, 원본 비교</text>
 

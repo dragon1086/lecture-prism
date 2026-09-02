@@ -1,6 +1,6 @@
 # Selectable Report Channels Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Let students select Discord, Telegram, both, or no external reporting in `.env` while preserving the keyless mock path and existing Discord installations.
 
@@ -36,10 +36,10 @@
 - Produces: `TelegramNotifier(bot_token, channel_id, *, opener=urlopen, sleep=time.sleep, timeout_seconds=5.0)`
 - Preserves: async `screening`, `analysis`, `trading`, `summary`, `feedback`, and `operational` notifier methods.
 
-- [ ] **Step 1: Write failing Telegram validation and payload tests**
+- [x] **Step 1: Write failing Telegram validation and payload tests**
 
 ```python
-VALID_TELEGRAM_TOKEN = "123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghi"
+VALID_TELEGRAM_TOKEN = "123456789:" + ("A" * 35)
 VALID_TELEGRAM_CHANNEL = "-1001234567890"
 
 def test_telegram_payload_uses_fixed_api_host_safe_html_and_no_preview(self):
@@ -62,17 +62,17 @@ def test_telegram_payload_uses_fixed_api_host_safe_html_and_no_preview(self):
 
 Add independent tests for rejected URL/whitespace credentials, `ok=false`, a bounded 429 retry, and token/channel omission from warning logs.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: `python3 -m unittest tests.test_notifications.TelegramTransportTest -v`
 
 Expected: ERROR or FAIL because `TelegramNotifier` and validators do not exist.
 
-- [ ] **Step 3: Implement the minimal reusable notifier boundary**
+- [x] **Step 3: Implement the minimal reusable notifier boundary**
 
 Extract the existing stage methods from `DiscordNotifier` into a small shared mixin. Implement fixed-host Telegram JSON POST, safe HTML conversion, response validation, one bounded 429 retry, and redacted warnings. Add `channel_id` to operational sensitive-field matching.
 
-- [ ] **Step 4: Run GREEN**
+- [x] **Step 4: Run GREEN**
 
 Run: `python3 -m unittest tests.test_notifications.TelegramTransportTest tests.test_notifications.DiscordTransportTest tests.test_notifications.DiscordMessageFormatTest -v`
 
@@ -92,7 +92,7 @@ Expected: PASS.
 - Produces: `CompositeNotifier(notifiers)` whose `send(content)` returns `True` when at least one provider succeeds.
 - Consumes: `LECTURE_REPORT_CHANNEL`, `DISCORD_WEBHOOK_URL`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHANNEL_ID`, and legacy `LECTURE_NOTIFY_DISCORD`.
 
-- [ ] **Step 1: Write failing selector and composite tests**
+- [x] **Step 1: Write failing selector and composite tests**
 
 ```python
 def test_both_builds_two_independent_providers(self):
@@ -120,13 +120,13 @@ def test_composite_succeeds_when_one_provider_fails(self):
 
 Add cases for `discord`, `telegram`, `off`, invalid selection, one valid provider under `both`, default Discord without credentials, and legacy `LECTURE_NOTIFY_DISCORD=1/0` when the new key is absent.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: `python3 -m unittest tests.test_notifications.NotificationConfigurationTest tests.test_notifications.CompositeNotifierTest -v`
 
 Expected: FAIL because new selection and composition behavior do not exist.
 
-- [ ] **Step 3: Implement the selector and provider composition**
+- [x] **Step 3: Implement the selector and provider composition**
 
 Normalize the new enum, use legacy selection only when the new key is missing, construct only valid requested providers, and return a single provider directly or `CompositeNotifier` for two providers. Change `main._notify()` warning copy from Discord-specific text to `보고 채널`.
 
@@ -139,7 +139,7 @@ TELEGRAM_BOT_TOKEN=""
 TELEGRAM_CHANNEL_ID=""
 ```
 
-- [ ] **Step 4: Run GREEN**
+- [x] **Step 4: Run GREEN**
 
 Run: `python3 -m unittest tests.test_notifications tests.test_main_notifications tests.test_main_runtime_options -v`
 
@@ -167,21 +167,21 @@ Expected: PASS for the changed notification and main contracts.
 - Documents channel-specific credentials without real values.
 - Preserves course prompts as copy-and-paste requests rather than terminal instructions.
 
-- [ ] **Step 1: Change focused course-contract expectations before prose**
+- [x] **Step 1: Change focused course-contract expectations before prose**
 
 Update the existing notification documentation contract to require all four selection values and both Telegram keys. Update the Part 3 first-run contract to require `선택한 보고 채널`, Discord and Telegram credential names, channel-specific success evidence, and `LECTURE_REPORT_CHANNEL=off` fallback.
 
-- [ ] **Step 2: Run the focused contract tests and confirm RED**
+- [x] **Step 2: Run the focused contract tests and confirm RED**
 
 Run the affected individual tests from `tests.test_notifications.DiscordDocumentationContractTest`, `tests.test_part3_student_learning_contract.Part3StudentLearningContractTest`, and `tests.test_readme_outcome_contract.ReadmeOutcomeContractTest`.
 
 Expected: FAIL because the course materials are still Discord-only.
 
-- [ ] **Step 3: Rewrite the course path consistently**
+- [x] **Step 3: Rewrite the course path consistently**
 
 Use `선택한 보고 채널` for shared behavior. Keep separate Discord and Telegram setup instructions where credentials differ. In every mock fallback or external-connection prohibition, use `LECTURE_REPORT_CHANNEL=off` and name both services. Require reports to distinguish configured channel, actual success per channel, failure reason, and skipped state. Never ask students to paste secrets into chat.
 
-- [ ] **Step 4: Run GREEN and scan for stale Discord-only assumptions**
+- [x] **Step 4: Run GREEN and scan for stale Discord-only assumptions**
 
 Run the same focused tests. Then run:
 
@@ -200,7 +200,7 @@ Expected: no maintained course instruction assumes Discord is the only selectabl
 - Slide `P3-S05` tells prepared learners to choose Discord or Telegram in `.env` and keep credentials out of chat.
 - `강의자료/deck-src/build-decks.mjs` remains the only generator for the final HTML.
 
-- [ ] **Step 1: Add the failing slide contract**
+- [x] **Step 1: Add the failing slide contract**
 
 ```python
 def test_slide_five_allows_discord_or_telegram_report_setup(self):
@@ -211,17 +211,17 @@ def test_slide_five_allows_discord_or_telegram_report_setup(self):
     self.assertIn("채팅에 붙여넣지", slide)
 ```
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: `python3 -m unittest tests.test_part3_deck_contract.Part3DeckContractTests.test_slide_five_allows_discord_or_telegram_report_setup -v`
 
 Expected: FAIL because slide 5 names Discord only.
 
-- [ ] **Step 3: Edit source copy and regenerate both deck outputs**
+- [x] **Step 3: Edit source copy and regenerate both deck outputs**
 
 Shorten the existing two affected sentences so the layout density does not increase. Run `node 강의자료/deck-src/build-decks.mjs` and preserve all slide IDs and module counts.
 
-- [ ] **Step 4: Run GREEN and inspect the generated slide**
+- [x] **Step 4: Run GREEN and inspect the generated slide**
 
 Run the slide contract and `python3 -m unittest tests.test_part3_deck_contract -v`. Extract generated `P3-S05` and confirm the title remains one claim, the new body does not add a list item, and the report-channel copy appears in the generated HTML.
 
@@ -234,13 +234,13 @@ Run the slide contract and `python3 -m unittest tests.test_part3_deck_contract -
 **Interfaces:**
 - Proves keyless demo completion, transport boundaries, course consistency, slide regeneration, and secret hygiene.
 
-- [ ] **Step 1: Run focused regression**
+- [x] **Step 1: Run focused regression**
 
 Run: `PYTHONPYCACHEPREFIX=/private/tmp/lecture-prism-notify-pycache python3 -m unittest tests.test_notifications tests.test_main_notifications tests.test_main_runtime_options tests.test_operations_runtime tests.test_part3_deck_contract -v`
 
 Expected: PASS.
 
-- [ ] **Step 2: Run the keyless demo and live-gate proof**
+- [x] **Step 2: Run the keyless demo and live-gate proof**
 
 Run: `LECTURE_REPORT_CHANNEL=off PYTHONPYCACHEPREFIX=/private/tmp/lecture-prism-demo-pycache python3 main.py`
 
@@ -248,7 +248,7 @@ Run: `LECTURE_REPORT_CHANNEL=off PYTHONPYCACHEPREFIX=/private/tmp/lecture-prism-
 
 Expected: the demo completes through feedback and DB storage; live mode returns `live_blocked` without broker calls.
 
-- [ ] **Step 3: Compile and inspect generated artifacts**
+- [x] **Step 3: Compile and inspect generated artifacts**
 
 Run: `PYTHONPYCACHEPREFIX=/private/tmp/lecture-prism-compile-pycache python3 -m compileall main.py notifications.py operations_runtime.py`
 
@@ -256,13 +256,13 @@ Run: `git diff --check`
 
 Expected: exit 0.
 
-- [ ] **Step 4: Run full regression and compare with the baseline**
+- [x] **Step 4: Run full regression and compare with the baseline**
 
 Run: `PYTHONPYCACHEPREFIX=/private/tmp/lecture-prism-full-pycache python3 -m unittest discover -s tests -v`
 
 Expected: no new failures beyond the 36 pre-existing course-contract failures recorded before implementation. Any changed related test must pass; unrelated baseline failures are reported honestly.
 
-- [ ] **Step 5: Audit tracked changes for secrets and scope**
+- [x] **Step 5: Audit tracked changes for secrets and scope**
 
 Run: `git status --short`
 

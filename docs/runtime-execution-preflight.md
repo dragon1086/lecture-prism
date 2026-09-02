@@ -1,6 +1,6 @@
 # 외부 데이터 실습 실행 전 점검
 
-`yfinance`, KIS, Discord, OAuth처럼 인터넷을 쓰는 실습은 실행 전에 이 순서를 따릅니다. 이 문서는 수강생에게 명령어를 외우게 하려는 문서가 아니라, 코딩 에이전트가 잘못된 Python과 네트워크 경로를 고르지 않게 하는 기준입니다.
+`yfinance`, KIS, Discord, Telegram, OAuth처럼 인터넷을 쓰는 실습은 실행 전에 이 순서를 따릅니다. 이 문서는 수강생에게 명령어를 외우게 하려는 문서가 아니라, 코딩 에이전트가 잘못된 Python과 네트워크 경로를 고르지 않게 하는 기준입니다.
 
 ## 1. 프로젝트와 Python부터 확인
 
@@ -27,6 +27,8 @@
 - KIS real: `openapi.koreainvestment.com`
 - tossctl 설치: `github.com`, `github-releases.githubusercontent.com`
 - Toss 공식 시세: `openapi.tossinvest.com`
+- Discord 판단 알림: `discord.com`
+- Telegram 판단 알림: `api.telegram.org`
 
 전역 샌드박스를 끄거나 모든 권한을 우회하지 않습니다. 현재 실행 환경에서 DNS가 막히면 인증 토큰이나 API 요청부터 보내지 않습니다.
 
@@ -56,6 +58,7 @@ DNS 또는 HTTPS 사전 확인이 샌드박스 안에서 실패하면 다음을 
 - DNS·HTTPS 확인 결과
 - 데이터 조회 결과 또는 실패 원인
 - KIS 또는 Toss의 인증 상태 확인 여부와 주문 계열 호출 0회 여부
+- 선택한 보고 채널과 채널별 실제 전송 성공 여부 또는 실패 원인
 - 다음에 할 한 가지
 
 확인하지 못한 숫자는 만들지 않습니다. yfinance 또는 KIS 중 하나가 막혔다면 비교표의 해당 칸에 `조회 불가`를 쓰고, 성공한 것처럼 매매 판단을 만들지 않습니다.
