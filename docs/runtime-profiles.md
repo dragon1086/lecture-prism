@@ -9,7 +9,7 @@ lecture-prism은 한 저장소 안에서 초급자용 더미 데모부터 상태
 
 | 파일 | 역할 | 수업 범위 |
 |---|---|---|
-| `.env` | 더미/실데이터/리서치 수준 선택, Discord·KIS 읽기 전용 App Key/Secret 입력 | 기본·선택 실습 |
+| `.env` | 더미/실데이터/리서치 수준과 보고 채널 선택, Discord·Telegram·KIS 선택값 입력 | 기본·선택 실습 |
 | `trading/trading/config/kis_devlp.yaml` | KIS 계좌번호, HTS ID, 주문용 App Key/Secret, 모의/실전 계좌 설정 | 모의·실거래 브로커 심화 |
 
 처음에는 `.env` 없이도 됩니다. 설정을 따로 만들고 싶다면 `.env.example`을 참고해 `.env`를 만들고 `LECTURE_PROFILE=mock`으로 시작하세요. 이 값이면 API 키가 없어도 스크리닝, 분석, 가상 매매, 피드백 저장, Markdown 보고서 생성까지 돌아갑니다.
@@ -53,8 +53,10 @@ lecture-prism은 한 저장소 안에서 초급자용 더미 데모부터 상태
 | `LECTURE_RESEARCH_TOOLS` | `perplexity,firecrawl` | 선택 리서치 도구 |
 | `LECTURE_TRADE_MODE` | `simulation`, `demo`, `real` | 매매 실행 수준 |
 | `LECTURE_SAVE_REPORTS` | `1`, `0` | `reports/` Markdown 저장 여부 |
-| `LECTURE_NOTIFY_DISCORD` | `1`, `0` | Discord 판단 알림 사용 여부 |
+| `LECTURE_REPORT_CHANNEL` | `discord`, `telegram`, `both`, `off` | 판단 알림을 보낼 채널. 기본 선택은 `discord` |
 | `DISCORD_WEBHOOK_URL` | Discord Incoming Webhook URL | 알림을 받을 비밀 주소. `.env`에만 저장 |
+| `TELEGRAM_BOT_TOKEN` | Telegram BotFather가 발급한 봇 토큰 | Telegram 알림용 비밀값. `.env`에만 저장 |
+| `TELEGRAM_CHANNEL_ID` | 숫자 채널 ID 또는 `@채널이름` | Telegram 알림 대상. `.env`에만 저장 |
 
 이전 설정의 `PRISM_OPENAI_AUTH_MODE=chatgpt_oauth`도 명시적 호환 입력으로 인식하지만, 비공식 프록시를 시작하지 않고 공식 Codex 공급자를 선택합니다. `auto`는 이 명시적 값이나 API 키가 없으면 로컬 로그인 상태를 추측하지 않습니다.
 
@@ -231,28 +233,32 @@ LECTURE_KIS_MODE=real
 
 이중 플래그는 market provider fail-closed와 별개인 **별도 live gate**입니다. KIS와 Toss의 전체 수명주기는 코드와 고정 fixture로 검증했지만, 그것만으로 live 운영 준비가 완료되지는 않습니다. 실제 계좌 E2E는 실제 키·장 운영시간·사용자 승인이 필요한 별도 작업이므로, 강의 문서와 자동 테스트는 주문 경로를 실행하지 않습니다.
 
-## 6. Discord로 AI 판단 받기
+## 6. Discord 또는 Telegram으로 AI 판단 받기
 
-Discord는 어떤 계좌에 얼마가 있는지 보여 주는 잔고 알림이 아닙니다. `main.py` 한 번에서 나온 스크리닝 후보, 종목별 6개 분석 근거, BUY/SELL/HOLD/PASS 판단, 마지막 AI 판단 요약을 순서대로 보냅니다. 계좌 잔고·계좌번호·webhook URL은 메시지에 보내지 않습니다.
+보고 채널은 잔고 알림이 아닙니다. `main.py` 한 번에서 나온 스크리닝 후보, 종목별 6개 분석 근거, BUY/SELL/HOLD/PASS 판단, 마지막 AI 판단 요약과 피드백 저장 결과를 보냅니다. 계좌 잔고·계좌번호·웹후크·봇 토큰·채널 ID는 메시지에 넣지 않습니다.
 
-두 값 중 하나라도 없으면 Discord는 조용히 꺼집니다. webhook 형식이 잘못됐거나 Discord가 응답하지 않아도 스크리닝·분석·매매·피드백 저장은 계속됩니다. mock에서는 모든 메시지의 데이터 원천과 매매 모드가 연습 데이터·simulation이라는 사실을 함께 확인하세요.
+`.env`의 `LECTURE_REPORT_CHANNEL`에서 `discord`, `telegram`, `both`, `off` 중 하나를 고릅니다. 기본 선택은 `discord`입니다. Discord는 `DISCORD_WEBHOOK_URL`이 필요하고, Telegram은 `TELEGRAM_BOT_TOKEN`과 `TELEGRAM_CHANNEL_ID`가 모두 필요합니다. `both`를 고르면 준비된 두 채널에 같은 판단을 보냅니다. 한 채널이 실패해도 다른 채널과 스크리닝·분석·매매·피드백 저장은 계속됩니다.
+
+기존 `.env`에 `LECTURE_NOTIFY_DISCORD=1`이 남아 있어도 계속 Discord로 동작합니다. 새 설정을 추가했다면 `LECTURE_REPORT_CHANNEL`을 우선합니다. 보고 채널을 사용하지 않거나 외부 연결을 모두 끈 연습을 할 때는 `LECTURE_REPORT_CHANNEL=off`를 사용합니다.
 
 ```text
-lecture-prism의 Discord 판단 알림 설정만 준비해줘. 아직 main.py는 실행하지 마.
-1. .env가 없으면 .env.example을 복사해 만들고, LECTURE_NOTIFY_DISCORD=1과 DISCORD_WEBHOOK_URL=""가 있는지 확인해줘.
-2. .env를 운영체제의 기본 텍스트 편집기로 열어줘.
-3. 나는 Discord Incoming Webhook URL을 빈칸에 직접 입력하고 저장할게. 채팅에는 붙여넣지 않을게.
-4. 내가 저장했다고 알릴 때까지 기다린 뒤, 값 자체를 출력하지 말고 준비됨 / 비어 있음 / 형식 오류 중 하나만 알려줘.
-5. .env가 Git 추적에서 제외되는지도 확인해줘. .gitignore가 에이전트의 로컬 파일 읽기까지 막지는 않는다고 설명해줘.
+lecture-prism의 보고 채널 설정만 준비해 줘. 아직 main.py는 실행하지 마.
+1. `.env`가 없으면 `.env.example`을 복사한 뒤 파일 이름을 `.env`로 바꾸고, `LECTURE_REPORT_CHANNEL=discord`와 `DISCORD_WEBHOOK_URL=""`, `TELEGRAM_BOT_TOKEN=""`, `TELEGRAM_CHANNEL_ID=""`가 있는지 확인해 줘. 기존 `.env`는 덮어쓰지 마.
+2. 내가 사용할 채널이 [discord / telegram / both / off] 중 무엇인지 확인하고 LECTURE_REPORT_CHANNEL에 반영해 줘.
+3. .env를 운영체제의 기본 텍스트 편집기로 열어 줘. Discord를 골랐다면 웹후크 URL을, Telegram을 골랐다면 봇 토큰과 채널 ID를 내가 직접 입력하고 저장할게.
+4. 웹후크·봇 토큰·채널 ID를 채팅에 붙여넣으라고 요구하지 마. 내가 저장했다고 알릴 때까지 기다려 줘.
+5. 저장 뒤에도 값 자체를 출력하지 말고 채널별로 준비됨 / 비어 있음 / 형식 오류 중 하나만 알려 줘.
+6. .env가 Git 추적에서 제외되는지도 확인해 줘. .gitignore가 에이전트의 로컬 파일 읽기까지 막지는 않는다고 설명해 줘.
 ```
 
-설정 준비와 파이프라인 실행은 분리합니다. 위 프롬프트에서 `준비됨`을 확인한 뒤에만 아래 프롬프트를 사용합니다.
+설정 준비와 파이프라인 실행은 분리합니다. 위 프롬프트에서 선택한 채널이 `준비됨`인지 확인한 뒤 아래 프롬프트를 사용합니다.
 
 ```text
-lecture-prism의 Discord 판단 알림을 실제 주문 없이 mock·simulation으로 한 번 확인해줘.
-스크리닝 → 종목별 분석 → 매매 판단 → AI 판단 요약 순서로 메시지가 전송되는지 점검하고,
-메시지에 계좌 잔고·계좌번호·webhook 값이 들어가지 않는지 확인해줘.
-webhook 값 자체는 화면, 로그, 답변 어디에도 출력하지 마.
+lecture-prism의 선택한 보고 채널을 실제 주문 없이 mock·simulation으로 한 번 확인해 줘.
+스크리닝 → 종목별 분석 → 매매 판단 → AI 판단 요약 → 피드백 저장 순서로 메시지가 전송되는지 확인해 줘.
+설정한 채널과 채널별 실제 전송 성공 여부·실패 원인을 나눠 알려 줘.
+메시지에 계좌 잔고·계좌번호·웹후크·봇 토큰·채널 ID가 들어가지 않는지 확인해 줘.
+비밀값은 화면, 로그, 답변 어디에도 출력하지 마.
 ```
 
 ## 7. 보고서 산출물

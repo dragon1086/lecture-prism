@@ -33,7 +33,7 @@ async def _notify(notifier, method_name: str, *args, **kwargs) -> bool:
     try:
         return bool(await method(*args, **kwargs))
     except Exception as exc:  # noqa: BLE001 - 외부 알림은 항상 fail-open
-        log.warning("Discord %s 알림 실패: %s", method_name, type(exc).__name__)
+        log.warning("보고 채널 %s 알림 실패: %s", method_name, type(exc).__name__)
         return False
 
 
@@ -167,6 +167,7 @@ async def _run_pipeline_scoped(
     await run_feedback(trade_results, analyses)
     log.info("      → 매매일지 저장 완료")
     await _notify(notifier, "summary", analyses, trade_results)
+    await _notify(notifier, "feedback", analyses, trade_results)
 
     log.info("=" * 60)
     log.info("파이프라인 완료")

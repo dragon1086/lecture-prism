@@ -317,37 +317,39 @@ class Part3StudentLearningContractTest(unittest.TestCase):
             self.assertIn(phrase, dashboard_prompt)
             self.assertIn(phrase, self.instructor)
 
-    def test_first_run_supports_real_data_discord_and_mock_fallback_lanes(self):
+    def test_first_run_supports_selected_report_channel_and_mock_fallback_lanes(self):
         for phrase in (
-            "실데이터와 Discord까지 포함해 전체 흐름",
+            "실데이터(real_data)와 선택한 보고 채널까지 포함해 전체 흐름",
             "연습 데이터(기술 이름: mock)",
             "실데이터(real_data)",
-            "Discord 판단 알림",
+            "Discord 또는 Telegram 판단 알림",
             "실데이터(yfinance)",
             "LECTURE_PROFILE=mock",
-            "LECTURE_NOTIFY_DISCORD=0",
+            "LECTURE_REPORT_CHANNEL=off",
         ):
             self.assertIn(phrase, self.prompts, phrase)
 
         for phrase in (
-            "real_data + Discord + simulation",
-            "준비되지 않은 수강생은 Discord 없이 연습 데이터로 진행한다",
+            "real_data + 선택한 보고 채널 + simulation",
+            "준비되지 않은 수강생은 보고 채널 없이 연습 데이터로 진행한다",
             "준비되지 않았거나 연결에 실패한 사람은 연습 데이터로 자동 전환합니다",
-            "실데이터·Discord 전체 실행 로그",
+            "실데이터·보고 채널 전체 실행 로그",
         ):
             self.assertIn(phrase, self.instructor, phrase)
 
         first_run = _slide(self.slides, "P3-S05")
-        self.assertIn("실데이터·Discord까지 보고", first_run)
+        self.assertIn("실데이터·선택한 보고 채널까지 확인하고", first_run)
         self.assertIn("아니면 연습 데이터로 같은 흐름", first_run)
         self.assertIn("연습 데이터 또는 준비된 실데이터", first_run)
 
-    def test_first_run_prepares_discord_and_names_each_saved_evidence_path(self):
+    def test_first_run_prepares_selected_channel_and_names_saved_evidence_paths(self):
         for source in (self.prompts, self.instructor):
             for phrase in (
-                "Discord를 보여 줄 사람만 P3-01 전에",
-                "LECTURE_NOTIFY_DISCORD=1",
+                "보고 채널을 쓸 사람만 P3-01 전에",
+                "LECTURE_REPORT_CHANNEL",
                 "DISCORD_WEBHOOK_URL",
+                "TELEGRAM_BOT_TOKEN",
+                "TELEGRAM_CHANNEL_ID",
                 "코딩 에이전트의 실행 출력",
                 "`logs/`",
                 "`reports/`",
@@ -357,24 +359,29 @@ class Part3StudentLearningContractTest(unittest.TestCase):
                 self.assertIn(phrase, source, phrase)
 
         self.assertIn(
-            "웹후크 주소는 코딩 에이전트 채팅에 붙여넣지 않는다",
+            "웹후크·봇 토큰·채널 ID는 코딩 에이전트 채팅에 붙여넣지 않습니다",
             self.instructor,
         )
 
         first_run = _markdown_block(self.prompts, "P3-01")
         for phrase in (
-            "Discord 선택 준비 프롬프트",
+            "보고 채널 선택 준비 프롬프트",
+            "`.env.example`을 복사한 뒤 파일 이름을 `.env`로 바꿔",
+            "discord / telegram / both / off",
             'DISCORD_WEBHOOK_URL=""',
-            "내가 `.env` 파일을 직접 열어 URL만 넣고 저장할 수 있게",
+            'TELEGRAM_BOT_TOKEN=""',
+            'TELEGRAM_CHANNEL_ID=""',
+            "내가 `.env` 파일을 직접 열어 필요한 값만 넣고 저장할 수 있게",
             "운영체제의 기본 텍스트 편집기",
-            "웹후크 주소를 이 채팅에 붙여넣으라고 요구하지 마",
-            "웹후크 주소는 코딩 에이전트 채팅에 붙여넣지 마세요",
+            "웹후크·봇 토큰·채널 ID를 이 채팅에 붙여넣으라고 요구하지 마",
+            "웹후크·봇 토큰·채널 ID는 코딩 에이전트 채팅에 붙여넣지 마세요",
             "준비됨 / 비어 있음 / 형식 오류",
             ".gitignore",
             "로컬 파일 읽기까지 막지는",
             "실제 주문·브로커·계좌·main.py 실행은 하지 마",
         ):
             self.assertIn(phrase, first_run, phrase)
+        self.assertNotIn("로컬 `.env`가 없으면 만들고", first_run)
 
     def test_student_copy_uses_practice_data_before_the_mock_technical_name(self):
         first_run = _markdown_block(self.prompts, "P3-01")
@@ -488,7 +495,7 @@ class Part3StudentLearningContractTest(unittest.TestCase):
             "프로젝트 루트의 `.venv`에 `requirements.txt` 전체를 설치",
             "전역 Python이나 전역 pip에는 설치하지 마",
             "기본 mock 수업은 패키지 설치 실패와 별개로 계속할 수",
-            "실데이터·Discord·OAuth·브로커가 자동으로 켜지는 것은 아닙니다",
+            "실데이터·보고 채널·OAuth·브로커가 자동으로 켜지는 것은 아닙니다",
         ):
             self.assertIn(phrase, self.start_guide, phrase)
         self.assertNotIn("requirements.txt에서 `yfinance`만 설치해줘", self.start_guide)
@@ -500,7 +507,7 @@ class Part3StudentLearningContractTest(unittest.TestCase):
             "자동으로 다시 시도하지 마",
             "네트워크 권한 미승인",
             "Yahoo 429",
-            "Discord 실제 전송 성공 건수",
+            "채널별 실제 전송 성공 여부",
             "P3-01에서 실데이터가 확인됐으면 새 조회를 하지 말고",
         ):
             self.assertIn(phrase, self.prompts, phrase)
@@ -508,7 +515,7 @@ class Part3StudentLearningContractTest(unittest.TestCase):
         for phrase in (
             "범위 제한 네트워크 승인",
             "005930 한 종목",
-            "실제 전송 성공 건수",
+            "채널별 실제 전송 성공 여부",
             "Yahoo 429",
             "전역 샌드박스를 끄거나 권한을 통째로 우회하지 마",
         ):

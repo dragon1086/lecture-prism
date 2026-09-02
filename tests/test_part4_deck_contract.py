@@ -424,6 +424,20 @@ class Part4DeckContractTests(unittest.TestCase):
             self.assertIn("kis_devlp.yaml", source)
             self.assertIn("모의·실거래 브로커 심화", source)
 
+    def test_kis_setup_opens_existing_env_and_copies_template_only_when_missing(self):
+        kis_prompt = self.prompts.split("## P4-01", 1)[0].split("## P4-KIS", 1)[1]
+
+        for phrase in (
+            "프로젝트 루트의 `.env`가 있는지 먼저 확인",
+            "이미 있으면 바로 기본 텍스트 편집기로 열어",
+            "없을 때만 `.env.example`을 복사한 뒤",
+        ):
+            self.assertIn(phrase, kis_prompt)
+        self.assertNotIn(
+            "`.env.example`을 `.env`로 복사해 프로젝트 폴더 바로 안에 두고",
+            kis_prompt,
+        )
+
     def test_p4_01_personalizes_the_shared_map_to_the_student_strategy(self):
         for text in (self.prompts, self.instructor_script):
             for phrase in (

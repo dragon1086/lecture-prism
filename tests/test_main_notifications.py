@@ -68,6 +68,10 @@ class RecordingNotifier:
         self.events.append(("summary", len(analyses), len(trades)))
         return True
 
+    async def feedback(self, analyses, trades):
+        self.events.append(("feedback", len(analyses), len(trades)))
+        return True
+
 
 class ExplodingNotifier:
     async def screening(self, *args, **kwargs):
@@ -81,6 +85,9 @@ class ExplodingNotifier:
 
     async def summary(self, *args, **kwargs):
         raise RuntimeError("summary notification failed")
+
+    async def feedback(self, *args, **kwargs):
+        raise RuntimeError("feedback notification failed")
 
 
 class MainNotificationContractTest(unittest.TestCase):
@@ -129,7 +136,7 @@ class MainNotificationFlowTest(unittest.TestCase):
         self.assertIsNone(result)
         self.assertEqual(
             [event[0] for event in notifier.events],
-            ["screening", "analysis", "trading", "summary"],
+            ["screening", "analysis", "trading", "summary", "feedback"],
         )
         self.assertEqual(notifier.events[1], ("analysis", "005930"))
         feedback.assert_awaited_once()
