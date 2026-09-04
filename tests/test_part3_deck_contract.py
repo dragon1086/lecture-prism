@@ -242,8 +242,8 @@ class Part3DeckContractTests(unittest.TestCase):
         self.assertIn("주문 의도", self._slide("P3-S31"))
         self.assertIn("P3-M3 블록 전체", self._slide("P3-S32"))
 
-        slide_ids = re.findall(r"<!-- (P3-S\d{2})\b", self.sources)
-        self.assertEqual([f"P3-S{number:02d}" for number in range(1, 47)], slide_ids)
+        slide_ids = re.findall(r"<!-- (P3-S\d{2}[a-z]?)\b", self.sources)
+        self.assertEqual(["P3-S01", "P3-S02", "P3-S02a"] + [f"P3-S{number:02d}" for number in range(3, 47)], slide_ids)
 
     def test_module_two_shows_multiple_collection_paths_and_one_kis_example(self):
         slide = self._slide("P3-S22")
@@ -338,7 +338,7 @@ class Part3DeckContractTests(unittest.TestCase):
             for slide in module["slides"]
         ]
         manifest_ids = [slide["id"] for slide in manifest_rows]
-        self.assertEqual([f"P3-S{number:02d}" for number in range(1, 47)], manifest_ids)
+        self.assertEqual(["P3-S01", "P3-S02", "P3-S02a"] + [f"P3-S{number:02d}" for number in range(3, 47)], manifest_ids)
 
         expected_titles = {
             "P3-S40": "매일 돌리려면 다섯 가지를 따로 챙겨야 합니다",
