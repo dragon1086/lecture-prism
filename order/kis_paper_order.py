@@ -57,7 +57,7 @@ def run(
 
     selected_ticker = _domestic_ticker(ticker)
     selected_client = client or _order_client()
-    if not any_truthy(("LECTURE_ENABLE_LIVE_BROKER", "LECTURE_ENABLE_LIVE_KIS")):
+    if not any_truthy(("LECTURE_ENABLE_LIVE_BROKER",)):
         return {
             "success": False,
             "status": "blocked",
@@ -67,8 +67,7 @@ def run(
             "mode": f"kis_{selected_client.config.mode}_live_gate_blocked",
             "order_no": None,
             "message": (
-                "KIS 주문 전송 차단: LECTURE_ENABLE_LIVE_BROKER=1 또는 "
-                "LECTURE_ENABLE_LIVE_KIS=1을 설정해야 합니다."
+                "KIS 주문 전송 차단: LECTURE_ENABLE_LIVE_BROKER=1을 설정해야 합니다."
             ),
             "ticker": selected_ticker,
             "quantity": ORDER_QUANTITY,

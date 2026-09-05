@@ -70,11 +70,11 @@ def real_mode_mutation_block(
     broker = str(broker_name).strip().upper()
     enabled = any(
         _truthy(os.getenv(key))
-        for key in ("LECTURE_ENABLE_LIVE_BROKER", f"LECTURE_ENABLE_LIVE_{broker}")
+        for key in (["LECTURE_ENABLE_LIVE_BROKER"] if broker == "KIS" else ["LECTURE_ENABLE_LIVE_BROKER", f"LECTURE_ENABLE_LIVE_{broker}"])
     )
     allowed = any(
         _truthy(os.getenv(key))
-        for key in ("LECTURE_ALLOW_REAL_BROKER", f"LECTURE_ALLOW_REAL_{broker}")
+        for key in (["LECTURE_ALLOW_REAL_BROKER"] if broker == "KIS" else ["LECTURE_ALLOW_REAL_BROKER", f"LECTURE_ALLOW_REAL_{broker}"])
     )
     if enabled and allowed:
         return None

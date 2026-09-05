@@ -246,9 +246,7 @@ def _kis_prefix(profile: str, env: Mapping[str, str]) -> str:
     if profile == "live":
         return "KIS_REAL"
     selected = normalize_mode(
-        env.get("LECTURE_KIS_MODE")
-        or env.get("KIS_MODE")
-        or env.get("LECTURE_BROKER_MODE"),
+        env.get("LECTURE_BROKER_MODE"),
         default="demo",
     )
     return "KIS_REAL" if selected == "real" else "KIS_PAPER"

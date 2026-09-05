@@ -154,7 +154,7 @@ def _bool_env(name: str, default: bool) -> bool:
 
 
 def _default_mode() -> str:
-    mode = _first_env("LECTURE_KIS_MODE", "KIS_MODE", "LECTURE_BROKER_MODE", default="demo")
+    mode = _env("LECTURE_BROKER_MODE", "demo")
     return normalize_mode(mode, default="demo")
 
 

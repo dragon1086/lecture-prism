@@ -81,7 +81,7 @@ class KISTradingFlowTest(unittest.TestCase):
             os.environ,
             {
                 "LECTURE_ENABLE_LIVE_BROKER": "1",
-                "LECTURE_KIS_MODE": "demo",
+                "LECTURE_BROKER_MODE": "demo",
             },
             clear=False,
         )

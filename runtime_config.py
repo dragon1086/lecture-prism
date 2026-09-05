@@ -327,12 +327,12 @@ def load_runtime_config(profile: str | None = None) -> RuntimeConfig:
         )
     llm_enabled, oauth_requested = _llm_enabled(llm_mode)
     tool_ready = {tool: _tool_ready(tool) for tool in research_tools}
-    live_broker_enabled = truthy(os.getenv("LECTURE_ENABLE_LIVE_BROKER")) or truthy(
+    live_broker_enabled = truthy(os.getenv("LECTURE_ENABLE_LIVE_BROKER")) or (broker != "kis" and truthy(
         os.getenv(f"LECTURE_ENABLE_LIVE_{broker.upper()}")
-    )
-    real_broker_allowed = truthy(os.getenv("LECTURE_ALLOW_REAL_BROKER")) or truthy(
+    ))
+    real_broker_allowed = truthy(os.getenv("LECTURE_ALLOW_REAL_BROKER")) or (broker != "kis" and truthy(
         os.getenv(f"LECTURE_ALLOW_REAL_{broker.upper()}")
-    )
+    ))
 
     return RuntimeConfig(
         profile=profile,

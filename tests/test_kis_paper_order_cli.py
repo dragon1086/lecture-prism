@@ -103,7 +103,6 @@ class KISPaperOrderCliTest(unittest.TestCase):
             "os.environ",
             {
                 "LECTURE_ENABLE_LIVE_BROKER": "0",
-                "LECTURE_ENABLE_LIVE_KIS": "0",
             },
             clear=False,
         ):
@@ -159,7 +158,7 @@ class KISPaperOrderCliTest(unittest.TestCase):
         module = self._module()
 
         with (
-            patch.dict("os.environ", {"LECTURE_KIS_MODE": "real"}, clear=False),
+            patch.dict("os.environ", {"LECTURE_BROKER_MODE": "real"}, clear=False),
             patch.object(module.KISConfig, "from_env", return_value=_Config("real")) as config,
             patch.object(module, "KISClient", return_value=_FakeClient(mode="real")),
         ):

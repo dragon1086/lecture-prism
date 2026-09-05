@@ -411,7 +411,7 @@ class Part4DeckContractTests(unittest.TestCase):
             ".env.example",
             "운영체제의 기본 텍스트 편집기",
             "App Key와 App Secret",
-            "LECTURE_KIS_MODE",
+            "LECTURE_BROKER_MODE",
             "paper면 demo, real이면 real",
             "계좌번호와 HTS ID는 필요하지",
             "이 수급 조회에는 계좌번호와 HTS ID가 필요하지",

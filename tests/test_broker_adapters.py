@@ -19,10 +19,7 @@ _ENV_KEYS = {
     "LECTURE_BROKER_MODE",
     "LECTURE_ENABLE_LIVE_BROKER",
     "LECTURE_ALLOW_REAL_BROKER",
-    "LECTURE_ENABLE_LIVE_KIS",
-    "LECTURE_ALLOW_REAL_KIS",
-    "LECTURE_KIS_MODE",
-    "KIS_MODE",
+    "LECTURE_BROKER_MODE",
     "LECTURE_ENABLE_LIVE_KIWOOM",
     "LECTURE_ALLOW_REAL_KIWOOM",
     "LECTURE_ENABLE_LIVE_TOSS",
@@ -131,7 +128,7 @@ class BrokerAdapterTest(unittest.TestCase):
 
             self.assertEqual(selected_kis_mode(config_path=config_path), "demo")
 
-        os.environ["LECTURE_KIS_MODE"] = "real"
+        os.environ["LECTURE_BROKER_MODE"] = "real"
         self.assertEqual(selected_kis_mode(), "real")
 
     def test_kis_adapter_maps_buy_and_sell_to_injected_client(self):
@@ -375,7 +372,7 @@ class BrokerAdapterTest(unittest.TestCase):
 
     def test_kis_accepted_order_is_not_reported_as_executed_by_trading(self):
         os.environ["LECTURE_ENABLE_LIVE_BROKER"] = "1"
-        os.environ["LECTURE_KIS_MODE"] = "demo"
+        os.environ["LECTURE_BROKER_MODE"] = "demo"
         adapter = type(
             "AcceptedAdapter",
             (),
@@ -473,8 +470,6 @@ class BrokerAdapterTest(unittest.TestCase):
         } | {
             "LECTURE_ENABLE_LIVE_BROKER",
             "LECTURE_ALLOW_REAL_BROKER",
-            "LECTURE_ENABLE_LIVE_KIS",
-            "LECTURE_ALLOW_REAL_KIS",
             "LECTURE_ENABLE_LIVE_KIWOOM",
             "LECTURE_ALLOW_REAL_KIWOOM",
             "LECTURE_ENABLE_LIVE_TOSS",
