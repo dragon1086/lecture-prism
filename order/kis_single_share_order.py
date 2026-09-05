@@ -16,6 +16,7 @@ from brokers.base import real_mode_mutation_block
 from brokers.config import any_truthy, load_env_file
 from brokers.kis import selected_kis_mode
 from brokers.kis_client import KISClient, KISConfig
+from runtime_config import load_runtime_config, resolve_trade_dry_run
 
 
 ORDER_QUANTITY = 1
@@ -56,6 +57,15 @@ def run(
     """선택한 KIS 환경으로 1주 시장가 매수 주문을 전송합니다."""
 
     selected_ticker = _domestic_ticker(ticker)
+    cfg = load_runtime_config()
+    if resolve_trade_dry_run(False, False, cfg):
+        return {
+            "status": "simulation", "ticker": selected_ticker,
+            "mode": "simulation", "quantity": ORDER_QUANTITY,
+            "side": "BUY", "order_type": "MARKET", "sent": False,
+        }
+    if cfg.broker != "kis":
+        raise ValueError("KIS 단주 주문은 LECTURE_BROKER=kis가 필요합니다.")
     selected_client = client or _order_client()
     if not any_truthy(("LECTURE_ENABLE_LIVE_BROKER",)):
         return {
@@ -142,6 +152,10 @@ def main() -> int:
         print(f"종목코드: {result['ticker']}")
         print(f"주문 차단: {result['message']}")
         return 1
+    if result["status"] == "simulation":
+        print(f"종목코드: {result['ticker']}")
+        print("실행 모드: simulation — 시장가 매수 1주 예행 연습, 시세 조회·주문 전송 없음")
+        return 0
     if result["sent"]:
         mode_label = "모의" if result.get("mode") == "paper" else "실전"
         print(f"{mode_label}주문 결과: {result['status']}")

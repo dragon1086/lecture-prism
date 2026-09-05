@@ -42,7 +42,40 @@ class _FakeClient:
         }
 
 
-class KISPaperOrderCliTest(unittest.TestCase):
+class KISSingleShareOrderCliTest(unittest.TestCase):
+    def setUp(self):
+        env = patch.dict("os.environ", {"LECTURE_PROFILE": "mock", "LECTURE_TRADE_MODE": "demo", "LECTURE_BROKER": "kis"}, clear=True)
+        env.start()
+        self.addCleanup(env.stop)
+        loader = patch("brokers.config.load_env_file", return_value=None)
+        loader.start()
+        self.addCleanup(loader.stop)
+
+    def test_simulation_matches_main_and_never_creates_broker_client(self):
+        from main import _resolve_runtime_options
+        from argparse import Namespace
+        module = self._module()
+        with patch.dict("os.environ", {"LECTURE_TRADE_MODE": "simulation"}), patch.object(module, "_order_client", side_effect=AssertionError("broker accessed")):
+            self.assertTrue(_resolve_runtime_options(Namespace())["dry_run"])
+            result = module.run("061040")
+        self.assertEqual(result["status"], "simulation")
+        self.assertFalse(result["sent"])
+
+    def test_profile_defaults_match_main_for_mock_paper_and_live(self):
+        from main import _resolve_runtime_options
+        from argparse import Namespace
+        module = self._module()
+        for profile, mode, simulated in (("mock", "real", True), ("paper", "paper", False), ("live", "real", False)):
+            with self.subTest(profile=profile), patch.dict("os.environ", {
+                "LECTURE_PROFILE": profile, "LECTURE_TRADE_MODE": "",
+                "LECTURE_ENABLE_LIVE_BROKER": "1", "LECTURE_ALLOW_REAL_BROKER": "1",
+            }):
+                client = _FakeClient(mode=mode)
+                self.assertEqual(_resolve_runtime_options(Namespace())["dry_run"], simulated)
+                result = module.run("061040", client=client)
+                self.assertEqual(result["sent"], not simulated)
+                self.assertEqual(len(client.orders), 0 if simulated else 1)
+
     def test_cli_keeps_quote_visible_when_order_fails(self):
         module = self._module()
         client = _FakeClient()
@@ -50,7 +83,7 @@ class KISPaperOrderCliTest(unittest.TestCase):
         def reject(*args):
             self.assertIn("조회 가격: 3,550원", output.getvalue())
             raise ValueError("장운영일자가 주문일과 상이합니다")
-        with patch.dict("os.environ", {"LECTURE_ENABLE_LIVE_BROKER": "1"}), patch.object(module, "_order_client", return_value=client), patch.object(client, "place_cash_order", side_effect=reject), patch("sys.argv", ["kis_paper_order.py", "061040"]), redirect_stdout(output), redirect_stderr(errors):
+        with patch.dict("os.environ", {"LECTURE_ENABLE_LIVE_BROKER": "1"}), patch.object(module, "_order_client", return_value=client), patch.object(client, "place_cash_order", side_effect=reject), patch("sys.argv", ["kis_single_share_order.py", "061040"]), redirect_stdout(output), redirect_stderr(errors):
             code = module.main()
         self.assertEqual(code, 1)
         self.assertIn("종목코드: 061040", output.getvalue())
@@ -74,10 +107,10 @@ class KISPaperOrderCliTest(unittest.TestCase):
 
     def _module(self):
         try:
-            from order import kis_paper_order
+            from order import kis_single_share_order
         except ModuleNotFoundError:
-            self.fail("order.kis_paper_order 모듈이 필요합니다")
-        return kis_paper_order
+            self.fail("order.kis_single_share_order 모듈이 필요합니다")
+        return kis_single_share_order
 
     def test_demo_mode_submits_one_share_market_buy(self):
         module = self._module()
