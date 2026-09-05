@@ -11,6 +11,7 @@
           "slides": [
             {"id": "P3-S01", "title": "파트 3 · 실전 자동매매 시스템의 · 구현 패턴", "promptId": null},
             {"id": "P3-S02", "title": "실패를 기록하며 자동매매 시스템을 키우고 있습니다", "promptId": null},
+            {"id": "P3-S02a", "title": "수강생에게 제공하는 자료와 질문 채널", "promptId": null},
             {"id": "P3-S03", "title": "이 수업을 듣는 이유부터 확인합니다", "promptId": null},
             {"id": "P3-S04", "title": "오늘 배운 내용을 혼자서도 다시 써먹을 수 있습니다", "promptId": null},
             {"id": "P3-S05", "title": "한 번 실행하면 이 순서로 진행됩니다", "promptId": null}
