@@ -28,7 +28,8 @@ class ReadmeOutcomeContractTest(unittest.TestCase):
     def test_readme_promises_keyless_start_and_kis_modes_in_one_project(self):
         self.assertIn("API 키 없이", self.readme)
         self.assertIn(".env", self.readme)
-        self.assertIn("kis_devlp.yaml", self.readme)
+        self.assertIn("루트 `.env` 하나", self.readme)
+        self.assertNotIn("kis_devlp.yaml", self.readme)
         self.assertIn("KIS 모의투자", self.readme)
         self.assertIn("KIS 실전투자", self.readme)
         self.assertNotIn("LECTURE_ALLOW_REAL_BROKER", self.readme)

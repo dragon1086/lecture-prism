@@ -6,7 +6,6 @@ import asyncio
 import os
 from dataclasses import asdict
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
 from .base import (
@@ -19,37 +18,17 @@ from .base import (
 )
 from .config import normalize_mode
 
-_DEFAULT_KIS_CONFIG = Path(__file__).resolve().parents[1] / "trading" / "trading" / "config" / "kis_devlp.yaml"
-
-
-def _yaml_default_mode(config_path: str | Path | None = None) -> str | None:
-    """Read the simple `default_mode: demo|real` line without requiring PyYAML."""
-
-    path = Path(config_path) if config_path else _DEFAULT_KIS_CONFIG
-    try:
-        text = path.read_text(encoding="utf-8")
-    except OSError:
-        return None
-    for raw in text.splitlines():
-        line = raw.split("#", 1)[0].strip()
-        if not line or ":" not in line:
-            continue
-        key, value = line.split(":", 1)
-        if key.strip() == "default_mode":
-            return value.strip().strip('"\'') or None
-    return None
-
 
 def selected_kis_mode(mode: str | None = None, *,
-                      config_path: str | Path | None = None) -> str:
-    """Resolve KIS mode from explicit args, `.env`, then kis_devlp.yaml."""
+                      config_path=None) -> str:
+    """Resolve KIS mode from explicit args or `.env`."""
 
+    _ = config_path  # Deprecated compatibility argument; never read.
     return normalize_mode(
         mode
         or os.getenv("LECTURE_KIS_MODE")
         or os.getenv("KIS_MODE")
-        or os.getenv("LECTURE_BROKER_MODE")
-        or _yaml_default_mode(config_path),
+        or os.getenv("LECTURE_BROKER_MODE"),
         default="demo",
     )
 

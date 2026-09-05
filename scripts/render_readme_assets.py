@@ -413,7 +413,7 @@ def optional_integrations_safety() -> None:
         center_text(draw, (x_edges[i] + 8, 232, x_edges[i + 1] - 8, 266), title, F["small"], color, line_gap=2)
     row_labels = ["설정 위치", "데이터", "보고서", "매매", "안전/폴백"]
     row_values = [
-        [".env\nPROFILE=mock", ".env\nDATA=real", ".env\nREPORT=research\nAPI 키 선택", "kis_devlp.yaml\nmode=demo", ".env + kis_devlp\nmode=real"],
+        [".env\nPROFILE=mock", ".env\nDATA=real", ".env\nREPORT=research\nAPI 키 선택", ".env\nKIS paper", ".env\nKIS real"],
         ["더미 가격\n항상 동작", "yfinance\nkospi-kosdaq", "실가격 +\n뉴스/웹 맥락", "실가격 +\n브로커 조회", "실계좌 데이터\n가능 범위"],
         ["lite\n규칙/더미 분석", "lite\n실가격 요약", "research\nPerplexity·Firecrawl", "research\n모의계좌 점검", "research\n운영 보고서"],
         ["simulation\n가상 체결", "simulation\n가상 체결", "simulation\n가상 체결", "demo\n모의 주문", "real*\n이중 플래그 필요"],
@@ -483,7 +483,7 @@ def submission_security() -> None:
     rounded(draw, right, GREEN, fill=WHITE, width=3)
     draw.text((120, 258), "절대 올리지 않기", font=F["h1"], fill=RED)
     draw.text((900, 258), "올려도 되는 것", font=F["h1"], fill=GREEN)
-    bad = [".env / 실제 API 키", "mcp_agent.secrets.yaml", "kis_devlp.yaml / KIS 토큰", "prism.db / 실행 DB", "*.log / 개인 실행 로그", "reports/ 개인 분석 보고서"]
+    bad = [".env / 실제 API 키", "mcp_agent.secrets.yaml", "KIS 토큰 / 계좌 설정", "prism.db / 실행 DB", "*.log / 개인 실행 로그", "reports/ 개인 분석 보고서"]
     good = ["README와 docs 문서", "screening.py / analysis.py 수정", "trading.py 데모 규칙 수정", "MY_STRATEGY.md 예시(비밀 제외)", "테스트와 검증 결과 요약"]
     y = 328
     for item in bad:
@@ -507,7 +507,7 @@ def runtime_architecture_map() -> None:
     control_items = [
         ((70, 184, 430, 216), ".env", "PROFILE · DATA · LLM · REPORT · TRADE", BLUE),
         ((455, 184, 905, 216), "API 키", "OPENAI · PERPLEXITY · FIRECRAWL · KRX/Kakao", PURPLE),
-        ((930, 184, 1268, 216), "KIS 설정", "kis_devlp.yaml: demo / real 계좌", ORANGE),
+        ((930, 184, 1268, 216), "KIS 설정", ".env: paper / real 계좌", ORANGE),
         ((1295, 184, 1528, 216), "안전", "실주문은 이중 플래그 필요", RED),
     ]
     for box, title, desc, color in control_items:
@@ -597,7 +597,7 @@ def runtime_architecture_map() -> None:
     rounded(draw, (1205, 430, 1518, 608), ORANGE, fill="#fbfdff", width=2, radius=18, shadow=False)
     draw.text((1225, 448), "브로커·주문 안전", font=F["body"], fill=ORANGE)
     broker_boxes = [
-        ((1225, 492, 1316, 572), ORANGE, "KIS", "demo/real\nkis_devlp"),
+        ((1225, 492, 1316, 572), ORANGE, "KIS", "paper/real\n.env"),
         ((1330, 492, 1412, 572), ORANGE, "키움", "REST\n토큰"),
         ((1426, 492, 1500, 572), RED, "게이트", "enable\nallow"),
     ]

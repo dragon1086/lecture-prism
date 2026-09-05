@@ -80,7 +80,8 @@ KIS에는 서로 다른 두 범위가 있습니다. 강의에서 먼저 쓰는 �
 | 범위 | 필요한 것 | 기본 실습 필요 여부 |
 |---|---|---|
 | KIS 가격·일별 투자자 수급 조회 | 선택한 환경의 App Key, App Secret | 선택 공통 실습 |
-| KIS 모의투자 조회·주문 구조 | 한국투자증권 모의투자 App Key, App Secret, HTS ID, 계좌번호 앞 8자리, 상품코드 2자리 | 심화 |
+| KIS 모의투자 조회·주문 구조 | `.env`의 `KIS_PAPER_APP_KEY`, `KIS_PAPER_APP_SECRET`, `KIS_PAPER_ACCOUNT_NO`, `KIS_PAPER_PRODUCT_CODE`, 선택 `KIS_HTS_ID` | 심화 |
+| KIS 실전투자 조회·주문 구조 | `.env`의 `KIS_REAL_APP_KEY`, `KIS_REAL_APP_SECRET`, `KIS_REAL_ACCOUNT_NO`, `KIS_REAL_PRODUCT_CODE`, 선택 `KIS_HTS_ID` | 강의 기본 실습에서는 금지 |
 | Kiwoom 모의투자/REST 구조 | 키움증권 REST API App Key, Secret Key 또는 Access Token | 심화 |
 | Toss Securities | `tossctl 0.24.1`과 사용자가 직접 승인한 WTS 로그인 세션. API 키는 lecture-prism이 보관하지 않음 | 선택 |
 | 실전투자 | 각 증권사 실전투자 키와 실제 계좌 정보 | 강의 기본 실습에서는 금지 |
@@ -113,6 +114,6 @@ lecture-prism에서 기본 KIS 브리지 옆에 내가 준비한 증권사 API �
 
 ## 6. 보안 원칙
 
-- 실제 키·토큰·계좌 설정 파일은 절대 GitHub에 올리지 않습니다.
-- `trading/trading/config/kis_devlp.yaml`은 실제 인증 파일이므로 커밋 금지입니다.
+- 실제 키·토큰·계좌 설정이 들어간 `.env`는 절대 GitHub에 올리지 않습니다.
+- 과거 실습에서 만든 KIS 인증 파일이 남아 있다면 그것도 커밋 금지입니다.
 - 커밋 전에는 README의 “보안 점검 프롬프트”를 코딩 에이전트에게 입력하세요.

@@ -13,8 +13,6 @@ from pathlib import Path
 from typing import Optional, Dict, List, Any
 from zoneinfo import ZoneInfo
 
-import yaml
-
 # Path to directory where current file is located
 TRADING_DIR = Path(__file__).parent
 
@@ -63,10 +61,7 @@ def _domestic_order_window(now: Optional[datetime.datetime] = None) -> str:
         return "reserved"
     return "unavailable"
 
-# Load configuration file
-CONFIG_FILE = TRADING_DIR / "config" / "kis_devlp.yaml"
-with open(CONFIG_FILE, encoding="UTF-8") as f:
-    _cfg = yaml.safe_load(f)
+_cfg = ka.get_config()
 
 
 def _resolve_sell_quantity(holding_quantity: int, quantity: int = None) -> int:
@@ -123,7 +118,7 @@ class DomesticStockTrading:
 
         Args:
             mode: 'demo' (simulated investment) or 'real' (real investment)
-            buy_amount: Buy amount per stock (default: refer to yaml file)
+            buy_amount: Buy amount per stock (default: refer to .env)
             auto_trading: Whether to execute auto trading
 
         Raises:
@@ -162,14 +157,14 @@ class DomesticStockTrading:
             logger.error(f"Error: {e}")
             logger.error("")
             logger.error("📋 HOW TO FIX:")
-            logger.error("   1. Open trading/config/kis_devlp.yaml")
+            logger.error("   1. Open the project .env file")
             logger.error(f"   2. For {self.mode} mode:")
             if self.mode == "real":
-                logger.error("      - 'my_app' should start with 'PS' (NOT 'PSVT')")
-                logger.error("      - 'accounts'에 실전투자 계좌를 올바르게 설정하세요")
+                logger.error("      - KIS_REAL_APP_KEY should start with 'PS' (NOT 'PSVT')")
+                logger.error("      - KIS_REAL_ACCOUNT_NO와 KIS_REAL_PRODUCT_CODE를 올바르게 설정하세요")
             else:
-                logger.error("      - 'paper_app' should start with 'PSVT'")
-                logger.error("      - 'accounts'에 모의투자 계좌를 올바르게 설정하세요")
+                logger.error("      - KIS_PAPER_APP_KEY should start with 'PSVT'")
+                logger.error("      - KIS_PAPER_ACCOUNT_NO와 KIS_PAPER_PRODUCT_CODE를 올바르게 설정하세요")
             logger.error("=" * 60)
             raise RuntimeError(f"Credential mismatch for {self.mode} mode: {e}") from e
 
@@ -183,7 +178,7 @@ class DomesticStockTrading:
             logger.error("")
             logger.error("📋 POSSIBLE CAUSES:")
             logger.error("   - KIS API server is temporarily unavailable (try again later)")
-            logger.error("   - App key/secret are incorrect in kis_devlp.yaml")
+            logger.error("   - App key/secret are incorrect in .env")
             logger.error("   - Network connectivity issue")
             logger.error("   - Rate limit exceeded (wait a few minutes)")
             logger.error("=" * 60)
@@ -207,7 +202,7 @@ class DomesticStockTrading:
             logger.error("❌ KIS AUTHENTICATION ERROR!")
             logger.error("=" * 60)
             logger.error(f"Mode: {self.mode}, Error: {e}")
-            logger.error("📋 Please check kis_devlp.yaml settings.")
+            logger.error("📋 Please check .env KIS settings.")
             logger.error("=" * 60)
             raise RuntimeError(f"{self.mode} mode authentication failed: {e}") from e
 

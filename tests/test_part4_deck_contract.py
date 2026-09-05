@@ -414,15 +414,16 @@ class Part4DeckContractTests(unittest.TestCase):
             "LECTURE_KIS_MODE",
             "paper면 demo, real이면 real",
             "계좌번호와 HTS ID는 필요하지",
+            "이 수급 조회에는 계좌번호와 HTS ID가 필요하지",
             "준비됨 / 비어 있음 / 형식 오류",
             "값 자체를 출력하지",
             ".gitignore",
         ):
             self.assertIn(phrase, kis_prompt)
 
-        for source in (kis_prompt, self.instructor_script):
-            self.assertIn("kis_devlp.yaml", source)
-            self.assertIn("모의·실거래 브로커 심화", source)
+        self.assertNotIn("kis_devlp.yaml", kis_prompt)
+        self.assertNotIn("kis_devlp.yaml", self.instructor_script)
+        self.assertIn("KIS 실제 수급", self.instructor_script)
 
     def test_kis_setup_opens_existing_env_and_copies_template_only_when_missing(self):
         kis_prompt = self.prompts.split("## P4-01", 1)[0].split("## P4-KIS", 1)[1]

@@ -8,6 +8,7 @@ import json
 import logging
 import os
 import shutil
+import sys
 import tempfile
 import time
 import threading
@@ -31,8 +32,6 @@ import requests
 # Declare web socket module
 import websockets
 
-# pip install PyYAML (package installation)
-import yaml
 from Crypto.Cipher import AES
 
 # pip install pycryptodome
@@ -108,10 +107,129 @@ token_tmp = get_token_filename()
 # Empty token files cause authentication failures and should only be created
 # when saving a valid token via save_token()
 
-# Store and manage app key, app secret, token, account number, etc., set to your own path and filename.
-# pip install PyYAML (package installation)
-with open(os.path.join(config_root, "kis_devlp.yaml"), encoding="UTF-8") as f:
-    _cfg = yaml.safe_load(f)
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from brokers.config import load_env_file, normalize_mode, truthy
+
+
+def _env(name: str, default: str = "") -> str:
+    return os.environ.get(name, default).strip()
+
+
+def _first_env(*names: str, default: str = "") -> str:
+    for name in names:
+        value = _env(name)
+        if value:
+            return value
+    return default
+
+
+def _int_env(name: str, default: int) -> int:
+    value = _env(name)
+    if not value:
+        return default
+    try:
+        return int(float(value))
+    except ValueError:
+        return default
+
+
+def _float_env(name: str, default: float) -> float:
+    value = _env(name)
+    if not value:
+        return default
+    try:
+        return float(value)
+    except ValueError:
+        return default
+
+
+def _bool_env(name: str, default: bool) -> bool:
+    value = _env(name)
+    if not value:
+        return default
+    return truthy(value)
+
+
+def _default_mode() -> str:
+    mode = _first_env("LECTURE_KIS_MODE", "KIS_MODE", "LECTURE_BROKER_MODE", default="demo")
+    return normalize_mode(mode, default="demo")
+
+
+def _account_from_env(mode: str) -> dict[str, Any] | None:
+    if mode == "demo":
+        prefix = "KIS_PAPER"
+        svr = "vps"
+        name = _first_env("KIS_PAPER_ACCOUNT_NAME", default="paper")
+    else:
+        prefix = "KIS_REAL"
+        svr = "prod"
+        name = _first_env("KIS_REAL_ACCOUNT_NAME", default="real")
+
+    account = _env(f"{prefix}_ACCOUNT_NO")
+    if not account:
+        return None
+    return {
+        "name": name,
+        "mode": svr,
+        "market": _env(f"{prefix}_MARKET", "all") or "all",
+        "account": account,
+        "product": _env(f"{prefix}_PRODUCT_CODE", "01") or "01",
+        "app_key": _env(f"{prefix}_APP_KEY"),
+        "app_secret": _env(f"{prefix}_APP_SECRET"),
+        "primary": True,
+        "buy_amount_krw": _int_env("KIS_DEFAULT_BUY_AMOUNT_KRW", 10000),
+        "buy_amount_usd": _float_env("KIS_DEFAULT_BUY_AMOUNT_USD", 100.0),
+    }
+
+
+def _build_env_config() -> dict[str, Any]:
+    load_env_file(PROJECT_ROOT / ".env")
+    accounts = [
+        account
+        for account in (_account_from_env("real"), _account_from_env("demo"))
+        if account is not None
+    ]
+    default_product = _first_env(
+        "KIS_PRODUCT_CODE",
+        "KIS_PAPER_PRODUCT_CODE",
+        "KIS_REAL_PRODUCT_CODE",
+        default="01",
+    )
+    return {
+        "default_unit_amount": _int_env("KIS_DEFAULT_BUY_AMOUNT_KRW", 10000),
+        "default_unit_amount_usd": _float_env("KIS_DEFAULT_BUY_AMOUNT_USD", 100.0),
+        "auto_trading": _bool_env("KIS_AUTO_TRADING", True),
+        "default_mode": _default_mode(),
+        "default_product_code": default_product,
+        "my_app": _env("KIS_REAL_APP_KEY"),
+        "my_sec": _env("KIS_REAL_APP_SECRET"),
+        "paper_app": _env("KIS_PAPER_APP_KEY"),
+        "paper_sec": _env("KIS_PAPER_APP_SECRET"),
+        "my_htsid": _env("KIS_HTS_ID"),
+        "accounts": accounts,
+        "my_acct_stock": _env("KIS_REAL_ACCOUNT_NO"),
+        "my_paper_stock": _env("KIS_PAPER_ACCOUNT_NO"),
+        "my_acct_future": "",
+        "my_paper_future": "",
+        "my_prod": default_product,
+        "prod": "https://openapi.koreainvestment.com:9443",
+        "ops": "ws://ops.koreainvestment.com:21000",
+        "vps": "https://openapivts.koreainvestment.com:29443",
+        "vops": "ws://ops.koreainvestment.com:31000",
+        "my_token": "",
+        "my_agent": _env(
+            "KIS_USER_AGENT",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/114.0.0.0 Safari/537.36",
+        ),
+    }
+
+
+_cfg = _build_env_config()
 
 
 DEFAULT_PRODUCT_CODE = str(_cfg.get("default_product_code", "01"))
@@ -256,7 +374,7 @@ def _build_legacy_accounts() -> list[dict[str, Any]]:
 
     if legacy_accounts:
         warnings.warn(
-            "Legacy KIS account config is deprecated. Migrate to the 'accounts' list format in kis_devlp.yaml.",
+            "Legacy KIS account config is deprecated. Migrate KIS settings to the project .env file.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -272,7 +390,7 @@ def get_configured_accounts(
     """
     Return normalized account definitions from config.
 
-    Requires the multi-account `accounts` list in kis_devlp.yaml.
+    Uses account fields loaded from the project `.env`.
     """
     requested_svr = _normalize_server_mode(svr) if svr is not None else None
     requested_product = str(product) if product is not None else None
@@ -292,8 +410,7 @@ def get_configured_accounts(
 
     if not normalized_accounts:
         raise ValueError(
-            "No accounts configured. Define at least one entry in 'accounts' inside kis_devlp.yaml "
-            "or provide legacy account fields."
+            "No KIS account configured. Fill KIS_PAPER_ACCOUNT_NO or KIS_REAL_ACCOUNT_NO in the project .env."
         )
 
     if len(normalized_accounts) > MAX_CONFIGURED_ACCOUNTS:
@@ -595,6 +712,8 @@ def read_token(account_key: Optional[str] = None) -> Optional[str]:
                     except Exception:
                         # Try YAML format (oldest format)
                         try:
+                            import yaml
+
                             with open(token_file, 'r', encoding='UTF-8') as f:
                                 content = f.read().strip()
                                 if not content:
@@ -745,14 +864,14 @@ def validate_credentials(app_key: str, mode: str) -> Tuple[bool, str]:
     if mode == 'prod' and is_demo_key:
         return False, (
             "CREDENTIAL MISMATCH! Using DEMO app key (PSVT*) in REAL mode.\n"
-            "Check kis_devlp.yaml - 'my_app' should be your real trading key (PS*, not PSVT*).\n"
+            "Check .env - KIS_REAL_APP_KEY should be your real trading key (PS*, not PSVT*).\n"
             "This is the most common cause of 'Error Code: 500' authentication failures."
         )
 
     if mode == 'vps' and not is_demo_key and app_key.startswith('PS'):
         return False, (
             "CREDENTIAL MISMATCH! Using REAL app key (PS*) in DEMO mode.\n"
-            "Check kis_devlp.yaml - 'paper_app' should be your demo key (PSVT*).\n"
+            "Check .env - KIS_PAPER_APP_KEY should be your demo key (PSVT*).\n"
             "Using real credentials in demo mode may cause unexpected behavior."
         )
 
@@ -1100,7 +1219,7 @@ def auth(
 
     if not app_key or not app_secret:
         raise CredentialMismatchError(
-            f"Missing credentials in kis_devlp.yaml: {ak1}={app_key is not None}, {ak2}={app_secret is not None}"
+            f"Missing KIS credentials in .env: {ak1}={app_key is not None}, {ak2}={app_secret is not None}"
         )
 
     # CRITICAL: Validate credential/mode match (Issue #137 root cause)
@@ -1191,6 +1310,10 @@ def reAuth(svr="prod", product=DEFAULT_PRODUCT_CODE, account_name=None, account_
 
 def getEnv():
     return _cfg
+
+
+def get_config():
+    return dict(_cfg)
 
 
 def smart_sleep():

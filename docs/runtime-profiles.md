@@ -5,18 +5,17 @@ lecture-prism은 한 저장소 안에서 초급자용 더미 데모부터 상태
 - **기본 학습 경로**: `mock`과 `real_data`가 `screening.py` → `analysis_agents.py`·`analysis.py` → `buy_agent.py` → `trading.py` → `feedback.py`를 사용합니다. API 키 없는 첫 성공과 전략 A/B/C/D 수정의 출발점입니다.
 - **상태 기반 고급 경로**: `classroom`, `backtest`, `paper`, `live`가 `prism_core`의 시장 국면·후보·주문 원장·체결 증거를 사용하거나 그 계약을 검증합니다. `paper/live`는 market provider 오류를 mock 매매로 바꾸지 않고 fail-closed로 막습니다.
 
-수강생이 기본 실습에서 만지는 설정 파일은 `.env` 하나입니다. 계좌 주문까지 다루는 심화에서만 KIS YAML을 추가합니다.
+수강생이 기본 실습과 KIS 선택 실습에서 만지는 설정 파일은 프로젝트 루트의 `.env` 하나입니다. KIS 주문용 App Key, Secret, 계좌번호, 상품코드도 같은 `.env`에 둡니다.
 
 | 파일 | 역할 | 수업 범위 |
 |---|---|---|
-| `.env` | 더미/실데이터/리서치 수준과 보고 채널 선택, Discord·Telegram·KIS 선택값 입력 | 기본·선택 실습 |
-| `trading/trading/config/kis_devlp.yaml` | KIS 계좌번호, HTS ID, 주문용 App Key/Secret, 모의/실전 계좌 설정 | 모의·실거래 브로커 심화 |
+| `.env` | 더미/실데이터/리서치 수준과 보고 채널 선택, Discord·Telegram·KIS App Key/Secret·계좌번호·상품코드 입력 | 기본·선택·브로커 심화 |
 
 처음에는 `.env` 없이도 됩니다. 설정을 따로 만들고 싶다면 `.env.example`을 참고해 `.env`를 만들고 `LECTURE_PROFILE=mock`으로 시작하세요. 이 값이면 API 키가 없어도 스크리닝, 분석, 가상 매매, 피드백 저장, Markdown 보고서 생성까지 돌아갑니다.
 
 설정은 코딩 에이전트에게 `.env.example` 복사와 파일 열기까지만 맡깁니다. 에이전트가 macOS 텍스트 편집기나 Windows 메모장처럼 **운영체제의 기본 텍스트 편집기**로 `.env`를 열면, 수강생이 비밀값을 직접 입력·저장합니다. 비밀값은 채팅에 붙여넣지 않습니다. 저장 뒤에는 값 자체를 화면이나 답변에 노출하지 않는 방식으로 `준비됨 / 비어 있음 / 형식 오류`만 확인하게 합니다.
 
-`.gitignore`는 `.env`와 실제 KIS 인증 파일의 Git 업로드를 막지만, 에이전트의 로컬 파일 읽기까지 막지는 않습니다. 그래서 프롬프트에는 비밀값을 읽어 출력하지 말라는 지시와 Git 추적 제외 확인을 함께 넣습니다.
+`.gitignore`는 `.env`와 과거에 만들었을 수 있는 KIS 인증 파일의 Git 업로드를 막지만, 에이전트의 로컬 파일 읽기까지 막지는 않습니다. 그래서 프롬프트에는 비밀값을 읽어 출력하지 말라는 지시와 Git 추적 제외 확인을 함께 넣습니다.
 
 아래 `text` 블록은 직접 실행할 터미널 명령이 아니라 **코딩 에이전트에게 그대로 붙여넣는 프롬프트**입니다.
 
@@ -164,7 +163,7 @@ LECTURE_TRADE_MODE=simulation
 
 `kis_market_data.py`는 선택한 KIS 환경에서 현재가와 일별 기관·외국인·개인 순매수만 읽습니다. `paper`는 `KIS_PAPER_APP_KEY`·`KIS_PAPER_APP_SECRET`, `real`은 `KIS_REAL_APP_KEY`·`KIS_REAL_APP_SECRET`을 사용하며 이 조회에는 계좌번호가 필요하지 않습니다. `LECTURE_KIS_MODE=demo|real`은 각각 paper/real 자격 증명 묶음을 선택합니다.
 
-이 네 항목은 `.env.example`에 빈칸으로 있습니다. 에이전트에게 선택한 환경의 두 항목만 찾아 운영체제의 기본 텍스트 편집기로 열어 달라고 하고, 사용자가 직접 입력·저장합니다. 계좌번호·HTS ID·`kis_devlp.yaml`은 요구하지 않습니다. `kis_devlp.yaml`은 모의·실거래 브로커 심화에서만 사용합니다.
+이 네 항목은 `.env.example`에 빈칸으로 있습니다. 에이전트에게 선택한 환경의 두 항목만 찾아 운영체제의 기본 텍스트 편집기로 열어 달라고 하고, 사용자가 직접 입력·저장합니다. 읽기 전용 시장 데이터 확인에는 계좌번호와 HTS ID가 필요하지 않습니다.
 
 P3-04는 실제 숫자 한 묶음이 오는지 확인하는 smoke test이므로 실패를 연습 데이터 성공으로 바꾸지 않습니다. Part 4 분석에서는 `LECTURE_SUPPLY_SOURCE=kis`를 이번 실행에만 적용합니다. KIS가 실패하면 다른 다섯 분석 섹션은 유지하고 수급만 거래량 프록시로 돌아가며, 보고서에 그 사실을 명시합니다. 어떤 경우에도 주문·취소·정정·잔고·계좌 API는 호출하지 않고 매매는 simulation입니다.
 
@@ -209,9 +208,14 @@ LECTURE_BROKER=kis
 LECTURE_BROKER_MODE=demo
 LECTURE_ENABLE_LIVE_BROKER=1
 LECTURE_KIS_MODE=demo
+KIS_PAPER_APP_KEY=""
+KIS_PAPER_APP_SECRET=""
+KIS_PAPER_ACCOUNT_NO=""
+KIS_PAPER_PRODUCT_CODE="01"
+KIS_HTS_ID=""
 ```
 
-추가로 `trading/trading/config/kis_devlp.yaml`에 KIS 모의투자 App Key, App Secret, HTS ID, 계좌번호를 채웁니다.
+KIS 모의투자 주문 주기에 필요한 값도 프로젝트 루트 `.env`에만 채웁니다. `KIS_PAPER_APP_KEY`, `KIS_PAPER_APP_SECRET`, `KIS_PAPER_ACCOUNT_NO`, `KIS_PAPER_PRODUCT_CODE`가 필요하고, `KIS_HTS_ID`는 필요한 계정에서만 선택으로 입력합니다.
 
 주의: `LECTURE_ENABLE_LIVE_BROKER=1`은 브로커 API 호출을 허용한다는 뜻입니다. 모의투자 모드라도 실제 증권사 서버에 요청이 나갈 수 있습니다.
 
@@ -227,9 +231,14 @@ LECTURE_BROKER_MODE=real
 LECTURE_ENABLE_LIVE_BROKER=1
 LECTURE_ALLOW_REAL_BROKER=1
 LECTURE_KIS_MODE=real
+KIS_REAL_APP_KEY=""
+KIS_REAL_APP_SECRET=""
+KIS_REAL_ACCOUNT_NO=""
+KIS_REAL_PRODUCT_CODE="01"
+KIS_HTS_ID=""
 ```
 
-추가로 `kis_devlp.yaml`의 `default_mode`와 계좌별 `mode`도 `real`이어야 합니다.
+KIS 실전투자 주문 주기에 필요한 값도 프로젝트 루트 `.env`에만 둡니다. `KIS_REAL_APP_KEY`, `KIS_REAL_APP_SECRET`, `KIS_REAL_ACCOUNT_NO`, `KIS_REAL_PRODUCT_CODE`가 필요하고, `KIS_HTS_ID`는 필요한 계정에서만 선택으로 입력합니다. 실전에서는 `LECTURE_KIS_MODE=real`과 공용 이중 플래그가 모두 맞아야 합니다.
 
 이중 플래그는 market provider fail-closed와 별개인 **별도 live gate**입니다. KIS와 Toss의 전체 수명주기는 코드와 고정 fixture로 검증했지만, 그것만으로 live 운영 준비가 완료되지는 않습니다. 실제 계좌 E2E는 실제 키·장 운영시간·사용자 승인이 필요한 별도 작업이므로, 강의 문서와 자동 테스트는 주문 경로를 실행하지 않습니다.
 
@@ -303,7 +312,7 @@ market regime·screening·provider fail-closed, 공식 Codex OAuth 역할별 분
 ### 기존 프로필 설정 점검 프롬프트
 
 ```text
-lecture-prism의 현재 .env와 kis_devlp.yaml 설정을 점검해줘.
+lecture-prism의 현재 .env 설정을 점검해줘.
 
 확인할 것:
 1. LECTURE_PROFILE 기준으로 어떤 데이터/리포트/매매 수준인지 설명해줘.

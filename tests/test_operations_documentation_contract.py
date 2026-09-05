@@ -156,8 +156,14 @@ class OperationsDocumentationContractTest(unittest.TestCase):
             "KIS_PAPER_APP_SECRET=\"\"",
             "KIS_REAL_APP_KEY=\"\"",
             "KIS_REAL_APP_SECRET=\"\"",
-            "읽기 전용 시장 데이터",
+            "가격·일별 투자자 수급",
             "계좌번호는 필요하지 않습니다",
+            "KIS_PAPER_ACCOUNT_NO=\"\"",
+            "KIS_PAPER_PRODUCT_CODE=\"01\"",
+            "KIS_REAL_ACCOUNT_NO=\"\"",
+            "KIS_REAL_PRODUCT_CODE=\"01\"",
+            "KIS_HTS_ID=\"\"",
+            "별도 YAML 파일은 필요하지 않습니다",
         ):
             self.assertIn(phrase, env)
 
@@ -166,9 +172,11 @@ class OperationsDocumentationContractTest(unittest.TestCase):
             "준비됨 / 비어 있음 / 형식 오류",
             ".gitignore",
             "로컬 파일 읽기까지 막지는",
-            "모의·실거래 브로커 심화",
+            "KIS 주문용 App Key, Secret, 계좌번호, 상품코드도 같은 `.env`에 둡니다",
         ):
             self.assertIn(phrase, runtime)
+
+        self.assertNotIn("kis_devlp.yaml", runtime)
 
     def test_report_channel_setup_uses_redacted_editor_flow_before_execution(self):
         runtime = self._docs()["runtime"]

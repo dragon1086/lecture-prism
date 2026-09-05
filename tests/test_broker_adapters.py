@@ -124,12 +124,15 @@ class BrokerAdapterTest(unittest.TestCase):
         self.assertFalse(result["success"])
         self.assertEqual(result["mode"], "kiwoom_credentials_missing")
 
-    def test_kis_mode_can_fall_back_to_yaml_default_mode(self):
+    def test_kis_mode_ignores_deleted_yaml_default_mode(self):
         with tempfile.TemporaryDirectory() as tmp:
             config_path = Path(tmp) / "kis_devlp.yaml"
             config_path.write_text("default_mode: real\n", encoding="utf-8")
 
-            self.assertEqual(selected_kis_mode(config_path=config_path), "real")
+            self.assertEqual(selected_kis_mode(config_path=config_path), "demo")
+
+        os.environ["LECTURE_KIS_MODE"] = "real"
+        self.assertEqual(selected_kis_mode(), "real")
 
     def test_kis_adapter_maps_buy_and_sell_to_injected_client(self):
         calls = []
@@ -492,10 +495,6 @@ class BrokerAdapterTest(unittest.TestCase):
         with patch.dict(os.environ, sanitized, clear=False):
             with (
                 patch(
-                    "brokers.kis._yaml_default_mode",
-                    side_effect=AssertionError("KIS config must not be read"),
-                ) as read_config,
-                patch(
                     "brokers.factory.get_broker_adapter",
                     side_effect=AssertionError(
                         "broker factory must not run"
@@ -509,7 +508,6 @@ class BrokerAdapterTest(unittest.TestCase):
         self.assertFalse(result["executed"])
         self.assertEqual(result["mode"], "live_blocked")
         self.assertEqual(result["broker"], "kis")
-        read_config.assert_not_called()
         get_adapter.assert_not_called()
         forbidden_place_order.assert_not_awaited()
 

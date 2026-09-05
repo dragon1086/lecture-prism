@@ -11,7 +11,6 @@ import os
 import sys
 import logging
 import datetime
-import yaml
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
 from dotenv import load_dotenv
@@ -29,15 +28,12 @@ sys.path.insert(0, str(PARENT_DIR / "prism-us"))  # prism-us for US modules
 sys.path.insert(0, str(TRADING_DIR))              # trading/ for local imports
 sys.path.insert(0, str(PARENT_DIR))               # project root - MUST be first for 'from trading.xxx'
 
-# Load configuration file
-CONFIG_FILE = TRADING_DIR / "config" / "kis_devlp.yaml"
-with open(CONFIG_FILE, encoding="UTF-8") as f:
-    _cfg = yaml.safe_load(f)
-
 # Import local modules
 from trading.domestic_stock_trading import DomesticStockTrading
 from trading import kis_auth as ka
 from telegram_bot_agent import TelegramBotAgent
+
+_cfg = ka.get_config()
 
 # Import US trading module (optional - may not be available)
 try:
@@ -83,7 +79,7 @@ class PortfolioTelegramReporter:
         Args:
             telegram_token: Telegram bot token
             chat_id: Telegram channel ID
-            trading_mode: Trading mode ('demo' or 'real', uses yaml config if None)
+            trading_mode: Trading mode ('demo' or 'real', uses .env default if None)
         """
         # Telegram configuration
         self.telegram_token = telegram_token or os.environ.get("TELEGRAM_BOT_TOKEN")
@@ -95,12 +91,12 @@ class PortfolioTelegramReporter:
         if not self.chat_id:
             raise ValueError("Telegram channel ID is required. Please provide via environment variable TELEGRAM_CHANNEL_ID or parameter.")
 
-        # Trading configuration - use yaml default_mode as default value
+        # Trading configuration - use .env default mode when omitted
         self.trading_mode = trading_mode if trading_mode is not None else _cfg["default_mode"]
         self.telegram_bot = TelegramBotAgent(token=self.telegram_token)
 
         logger.info("PortfolioTelegramReporter initialized")
-        logger.info(f"Trading mode: {self.trading_mode} (yaml config: {_cfg['default_mode']})")
+        logger.info(f"Trading mode: {self.trading_mode} (.env default: {_cfg['default_mode']})")
 
     def format_currency(self, amount: float, currency: str = "KRW") -> str:
         """Format amount in specified currency"""
@@ -496,11 +492,11 @@ async def main():
     args = parser.parse_args()
 
     try:
-        # Initialize reporter (uses yaml config if mode is None)
+        # Initialize reporter (uses .env default if mode is None)
         reporter = PortfolioTelegramReporter(
             telegram_token=args.token,
             chat_id=args.chat_id,
-            trading_mode=args.mode  # Uses yaml's default_mode if None
+            trading_mode=args.mode  # Uses .env default_mode if None
         )
 
         # Execute based on report type
