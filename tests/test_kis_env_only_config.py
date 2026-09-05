@@ -49,7 +49,7 @@ class KISEnvOnlyConfigTest(unittest.TestCase):
         self.assertFalse(config_file.exists())
 
         env = {
-            "LECTURE_KIS_MODE": "demo",
+            "LECTURE_BROKER_MODE": "demo",
             "KIS_PAPER_APP_KEY": "PSVT-paper-key",
             "KIS_PAPER_APP_SECRET": "paper-secret",
             "KIS_PAPER_ACCOUNT_NO": "12345678",
@@ -102,7 +102,7 @@ class KISEnvOnlyConfigTest(unittest.TestCase):
 
     def test_domestic_trading_module_imports_without_yaml(self):
         env = {
-            "LECTURE_KIS_MODE": "demo",
+            "LECTURE_BROKER_MODE": "demo",
             "KIS_PAPER_APP_KEY": "PSVT-paper-key",
             "KIS_PAPER_APP_SECRET": "paper-secret",
             "KIS_PAPER_ACCOUNT_NO": "12345678",

@@ -161,7 +161,7 @@ LECTURE_TRADE_MODE=simulation
 
 ### 선택: KIS 실제 수급만 읽기 전용으로 보강
 
-`kis_market_data.py`는 선택한 KIS 환경에서 현재가와 일별 기관·외국인·개인 순매수만 읽습니다. `paper`는 `KIS_PAPER_APP_KEY`·`KIS_PAPER_APP_SECRET`, `real`은 `KIS_REAL_APP_KEY`·`KIS_REAL_APP_SECRET`을 사용하며 이 조회에는 계좌번호가 필요하지 않습니다. `LECTURE_KIS_MODE=demo|real`은 각각 paper/real 자격 증명 묶음을 선택합니다.
+`kis_market_data.py`는 선택한 KIS 환경에서 현재가와 일별 기관·외국인·개인 순매수만 읽습니다. `paper`는 `KIS_PAPER_APP_KEY`·`KIS_PAPER_APP_SECRET`, `real`은 `KIS_REAL_APP_KEY`·`KIS_REAL_APP_SECRET`을 사용하며 이 조회에는 계좌번호가 필요하지 않습니다. `LECTURE_BROKER_MODE=demo|real`은 각각 paper/real 자격 증명 묶음을 선택합니다.
 
 이 네 항목은 `.env.example`에 빈칸으로 있습니다. 에이전트에게 선택한 환경의 두 항목만 찾아 운영체제의 기본 텍스트 편집기로 열어 달라고 하고, 사용자가 직접 입력·저장합니다. 읽기 전용 시장 데이터 확인에는 계좌번호와 HTS ID가 필요하지 않습니다.
 
@@ -207,7 +207,7 @@ LECTURE_TRADE_MODE=demo
 LECTURE_BROKER=kis
 LECTURE_BROKER_MODE=demo
 LECTURE_ENABLE_LIVE_BROKER=1
-LECTURE_KIS_MODE=demo
+LECTURE_BROKER_MODE=demo
 KIS_PAPER_APP_KEY=""
 KIS_PAPER_APP_SECRET=""
 KIS_PAPER_ACCOUNT_NO=""
@@ -230,7 +230,7 @@ LECTURE_BROKER=kis
 LECTURE_BROKER_MODE=real
 LECTURE_ENABLE_LIVE_BROKER=1
 LECTURE_ALLOW_REAL_BROKER=1
-LECTURE_KIS_MODE=real
+LECTURE_BROKER_MODE=real
 KIS_REAL_APP_KEY=""
 KIS_REAL_APP_SECRET=""
 KIS_REAL_ACCOUNT_NO=""
@@ -238,7 +238,7 @@ KIS_REAL_PRODUCT_CODE="01"
 KIS_HTS_ID=""
 ```
 
-KIS 실전투자 주문 주기에 필요한 값도 프로젝트 루트 `.env`에만 둡니다. `KIS_REAL_APP_KEY`, `KIS_REAL_APP_SECRET`, `KIS_REAL_ACCOUNT_NO`, `KIS_REAL_PRODUCT_CODE`가 필요하고, `KIS_HTS_ID`는 필요한 계정에서만 선택으로 입력합니다. 실전에서는 `LECTURE_KIS_MODE=real`과 공용 이중 플래그가 모두 맞아야 합니다.
+KIS 실전투자 주문 주기에 필요한 값도 프로젝트 루트 `.env`에만 둡니다. `KIS_REAL_APP_KEY`, `KIS_REAL_APP_SECRET`, `KIS_REAL_ACCOUNT_NO`, `KIS_REAL_PRODUCT_CODE`가 필요하고, `KIS_HTS_ID`는 필요한 계정에서만 선택으로 입력합니다. 실전에서는 `LECTURE_BROKER_MODE=real`과 공용 이중 플래그가 모두 맞아야 합니다.
 
 이중 플래그는 market provider fail-closed와 별개인 **별도 live gate**입니다. KIS와 Toss의 전체 수명주기는 코드와 고정 fixture로 검증했지만, 그것만으로 live 운영 준비가 완료되지는 않습니다. 실제 계좌 E2E는 실제 키·장 운영시간·사용자 승인이 필요한 별도 작업이므로, 강의 문서와 자동 테스트는 주문 경로를 실행하지 않습니다.
 

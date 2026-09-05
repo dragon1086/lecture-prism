@@ -495,9 +495,8 @@ def _live_broker_enabled(broker_name: str) -> bool:
         "LECTURE_ENABLE_LIVE_BROKER",
         f"LECTURE_ENABLE_LIVE_{broker}",
     ]
-    # Backward compatibility with the previous KIS-only bridge.
-    if broker_name.lower() == "kis":
-        keys.append("LECTURE_ENABLE_LIVE_KIS")
+    if broker == "KIS":
+        keys = ["LECTURE_ENABLE_LIVE_BROKER"]
     return any_truthy(keys)
 
 
@@ -510,8 +509,8 @@ def _real_broker_allowed(broker_name: str) -> bool:
         "LECTURE_ALLOW_REAL_BROKER",
         f"LECTURE_ALLOW_REAL_{broker}",
     ]
-    if broker_name.lower() == "kis":
-        keys.append("LECTURE_ALLOW_REAL_KIS")
+    if broker == "KIS":
+        keys = ["LECTURE_ALLOW_REAL_BROKER"]
     return any_truthy(keys)
 
 

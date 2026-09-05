@@ -33,8 +33,6 @@ KIS와 Toss의 현재 구현 범위는 매수·매도·조회·취소·재시작
 |---|---|
 | `LECTURE_ENABLE_LIVE_BROKER=1` | 모의/더미 브로커 API 호출을 허용합니다. |
 | `LECTURE_ALLOW_REAL_BROKER=1` | 실전투자 모드를 추가로 허용합니다. |
-| `LECTURE_ENABLE_LIVE_KIS=1` | 기존 KIS 전용 호환 플래그입니다. |
-| `LECTURE_ALLOW_REAL_KIS=1` | 기존 KIS real 모드 호환 플래그입니다. |
 
 수업 중에는 `LECTURE_ALLOW_REAL_BROKER=1`을 쓰지 않는 것이 원칙입니다.
 

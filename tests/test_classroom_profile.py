@@ -32,7 +32,6 @@ _HOSTILE_OVERRIDES = {
     "LECTURE_TRADE_MODE": "real",
     "LECTURE_BROKER": "kis",
     "LECTURE_BROKER_MODE": "real",
-    "KIS_MODE": "real",
     "LECTURE_ENABLE_LIVE_BROKER": "1",
     "LECTURE_ALLOW_REAL_BROKER": "1",
     "OPENAI_API_KEY": "must-not-be-used",

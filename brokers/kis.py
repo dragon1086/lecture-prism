@@ -26,8 +26,6 @@ def selected_kis_mode(mode: str | None = None, *,
     _ = config_path  # Deprecated compatibility argument; never read.
     return normalize_mode(
         mode
-        or os.getenv("LECTURE_KIS_MODE")
-        or os.getenv("KIS_MODE")
         or os.getenv("LECTURE_BROKER_MODE"),
         default="demo",
     )
