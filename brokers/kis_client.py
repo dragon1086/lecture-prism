@@ -140,8 +140,26 @@ class _URLTransport:
         except HTTPError as exc:
             status = int(exc.code) if isinstance(exc.code, int) else None
             retryable = status in {408, 425, 429, 500, 502, 503, 504}
+            detail = ""
+            try:
+                body = json_module.loads(exc.read(16384).decode("utf-8"))
+                if isinstance(body, dict):
+                    detail = "; ".join(
+                        f"{key}={body[key]}"
+                        for key in ("error_code", "error_description", "msg_cd", "msg1")
+                        if isinstance(body.get(key), str)
+                    )
+            except (ValueError, OSError, AttributeError):
+                pass
+            # Provider messages can echo request credentials. Never print raw bodies.
+            for source in (headers or {}, json or {}, params or {}):
+                for key, value in source.items():
+                    if str(key).lower() in {"appkey", "appsecret", "authorization", "cano"} and value:
+                        detail = detail.replace(str(value), "<redacted>")
+                        if str(value).startswith("Bearer "):
+                            detail = detail.replace(str(value)[7:], "<redacted>")
             raise KISRequestError(
-                f"KIS HTTP request failed: {exc}",
+                f"KIS HTTP {status}: {method} {path}" + (f"; {detail[:1000]}" if detail else ""),
                 retryable=retryable,
                 status=status,
             ) from exc
@@ -431,7 +449,7 @@ class KISClient:
             "CANO": self.config.account_no,
             "ACNT_PRDT_CD": self.config.product_code,
             "PDNO": str(ticker),
-            "ORD_DVSN": "00",
+            "ORD_DVSN": "01" if int(price) == 0 else "00",
             "ORD_QTY": str(int(quantity)),
             "ORD_UNPR": str(int(price)),
             "EXCG_ID_DVSN_CD": "KRX",

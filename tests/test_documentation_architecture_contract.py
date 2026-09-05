@@ -18,6 +18,7 @@ DOCUMENTS = {
     "brokers": ROOT / "docs" / "broker-adapters.md",
     "defaults": ROOT / "docs" / "defaults-and-philosophy.md",
     "llm": ROOT / "docs" / "why-multi-agent.md",
+    "preflight": ROOT / "docs" / "runtime-execution-preflight.md",
 }
 
 MAINTAINED_VISUALS = (
@@ -93,6 +94,16 @@ class DocumentationArchitectureContractTest(unittest.TestCase):
             self.text["part4"],
         )
         self.assertNotIn("prism_core/screening.py", self.text["part4"])
+
+    def test_preflight_uses_the_actual_kis_https_ports(self):
+        self.assertIn(
+            "openapivts.koreainvestment.com:29443",
+            self.text["preflight"],
+        )
+        self.assertIn(
+            "openapi.koreainvestment.com:9443",
+            self.text["preflight"],
+        )
 
     def test_maintained_architecture_visuals_are_large_pngs(self):
         for asset in MAINTAINED_VISUALS:
