@@ -1,5 +1,9 @@
 # 런타임 프로필 가이드
 
+`main.py`와 `order/kis_single_share_order.py`는 같은 런타임 설정으로 가상 매매 여부를 판단합니다. `LECTURE_PROFILE`의 기본 매매 모드를 사용하고, `LECTURE_TRADE_MODE`가 지정되면 그 값을 적용합니다. `simulation`이면 단주 주문도 인증·시세·주문 API를 호출하지 않고 예행 연습 안내만 출력합니다.
+
+KIS 모의 주문은 `LECTURE_BROKER=kis`, `LECTURE_BROKER_MODE=demo`와 공용 주문 허용 플래그를 사용합니다. 실전 주문은 `LECTURE_BROKER_MODE=real`과 공용 이중 허용 플래그가 필요합니다. `mock` 프로필에 실전 계좌 정보와 허용 플래그만 입력해도 매매 모드는 자동으로 실전으로 바뀌지 않습니다. 전체 파이프라인은 단주 주문에 더해 분석·포지션·운영 조건을 검사하므로 주문 결과까지 같다는 뜻은 아닙니다.
+
 lecture-prism은 한 저장소 안에서 초급자용 더미 데모부터 상태가 남는 교실 재생, 선택 실데이터·리서치·브로커 연결까지 단계적으로 구분합니다. 문서를 읽을 때는 먼저 **기본 학습 경로**와 **상태 기반 고급 경로**를 구분하세요.
 
 - **기본 학습 경로**: `mock`과 `real_data`가 `screening.py` → `analysis_agents.py`·`analysis.py` → `buy_agent.py` → `trading.py` → `feedback.py`를 사용합니다. API 키 없는 첫 성공과 전략 A/B/C/D 수정의 출발점입니다.
