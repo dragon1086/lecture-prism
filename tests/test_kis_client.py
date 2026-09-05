@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import os
+import io
+import json
 import socket
 import unittest
 from dataclasses import dataclass
@@ -50,6 +52,21 @@ def ok(output=None, **extra):
 
 
 class KISConfigTest(unittest.TestCase):
+    def test_http_error_keeps_provider_reason_but_redacts_credentials(self):
+        config = KISConfig("real", "test-app-key", "test-app-secret", "12345678")
+        body = json.dumps({"error_code": "EGW00133", "error_description": "rate limit test-app-secret", "access_token": "must-not-print"}).encode()
+        error = HTTPError(config.base_url, 403, "Forbidden", {}, io.BytesIO(body))
+        with patch("brokers.kis_client.urlopen", side_effect=error):
+            with self.assertRaises(KISRequestError) as caught:
+                KISClient(config).authenticate()
+        message = str(caught.exception)
+        self.assertIn("EGW00133", message)
+        self.assertIn("/oauth2/tokenP", message)
+        self.assertNotIn("test-app-secret", message)
+        self.assertNotIn("must-not-print", message)
+        self.assertEqual(caught.exception.status, 403)
+        self.assertFalse(caught.exception.retryable)
+
     def test_from_env_uses_mode_specific_credential_namespace(self):
         env = {
             "KIS_PAPER_APP_KEY": "paper-key",
@@ -210,6 +227,15 @@ class KISClientRequestContractTest(unittest.TestCase):
         })
         self.assertEqual(sell["json"]["ORD_QTY"], "2")
         self.assertEqual(sell["json"]["ORD_UNPR"], "71000")
+
+    def test_zero_price_cash_order_uses_market_order_code(self):
+        client, transport = self.authenticated_client(ok({"ODNO": "1"}))
+
+        client.place_cash_order("061040", "BUY", 1, 0)
+
+        order_call = transport.calls[1]
+        self.assertEqual(order_call["json"]["ORD_DVSN"], "01")
+        self.assertEqual(order_call["json"]["ORD_UNPR"], "0")
 
     def test_balance_follows_continuation_headers_until_last_page(self):
         first = FakeResponse(

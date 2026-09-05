@@ -23,14 +23,15 @@
 다음 도메인을 실제로 사용할 때만 필요한 범위의 네트워크 승인을 요청합니다.
 
 - Yahoo Finance: `query1.finance.yahoo.com`, `query2.finance.yahoo.com`
-- KIS paper: `openapivts.koreainvestment.com`
-- KIS real: `openapi.koreainvestment.com`
+- KIS paper: `https://openapivts.koreainvestment.com:29443`
+- KIS real: `https://openapi.koreainvestment.com:9443`
 - tossctl 설치: `github.com`, `github-releases.githubusercontent.com`
 - Toss 공식 시세: `openapi.tossinvest.com`
 - Discord 판단 알림: `discord.com`
 - Telegram 판단 알림: `api.telegram.org`
 
 전역 샌드박스를 끄거나 모든 권한을 우회하지 않습니다. 현재 실행 환경에서 DNS가 막히면 인증 토큰이나 API 요청부터 보내지 않습니다.
+KIS는 일반 HTTPS 포트 443이 아니라 위에 적힌 환경별 API 포트로 HTTPS 연결을 확인합니다. DNS는 호스트 이름만 확인하고, HTTPS는 포트까지 포함한 전체 주소로 확인합니다.
 
 DNS 또는 HTTPS 사전 확인이 샌드박스 안에서 실패하면 다음을 구분합니다.
 
